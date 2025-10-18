@@ -24,7 +24,6 @@ import {
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
-import { EmptyMomentCard } from "./EmptyMomentCard";
 import { MomentCard } from "./MomentCard";
 
 interface TimelineCellProps {
@@ -91,11 +90,6 @@ export function TimelineCell({
   // Check if current drop would be valid
   const wouldAcceptDrop = !isFull; // Simple check for now, validation happens in DnDProvider
 
-  const handleCreateClick = () => {
-    // Open create modal with day and phase prefilled
-    handleOpenCreateModal(day, phase);
-  };
-
   // Generate accessible label
   const cellLabel =
     dayLabel && phaseLabel
@@ -133,34 +127,28 @@ export function TimelineCell({
       aria-live={isFull ? "polite" : "off"}
       aria-atomic="true"
     >
-      <SortableContext
-        items={cellMoments.map((m) => m.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="flex flex-col" style={{ gap: momentCard.gap }}>
-          {cellMoments.map((moment) => {
-            // Get area from the extracted values (use$ already unwrapped it)
-            const area = allAreas[moment.areaId];
-            if (!area) return null;
+      {cellMoments.length > 0 ? (
+        <SortableContext
+          items={cellMoments.map((m) => m.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="flex flex-col" style={{ gap: momentCard.gap }}>
+            {cellMoments.map((moment) => {
+              // Get area from the extracted values (use$ already unwrapped it)
+              const area = allAreas[moment.areaId];
+              if (!area) return null;
 
-            return (
-              <SortableMomentCard key={moment.id} moment={moment} area={area} />
-            );
-          })}
-
-          {/* Show EmptyMomentCard when not full */}
-          {!isFull && (
-            <EmptyMomentCard
-              onClick={handleCreateClick}
-              label={
-                cellMoments.length === 0
-                  ? `Add to ${phaseLabel || phase}`
-                  : "Add moment"
-              }
-            />
-          )}
+              return (
+                <SortableMomentCard key={moment.id} moment={moment} area={area} />
+              );
+            })}
+          </div>
+        </SortableContext>
+      ) : (
+        <div className="flex items-center justify-center h-full min-h-[192px]">
+          {/* Empty state - just a drop target, no visual clutter */}
         </div>
-      </SortableContext>
+      )}
 
       {isFull && (
         <output
