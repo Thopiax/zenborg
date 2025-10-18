@@ -26,7 +26,11 @@
       "Bash(git log -3 --format='%s')",
       "Bash(cat .gitignore)",
       "WebSearch",
-      "Bash(cat src/infrastructure/state/ui-store.ts)"
+      "Bash(cat src/infrastructure/state/ui-store.ts)",
+      "Bash(git show HEAD --format=\"%s%n%b\" --no-patch)",
+      "Bash(git push)",
+      "Read(//Users/rafa/**)",
+      "Bash(cat /Users/rafa/.claude/settings.json)"
     ],
     "deny": [],
     "ask": []

@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
 "use client";
 
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
   useSortable,
@@ -208,32 +208,7 @@ interface SortableMomentCardProps {
 function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
   const isDuplicateMode = use$(isDuplicateMode$);
 
-  // Use different hooks depending on mode
-  const sortable = useSortable({
-    id: moment.id,
-    data: {
-      momentId: moment.id,
-      sourceType: "timeline" as const,
-      sourceDay: moment.day ?? undefined,
-      sourcePhase: moment.phase ?? undefined,
-      sourceOrder: moment.order,
-    },
-    disabled: isDuplicateMode,
-  });
-
-  const draggable = useDraggable({
-    id: moment.id,
-    data: {
-      momentId: moment.id,
-      sourceType: "timeline" as const,
-      sourceDay: moment.day ?? undefined,
-      sourcePhase: moment.phase ?? undefined,
-      sourceOrder: moment.order,
-    },
-    disabled: !isDuplicateMode,
-  });
-
-  // Use the appropriate hook's values based on mode
+  // Always use useSortable, disable transition during duplicate mode
   const {
     attributes,
     listeners,
@@ -241,15 +216,22 @@ function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
     transform,
     transition,
     isDragging,
-  } = isDuplicateMode ? draggable : sortable;
+  } = useSortable({
+    id: moment.id,
+    data: {
+      momentId: moment.id,
+      sourceType: "timeline" as const,
+      sourceDay: moment.day ?? undefined,
+      sourcePhase: moment.phase ?? undefined,
+      sourceOrder: moment.order,
+    },
+    transition: isDuplicateMode ? null : undefined,
+  });
 
   const style = {
-    // In duplicate mode with draggable, no transform applied to original
-    transform: isDuplicateMode
-      ? undefined
-      : CSS.Transform.toString(transform),
-    transition: isDuplicateMode ? undefined : transition,
-    // Keep original visible when in duplicate mode
+    transform: CSS.Transform.toString(transform),
+    transition,
+    // Kanban style: original disappears on move, stays visible on duplicate
     opacity: isDragging && !isDuplicateMode ? 0 : 1,
   };
 
