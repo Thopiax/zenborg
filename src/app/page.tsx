@@ -1,6 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import { AreaManagementModal } from "@/components/AreaManagementModal";
 import { AreaSelector } from "@/components/AreaSelector";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
@@ -39,6 +40,8 @@ export default function HomePage() {
     handleSaveEdit,
     handleCancelEdit,
     handleOpenEditModal,
+    isAreaManagementOpen,
+    setIsAreaManagementOpen,
   } = useGlobalKeyboard();
 
   // Get the focused moment's current area
@@ -135,6 +138,12 @@ export default function HomePage() {
             }
             onSave={handleSaveEdit}
             onCancel={handleCancelEdit}
+          />
+
+          {/* Area Management Modal - Triggered by Mod+Shift+A */}
+          <AreaManagementModal
+            open={isAreaManagementOpen}
+            onClose={() => setIsAreaManagementOpen(false)}
           />
         </div>
       </DnDProvider>

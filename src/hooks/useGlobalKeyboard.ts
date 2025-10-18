@@ -15,8 +15,9 @@ import { useSelection } from "./useSelection";
  * Global keyboard shortcuts - Linear style
  *
  * CRUD (Linear-style, always active):
- * - M: Create new moment
- * - A: Change area for focused moment
+ * - N: Create new moment
+ * - Shift+A: Change area for focused moment
+ * - Mod+Shift+A: Open area management
  * - Enter: Edit focused moment
  * - Delete: Delete focused moment
  * - Mod+Backspace: Delete all selected moments
@@ -71,13 +72,14 @@ export function useGlobalKeyboard() {
   >();
   const [isEditCardOpen, setIsEditCardOpen] = useState(false);
   const [editingMomentId, setEditingMomentId] = useState<string | null>(null);
+  const [isAreaManagementOpen, setIsAreaManagementOpen] = useState(false);
 
   // Yank buffer for copy/paste
   const [yankBuffer, setYankBuffer] = useState<Moment | null>(null);
 
   // Disable global shortcuts when any modal is open to allow typing
   const globalShortcutsEnabled =
-    !isEditCardOpen && !isAreaSelectorOpen && !isCreateModalOpen;
+    !isEditCardOpen && !isAreaSelectorOpen && !isCreateModalOpen && !isAreaManagementOpen;
 
   // ==================== GLOBAL SHORTCUTS ====================
 
@@ -116,6 +118,16 @@ export function useGlobalKeyboard() {
       setIsAreaSelectorOpen(true);
     },
     { enabled: globalShortcutsEnabled }
+  );
+
+  // Mod+Shift+A - Open area management
+  useHotkeys(
+    "mod+shift+a",
+    (e) => {
+      e.preventDefault();
+      setIsAreaManagementOpen(true);
+    },
+    { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
 
   // Enter - Edit focused moment
@@ -455,5 +467,8 @@ export function useGlobalKeyboard() {
     handleSaveEdit,
     handleCancelEdit,
     handleOpenEditModal,
+    // Area management state
+    isAreaManagementOpen,
+    setIsAreaManagementOpen,
   };
 }
