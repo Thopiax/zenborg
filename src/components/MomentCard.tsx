@@ -1,146 +1,78 @@
-/** biome-ignore-all lint/a11y/useKeyWithClickEvents: <explanation> */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
-import { validateMomentName } from "@/domain/entities/Moment";
-import { useVimMode } from "@/hooks/useVimMode";
-import { VimMode } from "@/infrastructure/state/vim-mode";
-import {
-  getFocusRingClasses,
-  getTextColorsForBackground,
-  momentCard,
-} from "@/lib/design-tokens";
+import { useSelection } from "@/hooks/useSelection";
+import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
 interface MomentCardProps {
   moment: Moment;
   area: Area;
-  isFocused: boolean;
-  onFocus: () => void;
-  onUpdate: (name: string) => void;
-  onDelete?: () => void;
 }
 
 /**
- * MomentCard - Inline editable card for a moment
+ * MomentCard - Display card for a moment
  *
  * Design:
- * - Full area-colored background (not just border)
- * - Accessible text colors (white or dark based on background luminance)
- * - Minimal borders, clean spacing
- * - Optimized height for 3 cards per timeline cell
+ * - Minimalist, monochrome aesthetic
+ * - Full area-colored background with accessible text
+ * - Subtle shadows for interaction states
+ * - No colored rings or borders
  *
- * Vim interaction flow:
- * 1. NORMAL mode: Click or navigate (j/k/w/b) to card → purple focus ring
- * 2. Press 'i' → INSERT mode enters with THIS moment's ID
- * 3. Card detects vimFocusedId === moment.id → enables inline editing
- * 4. Type to edit, Tab to cycle areas
- * 5. Enter to save / Esc to cancel → returns to NORMAL mode
+ * Interaction flow:
+ * 1. Single click → Opens MomentEditCard modal
+ * 2. Cmd/Ctrl + click → Toggle selection (subtle shadow)
+ * 3. Shift + click → Toggle selection (without entering edit mode)
+ * 4. Selected moments show elevated shadow
  *
  * Features:
- * - Inline editing (no modals)
- * - Consistent purple focus ring (all modes)
- * - Full area-colored background with accessible text
- * - Monospace font for Vim aesthetic
- * - Real-time validation (1-3 words)
+ * - Multi-select for bulk operations
+ * - Toggle selection with Shift+click or Cmd/Ctrl+click
+ * - Monochrome, minimalist design
  * - Full accessibility with ARIA labels
  */
-export function MomentCard({
-  moment,
-  area,
-  isFocused,
-  onFocus,
-  onUpdate,
-  onDelete,
-}: MomentCardProps) {
-  const {
-    mode,
-    isInsertMode,
-    focusedMomentId: vimFocusedId,
-    enterNormalMode,
-  } = useVimMode();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(moment.name);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+export function MomentCard({ moment, area }: MomentCardProps) {
+  const { handleOpenEditModal } = useMomentManager();
+  const { isSelected: isSelectedMoment, toggleSelection } = useSelection();
 
-  // Enter edit mode when THIS specific moment is targeted in INSERT mode
-  useEffect(() => {
-    const isThisMomentTargeted = isInsertMode && vimFocusedId === moment.id;
+  const isSelected = isSelectedMoment(moment.id);
 
-    if (isThisMomentTargeted) {
-      setIsEditing(true);
-      setEditValue(moment.name);
-    } else if (mode === VimMode.NORMAL) {
-      setIsEditing(false);
+  const handleClick = (e: React.MouseEvent) => {
+    // Shift + click → Toggle selection (without entering edit mode)
+    if (e.shiftKey) {
+      e.preventDefault();
+      toggleSelection(moment.id);
     }
-  }, [isInsertMode, vimFocusedId, mode, moment.id, moment.name]);
-
-  // Auto-focus input when editing starts
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+    // Cmd/Ctrl + click → Toggle selection
+    else if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      toggleSelection(moment.id);
     }
-  }, [isEditing]);
-
-  // Focus the card div when focused
-  useEffect(() => {
-    if (isFocused && !isEditing && cardRef.current) {
-      cardRef.current.focus();
-    }
-  }, [isFocused, isEditing]);
-
-  const handleSave = () => {
-    const validation = validateMomentName(editValue);
-    if (validation.valid) {
-      onUpdate(editValue.trim());
-      setIsEditing(false);
-      // Exit INSERT mode and return to NORMAL
-      enterNormalMode();
+    // Regular click → Open global edit modal
+    else {
+      handleOpenEditModal(moment.id);
     }
   };
-
-  const handleCancel = () => {
-    setEditValue(moment.name);
-    setIsEditing(false);
-    // Exit INSERT mode and return to NORMAL
-    enterNormalMode();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (isEditing) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        handleSave();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        handleCancel();
-      }
-    }
-  };
-
-  const validation = validateMomentName(editValue);
 
   // Get accessible text colors based on area color
   const textColors = getTextColorsForBackground(area.color);
 
   // Descriptive ARIA label for accessibility
-  const ariaLabel = isEditing
-    ? `Editing ${moment.name} in ${area.name} area`
-    : `${moment.name} in ${area.name} area, press i to edit`;
+  const ariaLabel = isSelected
+    ? `${moment.name} in ${area.name} area, selected`
+    : `${moment.name} in ${area.name} area, click to edit`;
 
   return (
-    <article
-      ref={cardRef}
+    <button
+      type="button"
       className={cn(
-        "rounded-lg transition-all",
+        "rounded-lg transition-all cursor-pointer w-full",
         "focus:outline-none",
-        // Mode-specific focus rings
-        isFocused && !isEditing && getFocusRingClasses("normal"),
-        isEditing && getFocusRingClasses("insert")
+        // Minimalist, monochrome shadows
+        "shadow-foreground/10",
+        isSelected ? "shadow-lg" : "shadow-sm hover:shadow-md"
       )}
       style={{
         backgroundColor: area.color,
@@ -150,70 +82,18 @@ export function MomentCard({
         paddingTop: momentCard.paddingY,
         paddingBottom: momentCard.paddingY,
       }}
-      tabIndex={isFocused && !isEditing ? 0 : -1}
-      onFocus={onFocus}
       data-moment-id={moment.id}
-      onClick={onFocus}
+      onClick={handleClick}
       aria-label={ariaLabel}
-      aria-live={isEditing ? "polite" : "off"}
+      tabIndex={0}
     >
-      {isEditing ? (
-        <div className="space-y-2">
-          <input
-            ref={inputRef}
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className={cn(
-              "text-lg font-semibold bg-transparent outline-none w-full",
-              "font-mono",
-              textColors.primary,
-              textColors.placeholder
-            )}
-            placeholder="Moment name (1-3 words)"
-            aria-label="Moment name input"
-            aria-invalid={!validation.valid}
-            aria-describedby={
-              !validation.valid ? "moment-error" : "moment-hint"
-            }
-          />
-          <div className="flex items-center justify-between text-xs">
-            <span
-              id={!validation.valid ? "moment-error" : "moment-hint"}
-              className={cn(
-                "font-mono",
-                !validation.valid
-                  ? "text-red-200 dark:text-red-200 font-semibold"
-                  : textColors.secondary
-              )}
-              role={!validation.valid ? "alert" : "status"}
-            >
-              {!validation.valid && validation.error && (
-                <span>{validation.error}</span>
-              )}
-            </span>
-            <span className={cn("flex gap-2", textColors.tertiary)}>
-              <span>Enter to save</span>
-              <span aria-hidden="true">·</span>
-              <span>Esc to cancel</span>
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3">
-          <span className="text-xl" aria-hidden="true">
-            {area.emoji}
-          </span>
-          <p
-            className={cn(
-              "text-lg font-semibold font-mono",
-              textColors.primary
-            )}
-          >
-            {moment.name}
-          </p>
-        </div>
-      )}
-    </article>
+      <div className="flex items-center justify-start h-full gap-3">
+        <p
+          className={cn("text-lg font-semibold font-mono", textColors.primary)}
+        >
+          {moment.name}
+        </p>
+      </div>
+    </button>
   );
 }

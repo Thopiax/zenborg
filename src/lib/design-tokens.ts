@@ -102,43 +102,6 @@ export const borderWidth = {
 } as const;
 
 /**
- * Focus Ring Styles
- * Subtle, calm focus indicators inspired by Things 3
- * - Thin outline (1px) instead of thick ring
- * - Soft blue-gray color for calm aesthetic
- * - Minimal offset for cleaner appearance
- */
-export const focusRing = {
-  // Default focus state - subtle blue-gray
-  default: {
-    ring: "ring-1",
-    offset: "ring-offset-1 ring-offset-background",
-    color: "ring-blue-400/40 dark:ring-blue-400/30",
-  },
-
-  // Insert mode - slightly more emphasis with blue
-  insert: {
-    ring: "ring-1",
-    offset: "ring-offset-1 ring-offset-background",
-    color: "ring-blue-500/50 dark:ring-blue-400/40",
-  },
-
-  // Normal mode - calm gray-blue
-  normal: {
-    ring: "ring-1",
-    offset: "ring-offset-1 ring-offset-background",
-    color: "ring-stone-400/40 dark:ring-stone-500/30",
-  },
-
-  // Cell focus - subtle blue for navigation
-  cell: {
-    ring: "ring-1",
-    offset: "ring-offset-1 ring-offset-background",
-    color: "ring-blue-400/30 dark:ring-blue-500/20",
-  },
-} as const;
-
-/**
  * Animation Durations
  * Smooth, but not sluggish
  */
@@ -232,10 +195,10 @@ export const momentCard = {
  * Each phase has a subtle gradient for visual differentiation
  */
 export const phaseBackgrounds: Record<number, string> = {
-  0: "bg-stone-50 dark:bg-stone-700/40",
-  1: "bg-stone-100 dark:bg-stone-800/60 ",
-  2: "bg-stone-150 dark:bg-stone-900/40",
-  3: "bg-stone-200 dark:bg-stone-950/20",
+  0: "bg-stone-50 dark:bg-stone-900/20",
+  1: "bg-stone-100 dark:bg-stone-900/30",
+  2: "bg-stone-200 dark:bg-stone-900/40",
+  3: "bg-stone-300 dark:bg-stone-900/50",
 } as const;
 
 /**
@@ -300,16 +263,6 @@ export const ariaLabels = {
     `${day} ${phase}, ${count} of ${max} moments allocated`,
   daySelector: "Day selector - navigate between days",
 } as const;
-
-/**
- * Helper: Get focus ring classes based on mode
- */
-export function getFocusRingClasses(
-  mode: "default" | "insert" | "normal" | "cell" = "default"
-): string {
-  const ring = focusRing[mode];
-  return `${ring.ring} ${ring.offset} ${ring.color}`;
-}
 
 /**
  * Helper: Validate moment name word count

@@ -1,33 +1,39 @@
+import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { VimMode, setYankBuffer } from "@/infrastructure/state/vim-mode";
-import { useVimMode } from "./useVimMode";
-import { useFocusManager } from "./useFocusManager";
-import { moments$ } from "@/infrastructure/state/store";
+import type { Moment } from "@/domain/entities/Moment";
 import { createMoment } from "@/domain/entities/Moment";
+import { moments$ } from "@/infrastructure/state/store";
+import { selectionState$ } from "@/infrastructure/state/selection";
+import { useFocusManager } from "./useFocusManager";
+import { useSelection } from "./useSelection";
 
 /**
- * Global keyboard shortcuts for Vim-style interaction
+ * Global keyboard shortcuts - Linear style with Vim navigation
  *
- * NORMAL mode shortcuts:
- * - Navigation: j/k (↓/↑), w/b (next/prev), gg/G (first/last)
- * - Actions: dd (delete), yy (yank), p (paste), x (quick delete), i (insert)
- * - Allocation: Enter (allocate), Backspace (unallocate)
- * - Modes: : (command), i (insert)
+ * CRUD (Linear-style, always active):
+ * - M: Create new moment
+ * - A: Change area for focused moment
+ * - Enter: Edit focused moment
+ * - Delete: Delete focused moment
+ * - Mod+Backspace: Delete all selected moments
  *
- * INSERT/COMMAND modes:
- * - Escape → NORMAL mode
+ * Selection:
+ * - Shift+click / Cmd+click: Toggle moment selection
+ * - Mod+A: Select all moments
+ * - Escape: Clear selection
+ *
+ * Navigation (Vim-style):
+ * - j/k (↓/↑): Navigate moments vertically
+ * - h/l (←/→): Navigate moments horizontally
+ * - w/b: Next/previous moment
+ * - gg/G: First/last moment
+ *
+ * Clipboard (Vim-style):
+ * - yy: Yank (copy) moment
+ * - p: Paste yanked moment
+ * - Backspace: Unallocate focused moment (return to drawing board)
  */
 export function useGlobalKeyboard() {
-  const {
-    mode,
-    commandInput,
-    yankBuffer,
-    enterInsertMode,
-    enterCommandMode,
-    enterNormalMode,
-    executeCommand,
-  } = useVimMode();
-
   const {
     focusedMomentId,
     focusMoment,
@@ -37,77 +43,142 @@ export function useGlobalKeyboard() {
     focusLast,
   } = useFocusManager();
 
-  const isNormal = mode === VimMode.NORMAL;
-  const isCommand = mode === VimMode.COMMAND;
+  const { deleteSelected } = useSelection();
 
-  // ==================== GLOBAL (ALL MODES) ====================
+  // UI state for CRUD operations
+  const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [prefilledDay, setPrefilledDay] = useState<string | undefined>();
+  const [prefilledPhase, setPrefilledPhase] = useState<string | undefined>();
+  const [isEditCardOpen, setIsEditCardOpen] = useState(false);
+  const [editingMomentId, setEditingMomentId] = useState<string | null>(null);
 
-  // Escape - always return to NORMAL mode
+  // Yank buffer for copy/paste
+  const [yankBuffer, setYankBuffer] = useState<Moment | null>(null);
+
+  // Disable global shortcuts when any modal is open to allow typing
+  const globalShortcutsEnabled =
+    !isEditCardOpen && !isAreaSelectorOpen && !isCreateModalOpen;
+
+  // ==================== GLOBAL SHORTCUTS ====================
+
+  // Escape - close any open modals
   useHotkeys(
     "escape",
     (e) => {
-      e.preventDefault();
-      enterNormalMode();
+      if (isCreateModalOpen) {
+        e.preventDefault();
+        setIsCreateModalOpen(false);
+      } else if (isEditCardOpen) {
+        e.preventDefault();
+        setIsEditCardOpen(false);
+        setEditingMomentId(null);
+      } else if (isAreaSelectorOpen) {
+        e.preventDefault();
+        setIsAreaSelectorOpen(false);
+      }
     },
     { enableOnFormTags: true }
   );
 
-  // Ctrl+C - return to NORMAL mode (Vim convention)
+  // ==================== CRUD SHORTCUTS (Linear-style) ====================
+
+  // M (Shift+m) - Create new moment
   useHotkeys(
-    "ctrl+c",
+    "shift+m",
     (e) => {
       e.preventDefault();
-      enterNormalMode();
+      setIsCreateModalOpen(true);
     },
-    { enableOnFormTags: true }
+    { enabled: globalShortcutsEnabled, enableOnFormTags: false }
+  );
+
+  // A (Shift+a) - Open area selector for focused moment
+  useHotkeys(
+    "shift+a",
+    (e) => {
+      if (!focusedMomentId) return;
+      e.preventDefault();
+      setIsAreaSelectorOpen(true);
+    },
+    { enabled: globalShortcutsEnabled }
+  );
+
+  // Enter - Edit focused moment
+  useHotkeys(
+    "enter",
+    (e) => {
+      if (!focusedMomentId) return;
+      e.preventDefault();
+      setEditingMomentId(focusedMomentId);
+      setIsEditCardOpen(true);
+    },
+    { enabled: globalShortcutsEnabled }
+  );
+
+  // Delete - Delete focused moment
+  useHotkeys(
+    "delete",
+    (e) => {
+      if (!focusedMomentId) return;
+      e.preventDefault();
+
+      const momentToDelete = moments$[focusedMomentId].peek();
+      if (momentToDelete) {
+        focusNext();
+        const allMoments = moments$.peek();
+        const { [focusedMomentId]: _, ...rest } = allMoments;
+        moments$.set(rest);
+      }
+    },
+    { enabled: globalShortcutsEnabled }
+  );
+
+  // Mod+Backspace - Delete selected moments
+  useHotkeys(
+    "mod+backspace",
+    (e) => {
+      console.log("[Mod+Backspace] Triggered");
+      e.preventDefault();
+
+      // Read the current selection state inside the callback
+      const selectedIds = selectionState$.selectedMomentIds.peek();
+      console.log("[Mod+Backspace] Current selection:", selectedIds);
+
+      if (selectedIds.length === 0) {
+        console.log("[Mod+Backspace] No moments selected, ignoring");
+        return;
+      }
+
+      console.log("[Mod+Backspace] Calling deleteSelected");
+      deleteSelected();
+    },
+    { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
 
   // ==================== NORMAL MODE - NAVIGATION ====================
 
   // j / ↓ - next moment
-  useHotkeys("j, down", () => focusNext(), { enabled: isNormal });
+  useHotkeys("j, down", () => focusNext(), { enabled: globalShortcutsEnabled });
 
   // k / ↑ - previous moment
-  useHotkeys("k, up", () => focusPrevious(), { enabled: isNormal });
+  useHotkeys("k, up", () => focusPrevious(), {
+    enabled: globalShortcutsEnabled,
+  });
 
   // w - next moment (word forward)
-  useHotkeys("w", () => focusNext(), { enabled: isNormal });
+  useHotkeys("w", () => focusNext(), { enabled: globalShortcutsEnabled });
 
   // b - previous moment (word backward)
-  useHotkeys("b", () => focusPrevious(), { enabled: isNormal });
+  useHotkeys("b", () => focusPrevious(), { enabled: globalShortcutsEnabled });
 
   // gg - first moment
-  useHotkeys("g g", () => focusFirst(), { enabled: isNormal });
+  useHotkeys("g g", () => focusFirst(), { enabled: globalShortcutsEnabled });
 
   // G (Shift+g) - last moment
-  useHotkeys("shift+g", () => focusLast(), { enabled: isNormal });
+  useHotkeys("shift+g", () => focusLast(), { enabled: globalShortcutsEnabled });
 
-  // ==================== NORMAL MODE - MODE SWITCHING ====================
-
-  // i - enter INSERT mode (edit focused moment or create new)
-  useHotkeys(
-    "i",
-    () => {
-      if (focusedMomentId) {
-        enterInsertMode(focusedMomentId);
-      } else {
-        enterInsertMode();
-      }
-    },
-    { enabled: isNormal }
-  );
-
-  // : - enter COMMAND mode
-  useHotkeys(
-    "shift+;",
-    (e) => {
-      e.preventDefault();
-      enterCommandMode();
-    },
-    { enabled: isNormal }
-  );
-
-  // ==================== NORMAL MODE - QUICK ACTIONS ====================
+  // ==================== CLIPBOARD (Vim-style) ====================
 
   // dd - delete focused moment
   useHotkeys(
@@ -125,7 +196,7 @@ export function useGlobalKeyboard() {
         moments$.set(rest);
       }
     },
-    { enabled: isNormal }
+    { enabled: globalShortcutsEnabled }
   );
 
   // x - quick delete (only unallocated moments)
@@ -143,7 +214,7 @@ export function useGlobalKeyboard() {
         moments$.set(rest);
       }
     },
-    { enabled: isNormal }
+    { enabled: globalShortcutsEnabled }
   );
 
   // yy - yank (copy) focused moment
@@ -155,10 +226,10 @@ export function useGlobalKeyboard() {
       const moment = moments$[focusedMomentId].peek();
       if (moment) {
         setYankBuffer(moment);
-        // TODO: Show visual feedback (toast?)
+        // TODO: Show visual feedback (toast or subtle indicator)
       }
     },
-    { enabled: isNormal }
+    { enabled: globalShortcutsEnabled }
   );
 
   // p - put (paste) yanked moment
@@ -173,7 +244,7 @@ export function useGlobalKeyboard() {
         focusMoment(result.id);
       }
     },
-    { enabled: isNormal }
+    { enabled: globalShortcutsEnabled }
   );
 
   // Backspace - unallocate focused moment (return to drawing board)
@@ -193,19 +264,94 @@ export function useGlobalKeyboard() {
         });
       }
     },
-    { enabled: isNormal }
+    { enabled: globalShortcutsEnabled }
   );
 
-  // ==================== COMMAND MODE ====================
+  // ==================== HELPER FUNCTIONS ====================
 
-  // Enter - execute command
-  useHotkeys(
-    "enter",
-    (e) => {
-      e.preventDefault();
-      executeCommand(commandInput);
-      enterNormalMode();
-    },
-    { enabled: isCommand, enableOnFormTags: true }
-  );
+  const updateMomentArea = (momentId: string, newAreaId: string) => {
+    const moment = moments$[momentId].peek();
+    if (moment) {
+      moments$[momentId].areaId.set(newAreaId);
+      moments$[momentId].updatedAt.set(new Date().toISOString());
+    }
+    setIsAreaSelectorOpen(false);
+  };
+
+  const handleCreateMoment = (name: string, areaId: string) => {
+    // Create new moment
+    const result = createMoment(name, areaId);
+    if (!("error" in result)) {
+      // If day/phase were prefilled, allocate the moment
+      if (prefilledDay && prefilledPhase) {
+        moments$[result.id].set({
+          ...result,
+          day: prefilledDay,
+          phase: prefilledPhase as any, // Type assertion needed
+          order: 0, // Will be adjusted by DnD
+        });
+      } else {
+        moments$[result.id].set(result);
+      }
+      focusMoment(result.id);
+    }
+    setIsCreateModalOpen(false);
+    setPrefilledDay(undefined);
+    setPrefilledPhase(undefined);
+  };
+
+  const handleCancelCreate = () => {
+    setIsCreateModalOpen(false);
+    setPrefilledDay(undefined);
+    setPrefilledPhase(undefined);
+  };
+
+  const handleOpenCreateModal = (day?: string, phase?: string) => {
+    setPrefilledDay(day);
+    setPrefilledPhase(phase);
+    setIsCreateModalOpen(true);
+  };
+
+  const handleSaveEdit = (name: string, areaId: string) => {
+    if (editingMomentId) {
+      // Update existing moment
+      const moment = moments$[editingMomentId].peek();
+      if (moment) {
+        moments$[editingMomentId].name.set(name);
+        moments$[editingMomentId].areaId.set(areaId);
+        moments$[editingMomentId].updatedAt.set(new Date().toISOString());
+      }
+    }
+    setIsEditCardOpen(false);
+    setEditingMomentId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditCardOpen(false);
+    setEditingMomentId(null);
+  };
+
+  const handleOpenEditModal = (momentId: string) => {
+    setEditingMomentId(momentId);
+    setIsEditCardOpen(true);
+  };
+
+  // Return state and helpers for components
+  return {
+    isAreaSelectorOpen,
+    setIsAreaSelectorOpen,
+    updateMomentArea,
+    focusedMomentId,
+    // Create modal state
+    isCreateModalOpen,
+    handleCreateMoment,
+    handleCancelCreate,
+    handleOpenCreateModal,
+    // Edit card state
+    isEditCardOpen,
+    editingMomentId,
+    handleSaveEdit,
+    handleCancelEdit,
+    handleOpenEditModal,
+  };
 }

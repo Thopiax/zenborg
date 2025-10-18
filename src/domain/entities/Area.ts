@@ -1,4 +1,4 @@
-import type { Moment } from './Moment'
+import type { Moment } from "./Moment";
 
 /**
  * Area - Life domain categorization for moments
@@ -7,61 +7,68 @@ import type { Moment } from './Moment'
  * Each area has a color and emoji for visual identification.
  */
 export interface Area {
-  readonly id: string
-  name: string
-  color: string      // hex color
-  emoji: string
-  isDefault: boolean // true for the 5 seeded defaults
-  order: number
-  createdAt: string
-  updatedAt: string
+  readonly id: string;
+  name: string;
+  color: string; // hex color
+  emoji: string;
+  isDefault: boolean; // true for the 5 seeded defaults
+  order: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
  * Result type for operations that may fail
  */
-export type AreaResult = Area | { error: string }
+export type AreaResult = Area | { error: string };
 
 /**
  * Default area definitions
  */
-export const DEFAULT_AREAS: Omit<Area, 'id' | 'createdAt' | 'updatedAt'>[] = [
+export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
   {
-    name: 'Wellness',
-    color: '#10b981',
-    emoji: '🟢',
+    name: "Wellness",
+    color: "#10b981",
+    emoji: "🧘",
     isDefault: true,
-    order: 0
+    order: 0,
   },
   {
-    name: 'Craft',
-    color: '#3b82f6',
-    emoji: '🔵',
+    name: "Craft",
+    color: "#3b82f6",
+    emoji: "🎨",
     isDefault: true,
-    order: 1
+    order: 1,
   },
   {
-    name: 'Social',
-    color: '#f97316',
-    emoji: '🟠',
+    name: "Social",
+    color: "#f97316",
+    emoji: "🤝",
     isDefault: true,
-    order: 2
+    order: 2,
   },
   {
-    name: 'Joyful',
-    color: '#eab308',
-    emoji: '🟡',
+    name: "Joyful",
+    color: "#eab308",
+    emoji: "😄",
     isDefault: true,
-    order: 3
+    order: 3,
   },
   {
-    name: 'Introspective',
-    color: '#6b7280',
-    emoji: '⚪',
+    name: "Introspective",
+    color: "#6b7280",
+    emoji: "🤔",
     isDefault: true,
-    order: 4
-  }
-]
+    order: 4,
+  },
+  {
+    name: "Chore",
+    color: "#8b5cf6",
+    emoji: "🧹",
+    isDefault: true,
+    order: 5,
+  },
+];
 
 /**
  * Creates the 5 default areas with generated IDs and timestamps
@@ -69,14 +76,14 @@ export const DEFAULT_AREAS: Omit<Area, 'id' | 'createdAt' | 'updatedAt'>[] = [
  * @returns Array of default areas
  */
 export function getDefaultAreas(): Area[] {
-  const now = new Date().toISOString()
+  const now = new Date().toISOString();
 
-  return DEFAULT_AREAS.map(area => ({
+  return DEFAULT_AREAS.map((area) => ({
     ...area,
     id: crypto.randomUUID(),
     createdAt: now,
-    updatedAt: now
-  }))
+    updatedAt: now,
+  }));
 }
 
 /**
@@ -94,25 +101,25 @@ export function createArea(
   emoji: string,
   order: number
 ): AreaResult {
-  const trimmedName = name.trim()
+  const trimmedName = name.trim();
 
   if (!trimmedName) {
-    return { error: 'Area name cannot be empty' }
+    return { error: "Area name cannot be empty" };
   }
 
   if (!color.match(/^#[0-9a-fA-F]{6}$/)) {
-    return { error: 'Color must be a valid hex code (e.g., #10b981)' }
+    return { error: "Color must be a valid hex code (e.g., #10b981)" };
   }
 
   if (!emoji.trim()) {
-    return { error: 'Emoji cannot be empty' }
+    return { error: "Emoji cannot be empty" };
   }
 
   if (order < 0) {
-    return { error: 'Order must be non-negative' }
+    return { error: "Order must be non-negative" };
   }
 
-  const now = new Date().toISOString()
+  const now = new Date().toISOString();
 
   return {
     id: crypto.randomUUID(),
@@ -122,8 +129,8 @@ export function createArea(
     isDefault: false,
     order,
     createdAt: now,
-    updatedAt: now
-  }
+    updatedAt: now,
+  };
 }
 
 /**
@@ -135,30 +142,30 @@ export function createArea(
  */
 export function updateArea(
   area: Area,
-  updates: Partial<Pick<Area, 'name' | 'color' | 'emoji' | 'order'>>
+  updates: Partial<Pick<Area, "name" | "color" | "emoji" | "order">>
 ): AreaResult {
   if (updates.name !== undefined) {
-    const trimmedName = updates.name.trim()
+    const trimmedName = updates.name.trim();
     if (!trimmedName) {
-      return { error: 'Area name cannot be empty' }
+      return { error: "Area name cannot be empty" };
     }
   }
 
   if (updates.color !== undefined) {
     if (!updates.color.match(/^#[0-9a-fA-F]{6}$/)) {
-      return { error: 'Color must be a valid hex code (e.g., #10b981)' }
+      return { error: "Color must be a valid hex code (e.g., #10b981)" };
     }
   }
 
   if (updates.emoji !== undefined) {
     if (!updates.emoji.trim()) {
-      return { error: 'Emoji cannot be empty' }
+      return { error: "Emoji cannot be empty" };
     }
   }
 
   if (updates.order !== undefined) {
     if (updates.order < 0) {
-      return { error: 'Order must be non-negative' }
+      return { error: "Order must be non-negative" };
     }
   }
 
@@ -168,8 +175,8 @@ export function updateArea(
     name: updates.name ? updates.name.trim() : area.name,
     color: updates.color ? updates.color.toLowerCase() : area.color,
     emoji: updates.emoji ? updates.emoji.trim() : area.emoji,
-    updatedAt: new Date().toISOString()
-  }
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 /**
@@ -181,12 +188,12 @@ export function updateArea(
  * @returns True if the area can be safely deleted
  */
 export function canDeleteArea(area: Area, moments: Moment[]): boolean {
-  return !moments.some(moment => moment.areaId === area.id)
+  return !moments.some((moment) => moment.areaId === area.id);
 }
 
 /**
  * Type guard to check if result is an error
  */
 export function isAreaError(result: AreaResult): result is { error: string } {
-  return 'error' in result
+  return "error" in result;
 }

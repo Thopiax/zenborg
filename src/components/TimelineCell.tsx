@@ -1,19 +1,27 @@
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
 "use client";
 
+import { useDroppable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
+import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
-import { useFocusManager } from "@/hooks/useFocusManager";
+import { useMomentManager } from "@/contexts/MomentManagerContext";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import {
   ariaLabels,
-  getFocusRingClasses,
   momentCard,
   momentConstraints,
   phaseBackgrounds,
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
+import type { DropTargetType } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
 
 interface TimelineCellProps {
@@ -58,8 +66,7 @@ export function TimelineCell({
 }: TimelineCellProps) {
   const allMoments = use$(moments$);
   const allAreas = use$(areas$);
-  const { focusedMomentId, focusedCell, focusMoment, focusCell } =
-    useFocusManager();
+  const { handleOpenCreateModal } = useMomentManager();
 
   // Get moments for this cell
   const cellMoments: Moment[] = Object.values(allMoments)
@@ -67,15 +74,28 @@ export function TimelineCell({
     .sort((a, b) => a.order - b.order);
 
   const isFull = cellMoments.length >= 3;
-  const isCellFocused =
-    focusedCell?.day === day && focusedCell?.phase === phase;
 
-  const handleUpdate = (momentId: string, newName: string) => {
-    // Update moment name in state
-    const moment = allMoments[momentId];
-    if (moment) {
-      moments$[momentId].name.set(newName);
-      moments$[momentId].updatedAt.set(new Date().toISOString());
+  // Droppable configuration
+  const { setNodeRef, isOver } = useDroppable({
+    id: `timeline-${day}-${phase}`,
+    data: {
+      targetType: "timeline-cell" as DropTargetType,
+      targetDay: day,
+      targetPhase: phase,
+    },
+  });
+
+  // Check if current drop would be valid
+  const wouldAcceptDrop = !isFull; // Simple check for now, validation happens in DnDProvider
+
+  const handleCellClick = (e: React.MouseEvent) => {
+    // Only create if clicking on the empty area (not on a moment card)
+    const target = e.target as HTMLElement;
+    const clickedOnMoment = target.closest("[data-moment-id]");
+
+    if (!clickedOnMoment && !isFull) {
+      // Open create modal with day and phase prefilled
+      handleOpenCreateModal(day, phase);
     }
   };
 
@@ -92,6 +112,7 @@ export function TimelineCell({
 
   return (
     <div
+      ref={setNodeRef}
       className={cn(
         "min-h-[240px] p-4 rounded-lg",
         "transition-all",
@@ -101,17 +122,22 @@ export function TimelineCell({
         phaseBackgrounds[phaseIndex],
         // Minimal border
         "border border-stone-200/60 dark:border-stone-700/40",
-        // Cell focus ring (violet for timeline navigation)
-        isCellFocused && getFocusRingClasses("cell"),
         // Full state - thicker left border
-        isFull && "border-l-4 border-l-stone-400 dark:border-l-stone-500"
+        isFull && "border-l-4 border-l-stone-400 dark:border-l-stone-500",
+        // Drag hover states
+        isOver &&
+          wouldAcceptDrop &&
+          "border-green-400 bg-green-50/50 dark:bg-green-950/20",
+        isOver &&
+          !wouldAcceptDrop &&
+          "border-red-400 bg-red-50/50 dark:bg-red-950/20"
       )}
       data-cell={`${day}-${phase}`}
-      onClick={() => focusCell(day, phase)}
+      onClick={handleCellClick}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          focusCell(day, phase);
+          handleCellClick(e as unknown as React.MouseEvent);
         }
       }}
       role="button"
@@ -121,24 +147,26 @@ export function TimelineCell({
       aria-atomic="true"
     >
       {cellMoments.length > 0 ? (
-        <div className="flex flex-col" style={{ gap: momentCard.gap }}>
-          {cellMoments.map((moment) => {
-            // Get area from the extracted values (use$ already unwrapped it)
-            const area = allAreas[moment.areaId];
-            if (!area) return null;
+        <SortableContext
+          items={cellMoments.map((m) => m.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="flex flex-col" style={{ gap: momentCard.gap }}>
+            {cellMoments.map((moment) => {
+              // Get area from the extracted values (use$ already unwrapped it)
+              const area = allAreas[moment.areaId];
+              if (!area) return null;
 
-            return (
-              <MomentCard
-                key={moment.id}
-                moment={moment}
-                area={area}
-                isFocused={focusedMomentId === moment.id}
-                onFocus={() => focusMoment(moment.id)}
-                onUpdate={(newName) => handleUpdate(moment.id, newName)}
-              />
-            );
-          })}
-        </div>
+              return (
+                <SortableMomentCard
+                  key={moment.id}
+                  moment={moment}
+                  area={area}
+                />
+              );
+            })}
+          </div>
+        </SortableContext>
       ) : (
         <div className="flex items-center justify-center h-full min-h-[192px]">
           <p className="text-sm text-stone-400 dark:text-stone-600 font-mono">
@@ -160,6 +188,50 @@ export function TimelineCell({
           </span>
         </output>
       )}
+    </div>
+  );
+}
+
+/**
+ * SortableMomentCard - Wrapper that combines sortable and draggable behavior
+ *
+ * This component wraps MomentCard with useSortable to enable:
+ * - Reordering within the same cell (sortable)
+ * - Dragging to other cells or drawing board (draggable)
+ */
+interface SortableMomentCardProps {
+  moment: Moment;
+  area: Area;
+}
+
+function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: moment.id,
+    data: {
+      momentId: moment.id,
+      sourceType: "timeline" as const,
+      sourceDay: moment.day ?? undefined,
+      sourcePhase: moment.phase ?? undefined,
+      sourceOrder: moment.order,
+    },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <MomentCard moment={moment} area={area} />
     </div>
   );
 }

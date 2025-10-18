@@ -134,3 +134,26 @@ export const momentsByDayAndPhase$ = observable(() => {
     return acc;
   }, {} as Record<string, Record<string, Moment[]>>);
 });
+
+// ============================================================================
+// Database Management
+// ============================================================================
+
+/**
+ * Reset all data to initial state
+ * WARNING: This permanently deletes all moments, areas, cycles, and settings
+ */
+export function resetDatabase() {
+  console.log("[resetDatabase] Resetting all data...");
+
+  // Clear all observables
+  moments$.set({});
+  areas$.set({});
+  cycles$.set({});
+  phaseConfigs$.set({});
+
+  console.log("[resetDatabase] Database reset complete");
+
+  // Note: IndexedDB will be cleared automatically by Legend State persistence
+  // The initialize.ts will re-seed default data on next load
+}

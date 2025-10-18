@@ -2,7 +2,8 @@ import { getDefaultAreas } from "@/domain/entities/Area";
 import { createCycle } from "@/domain/entities/Cycle";
 import { getDefaultPhaseConfigs } from "@/domain/value-objects/Phase";
 import { configurePersistence } from "./persistence";
-import { areas$, cycles$, phaseConfigs$ } from "./store";
+import { selectionState$ } from "./selection";
+import { areas$, cycles$, moments$, phaseConfigs$ } from "./store";
 
 /**
  * Initializes the application state on first run
@@ -40,7 +41,6 @@ export async function initializeStore(): Promise<void> {
   // First run: seed default data
   console.log("[Zenborg] First run detected - initializing default data");
 
-  // Create 5 default areas
   if (!hasAreas) {
     const defaultAreas = getDefaultAreas();
     const areasRecord = defaultAreas.reduce((acc, area) => {
@@ -94,8 +94,34 @@ export async function initializeStore(): Promise<void> {
  * - Debugging
  */
 export function clearStore(): void {
+  moments$.set({});
   areas$.set({});
   cycles$.set({});
   phaseConfigs$.set({});
-  console.log("[Zenborg] Store cleared");
+  selectionState$.set({
+    editingMomentId: null,
+    selectedMomentIds: [],
+    lastSelectedId: null,
+  });
+  console.log("[Zenborg] Store cleared - all data removed");
+}
+
+/**
+ * Resets the entire store to factory defaults
+ * This clears all data and re-initializes with default areas, phases, and cycle
+ *
+ * Process:
+ * 1. Clear all existing data
+ * 2. Reinitialize with default data (areas, phases, first cycle)
+ */
+export async function resetStore(): Promise<void> {
+  console.log("[Zenborg] Resetting store to factory defaults...");
+  clearStore();
+
+  // Small delay to allow persistence to clear
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  // Reinitialize with default data
+  await initializeStore();
+  console.log("[Zenborg] Store reset complete");
 }
