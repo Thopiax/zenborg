@@ -1,126 +1,93 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { areas$, cycles$, phaseConfigs$, moments$ } from '@/infrastructure/state/store'
-import { createMoment } from '@/domain/entities/Moment'
+import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
+import { VimModeIndicator } from "@/components/VimModeIndicator";
+import { CommandLine } from "@/components/CommandLine";
 
-export default function Home() {
-  const [mounted, setMounted] = useState(false)
-  const [areaCount, setAreaCount] = useState(0)
-  const [cycleCount, setCycleCount] = useState(0)
-  const [phaseCount, setPhaseCount] = useState(0)
-  const [momentCount, setMomentCount] = useState(0)
-
-  useEffect(() => {
-    setMounted(true)
-
-    // Subscribe to store changes
-    const unsubAreas = areas$.onChange(() => {
-      setAreaCount(Object.keys(areas$.get()).length)
-    })
-
-    const unsubCycles = cycles$.onChange(() => {
-      setCycleCount(Object.keys(cycles$.get()).length)
-    })
-
-    const unsubPhases = phaseConfigs$.onChange(() => {
-      setPhaseCount(Object.keys(phaseConfigs$.get()).length)
-    })
-
-    const unsubMoments = moments$.onChange(() => {
-      setMomentCount(Object.keys(moments$.get()).length)
-    })
-
-    // Initial values
-    setAreaCount(Object.keys(areas$.get()).length)
-    setCycleCount(Object.keys(cycles$.get()).length)
-    setPhaseCount(Object.keys(phaseConfigs$.get()).length)
-    setMomentCount(Object.keys(moments$.get()).length)
-
-    return () => {
-      unsubAreas()
-      unsubCycles()
-      unsubPhases()
-      unsubMoments()
-    }
-  }, [])
-
-  const handleAddTestMoment = () => {
-    const areaValues = Object.values(areas$.get())
-    if (areaValues.length === 0) {
-      alert('No areas available. Initialize the store first.')
-      return
-    }
-
-    const firstArea = areaValues[0]
-    const moment = createMoment('Test Moment', firstArea.id)
-
-    if ('error' in moment) {
-      alert(`Error: ${moment.error}`)
-      return
-    }
-
-    moments$[moment.id].set(moment)
-  }
-
-  if (!mounted) {
-    return <div className="p-8">Loading...</div>
-  }
+export default function HomePage() {
+  // Enable global keyboard shortcuts
+  useGlobalKeyboard();
 
   return (
-    <div className="p-8 font-sans">
-      <h1 className="text-2xl font-bold mb-4">Zenborg - Intention Compass</h1>
-      <p className="mb-6 text-gray-600">Phase 2: State Management & IndexedDB Persistence</p>
+    <div className="min-h-screen bg-stone-50 p-8">
+      <h1 className="text-4xl font-bold mb-2 text-stone-900">Zenborg</h1>
+      <p className="text-stone-600 mb-8">
+        Phase 3: Vim Mode State Machine
+      </p>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Store Status</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-green-50 p-4 rounded">
-            <div className="text-2xl font-bold text-green-700">{areaCount}</div>
-            <div className="text-sm text-green-600">Areas</div>
+      <div className="bg-white rounded-lg border border-stone-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Keyboard Shortcuts</h2>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-4">
+            <kbd className="px-2 py-1 bg-stone-100 rounded border border-stone-300 font-mono text-xs">
+              i
+            </kbd>
+            <span className="text-stone-600">Enter INSERT mode</span>
           </div>
-          <div className="bg-blue-50 p-4 rounded">
-            <div className="text-2xl font-bold text-blue-700">{cycleCount}</div>
-            <div className="text-sm text-blue-600">Cycles</div>
+          <div className="flex items-center gap-4">
+            <kbd className="px-2 py-1 bg-stone-100 rounded border border-stone-300 font-mono text-xs">
+              :
+            </kbd>
+            <span className="text-stone-600">Enter COMMAND mode</span>
           </div>
-          <div className="bg-purple-50 p-4 rounded">
-            <div className="text-2xl font-bold text-purple-700">{phaseCount}</div>
-            <div className="text-sm text-purple-600">Phase Configs</div>
-          </div>
-          <div className="bg-orange-50 p-4 rounded">
-            <div className="text-2xl font-bold text-orange-700">{momentCount}</div>
-            <div className="text-sm text-orange-600">Moments</div>
+          <div className="flex items-center gap-4">
+            <kbd className="px-2 py-1 bg-stone-100 rounded border border-stone-300 font-mono text-xs">
+              Esc
+            </kbd>
+            <span className="text-stone-600">Return to NORMAL mode</span>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">Test Actions</h2>
-        <button
-          onClick={handleAddTestMoment}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded mr-2"
-        >
-          Add Test Moment
-        </button>
-        <button
-          onClick={() => window.location.reload()}
-          className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
-        >
-          Reload Page (Test Persistence)
-        </button>
+      <div className="bg-white rounded-lg border border-stone-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Command Examples</h2>
+        <div className="space-y-2 text-sm font-mono">
+          <div className="flex items-center gap-4">
+            <code className="text-purple-600">:ty1</code>
+            <span className="text-stone-600">Allocate to Today Morning</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <code className="text-purple-600">:wy3</code>
+            <span className="text-stone-600">Allocate to Tomorrow Evening</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <code className="text-purple-600">:yy2</code>
+            <span className="text-stone-600">Allocate to Yesterday Afternoon</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <code className="text-purple-600">:d</code>
+            <span className="text-stone-600">Unallocate (return to drawing board)</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <code className="text-purple-600">:area</code>
+            <span className="text-stone-600">Open area management</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <code className="text-purple-600">:settings</code>
+            <span className="text-stone-600">Open phase settings</span>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h3 className="font-semibold mb-2">🧪 Testing Instructions:</h3>
-        <ol className="list-decimal list-inside space-y-1 text-sm">
-          <li>Open DevTools → Application → IndexedDB → zenborg</li>
-          <li>You should see 4 tables: areas, cycles, phaseConfigs, moments</li>
-          <li>Verify 5 areas, 1 cycle, 4 phase configs are loaded on first run</li>
-          <li>Click "Add Test Moment" to create a new moment</li>
-          <li>Click "Reload Page" - the moment should persist</li>
-          <li>Check IndexedDB to see the stored data</li>
+        <ol className="list-decimal list-inside space-y-1 text-sm text-stone-700">
+          <li>Press <kbd className="px-1 py-0.5 bg-white rounded border text-xs font-mono">i</kbd> - mode indicator should show "-- INSERT --" (blue)</li>
+          <li>Press <kbd className="px-1 py-0.5 bg-white rounded border text-xs font-mono">Esc</kbd> - should return to "-- NORMAL --" (gray)</li>
+          <li>Press <kbd className="px-1 py-0.5 bg-white rounded border text-xs font-mono">:</kbd> - mode indicator should show "-- COMMAND --" (purple)</li>
+          <li>Command line should appear at bottom with cursor</li>
+          <li>Type <code className="px-1 py-0.5 bg-white rounded border text-xs font-mono">ty1</code> - should show in command line</li>
+          <li>Press <kbd className="px-1 py-0.5 bg-white rounded border text-xs font-mono">Enter</kbd> - should execute command (check console)</li>
+          <li>Should return to "-- NORMAL --" mode</li>
+          <li>Open DevTools Console to see command execution logs</li>
         </ol>
       </div>
+
+      {/* Mode indicator - bottom right */}
+      <VimModeIndicator />
+
+      {/* Command line - bottom bar */}
+      <CommandLine />
     </div>
-  )
+  );
 }

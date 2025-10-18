@@ -46,6 +46,16 @@ export const cycles$ = observable<Record<string, Cycle>>({});
 export const phaseConfigs$ = observable<Record<string, PhaseConfig>>({});
 
 // ============================================================================
+// Vim Mode State
+// ============================================================================
+
+/**
+ * Vim mode state - modal interaction state (NORMAL/INSERT/COMMAND)
+ * Imported and re-exported from vim-mode.ts
+ */
+export { vimState$ } from "./vim-mode";
+
+// ============================================================================
 // Computed Observables
 // ============================================================================
 
