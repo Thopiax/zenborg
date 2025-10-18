@@ -78,6 +78,8 @@ export function MomentForm({
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
   const [isHorizonSelectorOpen, setIsHorizonSelectorOpen] = useState(false);
   const [createMore, setCreateMore] = useState(false);
+  // Track whether user has manually changed the area via AreaSelector
+  const [hasManuallyChangedArea, setHasManuallyChangedArea] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -88,8 +90,9 @@ export function MomentForm({
   }, [initialName]);
 
   // Keep the selected area in sync with props and persisted preferences.
+  // BUT: Don't override if user has manually changed the area
   useEffect(() => {
-    if (!areasList.length) {
+    if (!areasList.length || hasManuallyChangedArea) {
       return;
     }
 
@@ -117,7 +120,7 @@ export function MomentForm({
     if (desiredAreaId && desiredAreaId !== selectedAreaId) {
       setSelectedAreaId(desiredAreaId);
     }
-  }, [mode, initialAreaId, lastUsedAreaId, areasList, selectedAreaId]);
+  }, [mode, initialAreaId, lastUsedAreaId, areasList, selectedAreaId, hasManuallyChangedArea]);
 
   // Auto-focus and select input
   useEffect(() => {
@@ -151,10 +154,11 @@ export function MomentForm({
     const currentIndex = areasList.findIndex((a) => a.id === selectedAreaId);
     const nextIndex = (currentIndex + 1) % areasList.length;
     const nextArea = areasList[nextIndex];
-    // Persist the selection
+    // Persist the selection and mark as manually changed
     if (nextArea) {
       setSelectedAreaId(nextArea.id);
       lastUsedAreaId$.set(nextArea.id);
+      setHasManuallyChangedArea(true);
     }
   });
 
@@ -329,6 +333,8 @@ export function MomentForm({
             setSelectedAreaId(nextArea.id);
             // Persist the selection immediately when user changes area
             lastUsedAreaId$.set(nextArea.id);
+            // Mark that user has manually changed the area
+            setHasManuallyChangedArea(true);
           }
         }}
         onClose={() => setIsAreaSelectorOpen(false)}
