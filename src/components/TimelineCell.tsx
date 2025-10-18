@@ -135,22 +135,24 @@ export function TimelineCell({
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-[240px] p-4 rounded-lg",
+        "min-h-[192px] p-3 rounded-lg",
         "transition-all",
         "focus-within:outline-none",
-        // Phase-based gradient background
+        // Phase-based gradient background (desktop only)
+        "md:min-h-[240px] md:p-4",
         phaseBackgrounds[phaseIndex],
-        // Minimal border
-        "border border-stone-200/60 dark:border-stone-700/40",
-        // Full state - thicker left border
-        isFull && "border-l-4 border-l-stone-400 dark:border-l-stone-500",
+        // Minimal border (desktop only - mobile has column borders)
+        "md:border md:border-stone-200/60 md:dark:border-stone-700/40",
+        // Full state - thicker left border (desktop only)
+        isFull &&
+          "md:border-l-4 md:border-l-stone-400 md:dark:border-l-stone-500",
         // Drag hover states
         isOver &&
           wouldAcceptDrop &&
-          "border-green-400 bg-green-50/50 dark:bg-green-950/20",
+          "border border-stone-300 bg-stone-100/50 dark:bg-stone-800/30",
         isOver &&
           !wouldAcceptDrop &&
-          "border-red-400 bg-red-50/50 dark:bg-red-950/20"
+          "border border-red-400 bg-red-50/50 dark:bg-red-950/20"
       )}
       data-cell={`${day}-${phase}`}
       aria-label={cellLabel}

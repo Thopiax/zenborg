@@ -318,16 +318,14 @@ export const AreaManagementModal = observer(function AreaManagementModal({
                         >
                           Edit
                         </button>
-                        {!area.isDefault && (
-                          <button
-                            onClick={() => handleDelete(area.id)}
-                            className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-text-tertiary hover:text-red-500"
-                            aria-label="Delete area"
-                            type="button"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDelete(area.id)}
+                          className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-text-tertiary hover:text-red-500"
+                          aria-label="Delete area"
+                          type="button"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   )}

@@ -24,6 +24,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { use$ } from "@legendapp/state/react";
 import { useState } from "react";
@@ -146,7 +147,10 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     if (isDraggingSelection && dropData?.targetType === "timeline-cell") {
       // Handle batch drop for multiple selected moments
-      console.log("[DnD] Handling batch drop on timeline cell", currentSelectedIds);
+      console.log(
+        "[DnD] Handling batch drop on timeline cell",
+        currentSelectedIds
+      );
       handleBatchDropOnTimelineCell(
         currentSelectedIds,
         dropData,
@@ -176,7 +180,9 @@ export function DnDProvider({ children }: DnDProviderProps) {
       if (isDraggingSelection) {
         if (overMoment.day && overMoment.phase) {
           // Dropping on allocated moment -> move to its cell
-          console.log("[DnD] Multi-select dropped on allocated moment - treating as cell drop");
+          console.log(
+            "[DnD] Multi-select dropped on allocated moment - treating as cell drop"
+          );
           const cellDropData: DroppableData = {
             targetType: "timeline-cell",
             targetDay: overMoment.day,
@@ -190,7 +196,9 @@ export function DnDProvider({ children }: DnDProviderProps) {
           return;
         } else if (!wasDuplicateMode) {
           // Dropping on unallocated moment -> move to drawing board
-          console.log("[DnD] Multi-select dropped on unallocated moment - treating as drawing board drop");
+          console.log(
+            "[DnD] Multi-select dropped on unallocated moment - treating as drawing board drop"
+          );
           handleBatchDropOnDrawingBoard(currentSelectedIds);
           return;
         }
@@ -693,7 +701,10 @@ export function DnDProvider({ children }: DnDProviderProps) {
       {children}
 
       {/* Drag overlay shows preview of dragged item(s) */}
-      <DragOverlay>
+      <DragOverlay
+        modifiers={[snapCenterToCursor]}
+        // dropAnimation={{ duration: 200, easing: "ease" }}
+      >
         {activeMoment && activeArea ? (
           <div className={isDuplicateMode ? "cursor-copy" : "cursor-grabbing"}>
             {/* Check if dragging multiple selected moments */}

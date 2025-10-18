@@ -42,34 +42,54 @@ export function Timeline() {
 
   return (
     <div className="w-full">
-      {/* Mobile Layout: Single-day column with greyscale phase labels */}
-      <div className="md:hidden space-y-4">
+      {/* Mobile Layout: Column-based day view (like Drawing Board) */}
+      <div className="md:hidden">
         <DaySelector
           currentDay={selectedMobileDay}
           onDayChange={setSelectedMobileDay}
           days={days}
         />
 
-        {visiblePhases.map((phaseConfig, index) => {
-          const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
-          return (
-            <div key={phaseConfig.phase} className="space-y-2">
-              {/* Horizontal phase label for mobile */}
-              <div className="flex items-center gap-3 px-2">
-                <PhaseIcon className="w-5 h-5 text-stone-500 dark:text-stone-400" />
-                <span className="text-sm font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
-                  {phaseConfig.label}
-                </span>
-              </div>
-              <TimelineCell
-                day={selectedMobileDay}
-                phase={phaseConfig.phase}
-                isHighlighted={selectedMobileDay === days.today}
-                phaseIndex={index}
-              />
+        {/* Day Column Container */}
+        <div className="mt-4 flex flex-col rounded-lg border border-stone-200/60 dark:border-stone-700/40 bg-stone-50/30 dark:bg-stone-900/30">
+          {/* Column Header - Day Label */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200/60 dark:border-stone-700/40">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-mono font-semibold text-stone-900 dark:text-stone-100">
+                {getDateLabel(selectedMobileDay)}
+              </h3>
+              <span className="text-xs font-mono text-stone-400 dark:text-stone-500">
+                {selectedMobileDay}
+              </span>
             </div>
-          );
-        })}
+          </div>
+
+          {/* Phase Subsections */}
+          <div className="divide-y divide-stone-200/40 dark:divide-stone-700/30">
+            {visiblePhases.map((phaseConfig, index) => {
+              const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
+              return (
+                <div key={phaseConfig.phase} className="p-3">
+                  {/* Phase Header */}
+                  <div className="flex items-center gap-2 mb-3 px-1">
+                    <PhaseIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                    <span className="text-xs font-mono font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wide">
+                      {phaseConfig.label}
+                    </span>
+                  </div>
+
+                  {/* Phase Cell */}
+                  <TimelineCell
+                    day={selectedMobileDay}
+                    phase={phaseConfig.phase}
+                    isHighlighted={selectedMobileDay === days.today}
+                    phaseIndex={index}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Desktop Layout: 3x3 Grid with equal column widths */}
