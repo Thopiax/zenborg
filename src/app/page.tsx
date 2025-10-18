@@ -1,103 +1,126 @@
-import Image from "next/image";
+'use client'
+
+import { useEffect, useState } from 'react'
+import { areas$, cycles$, phaseConfigs$, moments$ } from '@/infrastructure/state/store'
+import { createMoment } from '@/domain/entities/Moment'
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [mounted, setMounted] = useState(false)
+  const [areaCount, setAreaCount] = useState(0)
+  const [cycleCount, setCycleCount] = useState(0)
+  const [phaseCount, setPhaseCount] = useState(0)
+  const [momentCount, setMomentCount] = useState(0)
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    setMounted(true)
+
+    // Subscribe to store changes
+    const unsubAreas = areas$.onChange(() => {
+      setAreaCount(Object.keys(areas$.get()).length)
+    })
+
+    const unsubCycles = cycles$.onChange(() => {
+      setCycleCount(Object.keys(cycles$.get()).length)
+    })
+
+    const unsubPhases = phaseConfigs$.onChange(() => {
+      setPhaseCount(Object.keys(phaseConfigs$.get()).length)
+    })
+
+    const unsubMoments = moments$.onChange(() => {
+      setMomentCount(Object.keys(moments$.get()).length)
+    })
+
+    // Initial values
+    setAreaCount(Object.keys(areas$.get()).length)
+    setCycleCount(Object.keys(cycles$.get()).length)
+    setPhaseCount(Object.keys(phaseConfigs$.get()).length)
+    setMomentCount(Object.keys(moments$.get()).length)
+
+    return () => {
+      unsubAreas()
+      unsubCycles()
+      unsubPhases()
+      unsubMoments()
+    }
+  }, [])
+
+  const handleAddTestMoment = () => {
+    const areaValues = Object.values(areas$.get())
+    if (areaValues.length === 0) {
+      alert('No areas available. Initialize the store first.')
+      return
+    }
+
+    const firstArea = areaValues[0]
+    const moment = createMoment('Test Moment', firstArea.id)
+
+    if ('error' in moment) {
+      alert(`Error: ${moment.error}`)
+      return
+    }
+
+    moments$[moment.id].set(moment)
+  }
+
+  if (!mounted) {
+    return <div className="p-8">Loading...</div>
+  }
+
+  return (
+    <div className="p-8 font-sans">
+      <h1 className="text-2xl font-bold mb-4">Zenborg - Intention Compass</h1>
+      <p className="mb-6 text-gray-600">Phase 2: State Management & IndexedDB Persistence</p>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Store Status</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-green-50 p-4 rounded">
+            <div className="text-2xl font-bold text-green-700">{areaCount}</div>
+            <div className="text-sm text-green-600">Areas</div>
+          </div>
+          <div className="bg-blue-50 p-4 rounded">
+            <div className="text-2xl font-bold text-blue-700">{cycleCount}</div>
+            <div className="text-sm text-blue-600">Cycles</div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded">
+            <div className="text-2xl font-bold text-purple-700">{phaseCount}</div>
+            <div className="text-sm text-purple-600">Phase Configs</div>
+          </div>
+          <div className="bg-orange-50 p-4 rounded">
+            <div className="text-2xl font-bold text-orange-700">{momentCount}</div>
+            <div className="text-sm text-orange-600">Moments</div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h2 className="text-lg font-semibold mb-4">Test Actions</h2>
+        <button
+          onClick={handleAddTestMoment}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded mr-2"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          Add Test Moment
+        </button>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          Reload Page (Test Persistence)
+        </button>
+      </div>
+
+      <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <h3 className="font-semibold mb-2">🧪 Testing Instructions:</h3>
+        <ol className="list-decimal list-inside space-y-1 text-sm">
+          <li>Open DevTools → Application → IndexedDB → zenborg</li>
+          <li>You should see 4 tables: areas, cycles, phaseConfigs, moments</li>
+          <li>Verify 5 areas, 1 cycle, 4 phase configs are loaded on first run</li>
+          <li>Click "Add Test Moment" to create a new moment</li>
+          <li>Click "Reload Page" - the moment should persist</li>
+          <li>Check IndexedDB to see the stored data</li>
+        </ol>
+      </div>
     </div>
-  );
+  )
 }
