@@ -1,0 +1,200 @@
+/**
+ * Cycle - Time container for moments
+ *
+ * Cycles represent named periods (e.g., "Barcelona Summer", "Q1 2025")
+ * Only one cycle can be active at a time (enforced at application level)
+ */
+export interface Cycle {
+  readonly id: string;
+  name: string;
+  startDate: string; // ISO date: "2025-01-15"
+  endDate: string | null; // null for ongoing cycles
+  isActive: boolean; // only one active at a time
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Result type for operations that may fail
+ */
+export type CycleResult = Cycle | { error: string };
+
+/**
+ * Creates a new cycle
+ *
+ * @param name - Cycle name
+ * @param startDate - ISO date string
+ * @param endDate - Optional ISO date string (null for ongoing)
+ * @param isActive - Whether this cycle is active
+ * @returns New cycle or error
+ */
+export function createCycle(
+  name: string,
+  startDate: string,
+  endDate: string | null = null,
+  isActive: boolean = false
+): CycleResult {
+  const trimmedName = name.trim();
+
+  if (!trimmedName) {
+    return { error: "Cycle name cannot be empty" };
+  }
+
+  if (!startDate) {
+    return { error: "Cycle must have a start date" };
+  }
+
+  // Validate ISO date format
+  const startDateObj = new Date(startDate);
+  if (Number.isNaN(startDateObj.getTime())) {
+    return { error: "Start date must be a valid ISO date string" };
+  }
+
+  if (endDate !== null) {
+    const endDateObj = new Date(endDate);
+    if (Number.isNaN(endDateObj.getTime())) {
+      return { error: "End date must be a valid ISO date string" };
+    }
+
+    // Ensure end date is after start date
+    if (endDateObj <= startDateObj) {
+      return { error: "End date must be after start date" };
+    }
+  }
+
+  const now = new Date().toISOString();
+
+  return {
+    id: crypto.randomUUID(),
+    name: trimmedName,
+    startDate,
+    endDate,
+    isActive,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Updates a cycle's properties
+ *
+ * @param cycle - Cycle to update
+ * @param updates - Partial cycle properties to update
+ * @returns Updated cycle or error
+ */
+export function updateCycle(
+  cycle: Cycle,
+  updates: Partial<Pick<Cycle, "name" | "startDate" | "endDate" | "isActive">>
+): CycleResult {
+  if (updates.name !== undefined) {
+    const trimmedName = updates.name.trim();
+    if (!trimmedName) {
+      return { error: "Cycle name cannot be empty" };
+    }
+  }
+
+  const newStartDate = updates.startDate ?? cycle.startDate;
+  const newEndDate =
+    updates.endDate !== undefined ? updates.endDate : cycle.endDate;
+
+  // Validate start date
+  const startDateObj = new Date(newStartDate);
+  if (Number.isNaN(startDateObj.getTime())) {
+    return { error: "Start date must be a valid ISO date string" };
+  }
+
+  // Validate end date if provided
+  if (newEndDate !== null) {
+    const endDateObj = new Date(newEndDate);
+    if (Number.isNaN(endDateObj.getTime())) {
+      return { error: "End date must be a valid ISO date string" };
+    }
+
+    if (endDateObj <= startDateObj) {
+      return { error: "End date must be after start date" };
+    }
+  }
+
+  return {
+    ...cycle,
+    ...updates,
+    name: updates.name ? updates.name.trim() : cycle.name,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Marks a cycle as active
+ * Note: Application logic should ensure only one cycle is active at a time
+ *
+ * @param cycle - Cycle to activate
+ * @returns Updated cycle
+ */
+export function activateCycle(cycle: Cycle): Cycle {
+  return {
+    ...cycle,
+    isActive: true,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Marks a cycle as inactive
+ *
+ * @param cycle - Cycle to deactivate
+ * @returns Updated cycle
+ */
+export function deactivateCycle(cycle: Cycle): Cycle {
+  return {
+    ...cycle,
+    isActive: false,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Completes a cycle by setting its end date to today
+ *
+ * @param cycle - Cycle to complete
+ * @returns Updated cycle
+ */
+export function completeCycle(cycle: Cycle): Cycle {
+  const today = new Date().toISOString().split("T")[0];
+
+  return {
+    ...cycle,
+    endDate: today,
+    isActive: false,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Checks if a date falls within a cycle's time range
+ *
+ * @param cycle - Cycle to check
+ * @param date - ISO date string to check
+ * @returns True if date is within cycle range
+ */
+export function isDateInCycle(cycle: Cycle, date: string): boolean {
+  const dateObj = new Date(date);
+  const startObj = new Date(cycle.startDate);
+
+  if (dateObj < startObj) {
+    return false;
+  }
+
+  if (cycle.endDate === null) {
+    return true; // Ongoing cycle
+  }
+
+  const endObj = new Date(cycle.endDate);
+  return dateObj <= endObj;
+}
+
+/**
+ * Type guard to check if result is an error
+ */
+export function isCycleError(result: CycleResult): result is { error: string } {
+  return "error" in result;
+}
