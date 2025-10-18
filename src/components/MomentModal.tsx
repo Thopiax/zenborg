@@ -33,21 +33,21 @@ export function MomentModal({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - hidden on mobile (full screen), visible on desktop */}
       <div
-        className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
+        className="hidden md:block fixed inset-0 bg-black/40 dark:bg-black/60 z-50 backdrop-blur-sm"
         onClick={onCancel}
         aria-hidden="true"
       />
 
-      {/* Modal */}
+      {/* Modal - Full screen on mobile, centered on desktop */}
       <div
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl mx-4"
+        className="fixed inset-0 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-50 md:w-full md:max-w-2xl md:mx-4 md:inset-auto"
         role="dialog"
         aria-modal="true"
         aria-labelledby="moment-modal-title"
       >
-        <div className="bg-stone-900 rounded-xl shadow-2xl overflow-hidden border border-stone-700 flex flex-col max-h-[85vh]">
+        <div className="bg-surface md:rounded-xl shadow-2xl overflow-hidden border-0 md:border border-border flex flex-col h-full md:h-auto md:max-h-[85vh]">
           <MomentForm
             mode={mode}
             initialName={initialName}

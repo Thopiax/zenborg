@@ -8,13 +8,18 @@
  */
 
 import {
-  closestCorners,
+  closestCenter,
+  type CollisionDetection,
   DndContext,
   type DragEndEvent,
+  type DragOverEvent,
   DragOverlay,
   type DragStartEvent,
+  getFirstCollision,
   KeyboardSensor,
   MouseSensor,
+  pointerWithin,
+  rectIntersection,
   TouchSensor,
   useSensor,
   useSensors,
@@ -40,6 +45,21 @@ export function DnDProvider({ children }: DnDProviderProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const allMoments = use$(moments$);
   const allAreas = use$(areas$);
+
+  // Custom collision detection strategy
+  // Use pointerWithin first (for DrawingBoard hover states), then fall back to rectIntersection
+  const collisionDetectionStrategy: CollisionDetection = (args) => {
+    // First try pointer-based detection (good for hover states)
+    const pointerCollisions = pointerWithin(args);
+
+    // If we found collisions with pointer, use them
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions;
+    }
+
+    // Otherwise fall back to rect intersection (better for touch/drag accuracy)
+    return rectIntersection(args);
+  };
 
   // Configure sensors for mouse, touch, and keyboard interactions
   const sensors = useSensors(
@@ -98,17 +118,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
           activeMoment.day,
           activeMoment.phase
         );
-        return;
-      }
-
-      // Reorder within drawing board (both moments are unallocated)
-      if (
-        !activeMoment.day &&
-        !activeMoment.phase &&
-        !overMoment.day &&
-        !overMoment.phase
-      ) {
-        handleDrawingBoardReorder(active.id as string, over.id as string);
         return;
       }
 
@@ -177,31 +186,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     // Reorder the array
     const reordered = [...cellMoments];
-    const [movedItem] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, movedItem);
-
-    // Update order values in state
-    for (let i = 0; i < reordered.length; i++) {
-      moments$[reordered[i].id].order.set(i);
-      moments$[reordered[i].id].updatedAt.set(new Date().toISOString());
-    }
-  }
-
-  function handleDrawingBoardReorder(activeId: string, overId: string) {
-    // Get all unallocated moments, sorted by current order
-    const unallocatedMoments = Object.values(allMoments)
-      .filter((m) => !m.day && !m.phase)
-      .sort((a, b) => a.order - b.order);
-
-    const oldIndex = unallocatedMoments.findIndex((m) => m.id === activeId);
-    const newIndex = unallocatedMoments.findIndex((m) => m.id === overId);
-
-    if (oldIndex === -1 || newIndex === -1) {
-      return;
-    }
-
-    // Reorder the array
-    const reordered = [...unallocatedMoments];
     const [movedItem] = reordered.splice(oldIndex, 1);
     reordered.splice(newIndex, 0, movedItem);
 
@@ -322,7 +306,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetectionStrategy}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}

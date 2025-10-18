@@ -160,8 +160,8 @@ export function MomentForm({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-stone-700 flex-shrink-0">
-        <h2 className="text-sm font-medium text-stone-300">
+      <div className="px-6 py-4 border-b border-border flex-shrink-0">
+        <h2 className="text-sm font-medium text-text-secondary">
           {mode === "create" ? "New moment" : "Edit moment"}
         </h2>
       </div>
@@ -174,7 +174,7 @@ export function MomentForm({
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full text-2xl font-semibold bg-transparent outline-none text-stone-100 placeholder:text-stone-500 mb-6"
+          className="w-full text-2xl font-semibold bg-transparent outline-none text-text-primary placeholder:text-text-tertiary mb-6"
           placeholder="Moment name..."
           aria-label="Moment name"
           aria-invalid={!validation.valid}
@@ -182,7 +182,7 @@ export function MomentForm({
 
         {/* Validation */}
         {!validation.valid && validation.error && name.trim().length > 0 && (
-          <p className="text-sm text-red-400 mb-4" role="alert">
+          <p className="text-sm text-red-500 dark:text-red-400 mb-4" role="alert">
             {validation.error}
           </p>
         )}
@@ -190,11 +190,11 @@ export function MomentForm({
         {/* Area Selector Trigger */}
         <button
           onClick={() => setIsAreaSelectorOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-stone-800 hover:bg-stone-750 border border-stone-700 transition-colors text-stone-200"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-alt hover:bg-border border border-border transition-colors text-text-primary"
         >
           <span className="text-lg">{selectedArea.emoji}</span>
           <span className="font-medium">{selectedArea.name}</span>
-          <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-stone-700 text-stone-400">
+          <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-border text-text-secondary">
             A
           </kbd>
         </button>
@@ -214,27 +214,27 @@ export function MomentForm({
       />
 
       {/* Footer */}
-      <div className="px-6 py-4 bg-stone-800/50 border-t border-stone-700 flex items-center justify-between flex-shrink-0">
+      <div className="px-6 py-4 bg-surface-alt/50 border-t border-border flex items-center justify-between flex-shrink-0">
         {showCreateMore && mode === "create" ? (
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={createMore}
               onChange={(e) => setCreateMore(e.target.checked)}
-              className="w-4 h-4 rounded border-stone-600 bg-stone-700 text-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
+              className="w-4 h-4 rounded border-border bg-surface-alt text-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
             />
-            <span className="text-sm text-stone-300">Create more</span>
+            <span className="text-sm text-text-secondary">Create more</span>
           </label>
         ) : (
           <div />
         )}
 
         <div className="flex items-center gap-3">
-          <p className="text-xs text-stone-500">
-            <kbd className="px-1.5 py-0.5 rounded bg-stone-700 mr-1">Enter</kbd>
+          <p className="hidden md:block text-xs text-text-tertiary">
+            <kbd className="px-1.5 py-0.5 rounded bg-border mr-1">Enter</kbd>
             to save
             <span className="mx-2">·</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-stone-700 mr-1">Esc</kbd>
+            <kbd className="px-1.5 py-0.5 rounded bg-border mr-1">Esc</kbd>
             to cancel
           </p>
           <button
@@ -244,7 +244,7 @@ export function MomentForm({
               "px-5 py-2 rounded-lg font-medium transition-all",
               validation.valid
                 ? "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
-                : "bg-stone-700 text-stone-500 cursor-not-allowed"
+                : "bg-border text-text-tertiary cursor-not-allowed"
             )}
           >
             {mode === "create" ? "Create moment" : "Save changes"}

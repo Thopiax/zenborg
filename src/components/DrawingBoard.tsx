@@ -1,16 +1,18 @@
+/** biome-ignore-all lint/a11y/useKeyWithClickEvents: <explanation> */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
+/** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
 "use client";
 
-import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { use$ } from "@legendapp/state/react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useState } from "react";
+import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
+import { areas$, unallocatedMoments$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
-import { areas$, unallocatedMoments$ } from "@/infrastructure/state/store";
 import { MomentCard } from "./MomentCard";
 
 /**
@@ -26,6 +28,7 @@ export function DrawingBoard() {
   const [isExpanded, setIsExpanded] = useState(true);
   const unallocated = use$(unallocatedMoments$);
   const allAreas = use$(areas$);
+  const { handleOpenCreateModal } = useMomentManager();
 
   // Droppable configuration
   const { setNodeRef, isOver } = useDroppable({
@@ -58,11 +61,24 @@ export function DrawingBoard() {
             to create
           </p>
         </div>
-        {isExpanded ? (
-          <ChevronUp className="h-5 w-5 text-stone-500" />
-        ) : (
-          <ChevronDown className="h-5 w-5 text-stone-500" />
-        )}
+        <div className="flex items-center gap-2">
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenCreateModal();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 transition-colors text-xs font-mono text-stone-700 dark:text-stone-300"
+            aria-label="Create new moment"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">New</span>
+          </div>
+          {isExpanded ? (
+            <ChevronUp className="h-5 w-5 text-stone-500" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-stone-500" />
+          )}
+        </div>
       </button>
 
       {/* Collapsible Content */}
@@ -71,13 +87,26 @@ export function DrawingBoard() {
           ref={setNodeRef}
           className={cn(
             "border-t border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-950 p-8",
-            "transition-all",
-            "min-h-[400px]", // Huge droppable area
-            isOver
-              ? "bg-stone-100/50 dark:bg-stone-800/50 border-2 border-dashed border-stone-400"
-              : ""
+            "transition-all duration-200 relative",
+            "min-h-[400px] w-full", // Huge droppable area
+            isOver && "bg-stone-100/30 dark:bg-stone-800/30"
           )}
         >
+          {/* Drop Zone Indicator - Only visible when dragging over */}
+          {isOver && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="border-4 border-dashed border-stone-400 dark:border-stone-500 rounded-xl absolute inset-4 bg-stone-100/20 dark:bg-stone-800/20 animate-pulse">
+                <div className="flex items-center justify-center h-full">
+                  <div className="bg-stone-800/90 dark:bg-stone-200/90 text-white dark:text-stone-900 px-6 py-3 rounded-lg shadow-lg">
+                    <p className="text-lg font-bold font-mono">
+                      Drop here to unallocate
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Unallocated moments */}
           {unallocated.length === 0 ? (
             <div className="min-h-[350px] flex flex-col items-center justify-center gap-3">
@@ -93,22 +122,20 @@ export function DrawingBoard() {
               </p>
             </div>
           ) : (
-            <SortableContext items={unallocated.map((m) => m.id)}>
-              <div className="flex flex-wrap gap-3 items-start content-start min-h-[350px]">
-                {unallocated.map((moment) => {
-                  const area = allAreas[moment.areaId];
-                  if (!area) return null;
+            <div className="flex flex-wrap gap-3 items-start content-start min-h-[350px]">
+              {unallocated.map((moment) => {
+                const area = allAreas[moment.areaId];
+                if (!area) return null;
 
-                  return (
-                    <SortableMomentCard
-                      key={moment.id}
-                      moment={moment}
-                      area={area}
-                    />
-                  );
-                })}
-              </div>
-            </SortableContext>
+                return (
+                  <DraggableMomentCard
+                    key={moment.id}
+                    moment={moment}
+                    area={area}
+                  />
+                );
+              })}
+            </div>
           )}
         </div>
       )}
@@ -117,38 +144,32 @@ export function DrawingBoard() {
 }
 
 /**
- * SortableMomentCard - Wrapper for drawing board moments
+ * DraggableMomentCard - Wrapper for drawing board moments
  *
- * Wraps MomentCard with useSortable to enable:
+ * Wraps MomentCard with useDraggable to enable:
  * - Dragging to timeline cells
- * - Reordering within drawing board
  */
-interface SortableMomentCardProps {
+interface DraggableMomentCardProps {
   moment: Moment;
   area: Area;
 }
 
-function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: moment.id,
-    data: {
-      momentId: moment.id,
-      sourceType: "drawing-board" as const,
-    },
-  });
+function DraggableMomentCard({ moment, area }: DraggableMomentCardProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: moment.id,
+      data: {
+        momentId: moment.id,
+        sourceType: "drawing-board" as const,
+      },
+    });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
     opacity: isDragging ? 0.5 : 1,
-    width: "200px",
+    width: "300px",
     flexShrink: 0,
   };
 
