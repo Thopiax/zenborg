@@ -80,7 +80,11 @@ export function useGlobalKeyboard() {
 
   // Disable global shortcuts when any modal is open to allow typing
   const globalShortcutsEnabled =
-    !isEditCardOpen && !isAreaSelectorOpen && !isCreateModalOpen && !isAreaManagementOpen && !isSettingsOpen;
+    !isEditCardOpen &&
+    !isAreaSelectorOpen &&
+    !isCreateModalOpen &&
+    !isAreaManagementOpen &&
+    !isSettingsOpen;
 
   // ==================== GLOBAL SHORTCUTS ====================
 
@@ -453,6 +457,17 @@ export function useGlobalKeyboard() {
     setEditingMomentId(null);
   };
 
+  const handleDeleteEdit = () => {
+    if (editingMomentId) {
+      // Delete the moment and close modal
+      const allMoments = moments$.peek();
+      const { [editingMomentId]: _, ...rest } = allMoments;
+      moments$.set(rest);
+      setIsEditCardOpen(false);
+      setEditingMomentId(null);
+    }
+  };
+
   const handleOpenEditModal = (momentId: string) => {
     setEditingMomentId(momentId);
     setIsEditCardOpen(true);
@@ -477,6 +492,7 @@ export function useGlobalKeyboard() {
     editingMomentId,
     handleSaveEdit,
     handleCancelEdit,
+    handleDeleteEdit,
     handleOpenEditModal,
     // Area management state
     isAreaManagementOpen,
