@@ -6,8 +6,10 @@
  */
 
 import { observablePersistIndexedDB } from "@legendapp/state/persist-plugins/indexeddb";
+import { ObservablePersistLocalStorage } from "@legendapp/state/persist-plugins/local-storage";
 import { configureSynced, syncObservable } from "@legendapp/state/sync";
 import { areas$, cycles$, moments$, phaseConfigs$ } from "./store";
+import { lastUsedAreaId$ } from "./ui-store";
 
 /**
  * Flag to ensure persistence is only configured once
@@ -35,8 +37,10 @@ export function configurePersistence(): void {
   }
 
   try {
-    // Configure IndexedDB plugin globally
-    const persistOptions = configureSynced({
+    // ========================================================================
+    // Domain State - IndexedDB (structured data, large storage)
+    // ========================================================================
+    const persistIndexedDBOptions = configureSynced({
       persist: {
         plugin: observablePersistIndexedDB({
           databaseName: "zenborg",
@@ -46,10 +50,21 @@ export function configurePersistence(): void {
       },
     });
 
-    // Configure persistence for each observable
+    // ========================================================================
+    // UI State - localStorage (simple key-value, synchronous)
+    // ========================================================================
+    const persistLocalStorageOptions = configureSynced({
+      persist: {
+        plugin: ObservablePersistLocalStorage,
+      },
+    });
+
+    // ========================================================================
+    // Sync Domain Entities to IndexedDB
+    // ========================================================================
     syncObservable(
       moments$,
-      persistOptions({
+      persistIndexedDBOptions({
         persist: {
           name: "moments",
         },
@@ -58,7 +73,7 @@ export function configurePersistence(): void {
 
     syncObservable(
       areas$,
-      persistOptions({
+      persistIndexedDBOptions({
         persist: {
           name: "areas",
         },
@@ -67,7 +82,7 @@ export function configurePersistence(): void {
 
     syncObservable(
       cycles$,
-      persistOptions({
+      persistIndexedDBOptions({
         persist: {
           name: "cycles",
         },
@@ -76,9 +91,21 @@ export function configurePersistence(): void {
 
     syncObservable(
       phaseConfigs$,
-      persistOptions({
+      persistIndexedDBOptions({
         persist: {
           name: "phaseConfigs",
+        },
+      })
+    );
+
+    // ========================================================================
+    // Sync UI Preferences to localStorage
+    // ========================================================================
+    syncObservable(
+      lastUsedAreaId$,
+      persistLocalStorageOptions({
+        persist: {
+          name: "zenborg_lastUsedAreaId",
         },
       })
     );

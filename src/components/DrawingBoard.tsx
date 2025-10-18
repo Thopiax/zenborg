@@ -11,6 +11,7 @@ import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { areas$, unallocatedMoments$ } from "@/infrastructure/state/store";
+import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
@@ -164,11 +165,18 @@ function DraggableMomentCard({ moment, area }: DraggableMomentCardProps) {
       },
     });
 
+  const isDuplicateMode = use$(isDuplicateMode$);
+
   const style = {
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
-    opacity: isDragging ? 0.5 : 1,
+    // Don't apply transform when dragging in duplicate mode - original should stay put
+    transform:
+      isDragging && isDuplicateMode
+        ? "translate3d(0, 0, 0)"
+        : transform
+        ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+        : undefined,
+    // Keep original visible when in duplicate mode
+    opacity: isDragging && !isDuplicateMode ? 0.5 : 1,
     width: "300px",
     flexShrink: 0,
   };

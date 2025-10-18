@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 "use client";
 
+import { X } from "lucide-react";
 import { MomentForm } from "./MomentForm";
 
 interface MomentModalProps {
@@ -47,7 +48,16 @@ export function MomentModal({
         aria-modal="true"
         aria-labelledby="moment-modal-title"
       >
-        <div className="bg-surface md:rounded-xl shadow-2xl overflow-hidden border-0 md:border border-border flex flex-col h-full md:h-auto md:max-h-[85vh]">
+        <div className="bg-surface md:rounded-xl shadow-2xl overflow-hidden border-0 md:border border-border flex flex-col h-full md:h-auto md:max-h-[85vh] relative">
+          {/* Close button */}
+          <button
+            onClick={onCancel}
+            className="absolute top-2 right-2  z-10 p-2 rounded-lg hover:bg-border transition-colors text-text-secondary hover:text-text-primary"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
           <MomentForm
             mode={mode}
             initialName={initialName}

@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
 "use client";
 
-import { useDroppable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
   useSortable,
@@ -14,6 +14,7 @@ import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { areas$, moments$ } from "@/infrastructure/state/store";
+import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
 import {
   ariaLabels,
   momentCard,
@@ -205,14 +206,10 @@ interface SortableMomentCardProps {
 }
 
 function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const isDuplicateMode = use$(isDuplicateMode$);
+
+  // Use different hooks depending on mode
+  const sortable = useSortable({
     id: moment.id,
     data: {
       momentId: moment.id,
@@ -221,12 +218,39 @@ function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
       sourcePhase: moment.phase ?? undefined,
       sourceOrder: moment.order,
     },
+    disabled: isDuplicateMode,
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
+  const draggable = useDraggable({
+    id: moment.id,
+    data: {
+      momentId: moment.id,
+      sourceType: "timeline" as const,
+      sourceDay: moment.day ?? undefined,
+      sourcePhase: moment.phase ?? undefined,
+      sourceOrder: moment.order,
+    },
+    disabled: !isDuplicateMode,
+  });
+
+  // Use the appropriate hook's values based on mode
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
     transition,
-    opacity: isDragging ? 0 : 1,
+    isDragging,
+  } = isDuplicateMode ? draggable : sortable;
+
+  const style = {
+    // In duplicate mode with draggable, no transform applied to original
+    transform: isDuplicateMode
+      ? undefined
+      : CSS.Transform.toString(transform),
+    transition: isDuplicateMode ? undefined : transition,
+    // Keep original visible when in duplicate mode
+    opacity: isDragging && !isDuplicateMode ? 0 : 1,
   };
 
   return (

@@ -69,8 +69,9 @@ export function AreaSelector({
       title="Select Area"
       description="Choose an area for your moment"
       showCloseButton={false}
+      className="max-w-2xl"
     >
-      <CommandList>
+      <CommandList className="max-h-96">
         <CommandGroup heading="Areas">
           {areasList.map((area, index) => {
             const numberKey = index + 1;
@@ -83,13 +84,20 @@ export function AreaSelector({
                   onSelectArea(area.id);
                   onClose();
                 }}
-                className="cursor-pointer"
+                className="cursor-pointer px-4 py-4 text-base"
               >
-                <span className="text-xl mr-2" aria-hidden="true">
+                <div
+                  className="w-1 h-8 rounded-full mr-3 flex-shrink-0"
+                  style={{ backgroundColor: area.color }}
+                  aria-hidden="true"
+                />
+                <span className="text-2xl mr-3" aria-hidden="true">
                   {area.emoji}
                 </span>
-                <span className="flex-1">{area.name}</span>
-                <CommandShortcut>{numberKey}</CommandShortcut>
+                <span className="flex-1 font-medium text-lg">{area.name}</span>
+                <CommandShortcut className="text-base">
+                  {numberKey}
+                </CommandShortcut>
               </CommandItem>
             );
           })}

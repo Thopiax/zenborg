@@ -27,8 +27,10 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { use$ } from "@legendapp/state/react";
 import { useState } from "react";
+import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { areas$, moments$ } from "@/infrastructure/state/store";
+import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
 import {
   calculateNextOrder,
   canDropInCell,
@@ -43,6 +45,7 @@ interface DnDProviderProps {
 
 export function DnDProvider({ children }: DnDProviderProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const isDuplicateMode = use$(isDuplicateMode$);
   const allMoments = use$(moments$);
   const allAreas = use$(areas$);
 
@@ -79,14 +82,46 @@ export function DnDProvider({ children }: DnDProviderProps) {
     })
   );
 
+  /**
+   * Create a duplicate of a moment with a new ID
+   */
+  function duplicateMoment(
+    originalMoment: Moment,
+    targetDay: string | null,
+    targetPhase: Phase | null,
+    targetOrder: number
+  ): string {
+    const newId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    moments$[newId].set({
+      ...originalMoment,
+      id: newId,
+      day: targetDay,
+      phase: targetPhase,
+      order: targetOrder,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return newId;
+  }
+
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id as string;
     setActiveId(id);
+    // Capture duplicate decision at drag start (locked for entire drag operation)
+    // If Option/Alt is held when drag begins, we'll duplicate on drop
+    // @ts-ignore - activatorEvent contains the original mouse/pointer event
+    const altKeyPressed = event.activatorEvent?.altKey || false;
+    isDuplicateMode$.set(altKeyPressed);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    const wasDuplicateMode = isDuplicateMode;
     setActiveId(null);
+    isDuplicateMode$.set(false);
 
     if (!over) {
       // Dropped outside any droppable zone
@@ -153,12 +188,15 @@ export function DnDProvider({ children }: DnDProviderProps) {
     // Handle different drop target types
     switch (dropData.targetType) {
       case "timeline-cell":
-        handleDropOnTimelineCell(dragData, dropData);
+        handleDropOnTimelineCell(dragData, dropData, wasDuplicateMode);
         break;
 
       case "drawing-board":
-        console.log("Handling drop on drawing board", dragData);
-        handleDropOnDrawingBoard(dragData);
+        // Don't allow duplicating to drawing board (doesn't make sense)
+        if (!wasDuplicateMode) {
+          console.log("Handling drop on drawing board", dragData);
+          handleDropOnDrawingBoard(dragData);
+        }
         break;
 
       default:
@@ -198,7 +236,8 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
   function handleDropOnTimelineCell(
     dragData: DraggableData,
-    dropData: DroppableData
+    dropData: DroppableData,
+    shouldDuplicate = false
   ) {
     const { momentId, sourceDay, sourcePhase } = dragData;
     const { targetDay, targetPhase } = dropData;
@@ -210,19 +249,19 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     const isSameCell = sourceDay === targetDay && sourcePhase === targetPhase;
 
-    if (isSameCell) {
+    if (isSameCell && !shouldDuplicate) {
       // Reordering within the same cell - handled by sortable
       // We don't need to do anything here, @dnd-kit/sortable handles it
       return;
     }
 
-    // Moving to a different cell
+    // Moving/duplicating to a different cell (or duplicating in same cell)
     // Validate max-3 constraint
     const validation = canDropInCell(
       targetDay,
       targetPhase,
       allMoments,
-      momentId
+      shouldDuplicate ? "" : momentId // Don't exclude original if duplicating
     );
 
     if (!validation.isValid) {
@@ -236,30 +275,36 @@ export function DnDProvider({ children }: DnDProviderProps) {
       targetDay,
       targetPhase,
       allMoments,
-      momentId
+      shouldDuplicate ? "" : momentId
     );
 
-    // Update moment with new allocation
-    moments$[momentId].set({
-      ...allMoments[momentId],
-      day: targetDay,
-      phase: targetPhase as Phase,
-      order: newOrder,
-      updatedAt: new Date().toISOString(),
-    });
+    if (shouldDuplicate) {
+      // Duplicate mode: create a copy of the moment in the target cell
+      const originalMoment = allMoments[momentId];
+      duplicateMoment(originalMoment, targetDay, targetPhase as Phase, newOrder);
+    } else {
+      // Move mode: update the original moment
+      moments$[momentId].set({
+        ...allMoments[momentId],
+        day: targetDay,
+        phase: targetPhase as Phase,
+        order: newOrder,
+        updatedAt: new Date().toISOString(),
+      });
 
-    // If moving from another timeline cell, reorder remaining moments
-    if (sourceDay && sourcePhase) {
-      const reorders = reorderAfterRemoval(
-        sourceDay,
-        sourcePhase,
-        allMoments,
-        momentId
-      );
+      // If moving from another timeline cell, reorder remaining moments
+      if (sourceDay && sourcePhase) {
+        const reorders = reorderAfterRemoval(
+          sourceDay,
+          sourcePhase,
+          allMoments,
+          momentId
+        );
 
-      for (const { momentId: id, newOrder: order } of reorders) {
-        moments$[id].order.set(order);
-        moments$[id].updatedAt.set(new Date().toISOString());
+        for (const { momentId: id, newOrder: order } of reorders) {
+          moments$[id].order.set(order);
+          moments$[id].updatedAt.set(new Date().toISOString());
+        }
       }
     }
   }
@@ -297,6 +342,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
   function handleDragCancel() {
     setActiveId(null);
+    isDuplicateMode$.set(false);
   }
 
   // Get active moment for drag overlay
@@ -316,7 +362,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       {/* Drag overlay shows preview of dragged item */}
       <DragOverlay>
         {activeMoment && activeArea ? (
-          <div className="cursor-grabbing">
+          <div className={isDuplicateMode ? "cursor-copy" : "cursor-grabbing"}>
             <MomentCard moment={activeMoment} area={activeArea} />
           </div>
         ) : null}

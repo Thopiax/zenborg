@@ -8,6 +8,7 @@ import { AreaSelector } from "@/components/AreaSelector";
 import type { Area } from "@/domain/entities/Area";
 import { validateMomentName } from "@/domain/entities/Moment";
 import { areas$ } from "@/infrastructure/state/store";
+import { lastUsedAreaId$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 
 interface MomentFormProps {
@@ -38,33 +39,62 @@ export function MomentForm({
   showCreateMore = false,
 }: MomentFormProps) {
   const allAreas = use$(areas$);
+  const lastUsedAreaId = use$(lastUsedAreaId$);
   const areasList: Area[] = useMemo(
     () => Object.values(allAreas).sort((a, b) => a.order - b.order),
     [allAreas]
   );
 
-  // Find initial area or default to first
-  const initialArea =
-    areasList.find((a) => a.id === initialAreaId) || areasList[0];
-
   const [name, setName] = useState(initialName);
-  const [selectedAreaIndex, setSelectedAreaIndex] = useState(
-    areasList.findIndex((a) => a.id === initialArea?.id) || 0
-  );
+  const [selectedAreaId, setSelectedAreaId] = useState<string>(() => {
+    if (mode === "edit" && initialAreaId) {
+      return initialAreaId;
+    }
+    if (mode === "create" && lastUsedAreaId) {
+      return lastUsedAreaId;
+    }
+    return areasList[0]?.id ?? "";
+  });
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
   const [createMore, setCreateMore] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Reset when initialName/initialAreaId changes
+  // Reset when initialName changes
   useEffect(() => {
     setName(initialName);
-    const areaIndex = initialAreaId
-      ? areasList.findIndex((a) => a.id === initialAreaId)
-      : 0;
-    setSelectedAreaIndex(areaIndex >= 0 ? areaIndex : 0);
     setIsAreaSelectorOpen(false);
-  }, [initialName, initialAreaId, areasList]);
+  }, [initialName]);
+
+  // Keep the selected area in sync with props and persisted preferences.
+  useEffect(() => {
+    if (!areasList.length) {
+      return;
+    }
+
+    const findArea = (id?: string) =>
+      id ? areasList.find((area) => area.id === id) : undefined;
+
+    let desiredAreaId: string | undefined;
+
+    if (mode === "edit") {
+      desiredAreaId = initialAreaId;
+    } else if (mode === "create") {
+      desiredAreaId = lastUsedAreaId;
+    }
+
+    if (!findArea(desiredAreaId)) {
+      desiredAreaId = undefined;
+    }
+
+    if (!desiredAreaId) {
+      desiredAreaId = areasList[0]?.id;
+    }
+
+    if (desiredAreaId && desiredAreaId !== selectedAreaId) {
+      setSelectedAreaId(desiredAreaId);
+    }
+  }, [mode, initialAreaId, lastUsedAreaId, areasList, selectedAreaId]);
 
   // Auto-focus and select input
   useEffect(() => {
@@ -85,7 +115,17 @@ export function MomentForm({
   // Tab to cycle areas
   useHotkeys("tab", (e) => {
     e.preventDefault();
-    setSelectedAreaIndex((prev) => (prev + 1) % areasList.length);
+    if (!areasList.length) {
+      return;
+    }
+    const currentIndex = areasList.findIndex((a) => a.id === selectedAreaId);
+    const nextIndex = (currentIndex + 1) % areasList.length;
+    const nextArea = areasList[nextIndex];
+    // Persist the selection
+    if (nextArea) {
+      setSelectedAreaId(nextArea.id);
+      lastUsedAreaId$.set(nextArea.id);
+    }
   });
 
   // Enter to save
@@ -128,8 +168,12 @@ export function MomentForm({
 
   const handleSave = () => {
     const validation = validateMomentName(name);
-    if (validation.valid && areasList[selectedAreaIndex]) {
-      const selectedArea = areasList[selectedAreaIndex];
+    const selectedArea =
+      areasList.find((area) => area.id === selectedAreaId) || areasList[0];
+    if (validation.valid && selectedArea) {
+
+      // Persist the selected area ID for future use
+      lastUsedAreaId$.set(selectedArea.id);
 
       // If "Create more" is enabled, pass it to parent
       const shouldCreateMore = mode === "create" && createMore;
@@ -138,10 +182,10 @@ export function MomentForm({
       onSave(name.trim(), selectedArea.id, shouldCreateMore);
 
       // If "Create more" is enabled, reset form immediately
-      // Parent will keep modal open
+      // Parent will keep modal open, but preserve area selection
       if (shouldCreateMore) {
         setName("");
-        setSelectedAreaIndex(0);
+        // Don't reset selectedAreaId - keep the same area
         // Refocus input after a brief delay to allow state update
         setTimeout(() => {
           inputRef.current?.focus();
@@ -150,7 +194,8 @@ export function MomentForm({
     }
   };
 
-  const selectedArea = areasList[selectedAreaIndex];
+  const selectedArea =
+    areasList.find((area) => area.id === selectedAreaId) || areasList[0];
   const validation = validateMomentName(name);
 
   if (!selectedArea) {
@@ -182,7 +227,10 @@ export function MomentForm({
 
         {/* Validation */}
         {!validation.valid && validation.error && name.trim().length > 0 && (
-          <p className="text-sm text-red-500 dark:text-red-400 mb-4" role="alert">
+          <p
+            className="text-sm text-red-500 dark:text-red-400 mb-4"
+            role="alert"
+          >
             {validation.error}
           </p>
         )}
@@ -190,11 +238,15 @@ export function MomentForm({
         {/* Area Selector Trigger */}
         <button
           onClick={() => setIsAreaSelectorOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-alt hover:bg-border border border-border transition-colors text-text-primary"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all text-white hover:opacity-90"
+          style={{
+            backgroundColor: selectedArea.color,
+            borderColor: selectedArea.color,
+          }}
         >
           <span className="text-lg">{selectedArea.emoji}</span>
           <span className="font-medium">{selectedArea.name}</span>
-          <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-border text-text-secondary">
+          <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-white/20 text-white">
             A
           </kbd>
         </button>
@@ -203,11 +255,13 @@ export function MomentForm({
       {/* Area Selector Dialog */}
       <AreaSelector
         open={isAreaSelectorOpen}
-        selectedAreaId={selectedArea.id}
+        selectedAreaId={selectedArea?.id ?? ""}
         onSelectArea={(areaId) => {
-          const newIndex = areasList.findIndex((a) => a.id === areaId);
-          if (newIndex >= 0) {
-            setSelectedAreaIndex(newIndex);
+          const nextArea = areasList.find((a) => a.id === areaId);
+          if (nextArea) {
+            setSelectedAreaId(nextArea.id);
+            // Persist the selection immediately when user changes area
+            lastUsedAreaId$.set(nextArea.id);
           }
         }}
         onClose={() => setIsAreaSelectorOpen(false)}
@@ -235,17 +289,29 @@ export function MomentForm({
             to save
             <span className="mx-2">·</span>
             <kbd className="px-1.5 py-0.5 rounded bg-border mr-1">Esc</kbd>
-            to cancel
+            to blur
+            <span className="mx-2">·</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-border mr-1">A</kbd>
+            then
+            <kbd className="px-1.5 py-0.5 rounded bg-border ml-1">1-5</kbd>
+            for area
           </p>
           <button
             onClick={handleSave}
             disabled={!validation.valid}
             className={cn(
-              "px-5 py-2 rounded-lg font-medium transition-all",
+              "px-5 py-2 rounded-lg font-medium transition-all text-white",
               validation.valid
-                ? "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
+                ? "hover:opacity-90 active:scale-95"
                 : "bg-border text-text-tertiary cursor-not-allowed"
             )}
+            style={
+              validation.valid
+                ? {
+                    backgroundColor: selectedArea.color,
+                  }
+                : undefined
+            }
           >
             {mode === "create" ? "Create moment" : "Save changes"}
           </button>

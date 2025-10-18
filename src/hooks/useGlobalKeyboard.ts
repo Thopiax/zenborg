@@ -62,23 +62,17 @@ export function useGlobalKeyboard() {
 
   // ==================== GLOBAL SHORTCUTS ====================
 
-  // Escape - close any open modals
+  // Escape - close area selector only
+  // Note: Create/Edit modals handle their own Escape behavior
   useHotkeys(
     "escape",
     (e) => {
-      if (isCreateModalOpen) {
-        e.preventDefault();
-        setIsCreateModalOpen(false);
-      } else if (isEditCardOpen) {
-        e.preventDefault();
-        setIsEditCardOpen(false);
-        setEditingMomentId(null);
-      } else if (isAreaSelectorOpen) {
+      if (isAreaSelectorOpen) {
         e.preventDefault();
         setIsAreaSelectorOpen(false);
       }
     },
-    { enableOnFormTags: true }
+    { enableOnFormTags: true, enabled: !isCreateModalOpen && !isEditCardOpen }
   );
 
   // ==================== CRUD SHORTCUTS (Linear-style) ====================

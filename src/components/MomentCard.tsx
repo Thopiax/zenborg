@@ -16,21 +16,22 @@ interface MomentCardProps {
  * MomentCard - Display card for a moment
  *
  * Design:
- * - Minimalist, monochrome aesthetic
+ * - Minimalist, calm aesthetic
  * - Full area-colored background with accessible text
- * - Subtle shadows for interaction states
- * - No colored rings or borders
+ * - Subtle colored ring (area color @ 60% opacity) for selection/focus
+ * - 1px ring offset for breathing room
  *
  * Interaction flow:
  * 1. Single click → Opens MomentEditCard modal
- * 2. Cmd/Ctrl + click → Toggle selection (subtle shadow)
+ * 2. Cmd/Ctrl + click → Toggle selection (shows ring)
  * 3. Shift + click → Toggle selection (without entering edit mode)
- * 4. Selected moments show elevated shadow
+ * 4. Hover → Shows subtle 1px ring
+ * 5. Selected → Shows prominent 2px ring in area color
  *
  * Features:
  * - Multi-select for bulk operations
  * - Toggle selection with Shift+click or Cmd/Ctrl+click
- * - Monochrome, minimalist design
+ * - Calm, minimalist design with color-matched rings
  * - Full accessibility with ARIA labels
  */
 export function MomentCard({ moment, area }: MomentCardProps) {
@@ -71,9 +72,8 @@ export function MomentCard({ moment, area }: MomentCardProps) {
         "min-w-[200px]",
         "rounded-lg transition-all cursor-pointer w-full",
         "focus:outline-none",
-        // Minimalist, monochrome shadows
-        "shadow-foreground/10",
-        isSelected ? "shadow-lg" : "shadow-sm hover:shadow-md"
+        // Subtle ring for selection/focus - using area color
+        isSelected ? "ring-2 ring-offset-1" : "ring-0 hover:ring-1 hover:ring-offset-1"
       )}
       style={{
         backgroundColor: area.color,
@@ -82,6 +82,10 @@ export function MomentCard({ moment, area }: MomentCardProps) {
         paddingRight: momentCard.paddingX,
         paddingTop: momentCard.paddingY,
         paddingBottom: momentCard.paddingY,
+        // Use area color for ring with opacity for subtlety
+        // @ts-ignore - CSS custom property
+        "--tw-ring-color": `${area.color}99`, // 60% opacity
+        "--tw-ring-offset-color": "rgb(250, 250, 249)", // stone-50
       }}
       data-moment-id={moment.id}
       onClick={handleClick}
