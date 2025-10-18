@@ -22,7 +22,9 @@
       "Bash(test -f /Users/rafa/Developer/zenborg/components.json)",
       "Bash(npx shadcn@latest add drawer -y)",
       "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_R6zVgU/**)",
-      "Bash(node -e \"console.log(require(''next-themes/package.json'').version)\")"
+      "Bash(node -e \"console.log(require(''next-themes/package.json'').version)\")",
+      "Bash(git log -3 --format='%s')",
+      "Bash(cat .gitignore)"
     ],
     "deny": [],
     "ask": []
