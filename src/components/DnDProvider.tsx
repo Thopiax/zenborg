@@ -8,8 +8,8 @@
  */
 
 import {
-  closestCenter,
   type CollisionDetection,
+  closestCenter,
   DndContext,
   type DragEndEvent,
   type DragOverEvent,
@@ -27,8 +27,14 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { use$ } from "@legendapp/state/react";
 import { useState } from "react";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Horizon, Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { endBatch, startBatch } from "@/infrastructure/state/history";
+import {
+  duplicateMomentWithHistory,
+  moveMomentWithHistory,
+  reorderMomentsWithHistory,
+} from "@/infrastructure/state/history-middleware";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
 import {
@@ -38,15 +44,6 @@ import {
 } from "@/lib/drag-validation";
 import type { DraggableData, DroppableData } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
-import {
-  startBatch,
-  endBatch,
-} from "@/infrastructure/state/history";
-import {
-  moveMomentWithHistory,
-  duplicateMomentWithHistory,
-  reorderMomentsWithHistory,
-} from "@/infrastructure/state/history-middleware";
 
 interface DnDProviderProps {
   children: React.ReactNode;
@@ -96,7 +93,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     setActiveId(id);
     // Capture duplicate decision at drag start (locked for entire drag operation)
     // If Option/Alt is held when drag begins, we'll duplicate on drop
-    // @ts-ignore - activatorEvent contains the original mouse/pointer event
+    // @ts-expect-error - activatorEvent contains the original mouse/pointer event
     const altKeyPressed = event.activatorEvent?.altKey || false;
     isDuplicateMode$.set(altKeyPressed);
   }
@@ -287,15 +284,19 @@ export function DnDProvider({ children }: DnDProviderProps) {
       startBatch();
 
       // Calculate reorders in source cell (if moving from timeline)
-      const reorders = sourceDay && sourcePhase
-        ? reorderAfterRemoval(sourceDay, sourcePhase, allMoments, momentId).map(
-            ({ momentId: id, newOrder: order }) => ({
+      const reorders =
+        sourceDay && sourcePhase
+          ? reorderAfterRemoval(
+              sourceDay,
+              sourcePhase,
+              allMoments,
+              momentId
+            ).map(({ momentId: id, newOrder: order }) => ({
               momentId: id,
               fromOrder: allMoments[id].order,
               toOrder: order,
-            })
-          )
-        : undefined;
+            }))
+          : undefined;
 
       // Apply move with history
       moveMomentWithHistory(
@@ -339,7 +340,10 @@ export function DnDProvider({ children }: DnDProviderProps) {
     endBatch("Unallocated moment");
   }
 
-  function handleDropOnColumn(dragData: DraggableData, dropData: DroppableData) {
+  function handleDropOnColumn(
+    dragData: DraggableData,
+    dropData: DroppableData
+  ) {
     const { momentId } = dragData;
     const { columnId, groupBy } = dropData;
 
@@ -354,30 +358,46 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
-    // Only allow changing area for "area" grouping mode
-    if (groupBy !== "area") {
+    // Handle different grouping modes
+    if (groupBy === "area") {
+      // Extract area ID from column ID (format: "area-id")
+      const newAreaId = columnId;
+
+      // Don't update if already in this area
+      if (moment.areaId === newAreaId) {
+        return;
+      }
+
+      // Verify the area exists
+      if (!allAreas[newAreaId]) {
+        console.error("Target area not found:", newAreaId);
+        return;
+      }
+
+      // Update moment's area
+      console.log(`Moving moment ${momentId} to area ${newAreaId}`);
+      moments$[momentId].areaId.set(newAreaId);
+      moments$[momentId].updatedAt.set(new Date().toISOString());
+    } else if (groupBy === "horizon") {
+      // Extract horizon value from column ID (format: "horizon-now", "horizon-soon", etc.)
+      const horizonValue = columnId.replace("horizon-", "");
+      const newHorizon = horizonValue === "unset" ? null : horizonValue;
+
+      // Don't update if already has this horizon
+      if (moment.horizon === newHorizon) {
+        return;
+      }
+
+      // Update moment's horizon
+      console.log(
+        `Setting moment ${momentId} horizon to ${newHorizon || "unset"}`
+      );
+      moments$[momentId].horizon.set(newHorizon as Horizon);
+      moments$[momentId].updatedAt.set(new Date().toISOString());
+    } else {
+      // Other grouping modes (created) are read-only
       console.log("Ignoring drop - grouping mode is read-only:", groupBy);
-      return;
     }
-
-    // Extract area ID from column ID (format: "area-id")
-    const newAreaId = columnId;
-
-    // Don't update if already in this area
-    if (moment.areaId === newAreaId) {
-      return;
-    }
-
-    // Verify the area exists
-    if (!allAreas[newAreaId]) {
-      console.error("Target area not found:", newAreaId);
-      return;
-    }
-
-    // Update moment's area
-    console.log(`Moving moment ${momentId} to area ${newAreaId}`);
-    moments$[momentId].areaId.set(newAreaId);
-    moments$[momentId].updatedAt.set(new Date().toISOString());
   }
 
   function handleDragCancel() {
