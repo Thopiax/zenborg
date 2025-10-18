@@ -140,7 +140,7 @@ export function Timeline() {
   return (
     <div
       ref={containerRef}
-      className="w-full flex gap-6 overflow-x-auto max-h-[calc(100vh-200px)] snap-x snap-mandatory scroll-smooth py-4 px-2 hide-scrollbar"
+      className="w-full flex gap-6 overflow-x-auto max-h-[calc(100vh-200px)] snap-x snap-mandatory scroll-smooth py-4 px-2 hide-scrollbar scroll-pl-6"
     >
       {timelineDays.map(({ date, isToday }, index) => (
         <div className="px-2" key={date}>
