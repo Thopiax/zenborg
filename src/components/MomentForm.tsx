@@ -2,6 +2,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import { Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
@@ -28,6 +29,8 @@ interface MomentFormProps {
   onCancel: () => void;
   /** For create mode: allow creating multiple moments in a row */
   showCreateMore?: boolean;
+  /** For edit mode: called when user confirms deletion */
+  onDelete?: () => void;
 }
 
 /**
@@ -49,6 +52,7 @@ export function MomentForm({
   onSave,
   onCancel,
   showCreateMore = false,
+  onDelete,
 }: MomentFormProps) {
   // Horizon is only editable for unallocated moments (create mode or edit unallocated)
   const showHorizonSelector = useMemo(
@@ -80,6 +84,7 @@ export function MomentForm({
   const [createMore, setCreateMore] = useState(false);
   // Track whether user has manually changed the area via AreaSelector
   const [hasManuallyChangedArea, setHasManuallyChangedArea] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -120,7 +125,14 @@ export function MomentForm({
     if (desiredAreaId && desiredAreaId !== selectedAreaId) {
       setSelectedAreaId(desiredAreaId);
     }
-  }, [mode, initialAreaId, lastUsedAreaId, areasList, selectedAreaId, hasManuallyChangedArea]);
+  }, [
+    mode,
+    initialAreaId,
+    lastUsedAreaId,
+    areasList,
+    selectedAreaId,
+    hasManuallyChangedArea,
+  ]);
 
   // Auto-focus and select input
   useEffect(() => {
@@ -225,6 +237,16 @@ export function MomentForm({
           inputRef.current?.focus();
         }, 0);
       }
+    }
+  };
+
+  const handleDelete = () => {
+    if (showDeleteConfirm && onDelete) {
+      onDelete();
+    } else {
+      setShowDeleteConfirm(true);
+      // Reset confirmation after 3 seconds
+      setTimeout(() => setShowDeleteConfirm(false), 3000);
     }
   };
 
@@ -340,8 +362,9 @@ export function MomentForm({
         onClose={() => setIsAreaSelectorOpen(false)}
       />
 
-      {/* Footer */}
-      <div className="px-6 py-4 bg-surface-alt/50 border-t border-border flex items-center justify-between flex-shrink-0">
+      {/* Footer - Sticky on mobile to stay above keyboard */}
+      <div className="sticky bottom-0 px-6 py-4 bg-surface-alt/50 border-t border-border flex items-center justify-between flex-shrink-0 backdrop-blur-sm md:static">
+        {/* Left side: Create more checkbox OR Delete button */}
         {showCreateMore && mode === "create" ? (
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -352,23 +375,27 @@ export function MomentForm({
             />
             <span className="text-sm text-text-secondary">Create more</span>
           </label>
+        ) : mode === "edit" && onDelete ? (
+          <button
+            onClick={handleDelete}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all",
+              showDeleteConfirm
+                ? "bg-red-500 dark:bg-red-600 text-white hover:bg-red-600 dark:hover:bg-red-700"
+                : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
+            )}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="text-sm">
+              {showDeleteConfirm ? "Confirm delete?" : "Delete"}
+            </span>
+          </button>
         ) : (
           <div />
         )}
 
+        {/* Right side: Keyboard hints + Save button */}
         <div className="flex items-center gap-3">
-          <p className="hidden md:block text-xs text-text-tertiary">
-            <kbd className="px-1.5 py-0.5 rounded bg-border mr-1">Enter</kbd>
-            to save
-            <span className="mx-2">·</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-border mr-1">Esc</kbd>
-            to blur
-            <span className="mx-2">·</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-border mr-1">A</kbd>
-            then
-            <kbd className="px-1.5 py-0.5 rounded bg-border ml-1">1-5</kbd>
-            for area
-          </p>
           <button
             onClick={handleSave}
             disabled={!validation.valid}

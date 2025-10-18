@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 "use client";
 
 import { X } from "lucide-react";
@@ -15,6 +14,8 @@ interface MomentModalProps {
   isAllocated?: boolean;
   onSave: (name: string, areaId: string, horizon: Horizon | null) => void;
   onCancel: () => void;
+  /** For edit mode: called when user confirms deletion */
+  onDelete?: () => void;
 }
 
 /**
@@ -33,6 +34,7 @@ export function MomentModal({
   isAllocated = false,
   onSave,
   onCancel,
+  onDelete,
 }: MomentModalProps) {
   if (!open) {
     return null;
@@ -57,6 +59,7 @@ export function MomentModal({
         <div className="bg-surface md:rounded-xl shadow-2xl overflow-hidden border-0 md:border border-border flex flex-col h-full md:h-auto md:max-h-[85dvh] relative">
           {/* Close button */}
           <button
+            type="button"
             onClick={onCancel}
             className="absolute top-2 right-2  z-10 p-2 rounded-lg hover:bg-border transition-colors text-text-secondary hover:text-text-primary"
             aria-label="Close"
@@ -72,6 +75,7 @@ export function MomentModal({
             isAllocated={isAllocated}
             onSave={onSave}
             onCancel={onCancel}
+            onDelete={onDelete}
             showCreateMore={mode === "create"}
           />
         </div>

@@ -39,6 +39,7 @@ export default function HomePage() {
     editingMomentId,
     handleSaveEdit,
     handleCancelEdit,
+    handleDeleteEdit,
     handleOpenEditModal,
     isAreaManagementOpen,
     setIsAreaManagementOpen,
@@ -148,6 +149,7 @@ export default function HomePage() {
             }
             onSave={handleSaveEdit}
             onCancel={handleCancelEdit}
+            onDelete={handleDeleteEdit}
           />
 
           {/* Area Management Modal - Triggered by Mod+Shift+A */}
