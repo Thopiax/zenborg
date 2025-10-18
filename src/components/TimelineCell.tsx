@@ -208,7 +208,7 @@ interface SortableMomentCardProps {
 function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
   const isDuplicateMode = use$(isDuplicateMode$);
 
-  // Always use useSortable, disable transition during duplicate mode
+  // Always use useSortable, disable sorting behavior during duplicate mode
   const {
     attributes,
     listeners,
@@ -225,11 +225,12 @@ function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
       sourcePhase: moment.phase ?? undefined,
       sourceOrder: moment.order,
     },
+    disabled: isDuplicateMode,
     transition: isDuplicateMode ? null : undefined,
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: transform ? CSS.Transform.toString(transform) : undefined,
     transition,
     // Kanban style: original disappears on move, stays visible on duplicate
     opacity: isDragging && !isDuplicateMode ? 0 : 1,
