@@ -24,7 +24,6 @@ import {
   isDuplicateMode$,
 } from "@/infrastructure/state/ui-store";
 import {
-  getGroupingFunction,
   groupByArea,
   groupByCreated,
   groupByHorizon,
@@ -59,14 +58,14 @@ export function DrawingBoard() {
   });
 
   // Group moments based on current groupBy setting
-  const groupingFn = getGroupingFunction(groupBy);
-  const groups = groupingFn
-    ? groupingFn === groupByArea
+  const groups =
+    groupBy === "area"
       ? groupByArea(unallocated, allAreas)
-      : groupingFn === groupByCreated
+      : groupBy === "created"
       ? groupByCreated(unallocated)
-      : groupByHorizon(unallocated)
-    : null;
+      : groupBy === "horizon"
+      ? groupByHorizon(unallocated)
+      : null;
 
   const handleGroupByChange = (value: DrawingBoardGroupBy) => {
     drawingBoardGroupBy$.set(value);
