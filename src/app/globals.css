@@ -190,7 +190,6 @@
   --sidebar-ring: oklch(0.709 0.01 56.259);
 }
 
-
 @theme inline {
   /* Custom breakpoints for iPad optimization */
   --breakpoint-xl: 900px;
@@ -395,12 +394,24 @@ button {
   will-change: transform;
 }
 
-/* Optimize horizontal scroll containers (Drawing Board) */
+/* Optimize horizontal scroll containers (Drawing Board, Timeline) */
 .overflow-x-auto {
   /* Native momentum scrolling */
   -webkit-overflow-scrolling: touch;
   /* Prevent overscroll bounce on horizontal scroll */
   overscroll-behavior-x: contain;
+}
+
+/* Hide scrollbar for cleaner mobile timeline */
+.scrollbar-hide {
+  /* Firefox */
+  scrollbar-width: none;
+  /* Safari and Chrome */
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
 /* Improve drag overlay rendering on iPad */

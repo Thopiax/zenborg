@@ -2,11 +2,11 @@
 
 import { use$ } from "@legendapp/state/react";
 import { CloudMoon, Coffee, Moon, Sun } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { visiblePhases$ } from "@/infrastructure/state/store";
 import { getDateLabel, getTimelineDays } from "@/lib/dates";
-import { DaySelector } from "./DaySelector";
+import { cn } from "@/lib/utils";
 import { TimelineCell } from "./TimelineCell";
 
 // Map phases to Lucide icons
@@ -21,222 +21,143 @@ const PHASE_ICONS: Record<
 };
 
 /**
- * Timeline - Responsive timeline grid
+ * Timeline - Minimal, unified timeline layout
  *
- * Desktop (≥768px):
- * - 3-column grid: Yesterday | Today | Tomorrow
- * - Each column shows all visible phases (Morning, Afternoon, Evening)
- * - Phase indicators: colored left border (4px) on first cell of each row
- * - Creates 3x3 (or 3x4 if Night is visible) grid
+ * Responsive behavior:
+ * - Mobile (<768px): Horizontal scroll, 3 columns (85vw each), snap to center
+ * - Desktop (≥768px): Grid layout, 3 equal columns
  *
- * Mobile (<768px):
- * - Single-day column view
- * - DaySelector to switch between days
- * - Shows all visible phases vertically with horizontal icon labels
- * - Same greyscale background tints as desktop
+ * Design:
+ * - Calm, minimal styling matching DrawingBoardColumn
+ * - No heavy borders or backgrounds
+ * - Typography hierarchy: Day label (Today/Yesterday) → Day of week → Date (small)
+ * - Colored dividers under headers instead of borders
  */
 export function Timeline() {
   const visiblePhases = use$(visiblePhases$);
   const days = getTimelineDays();
-  const [selectedMobileDay, setSelectedMobileDay] = useState(days.today);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  return (
-    <div className="w-full">
-      {/* Mobile Layout: Column-based day view (like Drawing Board) */}
-      <div className="md:hidden">
-        <DaySelector
-          currentDay={selectedMobileDay}
-          onDayChange={setSelectedMobileDay}
-          days={days}
-        />
+  // Auto-scroll to center Today column on mount (mobile only)
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const todayColumn = container.children[1] as HTMLElement; // Middle column (Today)
 
-        {/* Day Column Container */}
-        <div className="mt-4 flex flex-col rounded-lg border border-stone-200/60 dark:border-stone-700/40 bg-stone-50/30 dark:bg-stone-900/30">
-          {/* Column Header - Day Label */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200/60 dark:border-stone-700/40">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-mono font-semibold text-stone-900 dark:text-stone-100">
-                {getDateLabel(selectedMobileDay)}
-              </h3>
-              <span className="text-xs font-mono text-stone-400 dark:text-stone-500">
-                {selectedMobileDay}
-              </span>
-            </div>
-          </div>
+      if (todayColumn) {
+        const scrollLeft =
+          todayColumn.offsetLeft -
+          container.clientWidth / 2 +
+          todayColumn.clientWidth / 2;
+        container.scrollTo({ left: scrollLeft, behavior: "smooth" });
+      }
+    }
+  }, []);
 
-          {/* Phase Subsections */}
-          <div className="divide-y divide-stone-200/40 dark:divide-stone-700/30">
-            {visiblePhases.map((phaseConfig, index) => {
-              const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
-              return (
-                <div key={phaseConfig.phase} className="p-3">
-                  {/* Phase Header */}
-                  <div className="flex items-center gap-2 mb-3 px-1">
-                    <PhaseIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                    <span className="text-xs font-mono font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wide">
-                      {phaseConfig.label}
-                    </span>
-                  </div>
+  // Helper to format date as "Mon 12/25"
+  const formatDateShort = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const dayOfWeek = date.toLocaleDateString("en-US", { weekday: "short" });
+    const monthDay = date.toLocaleDateString("en-US", {
+      month: "numeric",
+      day: "numeric",
+    });
+    return { dayOfWeek, monthDay };
+  };
 
-                  {/* Phase Cell */}
-                  <TimelineCell
-                    day={selectedMobileDay}
-                    phase={phaseConfig.phase}
-                    isHighlighted={selectedMobileDay === days.today}
-                    phaseIndex={index}
-                  />
-                </div>
-              );
-            })}
+  const renderDayColumn = (day: string, isToday: boolean) => {
+    const { dayOfWeek, monthDay } = formatDateShort(day);
+    const label = getDateLabel(day);
+
+    return (
+      <div className="flex flex-col snap-center">
+        {/* Column Header - Minimal, no border/bg */}
+        <div className="flex flex-col gap-1 px-4 py-3">
+          <h3
+            className={cn(
+              "text-sm font-mono",
+              isToday
+                ? "font-bold text-stone-900 dark:text-stone-100"
+                : "font-medium text-stone-700 dark:text-stone-300"
+            )}
+          >
+            {label}
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-stone-500 dark:text-stone-400">
+              {dayOfWeek}
+            </span>
+            <span className="text-[10px] text-stone-400 dark:text-stone-500 font-mono">
+              {monthDay}
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* Tablet Layout: 3-column grid without phase labels (900px-1024px) */}
-      <div className="hidden md:block xl:hidden">
-        <div className="space-y-3">
-          {/* Day headers row - 3 columns only */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="text-center">
-              <h3 className="text-base font-medium text-stone-700 dark:text-stone-300">
-                {getDateLabel(days.yesterday)}
-              </h3>
-              <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-                {days.yesterday}
-              </p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
-                {getDateLabel(days.today)}
-              </h3>
-              <p className="text-xs text-stone-600 dark:text-stone-300 font-mono font-semibold">
-                {days.today}
-              </p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-base font-medium text-stone-700 dark:text-stone-300">
-                {getDateLabel(days.tomorrow)}
-              </h3>
-              <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-                {days.tomorrow}
-              </p>
-            </div>
-          </div>
+        {/* Colored Divider - matches DrawingBoardColumn */}
+        <div
+          className={cn(
+            "h-[2px] mx-4 mb-3",
+            isToday
+              ? "bg-stone-400 dark:bg-stone-500"
+              : "bg-stone-300 dark:bg-stone-600"
+          )}
+        />
 
-          {/* Phase rows - 3 columns with phase label inside first cell */}
+        {/* Phase Sections */}
+        <div className="flex flex-col gap-3 px-4">
           {visiblePhases.map((phaseConfig, index) => {
             const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
             return (
-              <div key={phaseConfig.phase}>
-                {/* Phase label row above cells */}
-                <div className="flex items-center gap-2 mb-2 px-1">
+              <div key={phaseConfig.phase} className="flex flex-col gap-2">
+                {/* Phase Header */}
+                <div className="flex items-center gap-2 px-1">
                   <PhaseIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                  <span className="text-sm font-mono font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wide">
+                  <span className="text-xs font-mono font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wide">
                     {phaseConfig.label}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <TimelineCell
-                    day={days.yesterday}
-                    phase={phaseConfig.phase}
-                    isHighlighted={false}
-                    phaseIndex={index}
-                  />
-                  <TimelineCell
-                    day={days.today}
-                    phase={phaseConfig.phase}
-                    isHighlighted={true}
-                    phaseIndex={index}
-                  />
-                  <TimelineCell
-                    day={days.tomorrow}
-                    phase={phaseConfig.phase}
-                    isHighlighted={false}
-                    phaseIndex={index}
-                  />
-                </div>
+                {/* Phase Cell */}
+                <TimelineCell
+                  day={day}
+                  phase={phaseConfig.phase}
+                  isHighlighted={isToday}
+                  phaseIndex={index}
+                />
               </div>
             );
           })}
         </div>
       </div>
+    );
+  };
 
-      {/* Desktop Layout: 3x3 Grid with equal column widths (≥1024px) */}
-      <div className="hidden xl:block">
-        <div className="space-y-4">
-          {/* Day headers row - aligned with grid columns including label column */}
-          <div className="grid grid-cols-[48px_1fr_1fr_1fr] gap-4">
-            {/* Empty space for phase label column */}
-            <div className="w-12" />
-
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-stone-700 dark:text-stone-300">
-                {getDateLabel(days.yesterday)}
-              </h3>
-              <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-                {days.yesterday}
-              </p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">
-                {getDateLabel(days.today)}
-              </h3>
-              <p className="text-xs text-stone-600 dark:text-stone-300 font-mono font-semibold">
-                {days.today}
-              </p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-stone-700 dark:text-stone-300">
-                {getDateLabel(days.tomorrow)}
-              </h3>
-              <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-                {days.tomorrow}
-              </p>
-            </div>
+  return (
+    <div className="w-full">
+      {/* Mobile Layout: Horizontal scrollable 3-column view */}
+      <div className="md:hidden">
+        <div
+          ref={scrollContainerRef}
+          className="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2"
+          style={{ scrollSnapType: "x mandatory" }}
+        >
+          <div className="flex-shrink-0 w-[85vw]">
+            {renderDayColumn(days.yesterday, false)}
           </div>
+          <div className="flex-shrink-0 w-[85vw]">
+            {renderDayColumn(days.today, true)}
+          </div>
+          <div className="flex-shrink-0 w-[85vw]">
+            {renderDayColumn(days.tomorrow, false)}
+          </div>
+        </div>
+      </div>
 
-          {/* Phase rows with consistent grid layout */}
-          {visiblePhases.map((phaseConfig, index) => {
-            const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
-            return (
-              <div
-                key={phaseConfig.phase}
-                className="grid grid-cols-[48px_1fr_1fr_1fr] gap-4"
-              >
-                {/* Vertical phase label on left */}
-                <div className="flex items-center justify-center w-12">
-                  <div className="flex flex-col items-center gap-2 -rotate-90 origin-center whitespace-nowrap">
-                    <PhaseIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                    <span className="text-xs font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wider">
-                      {phaseConfig.label}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Yesterday */}
-                <TimelineCell
-                  day={days.yesterday}
-                  phase={phaseConfig.phase}
-                  isHighlighted={false}
-                  phaseIndex={index}
-                />
-                {/* Today - emphasized with font weight */}
-                <TimelineCell
-                  day={days.today}
-                  phase={phaseConfig.phase}
-                  isHighlighted={true}
-                  phaseIndex={index}
-                />
-                {/* Tomorrow */}
-                <TimelineCell
-                  day={days.tomorrow}
-                  phase={phaseConfig.phase}
-                  isHighlighted={false}
-                  phaseIndex={index}
-                />
-              </div>
-            );
-          })}
+      {/* Desktop Layout: Unified grid (≥768px) */}
+      <div className="hidden md:block">
+        <div className="grid grid-cols-3 gap-6">
+          {renderDayColumn(days.yesterday, false)}
+          {renderDayColumn(days.today, true)}
+          {renderDayColumn(days.tomorrow, false)}
         </div>
       </div>
     </div>
