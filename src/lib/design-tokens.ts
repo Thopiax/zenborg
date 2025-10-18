@@ -138,6 +138,12 @@ export const grid = {
     minCellHeight: "min-h-[240px]", // Fits 3 moments: 3×64px + 2×12px gap + padding
     rowGap: "space-y-4", // 16px between phase rows
   },
+  tablet: {
+    columns: "grid-cols-3", // [yesterday, today, tomorrow] - no phase labels column for more space
+    gap: "gap-3", // 12px between cells
+    minCellHeight: "min-h-[200px]", // Slightly shorter for iPad
+    rowGap: "space-y-3", // 12px between phase rows
+  },
   mobile: {
     gap: "gap-3", // 12px between sections
   },
@@ -150,6 +156,7 @@ export const grid = {
 export const breakpoints = {
   mobile: "640px", // sm
   tablet: "768px", // md - switch from single-day to 3-day grid
+  tabletLarge: "900px", // xl - optimized for iPad Air/Pro 11" (744px portrait, 1194px landscape)
   desktop: "1024px", // lg
   wide: "1280px", // xl
 } as const;

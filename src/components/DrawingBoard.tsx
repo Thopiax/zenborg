@@ -151,7 +151,7 @@ export function DrawingBoard() {
           {/* Grouped Layout (columns) */}
           {groups ? (
             <div className="bg-white dark:bg-stone-950">
-              <div className="flex gap-4 overflow-x-auto px-6 py-8">
+              <div className="flex gap-4 overflow-x-auto px-6 py-8 snap-x snap-mandatory scroll-smooth">
                 {groups.map((group) => (
                   <DrawingBoardColumn
                     key={group.groupId}
@@ -265,6 +265,8 @@ function DraggableMomentCard({ moment, area, contextMomentIds }: DraggableMoment
     flexShrink: 0,
     // Prevent browser scroll/pan interference during touch drag
     touchAction: "none",
+    // Cursor feedback for trackpad/mouse users (iPad with trackpad)
+    cursor: isDragging ? "grabbing" : "grab",
   };
 
   return (

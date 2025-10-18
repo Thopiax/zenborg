@@ -92,7 +92,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8, // 8px drag threshold to prevent accidental drags
+        distance: 4, // 4px drag threshold - optimized for trackpad precision on iPad
       },
     }),
     useSensor(TouchSensor, {

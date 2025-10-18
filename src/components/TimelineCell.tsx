@@ -294,6 +294,8 @@ function SortableMomentCard({
     opacity: isDragging && !shouldDisableSortable ? 0 : 1,
     // Prevent browser scroll/pan interference during touch drag
     touchAction: "none",
+    // Cursor feedback for trackpad/mouse users (iPad with trackpad)
+    cursor: isDragging ? "grabbing" : "grab",
   };
 
   return (

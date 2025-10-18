@@ -92,8 +92,77 @@ export function Timeline() {
         </div>
       </div>
 
-      {/* Desktop Layout: 3x3 Grid with equal column widths */}
-      <div className="hidden md:block">
+      {/* Tablet Layout: 3-column grid without phase labels (900px-1024px) */}
+      <div className="hidden md:block xl:hidden">
+        <div className="space-y-3">
+          {/* Day headers row - 3 columns only */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center">
+              <h3 className="text-base font-medium text-stone-700 dark:text-stone-300">
+                {getDateLabel(days.yesterday)}
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
+                {days.yesterday}
+              </p>
+            </div>
+            <div className="text-center">
+              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                {getDateLabel(days.today)}
+              </h3>
+              <p className="text-xs text-stone-600 dark:text-stone-300 font-mono font-semibold">
+                {days.today}
+              </p>
+            </div>
+            <div className="text-center">
+              <h3 className="text-base font-medium text-stone-700 dark:text-stone-300">
+                {getDateLabel(days.tomorrow)}
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
+                {days.tomorrow}
+              </p>
+            </div>
+          </div>
+
+          {/* Phase rows - 3 columns with phase label inside first cell */}
+          {visiblePhases.map((phaseConfig, index) => {
+            const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
+            return (
+              <div key={phaseConfig.phase}>
+                {/* Phase label row above cells */}
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <PhaseIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                  <span className="text-sm font-mono font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wide">
+                    {phaseConfig.label}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <TimelineCell
+                    day={days.yesterday}
+                    phase={phaseConfig.phase}
+                    isHighlighted={false}
+                    phaseIndex={index}
+                  />
+                  <TimelineCell
+                    day={days.today}
+                    phase={phaseConfig.phase}
+                    isHighlighted={true}
+                    phaseIndex={index}
+                  />
+                  <TimelineCell
+                    day={days.tomorrow}
+                    phase={phaseConfig.phase}
+                    isHighlighted={false}
+                    phaseIndex={index}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Desktop Layout: 3x3 Grid with equal column widths (≥1024px) */}
+      <div className="hidden xl:block">
         <div className="space-y-4">
           {/* Day headers row - aligned with grid columns including label column */}
           <div className="grid grid-cols-[48px_1fr_1fr_1fr] gap-4">

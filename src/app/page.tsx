@@ -93,8 +93,14 @@ export default function HomePage() {
             <DrawingBoard />
           </main>
 
-          {/* Settings Button - Fixed top-right */}
-          <div className="fixed top-6 right-6 z-40">
+          {/* Settings Button - Fixed top-right with safe area support */}
+          <div
+            className="fixed z-40"
+            style={{
+              top: 'max(1.5rem, env(safe-area-inset-top) + 1rem)',
+              right: 'max(1.5rem, env(safe-area-inset-right) + 1rem)',
+            }}
+          >
             <SettingsButton onClick={() => setIsSettingsOpen(true)} />
           </div>
 

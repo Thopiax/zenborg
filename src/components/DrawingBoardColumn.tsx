@@ -81,7 +81,7 @@ export function DrawingBoardColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col transition-all rounded-lg",
+        "flex flex-col transition-all rounded-lg snap-start",
         isOnlyColumn ? "min-h-[350px]" : "min-w-[280px] max-w-[320px]",
         canAcceptDrops && isOver && "bg-stone-50 dark:bg-stone-900"
       )}

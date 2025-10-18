@@ -54,7 +54,7 @@ export function MomentModal({
         aria-modal="true"
         aria-labelledby="moment-modal-title"
       >
-        <div className="bg-surface md:rounded-xl shadow-2xl overflow-hidden border-0 md:border border-border flex flex-col h-full md:h-auto md:max-h-[85vh] relative">
+        <div className="bg-surface md:rounded-xl shadow-2xl overflow-hidden border-0 md:border border-border flex flex-col h-full md:h-auto md:max-h-[85dvh] relative">
           {/* Close button */}
           <button
             onClick={onCancel}

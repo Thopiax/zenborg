@@ -36,7 +36,7 @@ export function DaySelector({
           type="button"
           onClick={() => onDayChange(value)}
           className={cn(
-            "px-4 py-2 rounded-lg transition-all",
+            "px-4 py-3 rounded-lg transition-all min-h-[44px]",
             "border",
             currentDay === value
               ? "border-stone-300 dark:border-stone-600 bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-bold"

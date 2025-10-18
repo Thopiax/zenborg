@@ -146,7 +146,7 @@ export const AreaManagementModal = observer(function AreaManagementModal({
         aria-modal="true"
         aria-labelledby="area-modal-title"
       >
-        <div className="bg-surface md:rounded-xl shadow-2xl overflow-hidden border-0 md:border border-border flex flex-col h-full md:h-auto md:max-h-[85vh]">
+        <div className="bg-surface md:rounded-xl shadow-2xl overflow-hidden border-0 md:border border-border flex flex-col h-full md:h-auto md:max-h-[85dvh]">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <h2
