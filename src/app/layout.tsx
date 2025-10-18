@@ -18,13 +18,6 @@ export const metadata: Metadata = {
   title: "Zenborg - Intention Compass",
   description:
     "An attention orchestration system for budgeting moments toward personal flourishing",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-    viewportFit: "cover", // Respect safe areas (notch, home bar)
-  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -40,6 +33,14 @@ export const metadata: Metadata = {
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover", // Respect safe areas (notch, home bar)
 };
 
 export default function RootLayout({
