@@ -80,7 +80,7 @@ export function MomentForm({
     if (mode === "edit") {
       desiredAreaId = initialAreaId;
     } else if (mode === "create") {
-      desiredAreaId = lastUsedAreaId;
+      desiredAreaId = lastUsedAreaId ?? undefined;
     }
 
     if (!findArea(desiredAreaId)) {
