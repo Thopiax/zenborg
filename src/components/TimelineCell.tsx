@@ -212,21 +212,6 @@ export function TimelineCell({
           ) : null}
         </div>
       )}
-
-      {isFull && (
-        <output
-          className="text-xs text-stone-500 dark:text-stone-500 font-mono mt-3 flex items-center gap-2"
-          aria-live="polite"
-        >
-          <span
-            className="w-1.5 h-1.5 rounded-full bg-stone-400 dark:bg-stone-500"
-            aria-hidden="true"
-          />
-          <span>
-            Full ({cellMoments.length}/{momentConstraints.maxMomentsPerCell})
-          </span>
-        </output>
-      )}
     </div>
   );
 }

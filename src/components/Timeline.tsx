@@ -79,7 +79,7 @@ export function Timeline() {
           "flex flex-col gap-2 px-4 py-6",
           "transition-opacity duration-300",
           isToday
-            ? "snap-start snap-always border border-slate-400/10 dark:ring-slate-300 rounded-md"
+            ? "snap-start snap-always border border-slate-400/10 dark:ring-slate-300 rounded-md shadow-xs"
             : "snap-start",
           isPastDay && "opacity-70"
         )}
