@@ -103,33 +103,38 @@ export const borderWidth = {
 
 /**
  * Focus Ring Styles
- * Consistent purple focus indicator for all states
+ * Subtle, calm focus indicators inspired by Things 3
+ * - Thin outline (1px) instead of thick ring
+ * - Soft blue-gray color for calm aesthetic
+ * - Minimal offset for cleaner appearance
  */
 export const focusRing = {
-  // All focus states use consistent purple
+  // Default focus state - subtle blue-gray
   default: {
-    ring: "ring-2",
-    offset: "ring-offset-2",
-    color: "ring-purple-500 dark:ring-purple-400",
+    ring: "ring-1",
+    offset: "ring-offset-1 ring-offset-background",
+    color: "ring-blue-400/40 dark:ring-blue-400/30",
   },
 
-  // Kept for backward compatibility - all use same purple
+  // Insert mode - slightly more emphasis with blue
   insert: {
-    ring: "ring-2",
-    offset: "ring-offset-2",
-    color: "ring-purple-500 dark:ring-purple-400",
+    ring: "ring-1",
+    offset: "ring-offset-1 ring-offset-background",
+    color: "ring-blue-500/50 dark:ring-blue-400/40",
   },
 
+  // Normal mode - calm gray-blue
   normal: {
-    ring: "ring-2",
-    offset: "ring-offset-2",
-    color: "ring-purple-500 dark:ring-purple-400",
+    ring: "ring-1",
+    offset: "ring-offset-1 ring-offset-background",
+    color: "ring-stone-400/40 dark:ring-stone-500/30",
   },
 
+  // Cell focus - subtle blue for navigation
   cell: {
-    ring: "ring-2",
-    offset: "ring-offset-2",
-    color: "ring-purple-500 dark:ring-purple-400",
+    ring: "ring-1",
+    offset: "ring-offset-1 ring-offset-background",
+    color: "ring-blue-400/30 dark:ring-blue-500/20",
   },
 } as const;
 
@@ -165,9 +170,10 @@ export const zIndex = {
  */
 export const grid = {
   desktop: {
-    columns: "grid-cols-[auto_1fr_1fr_1fr]", // [phase labels, yesterday, today, tomorrow]
+    columns: "grid-cols-[48px_1fr_1fr_1fr]", // [phase labels (48px), yesterday, today, tomorrow (equal)]
     gap: "gap-4", // 16px between cells
-    minCellHeight: "min-h-[180px]", // Enough for 3 moments
+    minCellHeight: "min-h-[240px]", // Fits 3 moments: 3×64px + 2×12px gap + padding
+    rowGap: "space-y-4", // 16px between phase rows
   },
   mobile: {
     gap: "gap-3", // 12px between sections
@@ -204,6 +210,32 @@ export const momentConstraints = {
   maxMomentsPerCell: 3,
   minNameLength: 1,
   maxNameLength: 50, // Characters (rough estimate for 3 words)
+} as const;
+
+/**
+ * Moment Card Dimensions
+ * Optimized for 3 cards to fit vertically in timeline cells
+ */
+export const momentCard = {
+  // Card height: 64px per card (3 cards = 192px + 2 gaps = ~220px total)
+  minHeight: "64px",
+  // Spacing between cards in a cell
+  gap: "12px", // 3 gaps of 12px = 36px
+  // Padding inside card
+  paddingX: "16px", // 1rem
+  paddingY: "12px", // 0.75rem
+} as const;
+
+/**
+ * Phase Backgrounds
+ * Stone-based gradients for timeline cells
+ * Each phase has a subtle gradient for visual differentiation
+ */
+export const phaseBackgrounds: Record<number, string> = {
+  0: "bg-stone-50 dark:bg-stone-700/40",
+  1: "bg-stone-100 dark:bg-stone-800/60 ",
+  2: "bg-stone-150 dark:bg-stone-900/40",
+  3: "bg-stone-200 dark:bg-stone-950/20",
 } as const;
 
 /**
@@ -273,7 +305,7 @@ export const ariaLabels = {
  * Helper: Get focus ring classes based on mode
  */
 export function getFocusRingClasses(
-  mode: "default" | "insert" | "normal" | "cell" = "default",
+  mode: "default" | "insert" | "normal" | "cell" = "default"
 ): string {
   const ring = focusRing[mode];
   return `${ring.ring} ${ring.offset} ${ring.color}`;
@@ -320,4 +352,60 @@ export function validateMomentName(name: string): {
 export function formatWordCount(wordCount: number): string {
   const max = momentConstraints.maxWordsInName;
   return `${wordCount}/${max} words`;
+}
+
+/**
+ * Helper: Get accessible text color for colored background
+ * Calculates relative luminance and returns white or dark text for WCAG AA compliance
+ *
+ * @param hexColor - Background color in hex format (e.g., "#10b981")
+ * @returns "white" or "dark" text color class
+ */
+export function getTextColorForBackground(hexColor: string): "white" | "dark" {
+  // Remove # if present
+  const hex = hexColor.replace("#", "");
+
+  // Convert to RGB
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+
+  // Calculate relative luminance (WCAG formula)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  // Return white text for dark backgrounds, dark text for light backgrounds
+  // Threshold: 0.5 (adjust if needed for better contrast)
+  return luminance > 0.5 ? "dark" : "white";
+}
+
+/**
+ * Helper: Get Tailwind text color classes for a colored background
+ * Returns appropriate text colors with opacity variants for hierarchy
+ *
+ * @param hexColor - Background color in hex format
+ * @returns Object with primary, secondary, and tertiary text color classes
+ */
+export function getTextColorsForBackground(hexColor: string): {
+  primary: string;
+  secondary: string;
+  tertiary: string;
+  placeholder: string;
+} {
+  const textColor = getTextColorForBackground(hexColor);
+
+  if (textColor === "white") {
+    return {
+      primary: "text-white",
+      secondary: "text-white/80",
+      tertiary: "text-white/60",
+      placeholder: "placeholder:text-white/40",
+    };
+  }
+
+  return {
+    primary: "text-stone-900 dark:text-stone-900",
+    secondary: "text-stone-700 dark:text-stone-700",
+    tertiary: "text-stone-600 dark:text-stone-600",
+    placeholder: "placeholder:text-stone-500 dark:placeholder:text-stone-500",
+  };
 }

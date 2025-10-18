@@ -72,11 +72,11 @@ export function Timeline() {
         })}
       </div>
 
-      {/* Desktop Layout: 3x3 Grid (phases indicated by row background tint) */}
+      {/* Desktop Layout: 3x3 Grid with equal column widths */}
       <div className="hidden md:block">
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Day headers row - aligned with grid columns including label column */}
-          <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4">
+          <div className="grid grid-cols-[48px_1fr_1fr_1fr] gap-4">
             {/* Empty space for phase label column */}
             <div className="w-12" />
 
@@ -106,13 +106,13 @@ export function Timeline() {
             </div>
           </div>
 
-          {/* Phase rows (greyscale background tints with vertical labels) */}
+          {/* Phase rows with consistent grid layout */}
           {visiblePhases.map((phaseConfig, index) => {
             const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
             return (
               <div
                 key={phaseConfig.phase}
-                className="grid grid-cols-[auto_1fr_1fr_1fr] gap-4"
+                className="grid grid-cols-[48px_1fr_1fr_1fr] gap-4"
               >
                 {/* Vertical phase label on left */}
                 <div className="flex items-center justify-center w-12">

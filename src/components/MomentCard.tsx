@@ -7,7 +7,11 @@ import type { Moment } from "@/domain/entities/Moment";
 import { validateMomentName } from "@/domain/entities/Moment";
 import { useVimMode } from "@/hooks/useVimMode";
 import { VimMode } from "@/infrastructure/state/vim-mode";
-import { getFocusRingClasses } from "@/lib/design-tokens";
+import {
+  getFocusRingClasses,
+  getTextColorsForBackground,
+  momentCard,
+} from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
 interface MomentCardProps {
@@ -22,6 +26,12 @@ interface MomentCardProps {
 /**
  * MomentCard - Inline editable card for a moment
  *
+ * Design:
+ * - Full area-colored background (not just border)
+ * - Accessible text colors (white or dark based on background luminance)
+ * - Minimal borders, clean spacing
+ * - Optimized height for 3 cards per timeline cell
+ *
  * Vim interaction flow:
  * 1. NORMAL mode: Click or navigate (j/k/w/b) to card → purple focus ring
  * 2. Press 'i' → INSERT mode enters with THIS moment's ID
@@ -32,7 +42,8 @@ interface MomentCardProps {
  * Features:
  * - Inline editing (no modals)
  * - Consistent purple focus ring (all modes)
- * - Area color on border, monospace font for Vim aesthetic
+ * - Full area-colored background with accessible text
+ * - Monospace font for Vim aesthetic
  * - Real-time validation (1-3 words)
  * - Full accessibility with ARIA labels
  */
@@ -44,7 +55,12 @@ export function MomentCard({
   onUpdate,
   onDelete,
 }: MomentCardProps) {
-  const { mode, isInsertMode, focusedMomentId: vimFocusedId, enterNormalMode } = useVimMode();
+  const {
+    mode,
+    isInsertMode,
+    focusedMomentId: vimFocusedId,
+    enterNormalMode,
+  } = useVimMode();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(moment.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +124,9 @@ export function MomentCard({
 
   const validation = validateMomentName(editValue);
 
+  // Get accessible text colors based on area color
+  const textColors = getTextColorsForBackground(area.color);
+
   // Descriptive ARIA label for accessibility
   const ariaLabel = isEditing
     ? `Editing ${moment.name} in ${area.name} area`
@@ -117,15 +136,20 @@ export function MomentCard({
     <article
       ref={cardRef}
       className={cn(
-        "min-h-[56px] px-4 py-3",
-        "rounded-lg border-2",
-        "bg-surface transition-all",
+        "rounded-lg transition-all",
         "focus:outline-none",
         // Mode-specific focus rings
         isFocused && !isEditing && getFocusRingClasses("normal"),
         isEditing && getFocusRingClasses("insert")
       )}
-      style={{ borderColor: area.color }}
+      style={{
+        backgroundColor: area.color,
+        minHeight: momentCard.minHeight,
+        paddingLeft: momentCard.paddingX,
+        paddingRight: momentCard.paddingX,
+        paddingTop: momentCard.paddingY,
+        paddingBottom: momentCard.paddingY,
+      }}
       tabIndex={isFocused && !isEditing ? 0 : -1}
       onFocus={onFocus}
       data-moment-id={moment.id}
@@ -142,8 +166,9 @@ export function MomentCard({
             onKeyDown={handleKeyDown}
             className={cn(
               "text-lg font-semibold bg-transparent outline-none w-full",
-              "font-mono text-foreground",
-              "placeholder:text-text-tertiary"
+              "font-mono",
+              textColors.primary,
+              textColors.placeholder
             )}
             placeholder="Moment name (1-3 words)"
             aria-label="Moment name input"
@@ -158,17 +183,16 @@ export function MomentCard({
               className={cn(
                 "font-mono",
                 !validation.valid
-                  ? "text-red-500 dark:text-red-400"
-                  : "text-text-secondary"
+                  ? "text-red-200 dark:text-red-200 font-semibold"
+                  : textColors.secondary
               )}
               role={!validation.valid ? "alert" : "status"}
             >
-              {/* {formatWordCount(wordCount)} */}
               {!validation.valid && validation.error && (
-                <span className="ml-2">· {validation.error}</span>
+                <span>{validation.error}</span>
               )}
             </span>
-            <span className="flex gap-2 text-text-tertiary">
+            <span className={cn("flex gap-2", textColors.tertiary)}>
               <span>Enter to save</span>
               <span aria-hidden="true">·</span>
               <span>Esc to cancel</span>
@@ -176,11 +200,16 @@ export function MomentCard({
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <span className="text-xl" aria-hidden="true">
             {area.emoji}
           </span>
-          <p className="text-lg font-semibold font-mono text-foreground">
+          <p
+            className={cn(
+              "text-lg font-semibold font-mono",
+              textColors.primary
+            )}
+          >
             {moment.name}
           </p>
         </div>
