@@ -3,7 +3,10 @@ import { useHotkeys } from "react-hotkeys-hook";
 import type { Moment } from "@/domain/entities/Moment";
 import { createMoment } from "@/domain/entities/Moment";
 import { selectionState$ } from "@/infrastructure/state/selection";
-import { moments$, updateMomentWithHistory } from "@/infrastructure/state/store";
+import {
+  moments$,
+  updateMomentWithHistory,
+} from "@/infrastructure/state/store";
 import { useFocusManager } from "./useFocusManager";
 import { useHistory } from "./useHistory";
 import { useSelection } from "./useSelection";
@@ -56,7 +59,9 @@ export function useGlobalKeyboard() {
 
   // UI state for CRUD operations
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
-  const [areaSelectorMomentId, setAreaSelectorMomentId] = useState<string | null>(null);
+  const [areaSelectorMomentId, setAreaSelectorMomentId] = useState<
+    string | null
+  >(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [prefilledDay, setPrefilledDay] = useState<string | undefined>();
   const [prefilledPhase, setPrefilledPhase] = useState<string | undefined>();

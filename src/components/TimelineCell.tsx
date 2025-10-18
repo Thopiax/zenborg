@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
 /** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
 "use client";
 
@@ -10,6 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
+import { useState } from "react";
 import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
@@ -24,6 +26,7 @@ import {
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
+import { EmptyMomentCard } from "./EmptyMomentCard";
 import { MomentCard } from "./MomentCard";
 
 interface TimelineCellProps {
@@ -69,6 +72,7 @@ export function TimelineCell({
   const allMoments = use$(moments$);
   const allAreas = use$(areas$);
   const { handleOpenCreateModal } = useMomentManager();
+  const [isModHovering, setIsModHovering] = useState(false);
 
   // Get moments for this cell
   const cellMoments: Moment[] = Object.values(allMoments)
@@ -89,6 +93,31 @@ export function TimelineCell({
 
   // Check if current drop would be valid
   const wouldAcceptDrop = !isFull; // Simple check for now, validation happens in DnDProvider
+
+  // Handle mod+hover for creating moments
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    if ((e.metaKey || e.ctrlKey) && !isFull) {
+      setIsModHovering(true);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const isModPressed = e.metaKey || e.ctrlKey;
+    if (isModPressed && !isFull && !isModHovering) {
+      setIsModHovering(true);
+    } else if (!isModPressed && isModHovering) {
+      setIsModHovering(false);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsModHovering(false);
+  };
+
+  const handlePlaceholderClick = () => {
+    // Open create modal with pre-filled day and phase
+    handleOpenCreateModal(day, phase);
+  };
 
   // Generate accessible label
   const cellLabel =
@@ -126,6 +155,9 @@ export function TimelineCell({
       aria-label={cellLabel}
       aria-live={isFull ? "polite" : "off"}
       aria-atomic="true"
+      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
       {cellMoments.length > 0 ? (
         <SortableContext
@@ -139,14 +171,32 @@ export function TimelineCell({
               if (!area) return null;
 
               return (
-                <SortableMomentCard key={moment.id} moment={moment} area={area} />
+                <SortableMomentCard
+                  key={moment.id}
+                  moment={moment}
+                  area={area}
+                  contextMomentIds={cellMoments.map((m) => m.id)}
+                />
               );
             })}
+            {/* Show placeholder at the end if mod+hovering and not full */}
+            {isModHovering && !isFull && (
+              <EmptyMomentCard
+                onClick={handlePlaceholderClick}
+                label={`Add to ${phaseLabel || phase}`}
+              />
+            )}
           </div>
         </SortableContext>
       ) : (
         <div className="flex items-center justify-center h-full min-h-[192px]">
-          {/* Empty state - just a drop target, no visual clutter */}
+          {/* Empty state - show placeholder when mod+hovering */}
+          {isModHovering ? (
+            <EmptyMomentCard
+              onClick={handlePlaceholderClick}
+              label={`Add to ${phaseLabel || phase}`}
+            />
+          ) : null}
         </div>
       )}
 
@@ -178,9 +228,14 @@ export function TimelineCell({
 interface SortableMomentCardProps {
   moment: Moment;
   area: Area;
+  contextMomentIds?: string[];
 }
 
-function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
+function SortableMomentCard({
+  moment,
+  area,
+  contextMomentIds,
+}: SortableMomentCardProps) {
   const isDuplicateMode = use$(isDuplicateMode$);
 
   // Always use useSortable, disable sorting behavior during duplicate mode
@@ -213,7 +268,11 @@ function SortableMomentCard({ moment, area }: SortableMomentCardProps) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <MomentCard moment={moment} area={area} />
+      <MomentCard
+        moment={moment}
+        area={area}
+        contextMomentIds={contextMomentIds}
+      />
     </div>
   );
 }

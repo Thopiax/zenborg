@@ -214,6 +214,7 @@ export function DrawingBoard() {
                         key={moment.id}
                         moment={moment}
                         area={area}
+                        contextMomentIds={unallocated.map((m) => m.id)}
                       />
                     );
                   })}
@@ -236,9 +237,10 @@ export function DrawingBoard() {
 interface DraggableMomentCardProps {
   moment: Moment;
   area: Area;
+  contextMomentIds?: string[];
 }
 
-function DraggableMomentCard({ moment, area }: DraggableMomentCardProps) {
+function DraggableMomentCard({ moment, area, contextMomentIds }: DraggableMomentCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: moment.id,
@@ -266,7 +268,7 @@ function DraggableMomentCard({ moment, area }: DraggableMomentCardProps) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <MomentCard moment={moment} area={area} />
+      <MomentCard moment={moment} area={area} contextMomentIds={contextMomentIds} />
     </div>
   );
 }

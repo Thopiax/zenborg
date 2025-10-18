@@ -127,6 +127,7 @@ export function DrawingBoardColumn({
                 moment={moment}
                 area={area}
                 canDragBetweenColumns={canAcceptDrops}
+                contextMomentIds={group.moments.map((m) => m.id)}
               />
             );
           })}
@@ -164,12 +165,14 @@ interface SortableMomentCardProps {
   moment: Moment;
   area: Area;
   canDragBetweenColumns: boolean;
+  contextMomentIds?: string[];
 }
 
 function SortableMomentCard({
   moment,
   area,
   canDragBetweenColumns,
+  contextMomentIds,
 }: SortableMomentCardProps) {
   const {
     attributes,
@@ -198,7 +201,7 @@ function SortableMomentCard({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <MomentCard moment={moment} area={area} />
+      <MomentCard moment={moment} area={area} contextMomentIds={contextMomentIds} />
     </div>
   );
 }

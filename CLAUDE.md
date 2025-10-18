@@ -587,4 +587,8 @@ Open source (to be determined - likely MIT or Apache 2.0)
 This is a personal project for conscious attention management. Built with the philosophy that **structure should guide our organic growth** and that **technology should enhance rather than extract human attention**.
 
 *"Where will I place my consciousness today?"*
+
+# IMPORTANT DEV INSTRUCTIONS
+
 - do not run the dev OR build the app, I'm running it myself
+- IMPORTANT: only use `stone` tones (monochrome) unless attributed to an area

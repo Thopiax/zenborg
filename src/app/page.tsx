@@ -10,6 +10,7 @@ import { Timeline } from "@/components/Timeline";
 import { MomentManagerProvider } from "@/contexts/MomentManagerContext";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
+import { useSelection } from "@/hooks/useSelection";
 import { moments$ } from "@/infrastructure/state/store";
 
 /**
@@ -48,13 +49,34 @@ export default function HomePage() {
   const areaSelectorMoment = areaSelectorMomentId ? allMoments[areaSelectorMomentId] : null;
   const currentAreaId = areaSelectorMoment?.areaId || "";
 
+  // Import clearSelection from useSelection hook
+  const { clearSelection, hasAnySelected } = useSelection();
+
+  // Handle click on background to clear selection
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    // Clear selection if clicking outside of moment cards
+    // Check if the click target is not a button (moment cards are buttons)
+    // or any child of a button
+    const target = e.target as HTMLElement;
+    const isClickOnMoment = target.closest('button[data-moment-id]');
+    const isClickOnInteractive = target.closest('button, a, input, select, textarea');
+
+    if (!isClickOnMoment && !isClickOnInteractive && hasAnySelected) {
+      clearSelection();
+    }
+  };
+
   return (
     <MomentManagerProvider
       handleOpenCreateModal={handleOpenCreateModal}
       handleOpenEditModal={handleOpenEditModal}
     >
       <DnDProvider>
-        <div className="min-h-screen bg-background transition-colors flex flex-col">
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: Background click to clear selection */}
+        <div
+          className="min-h-screen bg-background transition-colors flex flex-col"
+          onMouseDown={handleBackgroundClick}
+        >
           {/* Main Content */}
           <main className="flex-1 flex flex-col">
             {/* Timeline */}

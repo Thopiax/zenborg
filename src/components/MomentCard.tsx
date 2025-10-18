@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 interface MomentCardProps {
   moment: Moment;
   area: Area;
+  /** Optional array of all moment IDs in the current context (for shift-click range selection) */
+  contextMomentIds?: string[];
 }
 
 /**
@@ -24,27 +26,32 @@ interface MomentCardProps {
  * Interaction flow:
  * 1. Single click → Opens MomentEditCard modal
  * 2. Cmd/Ctrl + click → Toggle selection (shows ring)
- * 3. Shift + click → Toggle selection (without entering edit mode)
+ * 3. Shift + click → Range selection from last selected to current (if contextMomentIds provided)
  * 4. Hover → Shows subtle 1px ring
  * 5. Selected → Shows prominent 2px ring in area color
  *
  * Features:
  * - Multi-select for bulk operations
- * - Toggle selection with Shift+click or Cmd/Ctrl+click
+ * - Range selection with Shift+click (within same column/context)
+ * - Toggle selection with Cmd/Ctrl+click
  * - Calm, minimalist design with color-matched rings
  * - Full accessibility with ARIA labels
  */
-export function MomentCard({ moment, area }: MomentCardProps) {
+export function MomentCard({ moment, area, contextMomentIds }: MomentCardProps) {
   const { handleOpenEditModal } = useMomentManager();
-  const { isSelected: isSelectedMoment, toggleSelection } = useSelection();
+  const { isSelected: isSelectedMoment, toggleSelection, selectRange } = useSelection();
 
   const isSelected = isSelectedMoment(moment.id);
 
   const handleClick = (e: React.MouseEvent) => {
-    // Shift + click → Toggle selection (without entering edit mode)
+    // Shift + click → Range selection (if contextMomentIds provided)
     if (e.shiftKey) {
       e.preventDefault();
-      toggleSelection(moment.id);
+      if (contextMomentIds && contextMomentIds.length > 0) {
+        selectRange(moment.id, contextMomentIds);
+      } else {
+        toggleSelection(moment.id);
+      }
     }
     // Cmd/Ctrl + click → Toggle selection
     else if (e.metaKey || e.ctrlKey) {

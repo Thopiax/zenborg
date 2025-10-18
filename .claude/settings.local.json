@@ -37,7 +37,8 @@
       "Bash(npx shadcn@latest add select -y)",
       "Bash(git log -1 --format='%s%n%b')",
       "Bash(git checkout src/components/MomentCard.tsx src/infrastructure/state/vim-mode.ts)",
-      "Bash(npx tsc --noEmit)"
+      "Bash(npx tsc --noEmit)",
+      "Bash(tree -L 3 -I 'node_modules' /Users/rafa/Developer/zenborg/src)"
     ],
     "deny": [],
     "ask": []

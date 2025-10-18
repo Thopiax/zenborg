@@ -35,6 +35,7 @@ import {
   moveMomentWithHistory,
   reorderMomentsWithHistory,
 } from "@/infrastructure/state/history-middleware";
+import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
 import {
@@ -54,19 +55,35 @@ export function DnDProvider({ children }: DnDProviderProps) {
   const isDuplicateMode = use$(isDuplicateMode$);
   const allMoments = use$(moments$);
   const allAreas = use$(areas$);
+  const selectedMomentIds = use$(selectionState$.selectedMomentIds);
 
   // Custom collision detection strategy
-  // Use pointerWithin first (for DrawingBoard hover states), then fall back to rectIntersection
+  // Prioritize pointer-based detection for better accuracy when dropping
   const collisionDetectionStrategy: CollisionDetection = (args) => {
-    // First try pointer-based detection (good for hover states)
+    // First try pointer-based detection
+    // This works well for both mouse and touch (mobile)
     const pointerCollisions = pointerWithin(args);
 
-    // If we found collisions with pointer, use them
     if (pointerCollisions.length > 0) {
+      // Filter to prefer droppable containers over sortable items
+      const droppableCollisions = pointerCollisions.filter((collision) => {
+        const id = collision.id.toString();
+        return (
+          id.startsWith("timeline-") ||
+          id.startsWith("drawing-board") ||
+          id.startsWith("column-")
+        );
+      });
+
+      // Return droppable if found, otherwise return all collisions
+      if (droppableCollisions.length > 0) {
+        return droppableCollisions;
+      }
+
       return pointerCollisions;
     }
 
-    // Otherwise fall back to rect intersection (better for touch/drag accuracy)
+    // Fallback to rect intersection for edge cases
     return rectIntersection(args);
   };
 
@@ -112,6 +129,40 @@ export function DnDProvider({ children }: DnDProviderProps) {
     const dragData = active.data.current as DraggableData | undefined;
     const dropData = over.data.current as DroppableData | undefined;
 
+    // Check if we're dragging a selected moment with multiple selections
+    // Use .get() to get the latest selection state at drop time
+    const currentSelectedIds = selectionState$.selectedMomentIds.get();
+    const draggedMomentId = active.id as string;
+    const isDraggingSelection =
+      currentSelectedIds.includes(draggedMomentId) &&
+      currentSelectedIds.length > 1;
+
+    console.log("[DnD] Drag end:", {
+      draggedMomentId,
+      selectedMomentIds: currentSelectedIds,
+      isDraggingSelection,
+      dropTargetType: dropData?.targetType,
+    });
+
+    if (isDraggingSelection && dropData?.targetType === "timeline-cell") {
+      // Handle batch drop for multiple selected moments
+      console.log("[DnD] Handling batch drop on timeline cell", currentSelectedIds);
+      handleBatchDropOnTimelineCell(
+        currentSelectedIds,
+        dropData,
+        wasDuplicateMode
+      );
+      return;
+    }
+
+    if (isDraggingSelection && dropData?.targetType === "drawing-board") {
+      // Handle batch drop on drawing board (unallocate all)
+      if (!wasDuplicateMode) {
+        handleBatchDropOnDrawingBoard(currentSelectedIds);
+      }
+      return;
+    }
+
     // Handle sortable reordering (when dragging over another moment, not a cell)
     if (active.id !== over.id && !dropData?.targetType) {
       const activeMoment = allMoments[active.id as string];
@@ -119,6 +170,30 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
       if (!activeMoment || !overMoment) {
         return;
+      }
+
+      // If dragging multiple selected moments, treat dropping on a moment as dropping on its cell/area
+      if (isDraggingSelection) {
+        if (overMoment.day && overMoment.phase) {
+          // Dropping on allocated moment -> move to its cell
+          console.log("[DnD] Multi-select dropped on allocated moment - treating as cell drop");
+          const cellDropData: DroppableData = {
+            targetType: "timeline-cell",
+            targetDay: overMoment.day,
+            targetPhase: overMoment.phase,
+          };
+          handleBatchDropOnTimelineCell(
+            currentSelectedIds,
+            cellDropData,
+            wasDuplicateMode
+          );
+          return;
+        } else if (!wasDuplicateMode) {
+          // Dropping on unallocated moment -> move to drawing board
+          console.log("[DnD] Multi-select dropped on unallocated moment - treating as drawing board drop");
+          handleBatchDropOnDrawingBoard(currentSelectedIds);
+          return;
+        }
       }
 
       // Reorder within timeline cell (both moments are allocated to same cell)
@@ -272,7 +347,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     if (shouldDuplicate) {
       // Duplicate mode: create a copy of the moment in the target cell
-      const originalMoment = allMoments[momentId];
       duplicateMomentWithHistory(
         momentId,
         targetDay,
@@ -436,6 +510,169 @@ export function DnDProvider({ children }: DnDProviderProps) {
     }
   }
 
+  /**
+   * Handle batch drop of multiple selected moments on timeline cell
+   */
+  function handleBatchDropOnTimelineCell(
+    momentIds: string[],
+    dropData: DroppableData,
+    shouldDuplicate = false
+  ) {
+    console.log("[DnD] handleBatchDropOnTimelineCell called with:", {
+      momentIds,
+      count: momentIds.length,
+      targetDay: dropData.targetDay,
+      targetPhase: dropData.targetPhase,
+      shouldDuplicate,
+    });
+
+    const { targetDay, targetPhase } = dropData;
+
+    if (!targetDay || !targetPhase) {
+      console.error("Timeline cell missing day/phase", dropData);
+      return;
+    }
+
+    // Check if we have enough space for all selected moments
+    const currentMomentsInCell = Object.values(allMoments).filter(
+      (m) => m.day === targetDay && m.phase === targetPhase
+    );
+
+    const spaceNeeded = shouldDuplicate
+      ? momentIds.length
+      : momentIds.length -
+        momentIds.filter((id) => {
+          const m = allMoments[id];
+          return m && m.day === targetDay && m.phase === targetPhase;
+        }).length;
+
+    const availableSpace = 3 - currentMomentsInCell.length;
+
+    if (spaceNeeded > availableSpace) {
+      console.warn(
+        `Cannot drop ${momentIds.length} moments: only ${availableSpace} spaces available`
+      );
+      // TODO: Show visual feedback
+      return;
+    }
+
+    // Batch all the moves/duplicates together
+    startBatch();
+
+    let currentOrder = calculateNextOrder(
+      targetDay,
+      targetPhase,
+      allMoments,
+      shouldDuplicate ? "" : momentIds[0]
+    );
+
+    for (const momentId of momentIds) {
+      const moment = allMoments[momentId];
+      if (!moment) {
+        console.warn("[DnD] Moment not found:", momentId);
+        continue;
+      }
+
+      console.log("[DnD] Processing moment:", {
+        momentId,
+        name: moment.name,
+        currentOrder,
+        shouldDuplicate,
+      });
+
+      if (shouldDuplicate) {
+        // Duplicate each moment to the target cell
+        duplicateMomentWithHistory(
+          momentId,
+          targetDay,
+          targetPhase as Phase,
+          currentOrder
+        );
+        currentOrder++;
+      } else {
+        // Move each moment to the target cell
+        const sourceDay = moment.day;
+        const sourcePhase = moment.phase;
+
+        // Skip if already in target cell
+        if (sourceDay === targetDay && sourcePhase === targetPhase) {
+          console.log("[DnD] Skipping - already in target cell");
+          continue;
+        }
+
+        // Calculate reorders in source cell (if moving from timeline)
+        const reorders =
+          sourceDay && sourcePhase
+            ? reorderAfterRemoval(
+                sourceDay,
+                sourcePhase,
+                allMoments,
+                momentId
+              ).map(({ momentId: id, newOrder: order }) => ({
+                momentId: id,
+                fromOrder: allMoments[id].order,
+                toOrder: order,
+              }))
+            : undefined;
+
+        // Apply move with history
+        moveMomentWithHistory(
+          momentId,
+          targetDay,
+          targetPhase as Phase,
+          currentOrder,
+          reorders
+        );
+        currentOrder++;
+      }
+    }
+
+    endBatch(
+      shouldDuplicate
+        ? `Duplicated ${momentIds.length} moments to ${targetDay} ${targetPhase}`
+        : `Moved ${momentIds.length} moments to ${targetDay} ${targetPhase}`
+    );
+
+    console.log("[DnD] Batch drop complete");
+  }
+
+  /**
+   * Handle batch drop of multiple selected moments on drawing board (unallocate all)
+   */
+  function handleBatchDropOnDrawingBoard(momentIds: string[]) {
+    startBatch();
+
+    for (const momentId of momentIds) {
+      const moment = allMoments[momentId];
+      if (!moment) continue;
+
+      const sourceDay = moment.day;
+      const sourcePhase = moment.phase;
+
+      // Only process if moment was allocated
+      if (!sourceDay || !sourcePhase) {
+        continue; // Already unallocated
+      }
+
+      // Calculate reorders in source cell
+      const reorders = reorderAfterRemoval(
+        sourceDay,
+        sourcePhase,
+        allMoments,
+        momentId
+      ).map(({ momentId: id, newOrder: order }) => ({
+        momentId: id,
+        fromOrder: allMoments[id].order,
+        toOrder: order,
+      }));
+
+      // Unallocate the moment
+      moveMomentWithHistory(momentId, null, null, 0, reorders);
+    }
+
+    endBatch(`Unallocated ${momentIds.length} moments to drawing board`);
+  }
+
   function handleDragCancel() {
     setActiveId(null);
     isDuplicateMode$.set(false);
@@ -455,11 +692,54 @@ export function DnDProvider({ children }: DnDProviderProps) {
     >
       {children}
 
-      {/* Drag overlay shows preview of dragged item */}
+      {/* Drag overlay shows preview of dragged item(s) */}
       <DragOverlay>
         {activeMoment && activeArea ? (
           <div className={isDuplicateMode ? "cursor-copy" : "cursor-grabbing"}>
-            <MomentCard moment={activeMoment} area={activeArea} />
+            {/* Check if dragging multiple selected moments */}
+            {selectedMomentIds.includes(activeMoment.id) &&
+            selectedMomentIds.length > 1 ? (
+              // Show stacked preview for multiple items
+              <div className="relative">
+                {/* Show up to 3 cards in a stacked effect */}
+                {selectedMomentIds.slice(0, 3).map((momentId, index) => {
+                  const moment = allMoments[momentId];
+                  const area = moment ? allAreas[moment.areaId] : null;
+                  if (!moment || !area) return null;
+
+                  return (
+                    <div
+                      key={momentId}
+                      className="absolute"
+                      style={{
+                        top: `${index * 8}px`,
+                        left: `${index * 8}px`,
+                        zIndex: 3 - index,
+                        opacity: index === 0 ? 1 : 0.6,
+                      }}
+                    >
+                      <MomentCard moment={moment} area={area} />
+                    </div>
+                  );
+                })}
+                {/* Show count badge if more than 3 selected */}
+                {selectedMomentIds.length > 3 && (
+                  <div
+                    className="absolute bg-stone-900 dark:bg-stone-100 text-stone-50 dark:text-stone-900 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold font-mono"
+                    style={{
+                      top: "24px",
+                      right: "-12px",
+                      zIndex: 4,
+                    }}
+                  >
+                    {selectedMomentIds.length}
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Single moment - show normally
+              <MomentCard moment={activeMoment} area={activeArea} />
+            )}
           </div>
         ) : null}
       </DragOverlay>
