@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
@@ -74,6 +74,18 @@ export function TimelineCell({
   const allAreas = use$(areas$);
   const { handleOpenCreateModal } = useMomentManager();
   const [isModHovering, setIsModHovering] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Get moments for this cell
   const cellMoments: Moment[] = Object.values(allMoments)
@@ -131,6 +143,11 @@ export function TimelineCell({
         )
       : `${day} ${phase}, ${cellMoments.length} of ${momentConstraints.maxMomentsPerCell} moments`;
 
+  // Determine if we should show placeholders:
+  // - Mobile: always show placeholders if not full
+  // - Desktop: only show on mod+hover
+  const shouldShowPlaceholder = isModHovering || (isMobile && !isFull);
+
   return (
     <div
       ref={setNodeRef}
@@ -182,8 +199,8 @@ export function TimelineCell({
                 />
               );
             })}
-            {/* Show placeholder at the end if mod+hovering and not full */}
-            {isModHovering && !isFull && (
+            {/* Show placeholder if conditions met and not full */}
+            {shouldShowPlaceholder && !isFull && (
               <EmptyMomentCard
                 onClick={handlePlaceholderClick}
                 label={`Add to ${phaseLabel || phase}`}
@@ -193,8 +210,8 @@ export function TimelineCell({
         </SortableContext>
       ) : (
         <div className="flex items-center justify-center h-full min-h-[192px]">
-          {/* Empty state - show placeholder when mod+hovering */}
-          {isModHovering ? (
+          {/* Empty state - show placeholder based on conditions */}
+          {shouldShowPlaceholder ? (
             <EmptyMomentCard
               onClick={handlePlaceholderClick}
               label={`Add to ${phaseLabel || phase}`}
