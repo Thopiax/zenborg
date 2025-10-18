@@ -10,9 +10,9 @@ import { createMoment } from "../entities/Moment";
 
 describe("Area", () => {
   describe("getDefaultAreas", () => {
-    it("should create 5 default areas", () => {
+    it("should create 6 default areas", () => {
       const areas = getDefaultAreas();
-      expect(areas).toHaveLength(5);
+      expect(areas).toHaveLength(6);
     });
 
     it("should have correct default area names", () => {
@@ -24,6 +24,7 @@ describe("Area", () => {
         "Social",
         "Joyful",
         "Introspective",
+        "Chore",
       ]);
     });
 
@@ -34,15 +35,17 @@ describe("Area", () => {
       expect(areas[2].color).toBe("#f97316"); // Social - orange
       expect(areas[3].color).toBe("#eab308"); // Joyful - yellow
       expect(areas[4].color).toBe("#6b7280"); // Introspective - gray
+      expect(areas[5].color).toBe("#8b5cf6"); // Chore - purple
     });
 
     it("should have correct emojis", () => {
       const areas = getDefaultAreas();
-      expect(areas[0].emoji).toBe("🟢");
-      expect(areas[1].emoji).toBe("🔵");
-      expect(areas[2].emoji).toBe("🟠");
-      expect(areas[3].emoji).toBe("🟡");
-      expect(areas[4].emoji).toBe("⚪");
+      expect(areas[0].emoji).toBe("🧘");
+      expect(areas[1].emoji).toBe("🎨");
+      expect(areas[2].emoji).toBe("🤝");
+      expect(areas[3].emoji).toBe("😄");
+      expect(areas[4].emoji).toBe("🤔");
+      expect(areas[5].emoji).toBe("🧹");
     });
 
     it("should mark all as default", () => {
@@ -61,7 +64,7 @@ describe("Area", () => {
       const areas = getDefaultAreas();
       const ids = areas.map((a) => a.id);
       const uniqueIds = new Set(ids);
-      expect(uniqueIds.size).toBe(5);
+      expect(uniqueIds.size).toBe(6);
     });
 
     it("should have timestamps", () => {

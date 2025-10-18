@@ -16,7 +16,7 @@ describe('Initialize Store', () => {
       const areas = areas$.get()
       const areaValues = Object.values(areas)
 
-      expect(areaValues).toHaveLength(5)
+      expect(areaValues).toHaveLength(6)
 
       const names = areaValues.map((a) => a.name)
       expect(names).toContain('Wellness')
@@ -24,6 +24,7 @@ describe('Initialize Store', () => {
       expect(names).toContain('Social')
       expect(names).toContain('Joyful')
       expect(names).toContain('Introspective')
+      expect(names).toContain('Chore')
     })
 
     it('should create default phase configurations on first run', async () => {

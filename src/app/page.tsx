@@ -6,7 +6,7 @@ import { AreaSelector } from "@/components/AreaSelector";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
 import { MomentModal } from "@/components/MomentModal";
-import { ResetButton } from "@/components/ResetButton";
+import { SettingsModal, SettingsButton } from "@/components/SettingsModal";
 import { Timeline } from "@/components/Timeline";
 import { MomentManagerProvider } from "@/contexts/MomentManagerContext";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
@@ -42,6 +42,8 @@ export default function HomePage() {
     handleOpenEditModal,
     isAreaManagementOpen,
     setIsAreaManagementOpen,
+    isSettingsOpen,
+    setIsSettingsOpen,
   } = useGlobalKeyboard();
 
   // Get the focused moment's current area
@@ -91,8 +93,10 @@ export default function HomePage() {
             <DrawingBoard />
           </main>
 
-          {/* Reset Button - Fixed top-right */}
-          <ResetButton />
+          {/* Settings Button - Fixed top-right */}
+          <div className="fixed top-6 right-6 z-40">
+            <SettingsButton onClick={() => setIsSettingsOpen(true)} />
+          </div>
 
           {/* Area Selector - Modal for changing moment area (triggered by 'A' key) */}
           {areaSelectorMomentId && (
@@ -144,6 +148,12 @@ export default function HomePage() {
           <AreaManagementModal
             open={isAreaManagementOpen}
             onClose={() => setIsAreaManagementOpen(false)}
+          />
+
+          {/* Settings Modal - Triggered by Mod+, */}
+          <SettingsModal
+            open={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
           />
         </div>
       </DnDProvider>

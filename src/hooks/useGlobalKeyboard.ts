@@ -73,13 +73,14 @@ export function useGlobalKeyboard() {
   const [isEditCardOpen, setIsEditCardOpen] = useState(false);
   const [editingMomentId, setEditingMomentId] = useState<string | null>(null);
   const [isAreaManagementOpen, setIsAreaManagementOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Yank buffer for copy/paste
   const [yankBuffer, setYankBuffer] = useState<Moment | null>(null);
 
   // Disable global shortcuts when any modal is open to allow typing
   const globalShortcutsEnabled =
-    !isEditCardOpen && !isAreaSelectorOpen && !isCreateModalOpen && !isAreaManagementOpen;
+    !isEditCardOpen && !isAreaSelectorOpen && !isCreateModalOpen && !isAreaManagementOpen && !isSettingsOpen;
 
   // ==================== GLOBAL SHORTCUTS ====================
 
@@ -126,6 +127,16 @@ export function useGlobalKeyboard() {
     (e) => {
       e.preventDefault();
       setIsAreaManagementOpen(true);
+    },
+    { enabled: globalShortcutsEnabled, enableOnFormTags: false }
+  );
+
+  // Mod+, - Open settings
+  useHotkeys(
+    "mod+comma",
+    (e) => {
+      e.preventDefault();
+      setIsSettingsOpen(true);
     },
     { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
@@ -470,5 +481,8 @@ export function useGlobalKeyboard() {
     // Area management state
     isAreaManagementOpen,
     setIsAreaManagementOpen,
+    // Settings state
+    isSettingsOpen,
+    setIsSettingsOpen,
   };
 }

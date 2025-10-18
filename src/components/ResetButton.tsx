@@ -45,7 +45,7 @@ export function ResetButton() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="fixed top-6 right-6 z-40 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-200 shadow-md hover:shadow-lg transition-all p-3 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-200 shadow-md hover:shadow-lg transition-all p-3 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Reset all data"
           disabled={isResetting}
         >

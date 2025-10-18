@@ -187,7 +187,10 @@ export function getGroupingFunction(
 ): ((moments: Moment[], areas?: Record<string, Area>) => MomentGroup[]) | null {
   switch (groupBy) {
     case "area":
-      return groupByArea;
+      return (moments: Moment[], areas?: Record<string, Area>) => {
+        if (!areas) return [];
+        return groupByArea(moments, areas);
+      };
     case "created":
       return groupByCreated;
     case "horizon":

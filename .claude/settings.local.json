@@ -40,7 +40,12 @@
       "Bash(npx tsc --noEmit)",
       "Bash(tree -L 3 -I 'node_modules' /Users/rafa/Developer/zenborg/src)",
       "Bash(pnpm add @dnd-kit/modifiers)",
-      "Bash(git checkout src/components/DnDProvider.tsx)"
+      "Bash(git checkout src/components/DnDProvider.tsx)",
+      "Bash(test -d .husky)",
+      "Bash(pnpm add -D husky)",
+      "Bash(npx husky init)",
+      "Bash(chmod +x .husky/pre-push)",
+      "Bash(pnpm run build)"
     ],
     "deny": [],
     "ask": []
