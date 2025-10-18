@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test:*)",
+      "Bash(pnpm test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd domain foundation with pure TypeScript entities\n\nImplement Phase 1: Domain Foundation with comprehensive test coverage.\n\nDomain Entities:\n- Moment: Named intentions (1-3 words) with allocation logic\n- Area: Life domains with 5 defaults (Wellness, Craft, Social, Joyful, Introspective)\n- Phase: Time-of-day configuration with wrap-around support\n- Cycle: Time containers for organizing moments\n\nFeatures:\n- Full validation for all business rules\n- Max 3 moments per (day, phase) constraint\n- PostgreSQL-ready schema (UUIDs, ISO timestamps, FK structure)\n- Immutable patterns with functional updates\n- Type-safe with strict TypeScript\n\nTesting:\n- 120 tests passing across 4 test suites\n- Vitest configuration with ESM support\n- Test scripts: test, test:ui, test:coverage\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(pnpm test:coverage:*)",
+      "Bash(git commit:*)",
+      "Bash(pnpm dev)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
