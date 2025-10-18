@@ -11,6 +11,8 @@ interface MomentModalProps {
   initialName?: string;
   initialAreaId?: string;
   initialHorizon?: Horizon | null;
+  /** Whether the moment is allocated (has day/phase). If true, horizon selector is hidden. */
+  isAllocated?: boolean;
   onSave: (name: string, areaId: string, horizon: Horizon | null) => void;
   onCancel: () => void;
 }
@@ -28,6 +30,7 @@ export function MomentModal({
   initialName = "",
   initialAreaId = "",
   initialHorizon = null,
+  isAllocated = false,
   onSave,
   onCancel,
 }: MomentModalProps) {
@@ -66,6 +69,7 @@ export function MomentModal({
             initialName={initialName}
             initialAreaId={initialAreaId}
             initialHorizon={initialHorizon}
+            isAllocated={isAllocated}
             onSave={onSave}
             onCancel={onCancel}
             showCreateMore={mode === "create"}

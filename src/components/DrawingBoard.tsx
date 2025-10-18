@@ -7,25 +7,6 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useState } from "react";
-import { useMomentManager } from "@/contexts/MomentManagerContext";
-import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
-import { areas$, unallocatedMoments$ } from "@/infrastructure/state/store";
-import {
-  drawingBoardGroupBy$,
-  isDuplicateMode$,
-  type DrawingBoardGroupBy,
-} from "@/infrastructure/state/ui-store";
-import { cn } from "@/lib/utils";
-import type { DropTargetType } from "@/types/dnd";
-import {
-  getGroupingFunction,
-  groupByArea,
-  groupByCreated,
-  groupByHorizon,
-} from "@/lib/grouping";
-import { MomentCard } from "./MomentCard";
-import { DrawingBoardColumn } from "./DrawingBoardColumn";
 import {
   Select,
   SelectContent,
@@ -33,6 +14,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMomentManager } from "@/contexts/MomentManagerContext";
+import type { Area } from "@/domain/entities/Area";
+import type { Moment } from "@/domain/entities/Moment";
+import { areas$, unallocatedMoments$ } from "@/infrastructure/state/store";
+import {
+  type DrawingBoardGroupBy,
+  drawingBoardGroupBy$,
+  isDuplicateMode$,
+} from "@/infrastructure/state/ui-store";
+import {
+  getGroupingFunction,
+  groupByArea,
+  groupByCreated,
+  groupByHorizon,
+} from "@/lib/grouping";
+import { cn } from "@/lib/utils";
+import type { DropTargetType } from "@/types/dnd";
+import { DrawingBoardColumn } from "./DrawingBoardColumn";
+import { MomentCard } from "./MomentCard";
 
 /**
  * DrawingBoard - Collapsible container for unallocated moments
@@ -106,7 +106,9 @@ export function DrawingBoard() {
               onClick={(e) => e.stopPropagation()}
               className="flex items-center gap-2"
             >
-              <span className="text-xs text-stone-500 font-mono">Group by:</span>
+              <span className="text-xs text-stone-500 font-mono">
+                Group by:
+              </span>
               <Select value={groupBy} onValueChange={handleGroupByChange}>
                 <SelectTrigger className="h-7 w-[140px] text-xs font-mono">
                   <SelectValue />
@@ -149,8 +151,8 @@ export function DrawingBoard() {
         <>
           {/* Grouped Layout (columns) */}
           {groups ? (
-            <div className="bg-white dark:bg-stone-950 px-6 py-8">
-              <div className="flex gap-4 overflow-x-auto">
+            <div className="bg-white dark:bg-stone-950">
+              <div className="flex gap-4 overflow-x-auto px-6 py-8">
                 {groups.map((group) => (
                   <DrawingBoardColumn
                     key={group.groupId}

@@ -7,7 +7,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
 import { HorizonSelector } from "@/components/HorizonSelector";
 import type { Area } from "@/domain/entities/Area";
-import { validateMomentName, type Horizon } from "@/domain/entities/Moment";
+import { type Horizon, validateMomentName } from "@/domain/entities/Moment";
 import { areas$ } from "@/infrastructure/state/store";
 import { lastUsedAreaId$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,8 @@ interface MomentFormProps {
   initialName?: string;
   initialAreaId?: string;
   initialHorizon?: Horizon | null;
+  /** Whether the moment is allocated (has day/phase). If true, horizon selector is hidden. */
+  isAllocated?: boolean;
   onSave: (
     name: string,
     areaId: string,
@@ -34,7 +36,7 @@ interface MomentFormProps {
  * Features:
  * - Name input with validation (1-3 words)
  * - Area selection with keyboard shortcuts (1-5, Tab, A)
- * - Horizon selection (only for create mode - unallocated moments)
+ * - Horizon selection (only for unallocated moments)
  * - Enter to save, Escape to cancel
  * - Optional "Create more" toggle for batch creation
  */
@@ -43,12 +45,16 @@ export function MomentForm({
   initialName = "",
   initialAreaId = "",
   initialHorizon = null,
+  isAllocated = false,
   onSave,
   onCancel,
   showCreateMore = false,
 }: MomentFormProps) {
-  // Horizon is only editable for create mode (unallocated moments)
-  const showHorizonSelector = mode === "create";
+  // Horizon is only editable for unallocated moments (create mode or edit unallocated)
+  const showHorizonSelector = useMemo(
+    () => mode === "create" || (mode === "edit" && !isAllocated),
+    [mode, isAllocated]
+  );
   const allAreas = use$(areas$);
   const lastUsedAreaId = use$(lastUsedAreaId$);
   const areasList: Area[] = useMemo(
@@ -195,7 +201,6 @@ export function MomentForm({
     const selectedArea =
       areasList.find((area) => area.id === selectedAreaId) || areasList[0];
     if (validation.valid && selectedArea) {
-
       // Persist the selected area ID for future use
       lastUsedAreaId$.set(selectedArea.id);
 
@@ -287,9 +292,13 @@ export function MomentForm({
               className="min-w-[200px] flex-1 flex items-center gap-2 px-4 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 justify-between"
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-stone-400">Horizon:</span>
+                <span className="text-xs font-mono text-stone-400">
+                  Horizon:
+                </span>
                 <span className="font-mono text-sm">
-                  {horizon ? horizon.charAt(0).toUpperCase() + horizon.slice(1) : "Unset"}
+                  {horizon
+                    ? horizon.charAt(0).toUpperCase() + horizon.slice(1)
+                    : "Unset"}
                 </span>
               </div>
               <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400">

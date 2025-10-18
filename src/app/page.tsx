@@ -106,6 +106,11 @@ export default function HomePage() {
             initialHorizon={
               editingMomentId ? allMoments[editingMomentId]?.horizon ?? null : null
             }
+            isAllocated={
+              editingMomentId
+                ? !!(allMoments[editingMomentId]?.day && allMoments[editingMomentId]?.phase)
+                : false
+            }
             onSave={handleSaveEdit}
             onCancel={handleCancelEdit}
           />

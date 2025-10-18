@@ -34,7 +34,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(test -f /Users/rafa/Developer/zenborg/.claude.json)",
       "Bash(cat components.json)",
-      "Bash(npx shadcn@latest add select -y)"
+      "Bash(npx shadcn@latest add select -y)",
+      "Bash(git log -1 --format='%s%n%b')"
     ],
     "deny": [],
     "ask": []
