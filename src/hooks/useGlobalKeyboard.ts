@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import type { Moment } from "@/domain/entities/Moment";
 import { createMoment } from "@/domain/entities/Moment";
-import { moments$ } from "@/infrastructure/state/store";
 import { selectionState$ } from "@/infrastructure/state/selection";
+import { moments$ } from "@/infrastructure/state/store";
 import { useFocusManager } from "./useFocusManager";
+import { useHistory } from "./useHistory";
 import { useSelection } from "./useSelection";
 
 /**
@@ -21,6 +22,10 @@ import { useSelection } from "./useSelection";
  * - Shift+click / Cmd+click: Toggle moment selection
  * - Mod+A: Select all moments
  * - Escape: Clear selection
+ *
+ * History (Undo/Redo):
+ * - Mod+Z: Undo last operation
+ * - Mod+Shift+Z / Mod+Y: Redo last undone operation
  *
  * Navigation (Vim-style):
  * - j/k (↓/↑): Navigate moments vertically
@@ -44,6 +49,7 @@ export function useGlobalKeyboard() {
   } = useFocusManager();
 
   const { deleteSelected } = useSelection();
+  const { undo, redo, canUndo, canRedo } = useHistory();
 
   // UI state for CRUD operations
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
@@ -146,6 +152,44 @@ export function useGlobalKeyboard() {
 
       console.log("[Mod+Backspace] Calling deleteSelected");
       deleteSelected();
+    },
+    { enabled: globalShortcutsEnabled, enableOnFormTags: false }
+  );
+
+  // ==================== HISTORY (Undo/Redo) ====================
+
+  // Mod+Z - Undo
+  useHotkeys(
+    "mod+z",
+    (e) => {
+      if (!canUndo) return;
+      e.preventDefault();
+      console.log("[History] Undo triggered");
+      undo();
+    },
+    { enabled: globalShortcutsEnabled, enableOnFormTags: false }
+  );
+
+  // Mod+Shift+Z - Redo (macOS style)
+  useHotkeys(
+    "mod+shift+z",
+    (e) => {
+      if (!canRedo) return;
+      e.preventDefault();
+      console.log("[History] Redo triggered (Mod+Shift+Z)");
+      redo();
+    },
+    { enabled: globalShortcutsEnabled, enableOnFormTags: false }
+  );
+
+  // Mod+Y - Redo (Windows/Linux style)
+  useHotkeys(
+    "mod+y",
+    (e) => {
+      if (!canRedo) return;
+      e.preventDefault();
+      console.log("[History] Redo triggered (Mod+Y)");
+      redo();
     },
     { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
@@ -272,7 +316,11 @@ export function useGlobalKeyboard() {
     setIsAreaSelectorOpen(false);
   };
 
-  const handleCreateMoment = (name: string, areaId: string, createMore?: boolean) => {
+  const handleCreateMoment = (
+    name: string,
+    areaId: string,
+    createMore?: boolean
+  ) => {
     // Create new moment
     const result = createMoment(name, areaId);
     if (!("error" in result)) {

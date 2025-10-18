@@ -55,6 +55,46 @@ export const phaseConfigs$ = observable<Record<string, PhaseConfig>>({});
  */
 export { vimState$ } from "./vim-mode";
 
+/**
+ * History state and utilities - undo/redo functionality
+ * Imported and re-exported from history.ts
+ */
+export {
+  history$,
+  startBatch,
+  endBatch,
+  recordOperation,
+  undo,
+  redo,
+  canUndo,
+  canRedo,
+  clearHistory,
+  getHistoryStats,
+  withBatch,
+} from "./history";
+
+/**
+ * History middleware - functions to apply operations with history tracking
+ * Imported and re-exported from history-middleware.ts
+ */
+export {
+  createMomentWithHistory,
+  updateMomentWithHistory,
+  deleteMomentWithHistory,
+  bulkDeleteMomentsWithHistory,
+  allocateMomentWithHistory,
+  unallocateMomentWithHistory,
+  moveMomentWithHistory,
+  duplicateMomentWithHistory,
+  reorderMomentsWithHistory,
+  selectMomentsWithHistory,
+  deselectMomentsWithHistory,
+  clearSelectionWithHistory,
+  selectAllWithHistory,
+  applyOperation,
+  applyInverseOperation,
+} from "./history-middleware";
+
 // ============================================================================
 // Computed Observables
 // ============================================================================

@@ -38,6 +38,15 @@ import {
 } from "@/lib/drag-validation";
 import type { DraggableData, DroppableData } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
+import {
+  startBatch,
+  endBatch,
+} from "@/infrastructure/state/history";
+import {
+  moveMomentWithHistory,
+  duplicateMomentWithHistory,
+  reorderMomentsWithHistory,
+} from "@/infrastructure/state/history-middleware";
 
 interface DnDProviderProps {
   children: React.ReactNode;
@@ -81,31 +90,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  /**
-   * Create a duplicate of a moment with a new ID
-   */
-  function duplicateMoment(
-    originalMoment: Moment,
-    targetDay: string | null,
-    targetPhase: Phase | null,
-    targetOrder: number
-  ): string {
-    const newId = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    moments$[newId].set({
-      ...originalMoment,
-      id: newId,
-      day: targetDay,
-      phase: targetPhase,
-      order: targetOrder,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return newId;
-  }
 
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id as string;
@@ -227,11 +211,15 @@ export function DnDProvider({ children }: DnDProviderProps) {
     const [movedItem] = reordered.splice(oldIndex, 1);
     reordered.splice(newIndex, 0, movedItem);
 
-    // Update order values in state
-    for (let i = 0; i < reordered.length; i++) {
-      moments$[reordered[i].id].order.set(i);
-      moments$[reordered[i].id].updatedAt.set(new Date().toISOString());
-    }
+    // Build reorder operations for history
+    const reorders = reordered.map((moment, newOrder) => ({
+      momentId: moment.id,
+      fromOrder: moment.order,
+      toOrder: newOrder,
+    }));
+
+    // Apply with history tracking
+    reorderMomentsWithHistory(day, phase, reorders);
   }
 
   function handleDropOnTimelineCell(
@@ -281,31 +269,37 @@ export function DnDProvider({ children }: DnDProviderProps) {
     if (shouldDuplicate) {
       // Duplicate mode: create a copy of the moment in the target cell
       const originalMoment = allMoments[momentId];
-      duplicateMoment(originalMoment, targetDay, targetPhase as Phase, newOrder);
+      duplicateMomentWithHistory(
+        momentId,
+        targetDay,
+        targetPhase as Phase,
+        newOrder
+      );
     } else {
-      // Move mode: update the original moment
-      moments$[momentId].set({
-        ...allMoments[momentId],
-        day: targetDay,
-        phase: targetPhase as Phase,
-        order: newOrder,
-        updatedAt: new Date().toISOString(),
-      });
+      // Move mode: batch the move + any reorders
+      startBatch();
 
-      // If moving from another timeline cell, reorder remaining moments
-      if (sourceDay && sourcePhase) {
-        const reorders = reorderAfterRemoval(
-          sourceDay,
-          sourcePhase,
-          allMoments,
-          momentId
-        );
+      // Calculate reorders in source cell (if moving from timeline)
+      const reorders = sourceDay && sourcePhase
+        ? reorderAfterRemoval(sourceDay, sourcePhase, allMoments, momentId).map(
+            ({ momentId: id, newOrder: order }) => ({
+              momentId: id,
+              fromOrder: allMoments[id].order,
+              toOrder: order,
+            })
+          )
+        : undefined;
 
-        for (const { momentId: id, newOrder: order } of reorders) {
-          moments$[id].order.set(order);
-          moments$[id].updatedAt.set(new Date().toISOString());
-        }
-      }
+      // Apply move with history
+      moveMomentWithHistory(
+        momentId,
+        targetDay,
+        targetPhase as Phase,
+        newOrder,
+        reorders
+      );
+
+      endBatch(`Moved moment to ${targetDay} ${targetPhase}`);
     }
   }
 
@@ -317,27 +311,25 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return; // Already unallocated
     }
 
-    // Unallocate moment
-    moments$[momentId].set({
-      ...allMoments[momentId],
-      day: null,
-      phase: null,
-      order: 0,
-      updatedAt: new Date().toISOString(),
-    });
+    // Batch unallocate + reorders
+    startBatch();
 
-    // Reorder remaining moments in source cell
+    // Calculate reorders in source cell
     const reorders = reorderAfterRemoval(
       sourceDay,
       sourcePhase,
       allMoments,
       momentId
-    );
+    ).map(({ momentId: id, newOrder: order }) => ({
+      momentId: id,
+      fromOrder: allMoments[id].order,
+      toOrder: order,
+    }));
 
-    for (const { momentId: id, newOrder: order } of reorders) {
-      moments$[id].order.set(order);
-      moments$[id].updatedAt.set(new Date().toISOString());
-    }
+    // Apply move to drawing board (null day/phase) with history
+    moveMomentWithHistory(momentId, null, null, 0, reorders);
+
+    endBatch("Unallocated moment");
   }
 
   function handleDragCancel() {

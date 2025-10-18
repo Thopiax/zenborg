@@ -1,4 +1,10 @@
 import { observable } from "@legendapp/state";
+import { endBatch, startBatch } from "./history";
+import {
+  bulkDeleteMomentsWithHistory,
+  clearSelectionWithHistory,
+  selectMomentsWithHistory,
+} from "./history-middleware";
 import { moments$ } from "./store";
 
 /**
@@ -178,6 +184,7 @@ export function hasMultipleSelected(): boolean {
 /**
  * Delete all selected moments
  * Permanently removes them from the store and clears selection
+ * Groups selection + deletion into a single history entry
  */
 export function deleteSelected() {
   const selectedIds = selectionState$.selectedMomentIds.get();
@@ -189,27 +196,18 @@ export function deleteSelected() {
     return;
   }
 
-  const allMoments = moments$.peek();
-  const updatedMoments = { ...allMoments };
+  // Batch selection state + deletion together
+  startBatch();
 
-  console.log(
-    "[deleteSelected] Before deletion, moment count:",
-    Object.keys(allMoments).length
+  // Delete with history
+  bulkDeleteMomentsWithHistory(selectedIds);
+
+  // Clear selection with history
+  clearSelectionWithHistory();
+
+  endBatch(
+    `Deleted ${selectedIds.length} moment${selectedIds.length > 1 ? "s" : ""}`
   );
-
-  // Delete all selected moments
-  for (const momentId of selectedIds) {
-    console.log("[deleteSelected] Deleting moment:", momentId);
-    delete updatedMoments[momentId];
-  }
-
-  console.log(
-    "[deleteSelected] After deletion, moment count:",
-    Object.keys(updatedMoments).length
-  );
-
-  moments$.set(updatedMoments);
-  clearSelection();
 
   console.log("[deleteSelected] Deletion complete, selection cleared");
 }
