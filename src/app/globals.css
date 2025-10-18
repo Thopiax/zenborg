@@ -1,26 +1,87 @@
 @import "tailwindcss";
 
+/**
+ * Zenborg Theme System
+ * Controlled by next-themes via data-theme attribute
+ * Supports light, dark, and system preferences
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light theme (default) */
+  --background: #fafaf9; /* stone-50 */
+  --foreground: #1c1917; /* stone-900 */
+  --surface: #ffffff;
+  --surface-alt: #f5f5f4; /* stone-100 */
+  --border: #e7e5e4; /* stone-200 */
+
+  /* Text colors */
+  --text-primary: #1c1917; /* stone-900 */
+  --text-secondary: #57534e; /* stone-600 */
+  --text-tertiary: #78716c; /* stone-500 */
+
+  /* Vim mode indicator */
+  --vim-bg: #1c1917;
+  --vim-text: #fafaf9;
+
+  /* Focus states */
+  --focus-default: #3b82f6; /* blue-500 */
+  --focus-insert: #f59e0b; /* amber-500 */
+  --focus-normal: #a855f7; /* purple-500 */
+  --focus-cell: #8b5cf6; /* violet-500 */
+}
+
+[data-theme="dark"] {
+  /* Dark theme */
+  --background: #0c0a09; /* stone-950 */
+  --foreground: #fafaf9; /* stone-50 */
+  --surface: #1c1917; /* stone-900 */
+  --surface-alt: #292524; /* stone-800 */
+  --border: #44403c; /* stone-700 */
+
+  /* Text colors */
+  --text-primary: #fafaf9; /* stone-50 */
+  --text-secondary: #d6d3d1; /* stone-300 */
+  --text-tertiary: #a8a29e; /* stone-400 */
+
+  /* Vim mode indicator (inverted) */
+  --vim-bg: #fafaf9;
+  --vim-text: #1c1917;
+
+  /* Focus states (brighter for dark) */
+  --focus-default: #60a5fa; /* blue-400 */
+  --focus-insert: #fbbf24; /* amber-400 */
+  --focus-normal: #c084fc; /* purple-400 */
+  --focus-cell: #a78bfa; /* violet-400 */
 }
 
 @theme inline {
+  /* Map CSS variables to Tailwind utilities */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+
+  --color-vim-bg: var(--vim-bg);
+  --color-vim-text: var(--vim-text);
+
+  --color-focus-default: var(--focus-default);
+  --color-focus-insert: var(--focus-insert);
+  --color-focus-normal: var(--focus-normal);
+  --color-focus-cell: var(--focus-cell);
+
+  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
