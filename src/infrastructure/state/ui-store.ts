@@ -42,14 +42,27 @@ export type DrawingBoardGroupBy = "none" | "area" | "created" | "horizon";
 export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("none");
 
 // ============================================================================
-// Future UI State (examples for when needed)
+// Focus State (for keyboard navigation)
 // ============================================================================
 
 /**
- * Current focused moment ID (for Vim navigation)
+ * Currently focused moment ID (for keyboard navigation)
  * Ephemeral - not persisted
  */
-// export const focusedMomentId$ = observable<string | null>(null);
+export const focusedMomentId$ = observable<string | null>(null);
+
+/**
+ * Currently focused timeline cell (for keyboard navigation)
+ * Ephemeral - not persisted
+ */
+export const focusedCell$ = observable<{
+  day: string;
+  phase: import("@/domain/value-objects/Phase").Phase;
+} | null>(null);
+
+// ============================================================================
+// Future UI State (examples for when needed)
+// ============================================================================
 
 /**
  * Compass view visibility

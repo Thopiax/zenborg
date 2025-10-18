@@ -1,7 +1,10 @@
 import { useSelector } from "@legendapp/state/react";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { moments$ } from "@/infrastructure/state/store";
-import { vimState$ } from "@/infrastructure/state/vim-mode";
+import {
+  focusedMomentId$,
+  focusedCell$,
+} from "@/infrastructure/state/ui-store";
 
 /**
  * Focus manager hook for keyboard navigation
@@ -10,15 +13,15 @@ import { vimState$ } from "@/infrastructure/state/vim-mode";
  * Provides helpers for moving focus with hjkl, gg, G, w, b
  */
 export function useFocusManager() {
-  const focusedMomentId = useSelector(() => vimState$.focusedMomentId.get());
-  const focusedCell = useSelector(() => vimState$.focusedCell.get());
+  const focusedMomentId = useSelector(() => focusedMomentId$.get());
+  const focusedCell = useSelector(() => focusedCell$.get());
 
   /**
    * Focus a specific moment by ID
    */
   const focusMoment = (momentId: string | null) => {
-    vimState$.focusedMomentId.set(momentId);
-    vimState$.focusedCell.set(null);
+    focusedMomentId$.set(momentId);
+    focusedCell$.set(null);
 
     // Scroll into view
     if (momentId) {
@@ -35,8 +38,8 @@ export function useFocusManager() {
    * Focus a specific timeline cell
    */
   const focusCell = (day: string, phase: Phase) => {
-    vimState$.focusedCell.set({ day, phase });
-    vimState$.focusedMomentId.set(null);
+    focusedCell$.set({ day, phase });
+    focusedMomentId$.set(null);
 
     // Scroll into view
     setTimeout(() => {
@@ -49,8 +52,8 @@ export function useFocusManager() {
    * Clear all focus
    */
   const clearFocus = () => {
-    vimState$.focusedMomentId.set(null);
-    vimState$.focusedCell.set(null);
+    focusedMomentId$.set(null);
+    focusedCell$.set(null);
   };
 
   /**

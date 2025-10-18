@@ -344,7 +344,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     dragData: DraggableData,
     dropData: DroppableData
   ) {
-    const { momentId } = dragData;
+    const { momentId, sourceDay, sourcePhase } = dragData;
     const { columnId, groupBy } = dropData;
 
     if (!columnId || !groupBy) {
@@ -358,6 +358,29 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
+    // If dragging from timeline to drawing board column, unallocate the moment
+    const shouldUnallocate = sourceDay && sourcePhase;
+
+    if (shouldUnallocate) {
+      // Batch unallocation + reorders + column update
+      startBatch();
+
+      // Calculate reorders in source cell
+      const reorders = reorderAfterRemoval(
+        sourceDay,
+        sourcePhase,
+        allMoments,
+        momentId
+      ).map(({ momentId: id, newOrder: order }) => ({
+        momentId: id,
+        fromOrder: allMoments[id].order,
+        toOrder: order,
+      }));
+
+      // Unallocate the moment first
+      moveMomentWithHistory(momentId, null, null, 0, reorders);
+    }
+
     // Handle different grouping modes
     if (groupBy === "area") {
       // Extract area ID from column ID (format: "area-id")
@@ -365,12 +388,18 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
       // Don't update if already in this area
       if (moment.areaId === newAreaId) {
+        if (shouldUnallocate) {
+          endBatch("Unallocated moment to drawing board");
+        }
         return;
       }
 
       // Verify the area exists
       if (!allAreas[newAreaId]) {
         console.error("Target area not found:", newAreaId);
+        if (shouldUnallocate) {
+          endBatch("Failed to update area");
+        }
         return;
       }
 
@@ -385,6 +414,9 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
       // Don't update if already has this horizon
       if (moment.horizon === newHorizon) {
+        if (shouldUnallocate) {
+          endBatch("Unallocated moment to drawing board");
+        }
         return;
       }
 
@@ -397,6 +429,10 @@ export function DnDProvider({ children }: DnDProviderProps) {
     } else {
       // Other grouping modes (created) are read-only
       console.log("Ignoring drop - grouping mode is read-only:", groupBy);
+    }
+
+    if (shouldUnallocate) {
+      endBatch(`Unallocated moment to ${groupBy} column`);
     }
   }
 

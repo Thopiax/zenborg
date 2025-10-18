@@ -25,8 +25,8 @@ export default function HomePage() {
   const {
     isAreaSelectorOpen,
     setIsAreaSelectorOpen,
+    areaSelectorMomentId,
     updateMomentArea,
-    focusedMomentId,
     isCreateModalOpen,
     prefilledAreaId,
     prefilledHorizon,
@@ -45,8 +45,8 @@ export default function HomePage() {
 
   useGlobalSelection(Object.keys(allMoments));
 
-  const focusedMoment = focusedMomentId ? allMoments[focusedMomentId] : null;
-  const currentAreaId = focusedMoment?.areaId || "";
+  const areaSelectorMoment = areaSelectorMomentId ? allMoments[areaSelectorMomentId] : null;
+  const currentAreaId = areaSelectorMoment?.areaId || "";
 
   return (
     <MomentManagerProvider
@@ -70,12 +70,12 @@ export default function HomePage() {
           <ResetButton />
 
           {/* Area Selector - Modal for changing moment area (triggered by 'A' key) */}
-          {focusedMomentId && (
+          {areaSelectorMomentId && (
             <AreaSelector
               open={isAreaSelectorOpen}
               selectedAreaId={currentAreaId}
               onSelectArea={(areaId) =>
-                updateMomentArea(focusedMomentId, areaId)
+                updateMomentArea(areaSelectorMomentId, areaId)
               }
               onClose={() => setIsAreaSelectorOpen(false)}
             />

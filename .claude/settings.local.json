@@ -35,7 +35,9 @@
       "Bash(test -f /Users/rafa/Developer/zenborg/.claude.json)",
       "Bash(cat components.json)",
       "Bash(npx shadcn@latest add select -y)",
-      "Bash(git log -1 --format='%s%n%b')"
+      "Bash(git log -1 --format='%s%n%b')",
+      "Bash(git checkout src/components/MomentCard.tsx src/infrastructure/state/vim-mode.ts)",
+      "Bash(npx tsc --noEmit)"
     ],
     "deny": [],
     "ask": []

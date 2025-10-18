@@ -3,13 +3,13 @@ import { useHotkeys } from "react-hotkeys-hook";
 import type { Moment } from "@/domain/entities/Moment";
 import { createMoment } from "@/domain/entities/Moment";
 import { selectionState$ } from "@/infrastructure/state/selection";
-import { moments$ } from "@/infrastructure/state/store";
+import { moments$, updateMomentWithHistory } from "@/infrastructure/state/store";
 import { useFocusManager } from "./useFocusManager";
 import { useHistory } from "./useHistory";
 import { useSelection } from "./useSelection";
 
 /**
- * Global keyboard shortcuts - Linear style with Vim navigation
+ * Global keyboard shortcuts - Linear style
  *
  * CRUD (Linear-style, always active):
  * - M: Create new moment
@@ -28,15 +28,17 @@ import { useSelection } from "./useSelection";
  * - Mod+Z: Undo last operation
  * - Mod+Shift+Z / Mod+Y: Redo last undone operation
  *
- * Navigation (Vim-style):
+ * Navigation:
  * - j/k (↓/↑): Navigate moments vertically
  * - h/l (←/→): Navigate moments horizontally
  * - w/b: Next/previous moment
  * - gg/G: First/last moment
  *
- * Clipboard (Vim-style):
+ * Clipboard:
  * - yy: Yank (copy) moment
  * - p: Paste yanked moment
+ * - dd: Delete focused moment
+ * - x: Quick delete (unallocated moments only)
  * - Backspace: Unallocate focused moment (return to drawing board)
  */
 export function useGlobalKeyboard() {
@@ -54,11 +56,14 @@ export function useGlobalKeyboard() {
 
   // UI state for CRUD operations
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
+  const [areaSelectorMomentId, setAreaSelectorMomentId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [prefilledDay, setPrefilledDay] = useState<string | undefined>();
   const [prefilledPhase, setPrefilledPhase] = useState<string | undefined>();
   const [prefilledAreaId, setPrefilledAreaId] = useState<string | undefined>();
-  const [prefilledHorizon, setPrefilledHorizon] = useState<string | undefined>();
+  const [prefilledHorizon, setPrefilledHorizon] = useState<
+    string | undefined
+  >();
   const [isEditCardOpen, setIsEditCardOpen] = useState(false);
   const [editingMomentId, setEditingMomentId] = useState<string | null>(null);
 
@@ -86,9 +91,9 @@ export function useGlobalKeyboard() {
 
   // ==================== CRUD SHORTCUTS (Linear-style) ====================
 
-  // M (Shift+m) - Create new moment
+  // N - Create new moment
   useHotkeys(
-    "shift+m",
+    "n",
     (e) => {
       e.preventDefault();
       setIsCreateModalOpen(true);
@@ -102,6 +107,7 @@ export function useGlobalKeyboard() {
     (e) => {
       if (!focusedMomentId) return;
       e.preventDefault();
+      setAreaSelectorMomentId(focusedMomentId);
       setIsAreaSelectorOpen(true);
     },
     { enabled: globalShortcutsEnabled }
@@ -159,23 +165,23 @@ export function useGlobalKeyboard() {
     { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
 
-  // D (Shift+d) - Duplicate selected moments
+  // D - Duplicate selected moments
   useHotkeys(
-    "shift+d",
+    "d",
     (e) => {
-      console.log("[Shift+D] Triggered");
+      console.log("[D] Triggered");
       e.preventDefault();
 
       // Read the current selection state inside the callback
       const selectedIds = selectionState$.selectedMomentIds.peek();
-      console.log("[Shift+D] Current selection:", selectedIds);
+      console.log("[D] Current selection:", selectedIds);
 
       if (selectedIds.length === 0) {
-        console.log("[Shift+D] No moments selected, ignoring");
+        console.log("[D] No moments selected, ignoring");
         return;
       }
 
-      console.log("[Shift+D] Calling duplicateSelected");
+      console.log("[D] Calling duplicateSelected");
       duplicateSelected();
     },
     { enabled: globalShortcutsEnabled, enableOnFormTags: false }
@@ -337,12 +343,9 @@ export function useGlobalKeyboard() {
   // ==================== HELPER FUNCTIONS ====================
 
   const updateMomentArea = (momentId: string, newAreaId: string) => {
-    const moment = moments$[momentId].peek();
-    if (moment) {
-      moments$[momentId].areaId.set(newAreaId);
-      moments$[momentId].updatedAt.set(new Date().toISOString());
-    }
+    updateMomentWithHistory(momentId, { areaId: newAreaId });
     setIsAreaSelectorOpen(false);
+    setAreaSelectorMomentId(null);
   };
 
   const handleCreateMoment = (
@@ -431,6 +434,7 @@ export function useGlobalKeyboard() {
   return {
     isAreaSelectorOpen,
     setIsAreaSelectorOpen,
+    areaSelectorMomentId,
     updateMomentArea,
     focusedMomentId,
     // Create modal state
