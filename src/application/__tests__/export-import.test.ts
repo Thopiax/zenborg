@@ -1,0 +1,586 @@
+import { describe, expect, it } from "vitest";
+import type { Area } from "@/domain/entities/Area";
+import type { Cycle } from "@/domain/entities/Cycle";
+import type { Moment } from "@/domain/entities/Moment";
+import type { Phase, PhaseConfig } from "@/domain/value-objects/Phase";
+import {
+  EXPORT_SCHEMA_VERSION,
+  exportData,
+  importDataWithStrategy,
+  validateImportData,
+  type ZenborgExportData,
+} from "../use-cases/export-import";
+
+describe("Export/Import System", () => {
+  // Sample test data
+  const sampleMoments: Record<string, Moment> = {
+    "moment-1": {
+      id: "moment-1",
+      name: "Morning Run",
+      areaId: "area-1",
+      phase: "MORNING" as Phase,
+      day: "2025-01-15",
+      order: 0,
+      horizon: null,
+      createdAt: "2025-01-15T08:00:00.000Z",
+      updatedAt: "2025-01-15T08:00:00.000Z",
+    },
+    "moment-2": {
+      id: "moment-2",
+      name: "Deep Work",
+      areaId: "area-2",
+      phase: null,
+      day: null,
+      order: 0,
+      horizon: "now",
+      createdAt: "2025-01-15T09:00:00.000Z",
+      updatedAt: "2025-01-15T09:00:00.000Z",
+    },
+  };
+
+  const sampleAreas: Record<string, Area> = {
+    "area-1": {
+      id: "area-1",
+      name: "Wellness",
+      color: "#10b981",
+      emoji: "🧘",
+      isDefault: true,
+      order: 0,
+      createdAt: "2025-01-15T08:00:00.000Z",
+      updatedAt: "2025-01-15T08:00:00.000Z",
+    },
+    "area-2": {
+      id: "area-2",
+      name: "Craft",
+      color: "#3b82f6",
+      emoji: "🎨",
+      isDefault: true,
+      order: 1,
+      createdAt: "2025-01-15T08:00:00.000Z",
+      updatedAt: "2025-01-15T08:00:00.000Z",
+    },
+  };
+
+  const sampleCycles: Record<string, Cycle> = {
+    "cycle-1": {
+      id: "cycle-1",
+      name: "Q1 2025",
+      startDate: "2025-01-01",
+      endDate: "2025-03-31",
+      isActive: true,
+      createdAt: "2025-01-15T08:00:00.000Z",
+      updatedAt: "2025-01-15T08:00:00.000Z",
+    },
+  };
+
+  const samplePhaseConfigs: Record<string, PhaseConfig> = {
+    "phase-1": {
+      id: "phase-1",
+      phase: "MORNING" as Phase,
+      label: "Morning",
+      emoji: "☕",
+      color: "#f59e0b",
+      startHour: 6,
+      endHour: 12,
+      isVisible: true,
+      order: 0,
+      createdAt: "2025-01-15T08:00:00.000Z",
+      updatedAt: "2025-01-15T08:00:00.000Z",
+    },
+  };
+
+  describe("exportData", () => {
+    it("should create a valid export structure", () => {
+      const exported = exportData(
+        sampleMoments,
+        sampleAreas,
+        sampleCycles,
+        samplePhaseConfigs
+      );
+
+      expect(exported.version).toBe(EXPORT_SCHEMA_VERSION);
+      expect(exported.exportedAt).toBeDefined();
+      expect(new Date(exported.exportedAt).getTime()).toBeGreaterThan(0);
+      expect(exported.data).toBeDefined();
+      expect(exported.metadata).toBeDefined();
+    });
+
+    it("should include all data in export", () => {
+      const exported = exportData(
+        sampleMoments,
+        sampleAreas,
+        sampleCycles,
+        samplePhaseConfigs
+      );
+
+      expect(exported.data.moments).toEqual(sampleMoments);
+      expect(exported.data.areas).toEqual(sampleAreas);
+      expect(exported.data.cycles).toEqual(sampleCycles);
+      expect(exported.data.phaseConfigs).toEqual(samplePhaseConfigs);
+    });
+
+    it("should include correct metadata counts", () => {
+      const exported = exportData(
+        sampleMoments,
+        sampleAreas,
+        sampleCycles,
+        samplePhaseConfigs
+      );
+
+      expect(exported.metadata.totalMoments).toBe(2);
+      expect(exported.metadata.totalAreas).toBe(2);
+      expect(exported.metadata.totalCycles).toBe(1);
+      expect(exported.metadata.totalPhaseConfigs).toBe(1);
+    });
+
+    it("should handle empty data", () => {
+      const exported = exportData({}, {}, {}, {});
+
+      expect(exported.metadata.totalMoments).toBe(0);
+      expect(exported.metadata.totalAreas).toBe(0);
+      expect(exported.metadata.totalCycles).toBe(0);
+      expect(exported.metadata.totalPhaseConfigs).toBe(0);
+    });
+  });
+
+  describe("validateImportData", () => {
+    it("should validate correct export data", () => {
+      const validData = exportData(
+        sampleMoments,
+        sampleAreas,
+        sampleCycles,
+        samplePhaseConfigs
+      );
+
+      const validation = validateImportData(validData);
+
+      expect(validation.valid).toBe(true);
+      expect(validation.errors).toHaveLength(0);
+    });
+
+    it("should reject non-object data", () => {
+      const validation = validateImportData(null);
+
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toContain(
+        "Invalid data format: must be a JSON object"
+      );
+    });
+
+    it("should reject data without version", () => {
+      const invalidData = {
+        exportedAt: new Date().toISOString(),
+        data: {
+          moments: {},
+          areas: {},
+          cycles: {},
+          phaseConfigs: {},
+        },
+      };
+
+      const validation = validateImportData(invalidData);
+
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toContain("Missing version field");
+    });
+
+    it("should reject data without exportedAt", () => {
+      const invalidData = {
+        version: EXPORT_SCHEMA_VERSION,
+        data: {
+          moments: {},
+          areas: {},
+          cycles: {},
+          phaseConfigs: {},
+        },
+      };
+
+      const validation = validateImportData(invalidData);
+
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toContain("Missing exportedAt field");
+    });
+
+    it("should reject data without data field", () => {
+      const invalidData = {
+        version: EXPORT_SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+      };
+
+      const validation = validateImportData(invalidData);
+
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toContain("Missing data field");
+    });
+
+    it("should reject data with missing moments", () => {
+      const invalidData = {
+        version: EXPORT_SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+        data: {
+          areas: {},
+          cycles: {},
+          phaseConfigs: {},
+        },
+      };
+
+      const validation = validateImportData(invalidData);
+
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toContain("Invalid or missing moments data");
+    });
+
+    it("should reject data with missing areas", () => {
+      const invalidData = {
+        version: EXPORT_SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+        data: {
+          moments: {},
+          cycles: {},
+          phaseConfigs: {},
+        },
+      };
+
+      const validation = validateImportData(invalidData);
+
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toContain("Invalid or missing areas data");
+    });
+
+    it("should warn about version mismatch", () => {
+      const invalidData = {
+        version: "99.0.0",
+        exportedAt: new Date().toISOString(),
+        data: {
+          moments: {},
+          areas: {},
+          cycles: {},
+          phaseConfigs: {},
+        },
+      };
+
+      const validation = validateImportData(invalidData);
+
+      expect(validation.valid).toBe(true);
+      expect(validation.warnings).toContain(
+        `Schema version mismatch: expected ${EXPORT_SCHEMA_VERSION}, got 99.0.0`
+      );
+    });
+
+    it("should detect mismatched moment IDs", () => {
+      const invalidData: ZenborgExportData = {
+        version: EXPORT_SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+        data: {
+          moments: {
+            "moment-1": {
+              ...sampleMoments["moment-1"],
+              id: "different-id", // Mismatched ID
+            },
+          },
+          areas: sampleAreas,
+          cycles: {},
+          phaseConfigs: {},
+        },
+        metadata: {
+          totalMoments: 1,
+          totalAreas: 2,
+          totalCycles: 0,
+          totalPhaseConfigs: 0,
+        },
+      };
+
+      const validation = validateImportData(invalidData);
+
+      expect(validation.valid).toBe(false);
+      expect(validation.errors.some((e) => e.includes("mismatched ID"))).toBe(
+        true
+      );
+    });
+
+    it("should warn about missing area references", () => {
+      const invalidData: ZenborgExportData = {
+        version: EXPORT_SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+        data: {
+          moments: {
+            "moment-1": {
+              ...sampleMoments["moment-1"],
+              areaId: "non-existent-area",
+            },
+          },
+          areas: sampleAreas,
+          cycles: {},
+          phaseConfigs: {},
+        },
+        metadata: {
+          totalMoments: 1,
+          totalAreas: 2,
+          totalCycles: 0,
+          totalPhaseConfigs: 0,
+        },
+      };
+
+      const validation = validateImportData(invalidData);
+
+      expect(validation.valid).toBe(true);
+      expect(
+        validation.warnings.some((w) => w.includes("non-existent area"))
+      ).toBe(true);
+    });
+  });
+
+  describe("importDataWithStrategy - replace", () => {
+    it("should replace all data", () => {
+      const exportedData = exportData(
+        sampleMoments,
+        sampleAreas,
+        sampleCycles,
+        samplePhaseConfigs
+      );
+
+      const existingData = {
+        moments: {
+          "old-moment": {
+            id: "old-moment",
+            name: "Old Moment",
+            areaId: "old-area",
+            phase: null,
+            day: null,
+            order: 0,
+            horizon: null,
+            createdAt: "2025-01-01T00:00:00.000Z",
+            updatedAt: "2025-01-01T00:00:00.000Z",
+          },
+        } as Record<string, Moment>,
+        areas: {} as Record<string, Area>,
+        cycles: {} as Record<string, Cycle>,
+        phaseConfigs: {} as Record<string, PhaseConfig>,
+      };
+
+      const { moments, areas, cycles, phaseConfigs, result } =
+        importDataWithStrategy(exportedData, "replace", existingData);
+
+      expect(result.success).toBe(true);
+      expect(moments).toEqual(sampleMoments);
+      expect(areas).toEqual(sampleAreas);
+      expect(cycles).toEqual(sampleCycles);
+      expect(phaseConfigs).toEqual(samplePhaseConfigs);
+      expect(moments["old-moment"]).toBeUndefined();
+    });
+
+    it("should report correct import counts for replace", () => {
+      const exportedData = exportData(
+        sampleMoments,
+        sampleAreas,
+        sampleCycles,
+        samplePhaseConfigs
+      );
+
+      const existingData = {
+        moments: {},
+        areas: {},
+        cycles: {},
+        phaseConfigs: {},
+      };
+
+      const { result } = importDataWithStrategy(
+        exportedData,
+        "replace",
+        existingData
+      );
+
+      expect(result.imported.moments).toBe(2);
+      expect(result.imported.areas).toBe(2);
+      expect(result.imported.cycles).toBe(1);
+      expect(result.imported.phaseConfigs).toBe(1);
+    });
+  });
+
+  describe("importDataWithStrategy - merge", () => {
+    it("should merge data without conflicts", () => {
+      const newMoment: Moment = {
+        id: "moment-3",
+        name: "Evening Walk",
+        areaId: "area-1",
+        phase: "EVENING" as Phase,
+        day: "2025-01-15",
+        order: 0,
+        horizon: null,
+        createdAt: "2025-01-15T18:00:00.000Z",
+        updatedAt: "2025-01-15T18:00:00.000Z",
+      };
+
+      const exportedData = exportData(
+        { "moment-3": newMoment },
+        {},
+        {},
+        {}
+      );
+
+      const existingData = {
+        moments: sampleMoments,
+        areas: sampleAreas,
+        cycles: sampleCycles,
+        phaseConfigs: samplePhaseConfigs,
+      };
+
+      const { moments, result } = importDataWithStrategy(
+        exportedData,
+        "merge",
+        existingData
+      );
+
+      expect(result.success).toBe(true);
+      expect(Object.keys(moments)).toHaveLength(3);
+      expect(moments["moment-1"]).toEqual(sampleMoments["moment-1"]);
+      expect(moments["moment-2"]).toEqual(sampleMoments["moment-2"]);
+      expect(moments["moment-3"]).toEqual(newMoment);
+      expect(result.message).toContain("no conflicts");
+    });
+
+    it("should detect and handle conflicts", () => {
+      const updatedMoment: Moment = {
+        ...sampleMoments["moment-1"],
+        name: "Updated Morning Run",
+      };
+
+      const exportedData = exportData(
+        { "moment-1": updatedMoment },
+        {},
+        {},
+        {}
+      );
+
+      const existingData = {
+        moments: sampleMoments,
+        areas: sampleAreas,
+        cycles: sampleCycles,
+        phaseConfigs: samplePhaseConfigs,
+      };
+
+      const { moments, result } = importDataWithStrategy(
+        exportedData,
+        "merge",
+        existingData
+      );
+
+      expect(result.success).toBe(true);
+      expect(moments["moment-1"].name).toBe("Updated Morning Run");
+      expect(result.conflicts).toBeDefined();
+      expect(result.conflicts?.moments).toContain("moment-1");
+      expect(result.message).toContain("1 conflicts");
+    });
+
+    it("should preserve existing data when merging", () => {
+      const exportedData = exportData({}, {}, {}, {});
+
+      const existingData = {
+        moments: sampleMoments,
+        areas: sampleAreas,
+        cycles: sampleCycles,
+        phaseConfigs: samplePhaseConfigs,
+      };
+
+      const { moments, areas, cycles, phaseConfigs } = importDataWithStrategy(
+        exportedData,
+        "merge",
+        existingData
+      );
+
+      expect(moments).toEqual(sampleMoments);
+      expect(areas).toEqual(sampleAreas);
+      expect(cycles).toEqual(sampleCycles);
+      expect(phaseConfigs).toEqual(samplePhaseConfigs);
+    });
+
+    it("should report conflicts across all entity types", () => {
+      const exportedData = exportData(
+        sampleMoments,
+        sampleAreas,
+        sampleCycles,
+        samplePhaseConfigs
+      );
+
+      const existingData = {
+        moments: sampleMoments,
+        areas: sampleAreas,
+        cycles: sampleCycles,
+        phaseConfigs: samplePhaseConfigs,
+      };
+
+      const { result } = importDataWithStrategy(
+        exportedData,
+        "merge",
+        existingData
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.conflicts).toBeDefined();
+      expect(result.conflicts?.moments).toHaveLength(2);
+      expect(result.conflicts?.areas).toHaveLength(2);
+      expect(result.conflicts?.cycles).toHaveLength(1);
+      expect(result.conflicts?.phaseConfigs).toHaveLength(1);
+      expect(result.message).toContain("6 conflicts");
+    });
+  });
+
+  describe("referential integrity", () => {
+    it("should validate moment area references", () => {
+      const momentWithBadArea: Moment = {
+        id: "moment-bad",
+        name: "Bad Moment",
+        areaId: "non-existent-area",
+        phase: null,
+        day: null,
+        order: 0,
+        horizon: null,
+        createdAt: "2025-01-15T08:00:00.000Z",
+        updatedAt: "2025-01-15T08:00:00.000Z",
+      };
+
+      const exportedData: ZenborgExportData = {
+        version: EXPORT_SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+        data: {
+          moments: { "moment-bad": momentWithBadArea },
+          areas: sampleAreas,
+          cycles: {},
+          phaseConfigs: {},
+        },
+        metadata: {
+          totalMoments: 1,
+          totalAreas: 2,
+          totalCycles: 0,
+          totalPhaseConfigs: 0,
+        },
+      };
+
+      const validation = validateImportData(exportedData);
+
+      expect(validation.valid).toBe(true);
+      expect(validation.warnings.length).toBeGreaterThan(0);
+      expect(
+        validation.warnings.some((w) =>
+          w.includes("non-existent area non-existent-area")
+        )
+      ).toBe(true);
+    });
+
+    it("should allow moments with valid area references", () => {
+      const exportedData = exportData(
+        sampleMoments,
+        sampleAreas,
+        {},
+        {}
+      );
+
+      const validation = validateImportData(exportedData);
+
+      expect(validation.valid).toBe(true);
+      expect(
+        validation.warnings.some((w) => w.includes("non-existent area"))
+      ).toBe(false);
+    });
+  });
+});
