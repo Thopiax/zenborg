@@ -278,7 +278,7 @@ export function useGlobalKeyboard() {
     setIsAreaSelectorOpen(false);
   };
 
-  const handleCreateMoment = (name: string, areaId: string) => {
+  const handleCreateMoment = (name: string, areaId: string, createMore?: boolean) => {
     // Create new moment
     const result = createMoment(name, areaId);
     if (!("error" in result)) {
@@ -295,9 +295,14 @@ export function useGlobalKeyboard() {
       }
       focusMoment(result.id);
     }
-    setIsCreateModalOpen(false);
-    setPrefilledDay(undefined);
-    setPrefilledPhase(undefined);
+
+    // Only close modal if "create more" is not enabled
+    if (!createMore) {
+      setIsCreateModalOpen(false);
+      setPrefilledDay(undefined);
+      setPrefilledPhase(undefined);
+    }
+    // If createMore is true, keep modal open and form will reset itself
   };
 
   const handleCancelCreate = () => {

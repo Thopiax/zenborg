@@ -14,10 +14,7 @@ export type DragSourceType = "timeline" | "drawing-board";
 /**
  * Target location types for droppable zones
  */
-export type DropTargetType =
-  | "timeline-cell"
-  | "drawing-board"
-  | "unallocate-zone";
+export type DropTargetType = "timeline-cell" | "drawing-board";
 
 /**
  * Data attached to draggable moments

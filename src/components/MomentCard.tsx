@@ -68,6 +68,7 @@ export function MomentCard({ moment, area }: MomentCardProps) {
     <button
       type="button"
       className={cn(
+        "min-w-[200px]",
         "rounded-lg transition-all cursor-pointer w-full",
         "focus:outline-none",
         // Minimalist, monochrome shadows

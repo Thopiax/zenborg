@@ -14,7 +14,7 @@ interface MomentFormProps {
   mode: "create" | "edit";
   initialName?: string;
   initialAreaId?: string;
-  onSave: (name: string, areaId: string) => void;
+  onSave: (name: string, areaId: string, createMore?: boolean) => void;
   onCancel: () => void;
   /** For create mode: allow creating multiple moments in a row */
   showCreateMore?: boolean;
@@ -130,13 +130,22 @@ export function MomentForm({
     const validation = validateMomentName(name);
     if (validation.valid && areasList[selectedAreaIndex]) {
       const selectedArea = areasList[selectedAreaIndex];
-      onSave(name.trim(), selectedArea.id);
 
-      // If "Create more" is enabled, reset form and stay open
-      if (mode === "create" && createMore) {
+      // If "Create more" is enabled, pass it to parent
+      const shouldCreateMore = mode === "create" && createMore;
+
+      // Call onSave with createMore flag
+      onSave(name.trim(), selectedArea.id, shouldCreateMore);
+
+      // If "Create more" is enabled, reset form immediately
+      // Parent will keep modal open
+      if (shouldCreateMore) {
         setName("");
         setSelectedAreaIndex(0);
-        inputRef.current?.focus();
+        // Refocus input after a brief delay to allow state update
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 0);
       }
     }
   };

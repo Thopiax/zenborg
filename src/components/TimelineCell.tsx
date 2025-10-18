@@ -9,10 +9,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
+import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
-import { useMomentManager } from "@/contexts/MomentManagerContext";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import {
   ariaLabels,
@@ -169,9 +169,9 @@ export function TimelineCell({
         </SortableContext>
       ) : (
         <div className="flex items-center justify-center h-full min-h-[192px]">
-          <p className="text-sm text-stone-400 dark:text-stone-600 font-mono">
+          {/* <p className="text-sm text-stone-400 dark:text-stone-600 font-mono">
             Empty
-          </p>
+          </p> */}
         </div>
       )}
       {isFull && (

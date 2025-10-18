@@ -11,7 +11,6 @@ import {
   closestCorners,
   DndContext,
   type DragEndEvent,
-  type DragOverEvent,
   DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
@@ -28,12 +27,10 @@ import { areas$, moments$ } from "@/infrastructure/state/store";
 import {
   calculateNextOrder,
   canDropInCell,
-  isSameLocation,
   reorderAfterRemoval,
 } from "@/lib/drag-validation";
 import type { DraggableData, DroppableData } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
-import { UnallocateZone } from "./UnallocateZone";
 
 interface DnDProviderProps {
   children: React.ReactNode;
@@ -41,7 +38,6 @@ interface DnDProviderProps {
 
 export function DnDProvider({ children }: DnDProviderProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [isDraggingAllocated, setIsDraggingAllocated] = useState(false);
   const allMoments = use$(moments$);
   const allAreas = use$(areas$);
 
@@ -66,18 +62,11 @@ export function DnDProvider({ children }: DnDProviderProps) {
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id as string;
     setActiveId(id);
-
-    // Check if dragging an allocated moment (to show unallocate zone)
-    const dragData = event.active.data.current as DraggableData | undefined;
-    if (dragData?.sourceType === "timeline") {
-      setIsDraggingAllocated(true);
-    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveId(null);
-    setIsDraggingAllocated(false);
 
     if (!over) {
       // Dropped outside any droppable zone
@@ -88,30 +77,51 @@ export function DnDProvider({ children }: DnDProviderProps) {
     const dropData = over.data.current as DroppableData | undefined;
 
     // Handle sortable reordering (when dragging over another moment, not a cell)
-    if (
-      active.id !== over.id &&
-      dragData?.sourceType === "timeline" &&
-      !dropData?.targetType
-    ) {
-      // Dragging one moment over another moment in the same cell
+    if (active.id !== over.id && !dropData?.targetType) {
       const activeMoment = allMoments[active.id as string];
       const overMoment = allMoments[over.id as string];
 
+      if (!activeMoment || !overMoment) {
+        return;
+      }
+
+      // Reorder within timeline cell (both moments are allocated to same cell)
       if (
-        activeMoment &&
-        overMoment &&
         activeMoment.day &&
         activeMoment.phase &&
         activeMoment.day === overMoment.day &&
         activeMoment.phase === overMoment.phase
       ) {
-        // Reorder within the same cell
         handleSortableReorder(
           active.id as string,
           over.id as string,
           activeMoment.day,
           activeMoment.phase
         );
+        return;
+      }
+
+      // Reorder within drawing board (both moments are unallocated)
+      if (
+        !activeMoment.day &&
+        !activeMoment.phase &&
+        !overMoment.day &&
+        !overMoment.phase
+      ) {
+        handleDrawingBoardReorder(active.id as string, over.id as string);
+        return;
+      }
+
+      // Moving from timeline to drawing board (dropping on an unallocated moment)
+      if (
+        dragData?.sourceType === "timeline" &&
+        activeMoment.day &&
+        activeMoment.phase &&
+        !overMoment.day &&
+        !overMoment.phase
+      ) {
+        console.log("Moving from timeline to drawing board via moment drop");
+        handleDropOnDrawingBoard(dragData);
         return;
       }
     }
@@ -129,7 +139,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
-    console.log("Dropping moment", momentId, "on", dropData);
+    console.log("Dropping moment", momentId, "on", dropData, "from", dragData);
 
     // Handle different drop target types
     switch (dropData.targetType) {
@@ -138,7 +148,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
         break;
 
       case "drawing-board":
-      case "unallocate-zone":
+        console.log("Handling drop on drawing board", dragData);
         handleDropOnDrawingBoard(dragData);
         break;
 
@@ -167,6 +177,31 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     // Reorder the array
     const reordered = [...cellMoments];
+    const [movedItem] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, movedItem);
+
+    // Update order values in state
+    for (let i = 0; i < reordered.length; i++) {
+      moments$[reordered[i].id].order.set(i);
+      moments$[reordered[i].id].updatedAt.set(new Date().toISOString());
+    }
+  }
+
+  function handleDrawingBoardReorder(activeId: string, overId: string) {
+    // Get all unallocated moments, sorted by current order
+    const unallocatedMoments = Object.values(allMoments)
+      .filter((m) => !m.day && !m.phase)
+      .sort((a, b) => a.order - b.order);
+
+    const oldIndex = unallocatedMoments.findIndex((m) => m.id === activeId);
+    const newIndex = unallocatedMoments.findIndex((m) => m.id === overId);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Reorder the array
+    const reordered = [...unallocatedMoments];
     const [movedItem] = reordered.splice(oldIndex, 1);
     reordered.splice(newIndex, 0, movedItem);
 
@@ -278,7 +313,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
   function handleDragCancel() {
     setActiveId(null);
-    setIsDraggingAllocated(false);
   }
 
   // Get active moment for drag overlay
@@ -294,9 +328,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       onDragCancel={handleDragCancel}
     >
       {children}
-
-      {/* Unallocate zone - fixed viewport edge (only visible when dragging allocated moments) */}
-      <UnallocateZone isVisible={isDraggingAllocated} />
 
       {/* Drag overlay shows preview of dragged item */}
       <DragOverlay>
