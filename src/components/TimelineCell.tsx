@@ -83,8 +83,8 @@ export function TimelineCell({
     };
 
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Get moments for this cell
@@ -152,24 +152,17 @@ export function TimelineCell({
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-[192px] p-3 rounded-lg",
+        "min-h-[192px] p-3 rounded-md",
         "transition-all",
-        "focus-within:outline-none",
-        // Phase-based gradient background (desktop only)
-        "md:min-h-[240px] md:p-4",
+        "focus-within:outline-none shadow-inner",
+        // Phase-based gradient background
+        "md:min-h-[256px] md:p-4",
         phaseBackgrounds[phaseIndex],
-        // Minimal border (desktop only - mobile has column borders)
-        "md:border md:border-stone-200/60 md:dark:border-stone-700/40",
-        // Full state - thicker left border (desktop only)
-        isFull &&
-          "md:border-l-4 md:border-l-stone-400 md:dark:border-l-stone-500",
         // Drag hover states
         isOver &&
           wouldAcceptDrop &&
-          "border border-stone-300 bg-stone-100/50 dark:bg-stone-800/30",
-        isOver &&
-          !wouldAcceptDrop &&
-          "border border-red-400 bg-red-50/50 dark:bg-red-950/20"
+          "ring-2 ring-slate-400 dark:ring-slate-300",
+        isOver && !wouldAcceptDrop && "ring-2 ring-red-400 dark:ring-red-500"
       )}
       data-cell={`${day}-${phase}`}
       aria-label={cellLabel}

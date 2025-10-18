@@ -55,6 +55,43 @@ export function getTimelineDays(): {
 }
 
 /**
+ * Get extended timeline days (multiple days before and after today)
+ * @param daysBefore - Number of days before today to include (default: 2)
+ * @param daysAfter - Number of days after today to include (default: 3)
+ */
+export function getExtendedTimelineDays(
+  daysBefore = 2,
+  daysAfter = 3
+): Array<{ date: string; isToday: boolean }> {
+  const today = new Date();
+  const days: Array<{ date: string; isToday: boolean }> = [];
+
+  // Add days before today
+  for (let i = daysBefore; i > 0; i--) {
+    days.push({
+      date: toISODate(subDays(today, i)),
+      isToday: false,
+    });
+  }
+
+  // Add today
+  days.push({
+    date: toISODate(today),
+    isToday: true,
+  });
+
+  // Add days after today
+  for (let i = 1; i <= daysAfter; i++) {
+    days.push({
+      date: toISODate(addDays(today, i)),
+      isToday: false,
+    });
+  }
+
+  return days;
+}
+
+/**
  * Get display label for a date (e.g., "Yesterday", "Today", "Tomorrow", or formatted date)
  */
 export function getDateLabel(date: Date | string): string {

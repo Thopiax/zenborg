@@ -198,14 +198,16 @@ export const momentCard = {
 
 /**
  * Phase Backgrounds
- * Stone-based gradients for timeline cells
- * Each phase has a subtle gradient for visual differentiation
+ * Slate-based gradients for timeline cells
+ * Progressive gradient - gets darker as the day progresses
+ * Light: 100 → 400 (lighter to darker)
+ * Dark: 500 → 800 (lighter to darker)
  */
 export const phaseBackgrounds: Record<number, string> = {
-  0: "bg-stone-50 dark:bg-stone-900/20",
-  1: "bg-stone-100 dark:bg-stone-900/30",
-  2: "bg-stone-200 dark:bg-stone-900/40",
-  3: "bg-stone-300 dark:bg-stone-900/50",
+  0: "bg-slate-100 dark:bg-slate-500",
+  1: "bg-slate-200 dark:bg-slate-600",
+  2: "bg-slate-300 dark:bg-slate-700",
+  3: "bg-slate-400 dark:bg-slate-800",
 } as const;
 
 /**

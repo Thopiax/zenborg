@@ -5,7 +5,7 @@ import { CloudMoon, Coffee, Moon, Sun } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { visiblePhases$ } from "@/infrastructure/state/store";
-import { getDateLabel, getTimelineDays } from "@/lib/dates";
+import { getDateLabel, getExtendedTimelineDays } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { TimelineCell } from "./TimelineCell";
 
@@ -21,36 +21,39 @@ const PHASE_ICONS: Record<
 };
 
 /**
- * Timeline - Minimal, unified timeline layout
+ * Timeline - DayRow-based timeline layout with extended days
  *
- * Responsive behavior:
- * - Mobile (<768px): Horizontal scroll, 3 columns (85vw each), snap to center
- * - Desktop (≥768px): Grid layout, 3 equal columns
+ * Layout:
+ * - Each day is a horizontal row
+ * - Vertical scroll with snap behavior (Today has stronger snap)
+ * - Days before viewport have reduced opacity with transition
+ * - Today is always front and center on load
  *
  * Design:
- * - Calm, minimal styling matching DrawingBoardColumn
- * - No heavy borders or backgrounds
- * - Typography hierarchy: Day label (Today/Yesterday) → Day of week → Date (small)
- * - Colored dividers under headers instead of borders
+ * - Day titles are large and prominent
+ * - Phase labels removed (icons only with darker colors)
+ * - Progressive slate gradient backgrounds
+ * - Smooth scroll snapping to days (Today has magnetic pull)
  */
 export function Timeline() {
   const visiblePhases = use$(visiblePhases$);
-  const days = getTimelineDays();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const timelineDays = getExtendedTimelineDays(1, 1); // Just Today and Tomorrow
+  const containerRef = useRef<HTMLDivElement>(null);
+  const todayRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to center Today column on mount (mobile only)
+  // Ensure Today is scrolled into view on mount
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      const todayColumn = container.children[1] as HTMLElement; // Middle column (Today)
-
-      if (todayColumn) {
-        const scrollLeft =
-          todayColumn.offsetLeft -
-          container.clientWidth / 2 +
-          todayColumn.clientWidth / 2;
-        container.scrollTo({ left: scrollLeft, behavior: "smooth" });
-      }
+    if (todayRef.current) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          todayRef.current?.scrollIntoView({
+            behavior: "instant",
+            inline: "start",
+            block: "nearest",
+          });
+        });
+      }, 100);
     }
   }, []);
 
@@ -65,57 +68,53 @@ export function Timeline() {
     return { dayOfWeek, monthDay };
   };
 
-  const renderDayColumn = (day: string, isToday: boolean) => {
+  const renderDayRow = (day: string, isToday: boolean, isPastDay: boolean) => {
     const { dayOfWeek, monthDay } = formatDateShort(day);
     const label = getDateLabel(day);
 
     return (
-      <div className="flex flex-col snap-center">
-        {/* Column Header - Minimal, no border/bg */}
-        <div className="flex flex-col gap-1 px-4 py-3">
-          <h3
+      <div
+        ref={isToday ? todayRef : null}
+        className={cn(
+          "flex flex-col gap-2 px-4 py-6",
+          "transition-opacity duration-300",
+          isToday
+            ? "snap-start snap-always border border-slate-400/10 dark:ring-slate-300 rounded-md"
+            : "snap-start",
+          isPastDay && "opacity-70"
+        )}
+      >
+        {/* Day Title Section - Above Timeline */}
+        <div className={cn("flex flex-row items-baseline gap-2 py-2 px-2")}>
+          <h2
             className={cn(
-              "text-sm font-mono",
+              "text-3xl font-mono font-bold",
               isToday
-                ? "font-bold text-stone-900 dark:text-stone-100"
-                : "font-medium text-stone-700 dark:text-stone-300"
+                ? "text-stone-900 dark:text-stone-100"
+                : "text-stone-700 dark:text-stone-300"
             )}
           >
             {label}
-          </h3>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-stone-500 dark:text-stone-400">
+          </h2>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-lg text-stone-500 dark:text-stone-400">
               {dayOfWeek}
             </span>
-            <span className="text-[10px] text-stone-400 dark:text-stone-500 font-mono">
+            <span className="text-base text-stone-400 dark:text-stone-500 font-mono">
               {monthDay}
             </span>
           </div>
         </div>
 
-        {/* Colored Divider - matches DrawingBoardColumn */}
-        <div
-          className={cn(
-            "h-[2px] mx-4 mb-3",
-            isToday
-              ? "bg-stone-400 dark:bg-stone-500"
-              : "bg-stone-300 dark:bg-stone-600"
-          )}
-        />
-
-        {/* Phase Sections */}
-        <div className="flex flex-col gap-3 px-4">
+        {/* Phase Sections - Horizontal Flow */}
+        <div className="flex gap-2 flex-1 overflow-x-auto">
           {visiblePhases.map((phaseConfig, index) => {
             const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
             return (
-              <div key={phaseConfig.phase} className="flex flex-col gap-2">
-                {/* Phase Header */}
-                <div className="flex items-center gap-2 px-1">
-                  <PhaseIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                  <span className="text-xs font-mono font-medium text-stone-600 dark:text-stone-400 uppercase tracking-wide">
-                    {phaseConfig.label}
-                  </span>
-                </div>
+              <div
+                key={phaseConfig.phase}
+                className="flex flex-col min-w-[280px] flex-1 p-2"
+              >
                 {/* Phase Cell */}
                 <TimelineCell
                   day={day}
@@ -123,6 +122,10 @@ export function Timeline() {
                   isHighlighted={isToday}
                   phaseIndex={index}
                 />
+                {/* Phase Icon at Bottom - More opaque */}
+                <div className="flex items-center justify-center px-1 mt-2">
+                  <PhaseIcon className="w-5 h-5 text-stone-800 dark:text-stone-100" />
+                </div>
               </div>
             );
           })}
@@ -131,35 +134,20 @@ export function Timeline() {
     );
   };
 
-  return (
-    <div className="w-full">
-      {/* Mobile Layout: Horizontal scrollable 3-column view */}
-      <div className="md:hidden">
-        <div
-          ref={scrollContainerRef}
-          className="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2"
-          style={{ scrollSnapType: "x mandatory" }}
-        >
-          <div className="flex-shrink-0 w-[85vw]">
-            {renderDayColumn(days.yesterday, false)}
-          </div>
-          <div className="flex-shrink-0 w-[85vw]">
-            {renderDayColumn(days.today, true)}
-          </div>
-          <div className="flex-shrink-0 w-[85vw]">
-            {renderDayColumn(days.tomorrow, false)}
-          </div>
-        </div>
-      </div>
+  // Find today's index to determine which days are past
+  const todayIndex = timelineDays.findIndex((d) => d.isToday);
 
-      {/* Desktop Layout: Unified grid (≥768px) */}
-      <div className="hidden md:block">
-        <div className="grid grid-cols-3 gap-6">
-          {renderDayColumn(days.yesterday, false)}
-          {renderDayColumn(days.today, true)}
-          {renderDayColumn(days.tomorrow, false)}
+  return (
+    <div
+      ref={containerRef}
+      className="w-full flex gap-6 overflow-x-auto max-h-[calc(100vh-200px)] snap-x snap-mandatory scroll-smooth py-4 px-2 hide-scrollbar"
+    >
+      {timelineDays.map(({ date, isToday }, index) => (
+        <div className="px-2" key={date}>
+          {renderDayRow(date, isToday, index < todayIndex)}
         </div>
-      </div>
+      ))}
+      <div className="w-96 flex-shrink-0" />
     </div>
   );
 }

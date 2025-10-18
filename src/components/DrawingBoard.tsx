@@ -23,11 +23,7 @@ import {
   drawingBoardGroupBy$,
   isDuplicateMode$,
 } from "@/infrastructure/state/ui-store";
-import {
-  groupByArea,
-  groupByCreated,
-  groupByHorizon,
-} from "@/lib/grouping";
+import { groupByArea, groupByCreated, groupByHorizon } from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
 import { DrawingBoardColumn } from "./DrawingBoardColumn";
@@ -38,7 +34,7 @@ import { MomentCard } from "./MomentCard";
  *
  * Features:
  * - Displays all moments that haven't been allocated to a day/phase
- * - Use global Shift+M to create new moments
+ * - Use global N to create new moments
  * - Collapsible to save space
  * - Supports drag and drop to/from timeline
  */
@@ -127,7 +123,7 @@ export function DrawingBoard() {
           <p className="text-xs text-stone-400 font-mono hidden lg:block">
             Press{" "}
             <kbd className="px-1.5 py-0.5 rounded bg-stone-200 dark:bg-stone-700">
-              Shift+M
+              N
             </kbd>{" "}
             to create
           </p>
@@ -197,7 +193,7 @@ export function DrawingBoard() {
                   <p className="text-xs text-stone-500 font-mono">
                     Press{" "}
                     <kbd className="px-1.5 py-0.5 rounded bg-stone-200 dark:bg-stone-700">
-                      Shift+M
+                      N
                     </kbd>{" "}
                     to create your first moment
                   </p>
@@ -239,7 +235,11 @@ interface DraggableMomentCardProps {
   contextMomentIds?: string[];
 }
 
-function DraggableMomentCard({ moment, area, contextMomentIds }: DraggableMomentCardProps) {
+function DraggableMomentCard({
+  moment,
+  area,
+  contextMomentIds,
+}: DraggableMomentCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: moment.id,
@@ -271,7 +271,11 @@ function DraggableMomentCard({ moment, area, contextMomentIds }: DraggableMoment
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <MomentCard moment={moment} area={area} contextMomentIds={contextMomentIds} />
+      <MomentCard
+        moment={moment}
+        area={area}
+        contextMomentIds={contextMomentIds}
+      />
     </div>
   );
 }

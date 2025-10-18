@@ -6,7 +6,7 @@ import { AreaSelector } from "@/components/AreaSelector";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
 import { MomentModal } from "@/components/MomentModal";
-import { SettingsModal, SettingsButton } from "@/components/SettingsModal";
+import { SettingsButton, SettingsModal } from "@/components/SettingsModal";
 import { Timeline } from "@/components/Timeline";
 import { MomentManagerProvider } from "@/contexts/MomentManagerContext";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
@@ -52,7 +52,9 @@ export default function HomePage() {
 
   useGlobalSelection(Object.keys(allMoments));
 
-  const areaSelectorMoment = areaSelectorMomentId ? allMoments[areaSelectorMomentId] : null;
+  const areaSelectorMoment = areaSelectorMomentId
+    ? allMoments[areaSelectorMomentId]
+    : null;
   const currentAreaId = areaSelectorMoment?.areaId || "";
 
   // Import clearSelection from useSelection hook
@@ -64,8 +66,10 @@ export default function HomePage() {
     // Check if the click target is not a button (moment cards are buttons)
     // or any child of a button
     const target = e.target as HTMLElement;
-    const isClickOnMoment = target.closest('button[data-moment-id]');
-    const isClickOnInteractive = target.closest('button, a, input, select, textarea');
+    const isClickOnMoment = target.closest("button[data-moment-id]");
+    const isClickOnInteractive = target.closest(
+      "button, a, input, select, textarea"
+    );
 
     if (!isClickOnMoment && !isClickOnInteractive && hasAnySelected) {
       clearSelection();
@@ -86,9 +90,9 @@ export default function HomePage() {
           {/* Main Content */}
           <main className="flex-1 flex flex-col">
             {/* Timeline */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-              <Timeline />
-            </div>
+            {/* <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full"> */}
+            <Timeline />
+            {/* </div> */}
 
             {/* Drawing Board - Collapsible below Timeline */}
             <DrawingBoard />
@@ -98,8 +102,8 @@ export default function HomePage() {
           <div
             className="fixed z-40"
             style={{
-              top: 'max(1.5rem, env(safe-area-inset-top) + 1rem)',
-              right: 'max(1.5rem, env(safe-area-inset-right) + 1rem)',
+              top: "max(1.5rem, env(safe-area-inset-top) + 1rem)",
+              right: "max(1.5rem, env(safe-area-inset-right) + 1rem)",
             }}
           >
             <SettingsButton onClick={() => setIsSettingsOpen(true)} />
@@ -122,9 +126,7 @@ export default function HomePage() {
             open={isCreateModalOpen}
             mode="create"
             initialAreaId={prefilledAreaId}
-            initialHorizon={
-              prefilledHorizon ? (prefilledHorizon as any) : null
-            }
+            initialHorizon={prefilledHorizon ? (prefilledHorizon as any) : null}
             onSave={handleCreateMoment}
             onCancel={handleCancelCreate}
           />
@@ -140,11 +142,16 @@ export default function HomePage() {
               editingMomentId ? allMoments[editingMomentId]?.areaId : ""
             }
             initialHorizon={
-              editingMomentId ? allMoments[editingMomentId]?.horizon ?? null : null
+              editingMomentId
+                ? allMoments[editingMomentId]?.horizon ?? null
+                : null
             }
             isAllocated={
               editingMomentId
-                ? !!(allMoments[editingMomentId]?.day && allMoments[editingMomentId]?.phase)
+                ? !!(
+                    allMoments[editingMomentId]?.day &&
+                    allMoments[editingMomentId]?.phase
+                  )
                 : false
             }
             onSave={handleSaveEdit}
