@@ -2,6 +2,7 @@ import { observable } from "@legendapp/state";
 import { endBatch, startBatch } from "./history";
 import {
   bulkDeleteMomentsWithHistory,
+  bulkDuplicateMomentsWithHistory,
   clearSelectionWithHistory,
   selectMomentsWithHistory,
 } from "./history-middleware";
@@ -210,4 +211,35 @@ export function deleteSelected() {
   );
 
   console.log("[deleteSelected] Deletion complete, selection cleared");
+}
+
+/**
+ * Duplicate all selected moments
+ * Creates copies in the drawing board (unallocated) and selects the duplicates
+ * Groups duplication + selection into a single history entry
+ */
+export function duplicateSelected() {
+  const selectedIds = selectionState$.selectedMomentIds.get();
+
+  console.log("[duplicateSelected] Called with selectedIds:", selectedIds);
+
+  if (selectedIds.length === 0) {
+    console.log("[duplicateSelected] No moments selected, aborting");
+    return;
+  }
+
+  // Batch duplication + selection together
+  startBatch();
+
+  // Duplicate with history
+  const newIds = bulkDuplicateMomentsWithHistory(selectedIds);
+
+  // Select the new duplicates with history
+  selectMomentsWithHistory(newIds);
+
+  endBatch(
+    `Duplicated ${selectedIds.length} moment${selectedIds.length > 1 ? "s" : ""}`
+  );
+
+  console.log("[duplicateSelected] Duplication complete, new moments selected");
 }

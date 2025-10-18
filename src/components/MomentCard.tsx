@@ -73,9 +73,10 @@ export function MomentCard({ moment, area }: MomentCardProps) {
         "rounded-lg transition-all cursor-pointer w-full",
         "focus:outline-none",
         // Subtle ring for selection/focus - using area color
+        "ring-offset-transparent",
         isSelected
-          ? "ring-2 ring-offset-1"
-          : "ring-0 hover:ring-1 hover:ring-offset-1"
+          ? "ring-2 ring-offset-2"
+          : "ring-0 hover:ring-2 hover:ring-offset-2"
       )}
       style={{
         backgroundColor: area.color,
@@ -87,7 +88,6 @@ export function MomentCard({ moment, area }: MomentCardProps) {
         // Use area color for ring with opacity for subtlety
         // @ts-expect-error - CSS custom property
         "--tw-ring-color": `${area.color}99`, // 60% opacity
-        "--tw-ring-offset-color": "rgb(250, 250, 249)", // stone-50
       }}
       data-moment-id={moment.id}
       onClick={handleClick}

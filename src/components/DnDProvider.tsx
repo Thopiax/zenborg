@@ -183,6 +183,13 @@ export function DnDProvider({ children }: DnDProviderProps) {
         }
         break;
 
+      case "drawing-board-column":
+        // Handle drop on a grouped column
+        if (!wasDuplicateMode) {
+          handleDropOnColumn(dragData, dropData);
+        }
+        break;
+
       default:
         console.warn("Unknown drop target type:", dropData.targetType);
     }
@@ -330,6 +337,47 @@ export function DnDProvider({ children }: DnDProviderProps) {
     moveMomentWithHistory(momentId, null, null, 0, reorders);
 
     endBatch("Unallocated moment");
+  }
+
+  function handleDropOnColumn(dragData: DraggableData, dropData: DroppableData) {
+    const { momentId } = dragData;
+    const { columnId, groupBy } = dropData;
+
+    if (!columnId || !groupBy) {
+      console.warn("Missing column data", dropData);
+      return;
+    }
+
+    const moment = allMoments[momentId];
+    if (!moment) {
+      console.error("Moment not found:", momentId);
+      return;
+    }
+
+    // Only allow changing area for "area" grouping mode
+    if (groupBy !== "area") {
+      console.log("Ignoring drop - grouping mode is read-only:", groupBy);
+      return;
+    }
+
+    // Extract area ID from column ID (format: "area-id")
+    const newAreaId = columnId;
+
+    // Don't update if already in this area
+    if (moment.areaId === newAreaId) {
+      return;
+    }
+
+    // Verify the area exists
+    if (!allAreas[newAreaId]) {
+      console.error("Target area not found:", newAreaId);
+      return;
+    }
+
+    // Update moment's area
+    console.log(`Moving moment ${momentId} to area ${newAreaId}`);
+    moments$[momentId].areaId.set(newAreaId);
+    moments$[momentId].updatedAt.set(new Date().toISOString());
   }
 
   function handleDragCancel() {

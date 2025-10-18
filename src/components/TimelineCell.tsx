@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
+/** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
@@ -23,6 +24,7 @@ import {
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
+import { EmptyMomentCard } from "./EmptyMomentCard";
 import { MomentCard } from "./MomentCard";
 
 interface TimelineCellProps {
@@ -89,15 +91,9 @@ export function TimelineCell({
   // Check if current drop would be valid
   const wouldAcceptDrop = !isFull; // Simple check for now, validation happens in DnDProvider
 
-  const handleCellClick = (e: React.MouseEvent) => {
-    // Only create if clicking on the empty area (not on a moment card)
-    const target = e.target as HTMLElement;
-    const clickedOnMoment = target.closest("[data-moment-id]");
-
-    if (!clickedOnMoment && !isFull) {
-      // Open create modal with day and phase prefilled
-      handleOpenCreateModal(day, phase);
-    }
+  const handleCreateClick = () => {
+    // Open create modal with day and phase prefilled
+    handleOpenCreateModal(day, phase);
   };
 
   // Generate accessible label
@@ -118,7 +114,6 @@ export function TimelineCell({
         "min-h-[240px] p-4 rounded-lg",
         "transition-all",
         "focus-within:outline-none",
-        "cursor-pointer",
         // Phase-based gradient background
         phaseBackgrounds[phaseIndex],
         // Minimal border
@@ -134,47 +129,39 @@ export function TimelineCell({
           "border-red-400 bg-red-50/50 dark:bg-red-950/20"
       )}
       data-cell={`${day}-${phase}`}
-      onClick={handleCellClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleCellClick(e as unknown as React.MouseEvent);
-        }
-      }}
-      role="button"
-      tabIndex={0}
       aria-label={cellLabel}
       aria-live={isFull ? "polite" : "off"}
       aria-atomic="true"
     >
-      {cellMoments.length > 0 ? (
-        <SortableContext
-          items={cellMoments.map((m) => m.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="flex flex-col" style={{ gap: momentCard.gap }}>
-            {cellMoments.map((moment) => {
-              // Get area from the extracted values (use$ already unwrapped it)
-              const area = allAreas[moment.areaId];
-              if (!area) return null;
+      <SortableContext
+        items={cellMoments.map((m) => m.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="flex flex-col" style={{ gap: momentCard.gap }}>
+          {cellMoments.map((moment) => {
+            // Get area from the extracted values (use$ already unwrapped it)
+            const area = allAreas[moment.areaId];
+            if (!area) return null;
 
-              return (
-                <SortableMomentCard
-                  key={moment.id}
-                  moment={moment}
-                  area={area}
-                />
-              );
-            })}
-          </div>
-        </SortableContext>
-      ) : (
-        <div className="flex items-center justify-center h-full min-h-[192px]">
-          {/* <p className="text-sm text-stone-400 dark:text-stone-600 font-mono">
-            Empty
-          </p> */}
+            return (
+              <SortableMomentCard key={moment.id} moment={moment} area={area} />
+            );
+          })}
+
+          {/* Show EmptyMomentCard when not full */}
+          {!isFull && (
+            <EmptyMomentCard
+              onClick={handleCreateClick}
+              label={
+                cellMoments.length === 0
+                  ? `Add to ${phaseLabel || phase}`
+                  : "Add moment"
+              }
+            />
+          )}
         </div>
-      )}
+      </SortableContext>
+
       {isFull && (
         <output
           className="text-xs text-stone-500 dark:text-stone-500 font-mono mt-3 flex items-center gap-2"

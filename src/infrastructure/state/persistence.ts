@@ -9,7 +9,7 @@ import { observablePersistIndexedDB } from "@legendapp/state/persist-plugins/ind
 import { ObservablePersistLocalStorage } from "@legendapp/state/persist-plugins/local-storage";
 import { configureSynced, syncObservable } from "@legendapp/state/sync";
 import { areas$, cycles$, moments$, phaseConfigs$ } from "./store";
-import { lastUsedAreaId$ } from "./ui-store";
+import { drawingBoardGroupBy$, lastUsedAreaId$ } from "./ui-store";
 
 /**
  * Flag to ensure persistence is only configured once
@@ -106,6 +106,15 @@ export function configurePersistence(): void {
       persistLocalStorageOptions({
         persist: {
           name: "zenborg_lastUsedAreaId",
+        },
+      })
+    );
+
+    syncObservable(
+      drawingBoardGroupBy$,
+      persistLocalStorageOptions({
+        persist: {
+          name: "zenborg_drawingBoardGroupBy",
         },
       })
     );

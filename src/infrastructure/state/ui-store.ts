@@ -32,6 +32,15 @@ export const lastUsedAreaId$ = observable<string | null>(null);
  */
 export const isDuplicateMode$ = observable<boolean>(false);
 
+/**
+ * Grouping mode for drawing board
+ * Determines how unallocated moments are organized
+ * Persisted to localStorage
+ */
+export type DrawingBoardGroupBy = "none" | "area" | "created" | "horizon";
+
+export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("none");
+
 // ============================================================================
 // Future UI State (examples for when needed)
 // ============================================================================

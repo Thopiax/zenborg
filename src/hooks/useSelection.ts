@@ -2,6 +2,7 @@ import { useSelector } from "@legendapp/state/react";
 import {
   clearSelection as clearSelectionAction,
   deleteSelected as deleteSelectedAction,
+  duplicateSelected as duplicateSelectedAction,
   selectAll as selectAllAction,
   selectionState$,
   selectMultiple as selectMultipleAction,
@@ -59,6 +60,10 @@ export function useSelection() {
     deleteSelectedAction();
   };
 
+  const duplicateSelected = () => {
+    duplicateSelectedAction();
+  };
+
   const isEditing = (momentId: string) => {
     return editingMomentId === momentId;
   };
@@ -86,6 +91,7 @@ export function useSelection() {
     selectRange,
     clearSelection,
     deleteSelected,
+    duplicateSelected,
 
     // Helpers
     isEditing,

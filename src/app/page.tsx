@@ -28,6 +28,8 @@ export default function HomePage() {
     updateMomentArea,
     focusedMomentId,
     isCreateModalOpen,
+    prefilledAreaId,
+    prefilledHorizon,
     handleCreateMoment,
     handleCancelCreate,
     handleOpenCreateModal,
@@ -83,6 +85,10 @@ export default function HomePage() {
           <MomentModal
             open={isCreateModalOpen}
             mode="create"
+            initialAreaId={prefilledAreaId}
+            initialHorizon={
+              prefilledHorizon ? (prefilledHorizon as any) : null
+            }
             onSave={handleCreateMoment}
             onCancel={handleCancelCreate}
           />
@@ -96,6 +102,9 @@ export default function HomePage() {
             }
             initialAreaId={
               editingMomentId ? allMoments[editingMomentId]?.areaId : ""
+            }
+            initialHorizon={
+              editingMomentId ? allMoments[editingMomentId]?.horizon ?? null : null
             }
             onSave={handleSaveEdit}
             onCancel={handleCancelEdit}

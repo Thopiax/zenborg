@@ -17,6 +17,7 @@ import { useSelection } from "./useSelection";
  * - Enter: Edit focused moment
  * - Delete: Delete focused moment
  * - Mod+Backspace: Delete all selected moments
+ * - D: Duplicate all selected moments
  *
  * Selection:
  * - Shift+click / Cmd+click: Toggle moment selection
@@ -48,7 +49,7 @@ export function useGlobalKeyboard() {
     focusLast,
   } = useFocusManager();
 
-  const { deleteSelected } = useSelection();
+  const { deleteSelected, duplicateSelected } = useSelection();
   const { undo, redo, canUndo, canRedo } = useHistory();
 
   // UI state for CRUD operations
@@ -56,6 +57,8 @@ export function useGlobalKeyboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [prefilledDay, setPrefilledDay] = useState<string | undefined>();
   const [prefilledPhase, setPrefilledPhase] = useState<string | undefined>();
+  const [prefilledAreaId, setPrefilledAreaId] = useState<string | undefined>();
+  const [prefilledHorizon, setPrefilledHorizon] = useState<string | undefined>();
   const [isEditCardOpen, setIsEditCardOpen] = useState(false);
   const [editingMomentId, setEditingMomentId] = useState<string | null>(null);
 
@@ -152,6 +155,28 @@ export function useGlobalKeyboard() {
 
       console.log("[Mod+Backspace] Calling deleteSelected");
       deleteSelected();
+    },
+    { enabled: globalShortcutsEnabled, enableOnFormTags: false }
+  );
+
+  // D (Shift+d) - Duplicate selected moments
+  useHotkeys(
+    "shift+d",
+    (e) => {
+      console.log("[Shift+D] Triggered");
+      e.preventDefault();
+
+      // Read the current selection state inside the callback
+      const selectedIds = selectionState$.selectedMomentIds.peek();
+      console.log("[Shift+D] Current selection:", selectedIds);
+
+      if (selectedIds.length === 0) {
+        console.log("[Shift+D] No moments selected, ignoring");
+        return;
+      }
+
+      console.log("[Shift+D] Calling duplicateSelected");
+      duplicateSelected();
     },
     { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
@@ -276,7 +301,11 @@ export function useGlobalKeyboard() {
     () => {
       if (!yankBuffer) return;
 
-      const result = createMoment(yankBuffer.name, yankBuffer.areaId);
+      const result = createMoment(
+        yankBuffer.name,
+        yankBuffer.areaId,
+        yankBuffer.horizon
+      );
       if (!("error" in result)) {
         moments$[result.id].set(result);
         focusMoment(result.id);
@@ -319,10 +348,11 @@ export function useGlobalKeyboard() {
   const handleCreateMoment = (
     name: string,
     areaId: string,
+    horizon: import("@/domain/entities/Moment").Horizon | null,
     createMore?: boolean
   ) => {
-    // Create new moment
-    const result = createMoment(name, areaId);
+    // Create new moment with horizon
+    const result = createMoment(name, areaId, horizon);
     if (!("error" in result)) {
       // If day/phase were prefilled, allocate the moment
       if (prefilledDay && prefilledPhase) {
@@ -351,21 +381,35 @@ export function useGlobalKeyboard() {
     setIsCreateModalOpen(false);
     setPrefilledDay(undefined);
     setPrefilledPhase(undefined);
+    setPrefilledAreaId(undefined);
+    setPrefilledHorizon(undefined);
   };
 
-  const handleOpenCreateModal = (day?: string, phase?: string) => {
+  const handleOpenCreateModal = (
+    day?: string,
+    phase?: string,
+    areaId?: string,
+    horizon?: string
+  ) => {
     setPrefilledDay(day);
     setPrefilledPhase(phase);
+    setPrefilledAreaId(areaId);
+    setPrefilledHorizon(horizon);
     setIsCreateModalOpen(true);
   };
 
-  const handleSaveEdit = (name: string, areaId: string) => {
+  const handleSaveEdit = (
+    name: string,
+    areaId: string,
+    horizon: import("@/domain/entities/Moment").Horizon | null
+  ) => {
     if (editingMomentId) {
       // Update existing moment
       const moment = moments$[editingMomentId].peek();
       if (moment) {
         moments$[editingMomentId].name.set(name);
         moments$[editingMomentId].areaId.set(areaId);
+        moments$[editingMomentId].horizon.set(horizon);
         moments$[editingMomentId].updatedAt.set(new Date().toISOString());
       }
     }
@@ -391,6 +435,8 @@ export function useGlobalKeyboard() {
     focusedMomentId,
     // Create modal state
     isCreateModalOpen,
+    prefilledAreaId,
+    prefilledHorizon,
     handleCreateMoment,
     handleCancelCreate,
     handleOpenCreateModal,

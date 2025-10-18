@@ -3,7 +3,12 @@
 import { createContext, useContext } from "react";
 
 interface MomentManagerContextValue {
-  handleOpenCreateModal: (prefilledDay?: string, prefilledPhase?: string) => void;
+  handleOpenCreateModal: (
+    prefilledDay?: string,
+    prefilledPhase?: string,
+    prefilledAreaId?: string,
+    prefilledHorizon?: string
+  ) => void;
   handleOpenEditModal: (momentId: string) => void;
 }
 
@@ -19,7 +24,9 @@ export function MomentManagerProvider({
   children: React.ReactNode;
   handleOpenCreateModal: (
     prefilledDay?: string,
-    prefilledPhase?: string
+    prefilledPhase?: string,
+    prefilledAreaId?: string,
+    prefilledHorizon?: string
   ) => void;
   handleOpenEditModal: (momentId: string) => void;
 }) {

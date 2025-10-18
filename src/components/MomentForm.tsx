@@ -5,8 +5,9 @@ import { use$ } from "@legendapp/state/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
+import { HorizonSelector } from "@/components/HorizonSelector";
 import type { Area } from "@/domain/entities/Area";
-import { validateMomentName } from "@/domain/entities/Moment";
+import { validateMomentName, type Horizon } from "@/domain/entities/Moment";
 import { areas$ } from "@/infrastructure/state/store";
 import { lastUsedAreaId$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
@@ -15,7 +16,13 @@ interface MomentFormProps {
   mode: "create" | "edit";
   initialName?: string;
   initialAreaId?: string;
-  onSave: (name: string, areaId: string, createMore?: boolean) => void;
+  initialHorizon?: Horizon | null;
+  onSave: (
+    name: string,
+    areaId: string,
+    horizon: Horizon | null,
+    createMore?: boolean
+  ) => void;
   onCancel: () => void;
   /** For create mode: allow creating multiple moments in a row */
   showCreateMore?: boolean;
@@ -27,6 +34,7 @@ interface MomentFormProps {
  * Features:
  * - Name input with validation (1-3 words)
  * - Area selection with keyboard shortcuts (1-5, Tab, A)
+ * - Horizon selection (only for create mode - unallocated moments)
  * - Enter to save, Escape to cancel
  * - Optional "Create more" toggle for batch creation
  */
@@ -34,10 +42,13 @@ export function MomentForm({
   mode,
   initialName = "",
   initialAreaId = "",
+  initialHorizon = null,
   onSave,
   onCancel,
   showCreateMore = false,
 }: MomentFormProps) {
+  // Horizon is only editable for create mode (unallocated moments)
+  const showHorizonSelector = mode === "create";
   const allAreas = use$(areas$);
   const lastUsedAreaId = use$(lastUsedAreaId$);
   const areasList: Area[] = useMemo(
@@ -47,15 +58,19 @@ export function MomentForm({
 
   const [name, setName] = useState(initialName);
   const [selectedAreaId, setSelectedAreaId] = useState<string>(() => {
-    if (mode === "edit" && initialAreaId) {
+    // Prioritize explicit initialAreaId (from column click, edit, etc.)
+    if (initialAreaId) {
       return initialAreaId;
     }
+    // Fall back to last used area for create mode
     if (mode === "create" && lastUsedAreaId) {
       return lastUsedAreaId;
     }
     return areasList[0]?.id ?? "";
   });
+  const [horizon, setHorizon] = useState<Horizon | null>(initialHorizon);
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
+  const [isHorizonSelectorOpen, setIsHorizonSelectorOpen] = useState(false);
   const [createMore, setCreateMore] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,9 +92,11 @@ export function MomentForm({
 
     let desiredAreaId: string | undefined;
 
-    if (mode === "edit") {
+    // Prioritize explicit initialAreaId (from column click, edit, etc.)
+    if (initialAreaId) {
       desiredAreaId = initialAreaId;
     } else if (mode === "create") {
+      // Fall back to last used area only if no initialAreaId was provided
       desiredAreaId = lastUsedAreaId ?? undefined;
     }
 
@@ -112,6 +129,13 @@ export function MomentForm({
     setIsAreaSelectorOpen(true);
   });
 
+  // H - open horizon selector (only for create mode)
+  useHotkeys("h", (e) => {
+    if (!showHorizonSelector) return;
+    e.preventDefault();
+    setIsHorizonSelectorOpen(true);
+  });
+
   // Tab to cycle areas
   useHotkeys("tab", (e) => {
     e.preventDefault();
@@ -139,14 +163,14 @@ export function MomentForm({
   );
 
   // Escape - Smart behavior:
-  // 1. If area selector is open -> it handles its own escape
-  // 2. If input is focused and has text -> blur input (to allow area selection)
+  // 1. If area/horizon selector is open -> it handles its own escape
+  // 2. If input is focused and has text -> blur input (to allow keyboard shortcuts)
   // 3. Otherwise -> cancel modal
   useHotkeys(
     "escape",
     (e) => {
-      // Don't handle escape if area selector is open (it handles its own)
-      if (isAreaSelectorOpen) {
+      // Don't handle escape if any selector is open (they handle their own)
+      if (isAreaSelectorOpen || isHorizonSelectorOpen) {
         return;
       }
 
@@ -156,7 +180,7 @@ export function MomentForm({
         document.activeElement === inputRef.current &&
         name.trim().length > 0
       ) {
-        // If input is focused and has text, blur it to allow area keyboard shortcuts
+        // If input is focused and has text, blur it to allow keyboard shortcuts
         inputRef.current?.blur();
       } else {
         // Otherwise close the modal
@@ -178,13 +202,14 @@ export function MomentForm({
       // If "Create more" is enabled, pass it to parent
       const shouldCreateMore = mode === "create" && createMore;
 
-      // Call onSave with createMore flag
-      onSave(name.trim(), selectedArea.id, shouldCreateMore);
+      // Call onSave with horizon and createMore flag
+      onSave(name.trim(), selectedArea.id, horizon, shouldCreateMore);
 
       // If "Create more" is enabled, reset form immediately
       // Parent will keep modal open, but preserve area selection
       if (shouldCreateMore) {
         setName("");
+        setHorizon(null); // Reset horizon too
         // Don't reset selectedAreaId - keep the same area
         // Refocus input after a brief delay to allow state update
         setTimeout(() => {
@@ -235,22 +260,55 @@ export function MomentForm({
           </p>
         )}
 
-        {/* Area Selector Trigger */}
-        <button
-          onClick={() => setIsAreaSelectorOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all text-white hover:opacity-90"
-          style={{
-            backgroundColor: selectedArea.color,
-            borderColor: selectedArea.color,
-          }}
-        >
-          <span className="text-lg">{selectedArea.emoji}</span>
-          <span className="font-medium">{selectedArea.name}</span>
-          <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-white/20 text-white">
-            A
-          </kbd>
-        </button>
+        {/* Selectors Row with flex wrap and breathing room */}
+        <div className="flex flex-wrap gap-3 mb-6">
+          {/* Area Selector Trigger - Always first */}
+          <button
+            type="button"
+            onClick={() => setIsAreaSelectorOpen(true)}
+            className="min-w-[200px] flex-1 flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all text-white hover:opacity-90"
+            style={{
+              backgroundColor: selectedArea.color,
+              borderColor: selectedArea.color,
+            }}
+          >
+            <span className="text-lg">{selectedArea.emoji}</span>
+            <span className="font-medium">{selectedArea.name}</span>
+            <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-white/20 text-white">
+              A
+            </kbd>
+          </button>
+
+          {/* Horizon Selector Trigger - Ghost style, only for unallocated moments */}
+          {showHorizonSelector && (
+            <button
+              type="button"
+              onClick={() => setIsHorizonSelectorOpen(true)}
+              className="min-w-[200px] flex-1 flex items-center gap-2 px-4 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-stone-400">Horizon:</span>
+                <span className="font-mono text-sm">
+                  {horizon ? horizon.charAt(0).toUpperCase() + horizon.slice(1) : "Unset"}
+                </span>
+              </div>
+              <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400">
+                H
+              </kbd>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Horizon Selector Dialog */}
+      <HorizonSelector
+        open={isHorizonSelectorOpen}
+        selectedHorizon={horizon}
+        onSelectHorizon={(newHorizon) => {
+          setHorizon(newHorizon);
+        }}
+        onClose={() => setIsHorizonSelectorOpen(false)}
+      />
 
       {/* Area Selector Dialog */}
       <AreaSelector

@@ -338,6 +338,55 @@ export function duplicateMomentWithHistory(
 }
 
 /**
+ * Bulk duplicate moments and record to history
+ * Creates copies of all selected moments in the drawing board (unallocated)
+ */
+export function bulkDuplicateMomentsWithHistory(momentIds: string[]): string[] {
+  const allMoments = moments$.peek();
+  const momentsToDuplicate = momentIds
+    .map((id) => allMoments[id])
+    .filter(Boolean);
+
+  if (momentsToDuplicate.length === 0) {
+    console.error("[History] No moments to duplicate");
+    return [];
+  }
+
+  const newIds: string[] = [];
+  const now = new Date().toISOString();
+
+  // Apply: Create duplicates in store
+  for (const originalMoment of momentsToDuplicate) {
+    const newId = crypto.randomUUID();
+    const duplicatedMoment: Moment = {
+      ...originalMoment,
+      id: newId,
+      day: null, // Always place duplicates in drawing board
+      phase: null,
+      order: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    moments$[newId].set(duplicatedMoment);
+    newIds.push(newId);
+
+    // Record each duplication to history
+    const operation: DuplicateMomentOperation = {
+      type: "DUPLICATE_MOMENT",
+      timestamp: Date.now(),
+      originalMomentId: originalMoment.id,
+      duplicatedMoment,
+    };
+    recordOperation(operation);
+  }
+
+  console.log("[History] Bulk duplicated", momentsToDuplicate.length, "moments");
+
+  return newIds;
+}
+
+/**
  * Reorder moments within the same cell and record to history
  */
 export function reorderMomentsWithHistory(

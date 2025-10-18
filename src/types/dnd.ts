@@ -14,7 +14,10 @@ export type DragSourceType = "timeline" | "drawing-board";
 /**
  * Target location types for droppable zones
  */
-export type DropTargetType = "timeline-cell" | "drawing-board";
+export type DropTargetType =
+  | "timeline-cell"
+  | "drawing-board"
+  | "drawing-board-column";
 
 /**
  * Data attached to draggable moments
@@ -34,6 +37,8 @@ export interface DroppableData {
   targetType: DropTargetType;
   targetDay?: string; // ISO date for timeline cells
   targetPhase?: Phase; // Phase for timeline cells
+  columnId?: string; // Column ID for drawing board columns
+  groupBy?: string; // Grouping mode (area, created, urgency)
 }
 
 /**

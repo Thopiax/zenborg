@@ -2,6 +2,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import type { Horizon } from "@/domain/entities/Moment";
 import { MomentForm } from "./MomentForm";
 
 interface MomentModalProps {
@@ -9,7 +10,8 @@ interface MomentModalProps {
   mode: "create" | "edit";
   initialName?: string;
   initialAreaId?: string;
-  onSave: (name: string, areaId: string) => void;
+  initialHorizon?: Horizon | null;
+  onSave: (name: string, areaId: string, horizon: Horizon | null) => void;
   onCancel: () => void;
 }
 
@@ -25,6 +27,7 @@ export function MomentModal({
   mode,
   initialName = "",
   initialAreaId = "",
+  initialHorizon = null,
   onSave,
   onCancel,
 }: MomentModalProps) {
@@ -62,6 +65,7 @@ export function MomentModal({
             mode={mode}
             initialName={initialName}
             initialAreaId={initialAreaId}
+            initialHorizon={initialHorizon}
             onSave={onSave}
             onCancel={onCancel}
             showCreateMore={mode === "create"}
