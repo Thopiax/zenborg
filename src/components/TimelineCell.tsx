@@ -16,6 +16,7 @@ import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
 import {
@@ -237,8 +238,16 @@ function SortableMomentCard({
   contextMomentIds,
 }: SortableMomentCardProps) {
   const isDuplicateMode = use$(isDuplicateMode$);
+  const selectedMomentIds = use$(selectionState$.selectedMomentIds);
 
-  // Always use useSortable, disable sorting behavior during duplicate mode
+  // Disable sortable behavior if:
+  // 1. In duplicate mode, OR
+  // 2. This moment is part of a multi-selection (prevents reorder conflicts)
+  const isPartOfMultiSelection =
+    selectedMomentIds.includes(moment.id) && selectedMomentIds.length > 1;
+  const shouldDisableSortable = isDuplicateMode || isPartOfMultiSelection;
+
+  // Always use useSortable, disable sorting behavior when needed
   const {
     attributes,
     listeners,
@@ -255,15 +264,17 @@ function SortableMomentCard({
       sourcePhase: moment.phase ?? undefined,
       sourceOrder: moment.order,
     },
-    disabled: isDuplicateMode,
-    transition: isDuplicateMode ? null : undefined,
+    disabled: shouldDisableSortable,
+    transition: shouldDisableSortable ? null : undefined,
   });
 
   const style = {
     transform: transform ? CSS.Transform.toString(transform) : undefined,
     transition,
-    // Kanban style: original disappears on move, stays visible on duplicate
-    opacity: isDragging && !isDuplicateMode ? 0 : 1,
+    // Kanban style: original disappears on move, stays visible on duplicate/multi-select
+    opacity: isDragging && !shouldDisableSortable ? 0 : 1,
+    // Prevent browser scroll/pan interference during touch drag
+    touchAction: "none",
   };
 
   return (

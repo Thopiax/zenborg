@@ -197,6 +197,8 @@ function SortableMomentCard({
     transition,
     // Don't apply transform when dragging in duplicate mode - original should stay put
     opacity: isDragging && !isDuplicateMode ? 0.5 : 1,
+    // Prevent browser scroll/pan interference during touch drag
+    touchAction: "none",
   };
 
   return (

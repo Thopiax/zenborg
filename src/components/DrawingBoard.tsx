@@ -264,6 +264,8 @@ function DraggableMomentCard({ moment, area, contextMomentIds }: DraggableMoment
     opacity: isDragging && !isDuplicateMode ? 0.5 : 1,
     width: "300px",
     flexShrink: 0,
+    // Prevent browser scroll/pan interference during touch drag
+    touchAction: "none",
   };
 
   return (
