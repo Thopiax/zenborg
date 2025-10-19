@@ -1,10 +1,10 @@
 import type { Phase } from "../value-objects/Phase";
 
 /**
- * Horizon - Time perspective for moments in the drawing board
+ * Cycle - Time perspective for moments in the drawing board
  * A calm way to think about temporal scope without urgency
  */
-export type Horizon = "now" | "soon" | "later";
+export type Cycle = "now" | "soon" | "later";
 
 /**
  * Moment - A named intention (1-3 words maximum)
@@ -20,7 +20,7 @@ export interface Moment {
   phase: Phase | null;
   day: string | null; // ISO date: "2025-01-15"
   order: number; // 0-2 (max 3 per phase)
-  horizon: Horizon | null; // Temporal scope for drawing board organization
+  cycle: Cycle | null; // Temporal scope for drawing board organization
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }
@@ -107,13 +107,13 @@ export function canAllocateToPhase(
  *
  * @param name - Moment name (1-3 words)
  * @param areaId - ID of the area this moment belongs to
- * @param horizon - Optional time horizon
+ * @param cycle - Optional time cycle
  * @returns New moment or error if validation fails
  */
 export function createMoment(
   name: string,
   areaId: string,
-  horizon: Horizon | null = null
+  cycle: Cycle | null = null
 ): MomentResult {
   const validation = validateMomentName(name);
 
@@ -134,7 +134,7 @@ export function createMoment(
     phase: null,
     day: null,
     order: 0,
-    horizon,
+    cycle,
     createdAt: now,
     updatedAt: now,
   };
@@ -142,7 +142,7 @@ export function createMoment(
 
 /**
  * Allocates a moment to a specific day and phase
- * Horizon is cleared when allocating (only relevant for unallocated moments)
+ * Cycle is cleared when allocating (only relevant for unallocated moments)
  *
  * @param moment - The moment to allocate
  * @param day - ISO date string
@@ -165,7 +165,7 @@ export function allocateMoment(
     day,
     phase,
     order,
-    horizon: null, // Clear horizon when allocating
+    cycle: null, // Clear cycle when allocating
     updatedAt: new Date().toISOString(),
   };
 }
@@ -211,19 +211,19 @@ export function updateMomentName(
 }
 
 /**
- * Updates the horizon of a moment
+ * Updates the cycle of a moment
  *
  * @param moment - The moment to update
- * @param horizon - New time horizon
+ * @param cycle - New time cycle
  * @returns Updated moment
  */
-export function updateMomentHorizon(
+export function updateMomentCycle(
   moment: Moment,
-  horizon: Horizon | null
+  cycle: Cycle | null
 ): Moment {
   return {
     ...moment,
-    horizon,
+    cycle,
     updatedAt: new Date().toISOString(),
   };
 }

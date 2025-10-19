@@ -6,9 +6,9 @@ import { Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
-import { HorizonSelector } from "@/components/HorizonSelector";
+import { CycleSelector } from "@/components/CycleSelector";
 import type { Area } from "@/domain/entities/Area";
-import { type Horizon, validateMomentName } from "@/domain/entities/Moment";
+import { type Cycle, validateMomentName } from "@/domain/entities/Moment";
 import { areas$ } from "@/infrastructure/state/store";
 import { lastUsedAreaId$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
@@ -17,13 +17,13 @@ interface MomentFormProps {
   mode: "create" | "edit";
   initialName?: string;
   initialAreaId?: string;
-  initialHorizon?: Horizon | null;
-  /** Whether the moment is allocated (has day/phase). If true, horizon selector is hidden. */
+  initialCycle?: Cycle | null;
+  /** Whether the moment is allocated (has day/phase). If true, cycle selector is hidden. */
   isAllocated?: boolean;
   onSave: (
     name: string,
     areaId: string,
-    horizon: Horizon | null,
+    cycle: Cycle | null,
     createMore?: boolean
   ) => void;
   onCancel: () => void;
@@ -39,7 +39,7 @@ interface MomentFormProps {
  * Features:
  * - Name input with validation (1-3 words)
  * - Area selection with keyboard shortcuts (1-5, Tab, A)
- * - Horizon selection (only for unallocated moments)
+ * - Cycle selection (only for unallocated moments)
  * - Enter to save, Escape to cancel
  * - Optional "Create more" toggle for batch creation
  */
@@ -47,16 +47,17 @@ export function MomentForm({
   mode,
   initialName = "",
   initialAreaId = "",
-  initialHorizon = null,
+  initialCycle = null,
   isAllocated = false,
   onSave,
   onCancel,
   showCreateMore = false,
   onDelete,
 }: MomentFormProps) {
-  // Horizon is only editable for unallocated moments (create mode or edit unallocated)
-  const showHorizonSelector = useMemo(
-    () => mode === "create" || (mode === "edit" && !isAllocated),
+  // Cycle is only editable for unallocated moments (create mode or edit unallocated)
+  const showCycleSelector = useMemo(
+    () => false && mode && isAllocated,
+    // () => mode === "create" || (mode === "edit" && !isAllocated),
     [mode, isAllocated]
   );
   const allAreas = use$(areas$);
@@ -78,9 +79,9 @@ export function MomentForm({
     }
     return areasList[0]?.id ?? "";
   });
-  const [horizon, setHorizon] = useState<Horizon | null>(initialHorizon);
+  const [cycle, setCycle] = useState<Cycle | null>(initialCycle ?? "later");
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
-  const [isHorizonSelectorOpen, setIsHorizonSelectorOpen] = useState(false);
+  const [isCycleSelectorOpen, setIsCycleSelectorOpen] = useState(false);
   const [createMore, setCreateMore] = useState(false);
   // Track whether user has manually changed the area via AreaSelector
   const [hasManuallyChangedArea, setHasManuallyChangedArea] = useState(false);
@@ -150,11 +151,11 @@ export function MomentForm({
     setIsAreaSelectorOpen(true);
   });
 
-  // H - open horizon selector (only for create mode)
+  // H - open cycle selector (only for create mode)
   useHotkeys("h", (e) => {
-    if (!showHorizonSelector) return;
+    if (!showCycleSelector) return;
     e.preventDefault();
-    setIsHorizonSelectorOpen(true);
+    setIsCycleSelectorOpen(true);
   });
 
   // Tab to cycle areas
@@ -185,14 +186,14 @@ export function MomentForm({
   );
 
   // Escape - Smart behavior:
-  // 1. If area/horizon selector is open -> it handles its own escape
+  // 1. If area/cycle selector is open -> it handles its own escape
   // 2. If input is focused and has text -> blur input (to allow keyboard shortcuts)
   // 3. Otherwise -> cancel modal
   useHotkeys(
     "escape",
     (e) => {
       // Don't handle escape if any selector is open (they handle their own)
-      if (isAreaSelectorOpen || isHorizonSelectorOpen) {
+      if (isAreaSelectorOpen || isCycleSelectorOpen) {
         return;
       }
 
@@ -223,14 +224,14 @@ export function MomentForm({
       // If "Create more" is enabled, pass it to parent
       const shouldCreateMore = mode === "create" && createMore;
 
-      // Call onSave with horizon and createMore flag
-      onSave(name.trim(), selectedArea.id, horizon, shouldCreateMore);
+      // Call onSave with cycle and createMore flag
+      onSave(name.trim(), selectedArea.id, cycle, shouldCreateMore);
 
       // If "Create more" is enabled, reset form immediately
       // Parent will keep modal open, but preserve area selection
       if (shouldCreateMore) {
         setName("");
-        setHorizon(null); // Reset horizon too
+        setCycle("later"); // Reset cycle to default "later"
         // Don't reset selectedAreaId - keep the same area
         // Refocus input after a brief delay to allow state update
         setTimeout(() => {
@@ -310,20 +311,18 @@ export function MomentForm({
             </kbd>
           </button>
 
-          {/* Horizon Selector Trigger - Ghost style, only for unallocated moments */}
-          {showHorizonSelector && (
+          {/* Cycle Selector Trigger - Ghost style, only for unallocated moments */}
+          {showCycleSelector && (
             <button
               type="button"
-              onClick={() => setIsHorizonSelectorOpen(true)}
+              onClick={() => setIsCycleSelectorOpen(true)}
               className="min-w-[200px] flex-1 flex items-center gap-2 px-4 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 justify-between"
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-stone-400">
-                  Horizon:
-                </span>
+                <span className="text-xs font-mono text-stone-400">Cycle:</span>
                 <span className="font-mono text-sm">
-                  {horizon
-                    ? horizon.charAt(0).toUpperCase() + horizon.slice(1)
+                  {cycle
+                    ? cycle.charAt(0).toUpperCase() + cycle.slice(1)
                     : "Unset"}
                 </span>
               </div>
@@ -335,14 +334,14 @@ export function MomentForm({
         </div>
       </div>
 
-      {/* Horizon Selector Dialog */}
-      <HorizonSelector
-        open={isHorizonSelectorOpen}
-        selectedHorizon={horizon}
-        onSelectHorizon={(newHorizon) => {
-          setHorizon(newHorizon);
+      {/* Cycle Selector Dialog */}
+      <CycleSelector
+        open={isCycleSelectorOpen}
+        selectedCycle={cycle}
+        onSelectCycle={(newCycle) => {
+          setCycle(newCycle);
         }}
-        onClose={() => setIsHorizonSelectorOpen(false)}
+        onClose={() => setIsCycleSelectorOpen(false)}
       />
 
       {/* Area Selector Dialog */}

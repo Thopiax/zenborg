@@ -8,17 +8,17 @@ import {
   CommandList,
   CommandShortcut,
 } from "@/components/ui/command";
-import type { Horizon } from "@/domain/entities/Moment";
+import type { Cycle } from "@/domain/entities/Moment";
 
-interface HorizonSelectorProps {
+interface CycleSelectorProps {
   open: boolean;
-  selectedHorizon: Horizon | null;
-  onSelectHorizon: (horizon: Horizon | null) => void;
+  selectedCycle: Cycle | null;
+  onSelectCycle: (cycle: Cycle | null) => void;
   onClose: () => void;
 }
 
 /**
- * HorizonSelector - Ghost-style command palette for selecting time horizon
+ * CycleSelector - Ghost-style command palette for selecting time cycle
  *
  * Calm, minimal selector with no colors - just monochrome
  * Features:
@@ -28,21 +28,20 @@ interface HorizonSelectorProps {
  * - Escape to cancel
  * - Built with shadcn/ui Command component
  */
-export function HorizonSelector({
+export function CycleSelector({
   open,
-  selectedHorizon,
-  onSelectHorizon,
+  selectedCycle,
+  onSelectCycle,
   onClose,
-}: HorizonSelectorProps) {
-  const horizons: Array<{ value: Horizon | null; label: string; key: string }> =
-    [
-      { value: "now", label: "Now", key: "1" },
-      { value: "soon", label: "Soon", key: "2" },
-      { value: "later", label: "Later", key: "3" },
-      { value: null, label: "Unset", key: "0" },
-    ];
+}: CycleSelectorProps) {
+  const cycles: Array<{ value: Cycle | null; label: string; key: string }> = [
+    { value: "now", label: "Now", key: "1" },
+    { value: "soon", label: "Soon", key: "2" },
+    { value: "later", label: "Later", key: "3" },
+    { value: null, label: "Unset", key: "0" },
+  ];
 
-  // Handle number key shortcuts (1-3 for horizons, 0 to clear)
+  // Handle number key shortcuts (1-3 for cycles, 0 to clear)
   useEffect(() => {
     if (!open) return;
 
@@ -50,9 +49,9 @@ export function HorizonSelector({
       // Number keys 0-3 for quick selection
       if (e.key >= "0" && e.key <= "3") {
         e.preventDefault();
-        const selected = horizons.find((h) => h.key === e.key);
+        const selected = cycles.find((c) => c.key === e.key);
         if (selected) {
-          onSelectHorizon(selected.value);
+          onSelectCycle(selected.value);
           onClose();
         }
       }
@@ -60,7 +59,7 @@ export function HorizonSelector({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onSelectHorizon, onClose]);
+  }, [open, onSelectCycle, onClose]);
 
   return (
     <CommandDialog
@@ -68,31 +67,31 @@ export function HorizonSelector({
       onOpenChange={(isOpen) => {
         if (!isOpen) onClose();
       }}
-      title="Select Horizon"
+      title="Select Cycle"
       description="Choose a time perspective for your moment"
       showCloseButton={false}
       className="max-w-md"
     >
       <CommandList className="max-h-64">
-        <CommandGroup heading="Horizon">
-          {horizons.map((horizon) => {
-            const isSelected = selectedHorizon === horizon.value;
+        <CommandGroup heading="Cycle">
+          {cycles.map((cycle) => {
+            const isSelected = selectedCycle === cycle.value;
 
             return (
               <CommandItem
-                key={horizon.key}
-                value={horizon.label}
+                key={cycle.key}
+                value={cycle.label}
                 onSelect={() => {
-                  onSelectHorizon(horizon.value);
+                  onSelectCycle(cycle.value);
                   onClose();
                 }}
                 className={isSelected ? "bg-stone-100 dark:bg-stone-800" : ""}
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="font-mono text-sm text-stone-700 dark:text-stone-300">
-                    {horizon.label}
+                    {cycle.label}
                   </span>
-                  <CommandShortcut>{horizon.key}</CommandShortcut>
+                  <CommandShortcut>{cycle.key}</CommandShortcut>
                 </div>
               </CommandItem>
             );

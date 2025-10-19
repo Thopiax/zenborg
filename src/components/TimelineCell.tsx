@@ -11,14 +11,20 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
-import { useEffect, useState } from "react";
 import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { selectionState$ } from "@/infrastructure/state/selection";
-import { areas$, moments$ } from "@/infrastructure/state/store";
-import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
+import {
+  areas$,
+  moments$,
+  unallocatedMoments$,
+} from "@/infrastructure/state/store";
+import {
+  drawingBoardExpanded$,
+  isDuplicateMode$,
+} from "@/infrastructure/state/ui-store";
 import {
   ariaLabels,
   momentCard,
@@ -27,7 +33,6 @@ import {
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
-import { EmptyMomentCard } from "./EmptyMomentCard";
 import { MomentCard } from "./MomentCard";
 
 interface TimelineCellProps {
@@ -72,20 +77,8 @@ export function TimelineCell({
 }: TimelineCellProps) {
   const allMoments = use$(moments$);
   const allAreas = use$(areas$);
+  const unallocated = use$(unallocatedMoments$);
   const { handleOpenCreateModal } = useMomentManager();
-  const [isModHovering, setIsModHovering] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Detect mobile viewport
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   // Get moments for this cell
   const cellMoments: Moment[] = Object.values(allMoments)
@@ -107,29 +100,15 @@ export function TimelineCell({
   // Check if current drop would be valid
   const wouldAcceptDrop = !isFull; // Simple check for now, validation happens in DnDProvider
 
-  // Handle mod+hover for creating moments
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    if ((e.metaKey || e.ctrlKey) && !isFull) {
-      setIsModHovering(true);
+  // Handle empty cell click - opens Drawing Board or create modal
+  const handleEmptyCellClick = () => {
+    // If there are no unallocated moments, open create modal directly
+    if (unallocated.length === 0) {
+      handleOpenCreateModal(day, phase);
+    } else {
+      // Otherwise, expand Drawing Board to show unallocated moments
+      drawingBoardExpanded$.set(true);
     }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const isModPressed = e.metaKey || e.ctrlKey;
-    if (isModPressed && !isFull && !isModHovering) {
-      setIsModHovering(true);
-    } else if (!isModPressed && isModHovering) {
-      setIsModHovering(false);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    setIsModHovering(false);
-  };
-
-  const handlePlaceholderClick = () => {
-    // Open create modal with pre-filled day and phase
-    handleOpenCreateModal(day, phase);
   };
 
   // Generate accessible label
@@ -142,11 +121,6 @@ export function TimelineCell({
           momentConstraints.maxMomentsPerCell
         )
       : `${day} ${phase}, ${cellMoments.length} of ${momentConstraints.maxMomentsPerCell} moments`;
-
-  // Determine if we should show placeholders:
-  // - Mobile: always show placeholders if not full
-  // - Desktop: only show on mod+hover
-  const shouldShowPlaceholder = isModHovering || (isMobile && !isFull);
 
   return (
     <div
@@ -168,9 +142,6 @@ export function TimelineCell({
       aria-label={cellLabel}
       aria-live={isFull ? "polite" : "off"}
       aria-atomic="true"
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
     >
       {cellMoments.length > 0 ? (
         <SortableContext
@@ -192,25 +163,23 @@ export function TimelineCell({
                 />
               );
             })}
-            {/* Show placeholder if conditions met and not full */}
-            {shouldShowPlaceholder && !isFull && (
-              <EmptyMomentCard
-                onClick={handlePlaceholderClick}
-                label={`Add to ${phaseLabel || phase}`}
-              />
-            )}
           </div>
         </SortableContext>
       ) : (
-        <div className="flex items-center justify-center h-full min-h-[192px]">
-          {/* Empty state - show placeholder based on conditions */}
-          {shouldShowPlaceholder ? (
-            <EmptyMomentCard
-              onClick={handlePlaceholderClick}
-              label={`Add to ${phaseLabel || phase}`}
-            />
-          ) : null}
-        </div>
+        /* Empty state - clickable to open Drawing Board */
+        <button
+          type="button"
+          onClick={handleEmptyCellClick}
+          className="flex items-center justify-center h-full min-h-[192px] w-full rounded-md hover:bg-stone-100/20 dark:hover:bg-stone-800/20 transition-colors cursor-pointer group"
+          aria-label={`Add moment to ${phaseLabel || phase}`}
+        >
+          <span className="text-grey-700 dark:text-grey-300 text-xs font-mono opacity-0 group-hover:opacity-100 transition-opacity gap-2 flex items-center">
+            Add a moment
+            <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-white/20 text-white">
+              N
+            </kbd>
+          </span>
+        </button>
       )}
     </div>
   );

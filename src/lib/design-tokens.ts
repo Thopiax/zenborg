@@ -204,10 +204,10 @@ export const momentCard = {
  * Dark: 500 → 800 (lighter to darker)
  */
 export const phaseBackgrounds: Record<number, string> = {
-  0: "bg-slate-100 dark:bg-slate-500",
-  1: "bg-slate-200 dark:bg-slate-600",
-  2: "bg-slate-300 dark:bg-slate-700",
-  3: "bg-slate-400 dark:bg-slate-800",
+  0: "bg-gray-100 dark:bg-gray-700",
+  1: "bg-gray-200 dark:bg-gray-800",
+  2: "bg-gray-300 dark:bg-gray-900",
+  3: "bg-gray-400 dark:bg-gray-950",
 } as const;
 
 /**

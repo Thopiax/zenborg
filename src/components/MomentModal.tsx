@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { Horizon } from "@/domain/entities/Moment";
+import type { Cycle } from "@/domain/entities/Moment";
 import { MomentForm } from "./MomentForm";
 
 interface MomentModalProps {
@@ -9,10 +9,10 @@ interface MomentModalProps {
   mode: "create" | "edit";
   initialName?: string;
   initialAreaId?: string;
-  initialHorizon?: Horizon | null;
-  /** Whether the moment is allocated (has day/phase). If true, horizon selector is hidden. */
+  initialCycle?: Cycle | null;
+  /** Whether the moment is allocated (has day/phase). If true, cycle selector is hidden. */
   isAllocated?: boolean;
-  onSave: (name: string, areaId: string, horizon: Horizon | null) => void;
+  onSave: (name: string, areaId: string, cycle: Cycle | null) => void;
   onCancel: () => void;
   /** For edit mode: called when user confirms deletion */
   onDelete?: () => void;
@@ -30,7 +30,7 @@ export function MomentModal({
   mode,
   initialName = "",
   initialAreaId = "",
-  initialHorizon = null,
+  initialCycle = null,
   isAllocated = false,
   onSave,
   onCancel,
@@ -71,7 +71,7 @@ export function MomentModal({
             mode={mode}
             initialName={initialName}
             initialAreaId={initialAreaId}
-            initialHorizon={initialHorizon}
+            initialCycle={initialCycle}
             isAllocated={isAllocated}
             onSave={onSave}
             onCancel={onCancel}

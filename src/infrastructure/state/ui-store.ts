@@ -37,9 +37,16 @@ export const isDuplicateMode$ = observable<boolean>(false);
  * Determines how unallocated moments are organized
  * Persisted to localStorage
  */
-export type DrawingBoardGroupBy = "none" | "area" | "created" | "horizon";
+export type DrawingBoardGroupBy = "none" | "area" | "created" | "cycle";
 
 export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("none");
+
+/**
+ * Drawing board expanded state
+ * Controls whether the drawing board is visible (expanded) or collapsed at bottom
+ * Ephemeral - not persisted
+ */
+export const drawingBoardExpanded$ = observable<boolean>(false);
 
 // ============================================================================
 // Focus State (for keyboard navigation)

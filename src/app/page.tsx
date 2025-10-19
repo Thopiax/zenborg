@@ -31,7 +31,7 @@ export default function HomePage() {
     updateMomentArea,
     isCreateModalOpen,
     prefilledAreaId,
-    prefilledHorizon,
+    prefilledCycle,
     handleCreateMoment,
     handleCancelCreate,
     handleOpenCreateModal,
@@ -88,11 +88,11 @@ export default function HomePage() {
           onMouseDown={handleBackgroundClick}
         >
           {/* Main Content */}
-          <main className="flex-1 flex flex-col">
+          <main className="flex-1 flex flex-col items-center justify-center">
             {/* Timeline */}
-            {/* <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full"> */}
-            <Timeline />
-            {/* </div> */}
+            <div className="py-16 overflow-x-auto w-full">
+              <Timeline />
+            </div>
 
             {/* Drawing Board - Collapsible below Timeline */}
             <DrawingBoard />
@@ -126,7 +126,7 @@ export default function HomePage() {
             open={isCreateModalOpen}
             mode="create"
             initialAreaId={prefilledAreaId}
-            initialHorizon={prefilledHorizon ? (prefilledHorizon as any) : null}
+            initialCycle={prefilledCycle ? (prefilledCycle as any) : null}
             onSave={handleCreateMoment}
             onCancel={handleCancelCreate}
           />
@@ -141,9 +141,9 @@ export default function HomePage() {
             initialAreaId={
               editingMomentId ? allMoments[editingMomentId]?.areaId : ""
             }
-            initialHorizon={
+            initialCycle={
               editingMomentId
-                ? allMoments[editingMomentId]?.horizon ?? null
+                ? allMoments[editingMomentId]?.cycle ?? null
                 : null
             }
             isAllocated={

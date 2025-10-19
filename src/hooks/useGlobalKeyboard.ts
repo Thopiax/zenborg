@@ -6,7 +6,12 @@ import { selectionState$ } from "@/infrastructure/state/selection";
 import {
   moments$,
   updateMomentWithHistory,
+  createMomentWithHistory,
+  deleteMomentWithHistory,
+  allocateMomentWithHistory,
+  unallocateMomentWithHistory,
 } from "@/infrastructure/state/store";
+import { drawingBoardExpanded$ } from "@/infrastructure/state/ui-store";
 import { useFocusManager } from "./useFocusManager";
 import { useHistory } from "./useHistory";
 import { useSelection } from "./useSelection";
@@ -38,9 +43,12 @@ import { useSelection } from "./useSelection";
  * - w/b: Next/previous moment
  * - gg/G: First/last moment
  *
+ * Views:
+ * - P: Toggle Planning (Drawing Board)
+ *
  * Clipboard:
  * - yy: Yank (copy) moment
- * - p: Paste yanked moment
+ * - Shift+P: Paste yanked moment
  * - dd: Delete focused moment
  * - x: Quick delete (unallocated moments only)
  * - Backspace: Unallocate focused moment (return to drawing board)
@@ -67,9 +75,7 @@ export function useGlobalKeyboard() {
   const [prefilledDay, setPrefilledDay] = useState<string | undefined>();
   const [prefilledPhase, setPrefilledPhase] = useState<string | undefined>();
   const [prefilledAreaId, setPrefilledAreaId] = useState<string | undefined>();
-  const [prefilledHorizon, setPrefilledHorizon] = useState<
-    string | undefined
-  >();
+  const [prefilledCycle, setPrefilledCycle] = useState<string | undefined>();
   const [isEditCardOpen, setIsEditCardOpen] = useState(false);
   const [editingMomentId, setEditingMomentId] = useState<string | null>(null);
   const [isAreaManagementOpen, setIsAreaManagementOpen] = useState(false);
@@ -145,6 +151,16 @@ export function useGlobalKeyboard() {
     { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
 
+  // P - Toggle Planning (Drawing Board)
+  useHotkeys(
+    "p",
+    (e) => {
+      e.preventDefault();
+      drawingBoardExpanded$.set(!drawingBoardExpanded$.peek());
+    },
+    { enabled: globalShortcutsEnabled, enableOnFormTags: false }
+  );
+
   // Enter - Edit focused moment
   useHotkeys(
     "enter",
@@ -167,9 +183,7 @@ export function useGlobalKeyboard() {
       const momentToDelete = moments$[focusedMomentId].peek();
       if (momentToDelete) {
         focusNext();
-        const allMoments = moments$.peek();
-        const { [focusedMomentId]: _, ...rest } = allMoments;
-        moments$.set(rest);
+        deleteMomentWithHistory(focusedMomentId);
       }
     },
     { enabled: globalShortcutsEnabled }
@@ -291,10 +305,8 @@ export function useGlobalKeyboard() {
       if (momentToDelete) {
         // Focus next moment before deleting
         focusNext();
-        // Delete from store (remove the key from the record)
-        const allMoments = moments$.peek();
-        const { [focusedMomentId]: _, ...rest } = allMoments;
-        moments$.set(rest);
+        // Delete with history tracking
+        deleteMomentWithHistory(focusedMomentId);
       }
     },
     { enabled: globalShortcutsEnabled }
@@ -309,10 +321,8 @@ export function useGlobalKeyboard() {
       const moment = moments$[focusedMomentId].peek();
       if (moment && moment.day === null) {
         focusNext();
-        // Delete from store (remove the key from the record)
-        const allMoments = moments$.peek();
-        const { [focusedMomentId]: _, ...rest } = allMoments;
-        moments$.set(rest);
+        // Delete with history tracking
+        deleteMomentWithHistory(focusedMomentId);
       }
     },
     { enabled: globalShortcutsEnabled }
@@ -333,19 +343,19 @@ export function useGlobalKeyboard() {
     { enabled: globalShortcutsEnabled }
   );
 
-  // p - put (paste) yanked moment
+  // Shift+P - put (paste) yanked moment
   useHotkeys(
-    "p",
+    "shift+p",
     () => {
       if (!yankBuffer) return;
 
       const result = createMoment(
         yankBuffer.name,
         yankBuffer.areaId,
-        yankBuffer.horizon
+        yankBuffer.cycle
       );
       if (!("error" in result)) {
-        moments$[result.id].set(result);
+        createMomentWithHistory(result);
         focusMoment(result.id);
       }
     },
@@ -360,13 +370,7 @@ export function useGlobalKeyboard() {
 
       const moment = moments$[focusedMomentId].peek();
       if (moment && moment.day !== null) {
-        moments$[focusedMomentId].set({
-          ...moment,
-          day: null,
-          phase: null,
-          order: 0,
-          updatedAt: new Date().toISOString(),
-        });
+        unallocateMomentWithHistory(focusedMomentId);
       }
     },
     { enabled: globalShortcutsEnabled }
@@ -383,23 +387,25 @@ export function useGlobalKeyboard() {
   const handleCreateMoment = (
     name: string,
     areaId: string,
-    horizon: import("@/domain/entities/Moment").Horizon | null,
+    cycle: import("@/domain/entities/Moment").Cycle | null,
     createMore?: boolean
   ) => {
-    // Create new moment with horizon
-    const result = createMoment(name, areaId, horizon);
+    // Create new moment with cycle
+    const result = createMoment(name, areaId, cycle);
     if (!("error" in result)) {
+      // Create moment with history tracking
+      createMomentWithHistory(result);
+
       // If day/phase were prefilled, allocate the moment
       if (prefilledDay && prefilledPhase) {
-        moments$[result.id].set({
-          ...result,
-          day: prefilledDay,
-          phase: prefilledPhase as any, // Type assertion needed
-          order: 0, // Will be adjusted by DnD
-        });
-      } else {
-        moments$[result.id].set(result);
+        allocateMomentWithHistory(
+          result.id,
+          prefilledDay,
+          prefilledPhase as any, // Type assertion needed
+          0 // Will be adjusted by DnD
+        );
       }
+
       focusMoment(result.id);
     }
 
@@ -417,36 +423,34 @@ export function useGlobalKeyboard() {
     setPrefilledDay(undefined);
     setPrefilledPhase(undefined);
     setPrefilledAreaId(undefined);
-    setPrefilledHorizon(undefined);
+    setPrefilledCycle(undefined);
   };
 
   const handleOpenCreateModal = (
     day?: string,
     phase?: string,
     areaId?: string,
-    horizon?: string
+    cycle?: string
   ) => {
     setPrefilledDay(day);
     setPrefilledPhase(phase);
     setPrefilledAreaId(areaId);
-    setPrefilledHorizon(horizon);
+    setPrefilledCycle(cycle);
     setIsCreateModalOpen(true);
   };
 
   const handleSaveEdit = (
     name: string,
     areaId: string,
-    horizon: import("@/domain/entities/Moment").Horizon | null
+    cycle: import("@/domain/entities/Moment").Cycle | null
   ) => {
     if (editingMomentId) {
-      // Update existing moment
-      const moment = moments$[editingMomentId].peek();
-      if (moment) {
-        moments$[editingMomentId].name.set(name);
-        moments$[editingMomentId].areaId.set(areaId);
-        moments$[editingMomentId].horizon.set(horizon);
-        moments$[editingMomentId].updatedAt.set(new Date().toISOString());
-      }
+      // Update existing moment with history tracking
+      updateMomentWithHistory(editingMomentId, {
+        name,
+        areaId,
+        cycle,
+      });
     }
     setIsEditCardOpen(false);
     setEditingMomentId(null);
@@ -459,10 +463,8 @@ export function useGlobalKeyboard() {
 
   const handleDeleteEdit = () => {
     if (editingMomentId) {
-      // Delete the moment and close modal
-      const allMoments = moments$.peek();
-      const { [editingMomentId]: _, ...rest } = allMoments;
-      moments$.set(rest);
+      // Delete the moment with history tracking
+      deleteMomentWithHistory(editingMomentId);
       setIsEditCardOpen(false);
       setEditingMomentId(null);
     }
@@ -483,7 +485,7 @@ export function useGlobalKeyboard() {
     // Create modal state
     isCreateModalOpen,
     prefilledAreaId,
-    prefilledHorizon,
+    prefilledCycle,
     handleCreateMoment,
     handleCancelCreate,
     handleOpenCreateModal,

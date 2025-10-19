@@ -3,7 +3,7 @@
  */
 
 import type { Area } from "@/domain/entities/Area";
-import type { Moment, Horizon } from "@/domain/entities/Moment";
+import type { Moment, Cycle } from "@/domain/entities/Moment";
 import { format, isToday, isYesterday, isThisWeek, isThisMonth } from "date-fns";
 
 /**
@@ -128,12 +128,12 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
 }
 
 /**
- * Group moments by horizon (time perspective)
+ * Group moments by cycle (time perspective)
  * Categories: Now, Soon, Later, Unset
- * Shows all horizon levels, including empty ones
+ * Shows all cycle levels, including empty ones
  * Monochrome design - no color coding
  */
-export function groupByHorizon(moments: Moment[]): MomentGroup[] {
+export function groupByCycle(moments: Moment[]): MomentGroup[] {
   const groups: Record<string, Moment[]> = {
     now: [],
     soon: [],
@@ -142,37 +142,37 @@ export function groupByHorizon(moments: Moment[]): MomentGroup[] {
   };
 
   for (const moment of moments) {
-    if (moment.horizon === "now") {
+    if (moment.cycle === "now") {
       groups.now.push(moment);
-    } else if (moment.horizon === "soon") {
+    } else if (moment.cycle === "soon") {
       groups.soon.push(moment);
-    } else if (moment.horizon === "later") {
+    } else if (moment.cycle === "later") {
       groups.later.push(moment);
     } else {
       groups.unset.push(moment);
     }
   }
 
-  // Return all horizon levels in order (Now > Soon > Later > Unset)
+  // Return all cycle levels in order (Now > Soon > Later > Unset)
   // No colors - monochrome design
   return [
     {
-      groupId: "horizon-now",
+      groupId: "cycle-now",
       groupLabel: "Now",
       moments: groups.now,
     },
     {
-      groupId: "horizon-soon",
+      groupId: "cycle-soon",
       groupLabel: "Soon",
       moments: groups.soon,
     },
     {
-      groupId: "horizon-later",
+      groupId: "cycle-later",
       groupLabel: "Later",
       moments: groups.later,
     },
     {
-      groupId: "horizon-unset",
+      groupId: "cycle-unset",
       groupLabel: "Unset",
       moments: groups.unset,
     },
@@ -183,7 +183,7 @@ export function groupByHorizon(moments: Moment[]): MomentGroup[] {
  * Get grouping function based on grouping mode
  */
 export function getGroupingFunction(
-  groupBy: "none" | "area" | "created" | "horizon"
+  groupBy: "none" | "area" | "created" | "cycle"
 ): ((moments: Moment[], areas?: Record<string, Area>) => MomentGroup[]) | null {
   switch (groupBy) {
     case "area":
@@ -193,8 +193,8 @@ export function getGroupingFunction(
       };
     case "created":
       return groupByCreated;
-    case "horizon":
-      return groupByHorizon;
+    case "cycle":
+      return groupByCycle;
     case "none":
     default:
       return null;

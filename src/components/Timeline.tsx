@@ -37,7 +37,7 @@ const PHASE_ICONS: Record<
  */
 export function Timeline() {
   const visiblePhases = use$(visiblePhases$);
-  const timelineDays = getExtendedTimelineDays(1, 1); // Just Today and Tomorrow
+  const timelineDays = getExtendedTimelineDays(4, 1); // Just Today and Tomorrow
   const containerRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLDivElement>(null);
 
@@ -106,8 +106,8 @@ export function Timeline() {
           </div>
         </div>
 
-        {/* Phase Sections - Horizontal Flow */}
-        <div className="flex gap-2 flex-1 overflow-x-auto">
+        {/* Phase Sections - Cycletal Flow */}
+        <div className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide">
           {visiblePhases.map((phaseConfig, index) => {
             const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
             return (
@@ -140,7 +140,7 @@ export function Timeline() {
   return (
     <div
       ref={containerRef}
-      className="w-full flex gap-6 overflow-x-auto max-h-[calc(100vh-200px)] snap-x snap-mandatory scroll-smooth py-4 px-2 hide-scrollbar scroll-pl-6"
+      className="w-full flex gap-6 overflow-x-auto max-h-[calc(100vh-200px)] snap-x snap-mandatory scroll-smooth py-4 hide-scrollbar scroll-pl-16"
     >
       {timelineDays.map(({ date, isToday }, index) => (
         <div className="px-2" key={date}>

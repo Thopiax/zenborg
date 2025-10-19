@@ -140,13 +140,13 @@ Fixed-width phase label column (48px) ensures 3 day columns have identical width
 
 Area colors tested against calculated text colors:
 
-| Area Color | Hex Code | Background Luminance | Text Color | Contrast Ratio |
-|------------|----------|---------------------|------------|----------------|
-| Wellness (Green) | #10b981 | 0.52 | Dark | 4.8:1 ✓ |
-| Craft (Blue) | #3b82f6 | 0.41 | White | 5.2:1 ✓ |
-| Social (Orange) | #f97316 | 0.58 | Dark | 5.1:1 ✓ |
-| Joyful (Yellow) | #eab308 | 0.72 | Dark | 7.3:1 ✓ |
-| Introspective (Gray) | #6b7280 | 0.44 | White | 4.9:1 ✓ |
+| Area Color           | Hex Code | Background Luminance | Text Color | Contrast Ratio |
+| -------------------- | -------- | -------------------- | ---------- | -------------- |
+| Wellness (Green)     | #10b981  | 0.52                 | Dark       | 4.8:1 ✓        |
+| Craft (Blue)         | #3b82f6  | 0.41                 | White      | 5.2:1 ✓        |
+| Social (Orange)      | #f97316  | 0.58                 | Dark       | 5.1:1 ✓        |
+| Joyful (Yellow)      | #eab308  | 0.72                 | Dark       | 7.3:1 ✓        |
+| Introspective (Gray) | #6b7280  | 0.44                 | White      | 4.9:1 ✓        |
 
 **All combinations pass WCAG AA** (minimum 4.5:1 for normal text)
 
