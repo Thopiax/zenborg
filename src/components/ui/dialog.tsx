@@ -62,9 +62,9 @@ const DialogContent = React.forwardRef<
           // Mobile landscape: full-screen, no rounded corners, no padding constraints
           "max-md:landscape:inset-0 max-md:landscape:h-dvh max-md:landscape:max-w-none max-md:landscape:max-h-none max-md:landscape:rounded-none max-md:landscape:p-6",
           // Desktop/tablet: centered modal with constraints
-          "md:max-w-lg md:max-h-[90dvh] md:rounded-lg md:top-[50%] md:left-[50%] md:translate-x-[-50%] md:translate-y-[-50%] md:p-6",
+          "md:max-w-lg md:max-h-[90dvh] md:rounded-lg md:top-[50%] md:left-[50%] md:translate-x-[-50%] md:translate-y-[-50%]",
           // Mobile portrait: keep some padding but allow more height
-          "max-md:portrait:p-6 max-md:portrait:rounded-lg",
+          // "max-md:portrait:p-6 max-md:portrait:rounded-lg",
           className
         )}
         {...props}
