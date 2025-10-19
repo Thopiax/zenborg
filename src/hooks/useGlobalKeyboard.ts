@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Horizon, Moment } from "@/domain/entities/Moment";
 import { createMoment } from "@/domain/entities/Moment";
+import type { Phase } from "@/domain/value-objects/Phase";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import {
   allocateMomentWithHistory,
@@ -406,15 +407,15 @@ export function useGlobalKeyboard() {
       day,
       phaseStr: phase,
       areaId,
-      horizon: horizon,
+      horizon: horizon as Horizon | undefined,
     });
   };
 
   const handleSaveEdit = (
     name: string,
     areaId: string,
-    horizon: import("@/domain/entities/Moment").Horizon | null,
-    phase: import("@/domain/value-objects/Phase").Phase | null
+    horizon: Horizon | null,
+    phase: Phase | null
   ) => {
     const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {
