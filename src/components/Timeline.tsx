@@ -79,19 +79,22 @@ export function Timeline() {
       <div
         ref={isToday ? todayRef : null}
         className={cn(
-          "flex flex-col gap-2 px-4 py-6",
+          "flex flex-col h-full",
+          // Minimal padding
+          "scroll-ml-4 md:scroll-ml-6",
+          "gap-1.5 px-2 py-2 md:px-4 md:py-4",
           "transition-opacity duration-300",
           isToday
-            ? "snap-start snap-always border border-slate-400/10 dark:ring-slate-300 rounded-md shadow-xs"
+            ? "snap-start snap-always border border-slate-400/30 dark:ring-slate-300 rounded-md shadow-sm"
             : "snap-start",
           isPastDay && "opacity-70"
         )}
       >
         {/* Day Title Section - Above Timeline */}
-        <div className={cn("flex flex-row items-baseline gap-2 py-2 px-2")}>
+        <div className="flex flex-row items-baseline gap-2 px-1 py-0.5">
           <h2
             className={cn(
-              "text-3xl font-mono font-bold",
+              "font-mono font-bold text-2xl md:text-3xl",
               isToday
                 ? "text-stone-900 dark:text-stone-100"
                 : "text-stone-700 dark:text-stone-300"
@@ -99,35 +102,37 @@ export function Timeline() {
           >
             {label}
           </h2>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-lg text-stone-500 dark:text-stone-400">
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-stone-500 dark:text-stone-400 text-base md:text-lg">
               {dayOfWeek}
             </span>
-            <span className="text-base text-stone-400 dark:text-stone-500 font-mono">
+            <span className="text-stone-400 dark:text-stone-500 font-mono text-sm md:text-base">
               {monthDay}
             </span>
           </div>
         </div>
 
-        {/* Phase Sections - Cycletal Flow */}
-        <div className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide">
+        {/* Phase Sections - Horizontal Flow */}
+        <div className="flex gap-1.5 md:gap-2 flex-1 overflow-x-auto scrollbar-hide h-full">
           {visiblePhases.map((phaseConfig, index) => {
             const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
             return (
               <div
                 key={phaseConfig.phase}
-                className="flex flex-col min-w-[280px] flex-1 p-2"
+                className="flex flex-col flex-1 min-w-[200px] md:min-w-[240px]"
               >
-                {/* Phase Cell */}
-                <TimelineCell
-                  day={day}
-                  phase={phaseConfig.phase}
-                  isHighlighted={isToday}
-                  phaseIndex={index}
-                />
+                {/* Phase Cell - Height based on 3 cards (64px each) + 2 gaps (12px each) + padding */}
+                <div className="flex-1 p-0.5 md:p-1 h-full">
+                  <TimelineCell
+                    day={day}
+                    phase={phaseConfig.phase}
+                    isHighlighted={isToday}
+                    phaseIndex={index}
+                  />
+                </div>
                 {/* Phase Icon at Bottom - More opaque */}
-                <div className="flex items-center justify-center px-1 mt-2">
-                  <PhaseIcon className="w-5 h-5 text-stone-800 dark:text-stone-100" />
+                <div className="flex items-center justify-center px-1 mt-1 flex-shrink-0">
+                  <PhaseIcon className="text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5" />
                 </div>
               </div>
             );
@@ -144,17 +149,23 @@ export function Timeline() {
     <div
       ref={containerRef}
       className={cn(
-        "w-full flex gap-6 overflow-x-auto max-h-[calc(100vh-200px)] snap-x snap-mandatory scroll-smooth py-4 hide-scrollbar scroll-pl-16",
+        "w-full h-full flex overflow-x-scroll snap-x snap-mandatory scroll-smooth scrollbar-hide",
+        // Minimal gap and padding
+        "gap-3 md:gap-4 px-2 md:px-4",
         "transition-opacity duration-300",
         isReady ? "opacity-100" : "opacity-0"
       )}
+      style={{
+        // Enable momentum scrolling on iOS/Safari
+        WebkitOverflowScrolling: "touch",
+      }}
     >
       {timelineDays.map(({ date, isToday }, index) => (
-        <div className="px-2" key={date}>
+        <div className="flex-shrink-0" key={date}>
           {renderDayRow(date, isToday, index < todayIndex)}
         </div>
       ))}
-      <div className="w-96 flex-shrink-0" />
+      <div className="w-16 flex-shrink-0" />
     </div>
   );
 }

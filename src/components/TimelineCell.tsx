@@ -126,11 +126,13 @@ export function TimelineCell({
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-[192px] p-3 rounded-md",
+        // Height: flexible to fill available space, with flex layout to distribute cards
+        "h-full flex flex-col min-h-[240px]",
+        "p-2 rounded-md",
         "transition-all",
         "focus-within:outline-none shadow-inner",
         // Phase-based gradient background
-        "md:min-h-[256px] md:p-4",
+        "md:p-2.5",
         phaseBackgrounds[phaseIndex],
         // Drag hover states
         isOver &&
@@ -143,44 +145,46 @@ export function TimelineCell({
       aria-live={isFull ? "polite" : "off"}
       aria-atomic="true"
     >
-      {cellMoments.length > 0 ? (
-        <SortableContext
-          items={cellMoments.map((m) => m.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="flex flex-col" style={{ gap: momentCard.gap }}>
-            {cellMoments.map((moment) => {
-              // Get area from the extracted values (use$ already unwrapped it)
-              const area = allAreas[moment.areaId];
-              if (!area) return null;
+      <div className="flex-1 flex flex-col justify-start">
+        {cellMoments.length > 0 ? (
+          <SortableContext
+            items={cellMoments.map((m) => m.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col" style={{ gap: momentCard.gap }}>
+              {cellMoments.map((moment) => {
+                // Get area from the extracted values (use$ already unwrapped it)
+                const area = allAreas[moment.areaId];
+                if (!area) return null;
 
-              return (
-                <SortableMomentCard
-                  key={moment.id}
-                  moment={moment}
-                  area={area}
-                  contextMomentIds={cellMoments.map((m) => m.id)}
-                />
-              );
-            })}
-          </div>
-        </SortableContext>
-      ) : (
-        /* Empty state - clickable to open Drawing Board */
-        <button
-          type="button"
-          onClick={handleEmptyCellClick}
-          className="flex items-center justify-center h-full min-h-[192px] w-full rounded-md hover:bg-stone-100/20 dark:hover:bg-stone-800/20 transition-colors cursor-pointer group"
-          aria-label={`Add moment to ${phaseLabel || phase}`}
-        >
-          <span className="text-grey-700 dark:text-grey-300 text-xs font-mono opacity-0 group-hover:opacity-100 transition-opacity gap-2 flex items-center">
-            Add a moment
-            <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-white/20 text-white">
-              N
-            </kbd>
-          </span>
-        </button>
-      )}
+                return (
+                  <SortableMomentCard
+                    key={moment.id}
+                    moment={moment}
+                    area={area}
+                    contextMomentIds={cellMoments.map((m) => m.id)}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        ) : (
+          /* Empty state - clickable to open Drawing Board */
+          <button
+            type="button"
+            onClick={handleEmptyCellClick}
+            className="flex items-center justify-center h-full w-full rounded-md hover:bg-stone-100/20 dark:hover:bg-stone-800/20 transition-colors cursor-pointer group"
+            aria-label={`Add moment to ${phaseLabel || phase}`}
+          >
+            <span className="text-grey-700 dark:text-grey-300 text-xs font-mono opacity-0 group-hover:opacity-100 transition-opacity gap-2 flex items-center">
+              Add a moment
+              <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-white/20 text-white">
+                N
+              </kbd>
+            </span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }

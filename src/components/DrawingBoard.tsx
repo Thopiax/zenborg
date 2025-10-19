@@ -6,6 +6,7 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useRef } from "react";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,7 @@ export function DrawingBoard() {
   const allAreas = use$(areas$);
   const groupBy = use$(drawingBoardGroupBy$);
   const { handleOpenCreateModal } = useMomentManager();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Droppable configuration (only for flat "none" view)
   const { setNodeRef, isOver } = useDroppable({
@@ -52,6 +54,17 @@ export function DrawingBoard() {
       targetType: "drawing-board" as DropTargetType,
     },
   });
+
+  // Smooth scroll to DrawingBoard when expanded
+  useEffect(() => {
+    if (isExpanded && containerRef.current) {
+      // Smooth scroll to bring DrawingBoard into view
+      containerRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [isExpanded]);
 
   // Group moments based on current groupBy setting
   const groups =
@@ -74,10 +87,10 @@ export function DrawingBoard() {
 
   const label = "Planning (P)";
 
-  // Collapsed state - sticky banner at bottom
+  // Collapsed state - simple banner
   if (!isExpanded) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 z-30">
+      <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
         <button
           type="button"
           onClick={() => drawingBoardExpanded$.set(true)}
@@ -94,7 +107,10 @@ export function DrawingBoard() {
 
   // Expanded state - full DrawingBoard
   return (
-    <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900">
+    <div
+      ref={containerRef}
+      className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0"
+    >
       {/* Header - Fully clickable to close */}
       <button
         type="button"

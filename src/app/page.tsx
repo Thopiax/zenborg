@@ -5,6 +5,7 @@ import { AreaManagementModal } from "@/components/AreaManagementModal";
 import { AreaSelector } from "@/components/AreaSelector";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
+import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { MomentModal } from "@/components/MomentModal";
 import { SettingsButton, SettingsModal } from "@/components/SettingsModal";
 import { Timeline } from "@/components/Timeline";
@@ -13,6 +14,7 @@ import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
 import { useSelection } from "@/hooks/useSelection";
 import { moments$ } from "@/infrastructure/state/store";
+import { cn } from "@/lib/utils";
 
 /**
  * Zenborg - Intention Compass
@@ -82,20 +84,31 @@ export default function HomePage() {
       handleOpenEditModal={handleOpenEditModal}
     >
       <DnDProvider>
+        {/* Landscape Prompt - Shows on mobile portrait mode only */}
+        <LandscapePrompt />
+
         {/* biome-ignore lint/a11y/noStaticElementInteractions: Background click to clear selection */}
         <div
-          className="min-h-screen bg-background transition-colors flex flex-col"
+          className="min-h-screen h-screen md:h-auto bg-background transition-colors flex flex-col"
           onMouseDown={handleBackgroundClick}
         >
           {/* Main Content */}
-          <main className="flex-1 flex flex-col items-center justify-center">
-            {/* Timeline */}
-            <div className="py-16 overflow-x-auto w-full">
+          <main className="flex-1 flex flex-col overflow-hidden">
+            {/* Timeline - Takes remaining space */}
+            <div
+              className={cn(
+                "flex-1 overflow-hidden",
+                "py-2 md:py-3",
+                "flex flex-col justify-center"
+              )}
+            >
               <Timeline />
             </div>
 
             {/* Drawing Board - Collapsible below Timeline */}
-            <DrawingBoard />
+            <div className="flex-shrink-0">
+              <DrawingBoard />
+            </div>
           </main>
 
           {/* Settings Button - Fixed top-right with safe area support */}
