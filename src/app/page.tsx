@@ -1,17 +1,15 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AreaManagementModal } from "@/components/AreaManagementModal";
 import { ConfirmableAction } from "@/components/ConfirmableAction";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
-import { HomeScreen } from "@/components/HomeScreen";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { MomentFormDialog } from "@/components/MomentFormDialog";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
-import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { Timeline } from "@/components/Timeline";
 import {
@@ -33,54 +31,18 @@ import {
   archiveAreaDialogState$,
   closeArchiveAreaDialog,
 } from "@/infrastructure/state/ui-store";
-import { isPWA } from "@/lib/pwa-utils";
 import { cn } from "@/lib/utils";
 
 /**
  * Zenborg - Intention Compass
  *
  * Main planning view with:
- * - 3x3 Timeline grid (Yesterday, Today, Tomorrow × Morning, Afternoon, Evening)
+ * - Extended timeline (horizontal scroll, 5 days)
  * - Drawing Board for unallocated moments
- * - Simple keyboard shortcuts: M (create), A (area), Enter (edit), Delete
- *
- * Shows HomeScreen if not installed as PWA
+ * - Vim-inspired keyboard shortcuts
+ * - Landscape-only mode (shows prompt in portrait)
  */
 export default function HomePage() {
-  // Check if app is installed as PWA
-  const [isInstalledPWA, setIsInstalledPWA] = useState<boolean | null>(null);
-  const [isLandscape, setIsLandscape] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    // Check PWA status
-    const checkPWAStatus = () => {
-      setIsInstalledPWA(isPWA());
-    };
-
-    // Check orientation
-    const checkOrientation = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight);
-    };
-
-    checkPWAStatus();
-    checkOrientation();
-
-    // Listen for display mode changes (e.g., when user installs PWA)
-    const mediaQuery = window.matchMedia("(display-mode: standalone)");
-    const handleDisplayModeChange = () => checkPWAStatus();
-
-    mediaQuery.addEventListener("change", handleDisplayModeChange);
-
-    // Listen for orientation changes
-    window.addEventListener("resize", checkOrientation);
-    window.addEventListener("orientationchange", checkOrientation);
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleDisplayModeChange);
-      window.removeEventListener("resize", checkOrientation);
-      window.removeEventListener("orientationchange", checkOrientation);
-    };
-  }, []);
   // Enable global keyboard shortcuts and get state for modals
   const {
     handleCreateMoment,
@@ -164,17 +126,6 @@ export default function HomePage() {
       clearSelection();
     }
   };
-
-  // Show nothing while checking status (avoid flash)
-  if (isInstalledPWA === null || isLandscape === null) {
-    return null;
-  }
-
-  // Show home screen ONLY if not installed as PWA AND in portrait mode
-  // Once they rotate to landscape, let them try the app
-  if (!isInstalledPWA && !isLandscape) {
-    return <HomeScreen />;
-  }
 
   return (
     <MomentManagerProvider
@@ -261,9 +212,6 @@ export default function HomePage() {
             open={isPhaseSettingsOpen}
             onClose={() => setIsPhaseSettingsOpen(false)}
           />
-
-          {/* PWA Install Prompt - Shows on mobile landscape when not installed */}
-          <PWAInstallPrompt />
 
           {/* Archive Area Confirmation - Simple Dialog */}
           {archiveAreaState.open && archiveAreaState.areaName && (
