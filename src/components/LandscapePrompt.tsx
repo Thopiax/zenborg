@@ -7,21 +7,28 @@ import { useEffect, useState } from "react";
  * LandscapePrompt - Overlay that prompts users to rotate to landscape mode on mobile
  *
  * Shows when:
- * - Screen width < 768px (mobile)
+ * - Device is iOS mobile (iPhone/iPod)
  * - Device is in portrait orientation
  *
  * Design:
  * - Full-screen overlay with monochrome design
  * - Animated phone rotation icon
  * - Clear instruction text
- * - Only shows on mobile portrait mode
+ * - Only shows on iOS mobile portrait mode
  */
 export function LandscapePrompt() {
   const [shouldShow, setShouldShow] = useState(false);
 
   useEffect(() => {
+    // Check if device is iOS mobile (iPhone or iPod, not iPad)
+    const isIOSMobile = () => {
+      const ua = navigator.userAgent;
+      // Check for iPhone or iPod (exclude iPad)
+      return /iPhone|iPod/.test(ua);
+    };
+
     const checkOrientation = () => {
-      const isMobile = window.innerWidth < 768;
+      const isMobile = isIOSMobile();
       const isPortrait = window.innerHeight > window.innerWidth;
       setShouldShow(isMobile && isPortrait);
     };
