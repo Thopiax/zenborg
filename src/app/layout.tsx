@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { StoreInitializer } from "./StoreInitializer";
+import { ThemeColorMeta } from "@/components/ThemeColorMeta";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent", // Adapts to content, works with both themes
     title: "Zenborg",
   },
   icons: {
@@ -41,6 +42,7 @@ export const viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: "cover", // Respect safe areas (notch, home bar)
+  colorScheme: "light dark", // Enable iOS system theme detection
 };
 
 export default function RootLayout({
@@ -60,6 +62,7 @@ export default function RootLayout({
           disableTransitionOnChange={false}
           storageKey="zenborg-theme"
         >
+          <ThemeColorMeta />
           <StoreInitializer />
           {children}
         </ThemeProvider>

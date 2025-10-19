@@ -1,24 +1,12 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { CloudMoon, Coffee, Moon, Sun } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { Phase } from "@/domain/value-objects/Phase";
+import { PHASE_ICONS, PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { visiblePhases$ } from "@/infrastructure/state/store";
 import { getDateLabel, getExtendedTimelineDays } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { TimelineCell } from "./TimelineCell";
-
-// Map phases to Lucide icons
-const PHASE_ICONS: Record<
-  Phase,
-  React.ComponentType<{ className?: string }>
-> = {
-  MORNING: Coffee,
-  AFTERNOON: Sun,
-  EVENING: Moon,
-  NIGHT: CloudMoon,
-};
 
 /**
  * Timeline - DayRow-based timeline layout with extended days
@@ -115,7 +103,6 @@ export function Timeline() {
         {/* Phase Sections - Horizontal Flow */}
         <div className="flex gap-1.5 md:gap-2 flex-1 overflow-x-auto scrollbar-hide h-full">
           {visiblePhases.map((phaseConfig, index) => {
-            const PhaseIcon = PHASE_ICONS[phaseConfig.phase];
             return (
               <div
                 key={phaseConfig.phase}
@@ -132,7 +119,10 @@ export function Timeline() {
                 </div>
                 {/* Phase Icon at Bottom - More opaque */}
                 <div className="absolute left-0 right-0 bottom-0 inset-x-0 flex py-4 items-center justify-center px-1 mt-1 flex-shrink-0">
-                  <PhaseIcon className="opacity-50 text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5" />
+                  <PhaseIcon
+                    phase={phaseConfig.phase}
+                    className="opacity-50 text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5"
+                  />
                 </div>
               </div>
             );

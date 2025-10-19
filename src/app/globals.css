@@ -131,6 +131,19 @@
  */
 @custom-variant dark (&:is(.dark *));
 
+/* iOS Safari fallback for system theme detection */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    color-scheme: light;
+  }
+}
+
 /**
  * Zenborg Theme System
  * Controlled by next-themes via data-theme attribute
@@ -261,26 +274,6 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-
-  /* Morning — crisp but calm */
-  --morning-bg: #1e293b; /* slate-800 */
-  --morning-accent: #94a3b8; /* slate-400 */
-  --morning-tint: rgba(173, 216, 230, 0.08);
-
-  /* Afternoon — productive depth */
-  --afternoon-bg: #0f172a; /* slate-900 */
-  --afternoon-accent: #64748b; /* slate-500 */
-  --afternoon-tint: rgba(128, 128, 128, 0.05);
-
-  /* Evening — reflective dim */
-  --evening-bg: #1e293b; /* slate-800 */
-  --evening-accent: #475569; /* slate-600 */
-  --evening-tint: rgba(255, 183, 77, 0.05);
-
-  /* Night — deepest rest */
-  --night-bg: #020617; /* slate-950 */
-  --night-accent: #1e293b; /* slate-800 */
-  --night-tint: rgba(75, 0, 130, 0.06);
 }
 
 body {

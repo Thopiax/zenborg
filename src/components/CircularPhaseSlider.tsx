@@ -1,10 +1,49 @@
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
 "use client";
 
 import { useCallback, useRef, useState } from "react";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
 import { Phase } from "@/domain/value-objects/Phase";
 import { PHASE_STYLES } from "@/domain/value-objects/phaseStyles";
+
+// Design tokens - Stone-based monochrome palette (Tailwind CSS hex values)
+const COLORS = {
+  // Phase segment colors (stone palette for monochrome design with better contrast)
+  phase: {
+    morning: "#f5f5f4", // stone-100 - lightest
+    afternoon: "#e7e5e4", // stone-200 - light
+    evening: "#d6d3d1", // stone-300 - medium
+    night: "#78716c", // stone-500 - dark
+  },
+  // Monochrome UI elements (stone palette)
+  ui: {
+    border: "#57534e", // stone-600 - subtle borders
+    borderLight: "#78716c", // stone-500 - lighter borders
+    innerGlow: "#0c0a09", // stone-950 - dark glow
+    background: "#fafaf9", // stone-50 - light background
+  },
+  // Pointers
+  pointer: {
+    fill: "#fafaf9", // stone-50 - light pointer
+    fillHover: "#f5f5f4", // stone-100
+    stroke: "#57534e", // stone-600
+    innerDot: "#78716c", // stone-500
+    ring: "#a8a29e", // stone-400 - hover ring
+  },
+  // NOW indicator
+  now: {
+    ring: "#94a3b8", // slate-400 - subtle accent
+    dot: "#0f172a", // slate-900
+    dotStroke: "#cbd5e1", // slate-300
+  },
+  // Text
+  text: {
+    light: "#57534e", // stone-600
+    dark: "#d6d3d1", // stone-300
+  },
+} as const;
 
 interface CircularPhaseSliderProps {
   phaseConfigs: PhaseConfig[];
@@ -47,12 +86,12 @@ export function CircularPhaseSlider({
     eveningPhase?.startHour ?? 18, // Start of Evening
   ];
 
-  // Get phase colors from PHASE_STYLES
+  // Get phase colors from design tokens
   const phaseColors = [
-    PHASE_STYLES[Phase.NIGHT].background,
-    PHASE_STYLES[Phase.MORNING].background,
-    PHASE_STYLES[Phase.AFTERNOON].background,
-    PHASE_STYLES[Phase.EVENING].background,
+    COLORS.phase.night,
+    COLORS.phase.morning,
+    COLORS.phase.afternoon,
+    COLORS.phase.evening,
   ];
 
   // Convert hour (0-23) to angle in degrees (0° = top/12AM)
@@ -208,19 +247,19 @@ export function CircularPhaseSlider({
   const phases = [
     {
       name: "Night",
-      emoji: nightPhase?.emoji || PHASE_STYLES[Phase.NIGHT].emoji,
+      Icon: PHASE_STYLES[Phase.NIGHT].icon,
     },
     {
       name: "Morning",
-      emoji: morningPhase?.emoji || PHASE_STYLES[Phase.MORNING].emoji,
+      Icon: PHASE_STYLES[Phase.MORNING].icon,
     },
     {
       name: "Afternoon",
-      emoji: afternoonPhase?.emoji || PHASE_STYLES[Phase.AFTERNOON].emoji,
+      Icon: PHASE_STYLES[Phase.AFTERNOON].icon,
     },
     {
       name: "Evening",
-      emoji: eveningPhase?.emoji || PHASE_STYLES[Phase.EVENING].emoji,
+      Icon: PHASE_STYLES[Phase.EVENING].icon,
     },
   ];
 
@@ -231,7 +270,7 @@ export function CircularPhaseSlider({
         width={SIZE}
         height={SIZE}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
-        className="mx-auto select-none"
+        className="mx-auto select-none max-w-[280px] md:max-w-full"
         onMouseMove={(e) => handlePointerMove(e.nativeEvent)}
         onMouseUp={handlePointerUp}
         onMouseLeave={handlePointerUp}
@@ -258,32 +297,20 @@ export function CircularPhaseSlider({
             </feMerge>
           </filter>
           <radialGradient id="inner-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="85%" stopColor="#0f172a" stopOpacity="0" />
-            <stop offset="100%" stopColor="#0f172a" stopOpacity="0.2" />
+            <stop
+              offset="85%"
+              stopColor={COLORS.ui.innerGlow}
+              stopOpacity="0"
+            />
+            <stop
+              offset="100%"
+              stopColor={COLORS.ui.innerGlow}
+              stopOpacity="0.2"
+            />
           </radialGradient>
         </defs>
 
-        {/* Inner circle with subtle glow effect */}
-        <circle
-          cx={CENTER}
-          cy={CENTER}
-          r={INNER_RADIUS}
-          fill="url(#inner-glow)"
-          stroke="#334155"
-          strokeWidth={1}
-        />
-
-        {/* Outer boundary - very subtle */}
-        <circle
-          cx={CENTER}
-          cy={CENTER}
-          r={OUTER_RADIUS}
-          fill="none"
-          stroke="#334155"
-          strokeWidth={0.5}
-        />
-
-        {/* Phase donut segments */}
+        {/* Phase donut segments - MUST be drawn first (bottom layer) */}
         {pointerHours.map((_, index) => {
           const startHour = pointerHours[index];
           const endHour = pointerHours[(index + 1) % 4];
@@ -307,12 +334,32 @@ export function CircularPhaseSlider({
                 INNER_RADIUS
               )}
               fill={color}
-              stroke="#334155"
+              stroke={COLORS.ui.border}
               strokeWidth={0.5}
               pointerEvents="none"
             />
           );
         })}
+
+        {/* Inner circle with subtle glow effect - drawn on top to create hole */}
+        <circle
+          cx={CENTER}
+          cy={CENTER}
+          r={INNER_RADIUS}
+          fill="url(#inner-glow)"
+          stroke={COLORS.ui.border}
+          strokeWidth={1}
+        />
+
+        {/* Outer boundary - very subtle */}
+        <circle
+          cx={CENTER}
+          cy={CENTER}
+          r={OUTER_RADIUS}
+          fill="none"
+          stroke={COLORS.ui.border}
+          strokeWidth={0.5}
+        />
 
         {/* Phase icons in the middle of each arc */}
         {pointerHours.map((_, index) => {
@@ -331,20 +378,24 @@ export function CircularPhaseSlider({
           const midAngle = startAngle + (endAngle - startAngle) / 2;
           const midRadius = (OUTER_RADIUS + INNER_RADIUS) / 2;
           const iconPos = polarToCartesian(midAngle, midRadius);
+          const IconComponent = phases[index].Icon;
 
           return (
-            <text
+            <foreignObject
               key={`icon-${index}`}
-              x={iconPos.x}
-              y={iconPos.y}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize="28"
+              x={iconPos.x - 16}
+              y={iconPos.y - 16}
+              width={32}
+              height={32}
               pointerEvents="none"
-              opacity={0.9}
             >
-              {phases[index].emoji}
-            </text>
+              <div className="flex items-center justify-center w-full h-full">
+                <IconComponent
+                  className="w-6 h-6 opacity-60"
+                  style={{ color: COLORS.text.light }}
+                />
+              </div>
+            </foreignObject>
           );
         })}
 
@@ -355,7 +406,7 @@ export function CircularPhaseSlider({
             cy={nowPos.y}
             r={8}
             fill="none"
-            stroke="#64748b"
+            stroke={COLORS.now.ring}
             strokeWidth={1.5}
             opacity={0.4}
           />
@@ -363,8 +414,8 @@ export function CircularPhaseSlider({
             cx={nowPos.x}
             cy={nowPos.y}
             r={4}
-            fill="#0f172a"
-            stroke="#cbd5e1"
+            fill={COLORS.now.dot}
+            stroke={COLORS.now.dotStroke}
             strokeWidth={1.5}
           />
         </g>
@@ -389,7 +440,7 @@ export function CircularPhaseSlider({
                 cy={pos.y}
                 r={18}
                 fill="none"
-                stroke="#475569"
+                stroke={COLORS.pointer.ring}
                 strokeWidth={1}
                 opacity={isDragging ? 0.6 : 0}
                 className="transition-opacity hover:opacity-40"
@@ -400,11 +451,22 @@ export function CircularPhaseSlider({
                 cx={pos.x}
                 cy={pos.y}
                 r={12}
-                fill="#f8fafc"
-                stroke="#334155"
+                fill={COLORS.pointer.fill}
+                stroke={COLORS.pointer.stroke}
                 strokeWidth={2}
                 filter="url(#pointer-shadow)"
-                className="transition-all hover:fill-slate-100"
+                style={{
+                  transition: "fill 150ms",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.setAttribute(
+                    "fill",
+                    COLORS.pointer.fillHover
+                  );
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.setAttribute("fill", COLORS.pointer.fill);
+                }}
               />
 
               {/* Inner dot for visual interest */}
@@ -412,7 +474,7 @@ export function CircularPhaseSlider({
                 cx={pos.x}
                 cy={pos.y}
                 r={4}
-                fill="#475569"
+                fill={COLORS.pointer.innerDot}
                 pointerEvents="none"
               />
 
@@ -422,7 +484,8 @@ export function CircularPhaseSlider({
                 y={labelPos.y}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                className="text-sm font-mono font-medium fill-slate-700 dark:fill-slate-300"
+                className="text-sm font-mono font-medium"
+                fill={COLORS.text.light}
                 pointerEvents="none"
               >
                 {formatHour(hour)}

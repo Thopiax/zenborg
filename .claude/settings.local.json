@@ -51,7 +51,8 @@
       "Bash(npx shadcn@latest add accordion -y)",
       "WebFetch(domain:github.com)",
       "Bash(pnpm add react-round-slider)",
-      "Bash(pnpm remove mz-react-round-slider)"
+      "Bash(pnpm remove mz-react-round-slider)",
+      "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_a0CbkS/**)"
     ],
     "deny": [],
     "ask": []
