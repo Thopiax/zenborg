@@ -93,7 +93,15 @@ export default function HomePage() {
           onMouseDown={handleBackgroundClick}
         >
           {/* Main Content */}
-          <main className="flex-1 flex flex-col overflow-hidden">
+          <main
+            className="flex-1 flex flex-col overflow-hidden"
+            style={{
+              paddingLeft: "env(safe-area-inset-left)",
+              paddingRight: "env(safe-area-inset-right)",
+              paddingTop: "env(safe-area-inset-top)",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }}
+          >
             {/* Timeline - Takes remaining space */}
             <div
               className={cn(

@@ -592,3 +592,4 @@ This is a personal project for conscious attention management. Built with the ph
 
 - do not run the dev OR build the app, I'm running it myself
 - IMPORTANT: only use `stone` tones (monochrome) unless attributed to an area
+- all mobile UX should be designed for landscape exprience. Portrait mode won't be considered.
