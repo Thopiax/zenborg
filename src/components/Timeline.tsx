@@ -2,7 +2,7 @@
 
 import { use$ } from "@legendapp/state/react";
 import { CloudMoon, Coffee, Moon, Sun } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { visiblePhases$ } from "@/infrastructure/state/store";
 import { getDateLabel, getExtendedTimelineDays } from "@/lib/dates";
@@ -40,6 +40,7 @@ export function Timeline() {
   const timelineDays = getExtendedTimelineDays(4, 1); // Just Today and Tomorrow
   const containerRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLDivElement>(null);
+  const [isReady, setIsReady] = useState(false);
 
   // Ensure Today is scrolled into view on mount
   useEffect(() => {
@@ -52,6 +53,8 @@ export function Timeline() {
             inline: "start",
             block: "nearest",
           });
+          // Fade in after scroll completes
+          setIsReady(true);
         });
       }, 100);
     }
@@ -140,7 +143,11 @@ export function Timeline() {
   return (
     <div
       ref={containerRef}
-      className="w-full flex gap-6 overflow-x-auto max-h-[calc(100vh-200px)] snap-x snap-mandatory scroll-smooth py-4 hide-scrollbar scroll-pl-16"
+      className={cn(
+        "w-full flex gap-6 overflow-x-auto max-h-[calc(100vh-200px)] snap-x snap-mandatory scroll-smooth py-4 hide-scrollbar scroll-pl-16",
+        "transition-opacity duration-300",
+        isReady ? "opacity-100" : "opacity-0"
+      )}
     >
       {timelineDays.map(({ date, isToday }, index) => (
         <div className="px-2" key={date}>
