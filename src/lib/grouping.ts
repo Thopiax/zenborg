@@ -129,23 +129,26 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
 
 /**
  * Group moments by cycle (time perspective)
- * Categories: Now, Soon, Later, Unset
+ * Categories: This Week, Next Week, This Month, Later, Unset
  * Shows all cycle levels, including empty ones
  * Monochrome design - no color coding
  */
 export function groupByCycle(moments: Moment[]): MomentGroup[] {
   const groups: Record<string, Moment[]> = {
-    now: [],
-    soon: [],
+    thisWeek: [],
+    nextWeek: [],
+    thisMonth: [],
     later: [],
     unset: [],
   };
 
   for (const moment of moments) {
-    if (moment.cycle === "now") {
-      groups.now.push(moment);
-    } else if (moment.cycle === "soon") {
-      groups.soon.push(moment);
+    if (moment.cycle === "this-week") {
+      groups.thisWeek.push(moment);
+    } else if (moment.cycle === "next-week") {
+      groups.nextWeek.push(moment);
+    } else if (moment.cycle === "this-month") {
+      groups.thisMonth.push(moment);
     } else if (moment.cycle === "later") {
       groups.later.push(moment);
     } else {
@@ -153,18 +156,23 @@ export function groupByCycle(moments: Moment[]): MomentGroup[] {
     }
   }
 
-  // Return all cycle levels in order (Now > Soon > Later > Unset)
+  // Return all cycle levels in order (This Week > Next Week > This Month > Later > Unset)
   // No colors - monochrome design
   return [
     {
-      groupId: "cycle-now",
-      groupLabel: "Now",
-      moments: groups.now,
+      groupId: "cycle-this-week",
+      groupLabel: "This Week",
+      moments: groups.thisWeek,
     },
     {
-      groupId: "cycle-soon",
-      groupLabel: "Soon",
-      moments: groups.soon,
+      groupId: "cycle-next-week",
+      groupLabel: "Next Week",
+      moments: groups.nextWeek,
+    },
+    {
+      groupId: "cycle-this-month",
+      groupLabel: "This Month",
+      moments: groups.thisMonth,
     },
     {
       groupId: "cycle-later",
