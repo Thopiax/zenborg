@@ -329,8 +329,7 @@ export function useGlobalKeyboard() {
 
       const result = createMoment(
         yankBuffer.name,
-        yankBuffer.areaId,
-        yankBuffer.cycle
+        yankBuffer.areaId
       );
       if (!("error" in result)) {
         createMomentWithHistory(result);
