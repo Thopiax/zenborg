@@ -327,10 +327,7 @@ export function useGlobalKeyboard() {
     () => {
       if (!yankBuffer) return;
 
-      const result = createMoment(
-        yankBuffer.name,
-        yankBuffer.areaId
-      );
+      const result = createMoment(yankBuffer.name, yankBuffer.areaId);
       if (!("error" in result)) {
         createMomentWithHistory(result);
         focusMoment(result.id);
@@ -363,15 +360,20 @@ export function useGlobalKeyboard() {
   const handleCreateMoment = (
     name: string,
     areaId: string,
-    cycle: import("@/domain/entities/Moment").Cycle | null,
+    horizon: import("@/domain/entities/Moment").Horizon | null,
     phase: import("@/domain/value-objects/Phase").Phase | null,
     createMore?: boolean
   ) => {
-    // Create new moment with cycle
-    const result = createMoment(name, areaId, cycle);
+    // Create new moment
+    const result = createMoment(name, areaId);
     if (!("error" in result)) {
       // Create moment with history tracking
       createMomentWithHistory(result);
+
+      // Set horizon if provided
+      if (horizon) {
+        moments$[result.id].horizon.set(horizon);
+      }
 
       // If day/phase were prefilled from timeline click, allocate the moment
       const prefilledAllocation = momentFormState$.prefilledAllocation.peek();
@@ -398,20 +400,20 @@ export function useGlobalKeyboard() {
     day?: string,
     phase?: string,
     areaId?: string,
-    cycle?: string
+    horizon?: string
   ) => {
     openMomentFormCreate({
       day,
       phaseStr: phase,
       areaId,
-      horizon: cycle as import("@/domain/entities/Moment").Cycle,
+      horizon: horizon,
     });
   };
 
   const handleSaveEdit = (
     name: string,
     areaId: string,
-    cycle: import("@/domain/entities/Moment").Cycle | null,
+    horizon: import("@/domain/entities/Moment").Horizon | null,
     phase: import("@/domain/value-objects/Phase").Phase | null
   ) => {
     const editingMomentId = momentFormState$.editingMomentId.peek();
@@ -420,7 +422,7 @@ export function useGlobalKeyboard() {
       updateMomentWithHistory(editingMomentId, {
         name,
         areaId,
-        cycle,
+        horizon,
         // Note: phase is not directly updated here, it's part of allocation
       });
     }
