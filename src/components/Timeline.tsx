@@ -118,7 +118,7 @@ export function Timeline() {
                   />
                 </div>
                 {/* Phase Icon at Bottom - More opaque */}
-                <div className="absolute left-0 right-0 bottom-0 inset-x-0 flex py-4 items-center justify-center px-1 mt-1 flex-shrink-0">
+                <div className="absolute left-0 right-0 bottom-0 inset-x-0 flex py-6 items-center justify-center px-1 mt-1 flex-shrink-0 z-0">
                   <PhaseIcon
                     phase={phaseConfig.phase}
                     className="opacity-50 text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5"

@@ -123,7 +123,7 @@ export const zIndex = {
   overlay: 30, // CompassView, AreaManager
   modal: 40, // Dialogs
   popover: 50, // Tooltips
-  vimIndicator: 60, // Vim mode indicator (always on top)
+  dragOverlay: 60,
   commandLine: 60, // Command line (always on top)
 } as const;
 

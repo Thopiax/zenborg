@@ -30,6 +30,7 @@ import {
   momentCard,
   momentConstraints,
   phaseBackgrounds,
+  zIndex,
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
@@ -237,6 +238,7 @@ function SortableMomentCard({
     touchAction: "none",
     // Cursor feedback for trackpad/mouse users (iPad with trackpad)
     cursor: isDragging ? "grabbing" : "grab",
+    zIndex: isDragging ? zIndex.dragOverlay : 1,
   };
 
   return (
