@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import {
-  CommandDialog,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  CommandShortcut,
-} from "@/components/ui/command";
+  SelectorDialog,
+  type SelectorOption,
+} from "@/components/SelectorDialog";
 import type { Cycle } from "@/domain/entities/Moment";
 
 interface CycleSelectorProps {
@@ -22,11 +18,11 @@ interface CycleSelectorProps {
  *
  * Calm, minimal selector with no colors - just monochrome
  * Features:
- * - Number keys (1-3) for quick selection, 0 to clear
+ * - Number keys (1-7) for quick selection
  * - Arrow keys for navigation
  * - Enter to confirm
  * - Escape to cancel
- * - Built with shadcn/ui Command component
+ * - Built with SelectorDialog component
  */
 export function CycleSelector({
   open,
@@ -34,70 +30,64 @@ export function CycleSelector({
   onSelectCycle,
   onClose,
 }: CycleSelectorProps) {
-  const cycles: Array<{ value: Cycle | null; label: string; key: string }> = [
-    { value: "now", label: "Now", key: "1" },
-    { value: "soon", label: "Soon", key: "2" },
-    { value: "later", label: "Later", key: "3" },
-    { value: null, label: "Unset", key: "0" },
+  // Define cycle options with number hotkeys
+  const options: SelectorOption<Cycle | null>[] = [
+    {
+      value: "yesterday",
+      label: "Yesterday",
+      hotkey: "Y",
+      // description: "Allocate to yesterday",
+    },
+    {
+      value: "today",
+      label: "Today",
+      hotkey: "T",
+      // description: "Allocate to today",
+    },
+    {
+      value: "tomorrow",
+      label: "Tomorrow",
+      hotkey: "R",
+      // description: "Allocate to tomorrow",
+    },
+    {
+      value: "this-week",
+      label: "This Week",
+      hotkey: "W",
+      // description: "This week",
+    },
+    {
+      value: "next-week",
+      label: "Next Week",
+      hotkey: "N",
+      // description: "Next week",
+    },
+    {
+      value: "this-month",
+      label: "This Month",
+      hotkey: "M",
+      // description: "This month",
+    },
+    {
+      value: "later",
+      label: "Later",
+      hotkey: "L",
+      // description: "Someday",
+    },
   ];
 
-  // Handle number key shortcuts (1-3 for cycles, 0 to clear)
-  useEffect(() => {
-    if (!open) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Number keys 0-3 for quick selection
-      if (e.key >= "0" && e.key <= "3") {
-        e.preventDefault();
-        const selected = cycles.find((c) => c.key === e.key);
-        if (selected) {
-          onSelectCycle(selected.value);
-          onClose();
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onSelectCycle, onClose]);
-
   return (
-    <CommandDialog
+    <SelectorDialog
       open={open}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) onClose();
-      }}
       title="Select Cycle"
       description="Choose a time perspective for your moment"
-      showCloseButton={false}
-      className="max-w-md"
-    >
-      <CommandList className="max-h-64">
-        <CommandGroup heading="Cycle">
-          {cycles.map((cycle) => {
-            const isSelected = selectedCycle === cycle.value;
-
-            return (
-              <CommandItem
-                key={cycle.key}
-                value={cycle.label}
-                onSelect={() => {
-                  onSelectCycle(cycle.value);
-                  onClose();
-                }}
-                className={isSelected ? "bg-stone-100 dark:bg-stone-800" : ""}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span className="font-mono text-sm text-stone-700 dark:text-stone-300">
-                    {cycle.label}
-                  </span>
-                  <CommandShortcut>{cycle.key}</CommandShortcut>
-                </div>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
+      heading="Cycle"
+      options={options}
+      selectedValue={selectedCycle}
+      onSelect={onSelectCycle}
+      onClose={onClose}
+      maxWidth="max-w-md"
+      enableHotkeys
+    />
   );
 }

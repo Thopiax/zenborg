@@ -1,10 +1,19 @@
 import type { Phase } from "../value-objects/Phase";
 
 /**
- * Cycle - Time perspective for moments in the drawing board
- * A calm way to think about temporal scope without urgency
+ * Cycle - Time perspective for moments
+ *
+ * Day-specific cycles (yesterday, today, tomorrow) auto-allocate moments to specific days.
+ * Time-range cycles (this-week, next-week, this-month, later) organize moments in the drawing board.
  */
-export type Cycle = "now" | "soon" | "later";
+export type Cycle =
+  | "yesterday"
+  | "today"
+  | "tomorrow"
+  | "this-week"
+  | "next-week"
+  | "this-month"
+  | "later";
 
 /**
  * Moment - A named intention (1-3 words maximum)
@@ -235,4 +244,32 @@ export function isMomentError(
   result: MomentResult
 ): result is { error: string } {
   return "error" in result;
+}
+
+/**
+ * Checks if a cycle represents a specific day (yesterday/today/tomorrow)
+ * These cycles should auto-allocate moments to the timeline
+ */
+export function isDaySpecificCycle(cycle: Cycle | null): boolean {
+  return cycle === "yesterday" || cycle === "today" || cycle === "tomorrow";
+}
+
+/**
+ * Gets the ISO date string for a day-specific cycle
+ *
+ * @param cycle - Must be "yesterday", "today", or "tomorrow"
+ * @returns ISO date string (e.g., "2025-01-15")
+ */
+export function getDateForCycle(
+  cycle: "yesterday" | "today" | "tomorrow"
+): string {
+  const date = new Date();
+
+  if (cycle === "yesterday") {
+    date.setDate(date.getDate() - 1);
+  } else if (cycle === "tomorrow") {
+    date.setDate(date.getDate() + 1);
+  }
+
+  return date.toISOString().split("T")[0];
 }

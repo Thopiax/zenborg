@@ -47,7 +47,11 @@
       "Bash(chmod +x .husky/pre-push)",
       "Bash(pnpm run build)",
       "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_1jEJMB/**)",
-      "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_jej7x8/**)"
+      "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_jej7x8/**)",
+      "Bash(npx shadcn@latest add accordion -y)",
+      "WebFetch(domain:github.com)",
+      "Bash(pnpm add react-round-slider)",
+      "Bash(pnpm remove mz-react-round-slider)"
     ],
     "deny": [],
     "ask": []

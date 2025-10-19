@@ -148,10 +148,6 @@
   --text-secondary: #57534e; /* stone-600 */
   --text-tertiary: #78716c; /* stone-500 */
 
-  /* Vim mode indicator */
-  --vim-bg: #1c1917;
-  --vim-text: #fafaf9;
-
   /* Focus states */
   --focus-default: #3b82f6; /* blue-500 */
   --focus-insert: #f59e0b; /* amber-500 */
@@ -188,6 +184,26 @@
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.709 0.01 56.259);
+
+  /* Morning — slate-50 base, airy */
+  --morning-bg: #f8fafc; /* slate-50 */
+  --morning-accent: #cbd5e1; /* slate-300 */
+  --morning-tint: rgba(173, 216, 230, 0.06);
+
+  /* Afternoon — slate-100 base, neutral focus */
+  --afternoon-bg: #f1f5f9; /* slate-100 */
+  --afternoon-accent: #94a3b8; /* slate-400 */
+  --afternoon-tint: rgba(128, 128, 128, 0.05);
+
+  /* Evening — slate-200 base, soft amber hint */
+  --evening-bg: #e2e8f0; /* slate-200 */
+  --evening-accent: #64748b; /* slate-500 */
+  --evening-tint: rgba(255, 183, 77, 0.04);
+
+  /* Night — slate-300 on light, indigo whisper */
+  --night-bg: #cbd5e1; /* slate-300 */
+  --night-accent: #475569; /* slate-600 */
+  --night-tint: rgba(75, 0, 130, 0.05);
 }
 
 @theme inline {
@@ -204,9 +220,6 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
-
-  --color-vim-bg: var(--vim-bg);
-  --color-vim-text: var(--vim-text);
 
   --color-focus-default: var(--focus-default);
   --color-focus-insert: var(--focus-insert);
@@ -248,6 +261,26 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Morning — crisp but calm */
+  --morning-bg: #1e293b; /* slate-800 */
+  --morning-accent: #94a3b8; /* slate-400 */
+  --morning-tint: rgba(173, 216, 230, 0.08);
+
+  /* Afternoon — productive depth */
+  --afternoon-bg: #0f172a; /* slate-900 */
+  --afternoon-accent: #64748b; /* slate-500 */
+  --afternoon-tint: rgba(128, 128, 128, 0.05);
+
+  /* Evening — reflective dim */
+  --evening-bg: #1e293b; /* slate-800 */
+  --evening-accent: #475569; /* slate-600 */
+  --evening-tint: rgba(255, 183, 77, 0.05);
+
+  /* Night — deepest rest */
+  --night-bg: #020617; /* slate-950 */
+  --night-accent: #1e293b; /* slate-800 */
+  --night-tint: rgba(75, 0, 130, 0.06);
 }
 
 body {

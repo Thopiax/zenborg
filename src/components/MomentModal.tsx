@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import type { Cycle } from "@/domain/entities/Moment";
+import type { Phase } from "@/domain/value-objects/Phase";
 import { MomentForm } from "./MomentForm";
 
 interface MomentModalProps {
@@ -10,9 +11,15 @@ interface MomentModalProps {
   initialName?: string;
   initialAreaId?: string;
   initialCycle?: Cycle | null;
+  initialPhase?: Phase | null;
   /** Whether the moment is allocated (has day/phase). If true, cycle selector is hidden. */
   isAllocated?: boolean;
-  onSave: (name: string, areaId: string, cycle: Cycle | null) => void;
+  onSave: (
+    name: string,
+    areaId: string,
+    cycle: Cycle | null,
+    phase: Phase | null
+  ) => void;
   onCancel: () => void;
   /** For edit mode: called when user confirms deletion */
   onDelete?: () => void;
@@ -31,6 +38,7 @@ export function MomentModal({
   initialName = "",
   initialAreaId = "",
   initialCycle = null,
+  initialPhase = null,
   isAllocated = false,
   onSave,
   onCancel,
@@ -72,6 +80,7 @@ export function MomentModal({
             initialName={initialName}
             initialAreaId={initialAreaId}
             initialCycle={initialCycle}
+            initialPhase={initialPhase}
             isAllocated={isAllocated}
             onSave={onSave}
             onCancel={onCancel}

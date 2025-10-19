@@ -28,6 +28,13 @@ import { useSelection } from "./useSelection";
  * - Mod+Backspace: Delete all selected moments
  * - D: Duplicate all selected moments
  *
+ * Moment Form (when creating/editing):
+ * - A: Open area selector (1-9 to quick select)
+ * - P: Open phase selector (M/A/E for Morning/Afternoon/Evening)
+ * - C: Open cycle selector (1-7 to quick select)
+ * - Tab: Cycle through areas
+ * - Enter: Save moment
+ *
  * Selection:
  * - Shift+click / Cmd+click: Toggle moment selection
  * - Mod+A: Select all moments
@@ -44,7 +51,7 @@ import { useSelection } from "./useSelection";
  * - gg/G: First/last moment
  *
  * Views:
- * - P: Toggle Planning (Drawing Board)
+ * - P: Toggle Planning (Drawing Board) (when no form open)
  *
  * Clipboard:
  * - yy: Yank (copy) moment
@@ -388,6 +395,7 @@ export function useGlobalKeyboard() {
     name: string,
     areaId: string,
     cycle: import("@/domain/entities/Moment").Cycle | null,
+    phase: import("@/domain/value-objects/Phase").Phase | null,
     createMore?: boolean
   ) => {
     // Create new moment with cycle
@@ -396,7 +404,7 @@ export function useGlobalKeyboard() {
       // Create moment with history tracking
       createMomentWithHistory(result);
 
-      // If day/phase were prefilled, allocate the moment
+      // If day/phase were prefilled from timeline click, allocate the moment
       if (prefilledDay && prefilledPhase) {
         allocateMomentWithHistory(
           result.id,
@@ -442,7 +450,8 @@ export function useGlobalKeyboard() {
   const handleSaveEdit = (
     name: string,
     areaId: string,
-    cycle: import("@/domain/entities/Moment").Cycle | null
+    cycle: import("@/domain/entities/Moment").Cycle | null,
+    phase: import("@/domain/value-objects/Phase").Phase | null
   ) => {
     if (editingMomentId) {
       // Update existing moment with history tracking
@@ -450,6 +459,7 @@ export function useGlobalKeyboard() {
         name,
         areaId,
         cycle,
+        // Note: phase is not directly updated here, it's part of allocation
       });
     }
     setIsEditCardOpen(false);
@@ -484,6 +494,8 @@ export function useGlobalKeyboard() {
     focusedMomentId,
     // Create modal state
     isCreateModalOpen,
+    prefilledDay,
+    prefilledPhase,
     prefilledAreaId,
     prefilledCycle,
     handleCreateMoment,

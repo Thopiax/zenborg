@@ -100,11 +100,28 @@ export function TimelineCell({
   // Check if current drop would be valid
   const wouldAcceptDrop = !isFull; // Simple check for now, validation happens in DnDProvider
 
+  // Helper to convert ISO date to cycle
+  const getCycleFromDay = (isoDate: string): string => {
+    const today = new Date().toISOString().split("T")[0];
+    const tomorrow = new Date(Date.now() + 86400000)
+      .toISOString()
+      .split("T")[0];
+    const yesterday = new Date(Date.now() - 86400000)
+      .toISOString()
+      .split("T")[0];
+
+    if (isoDate === today) return "today";
+    if (isoDate === tomorrow) return "tomorrow";
+    if (isoDate === yesterday) return "yesterday";
+    return "later"; // Fallback for other dates
+  };
+
   // Handle empty cell click - opens Drawing Board or create modal
   const handleEmptyCellClick = () => {
-    // If there are no unallocated moments, open create modal directly
+    // If there are no unallocated moments, open create modal directly with prefilled cycle and phase
     if (unallocated.length === 0) {
-      handleOpenCreateModal(day, phase);
+      const cycle = getCycleFromDay(day);
+      handleOpenCreateModal(day, phase, undefined, cycle);
     } else {
       // Otherwise, expand Drawing Board to show unallocated moments
       drawingBoardExpanded$.set(true);
@@ -173,10 +190,10 @@ export function TimelineCell({
           <button
             type="button"
             onClick={handleEmptyCellClick}
-            className="flex items-center justify-center h-full w-full rounded-md hover:bg-stone-100/20 dark:hover:bg-stone-800/20 transition-colors cursor-pointer group"
+            className="flex items-center justify-center h-full w-full rounded-md transition-colors cursor-pointer group"
             aria-label={`Add moment to ${phaseLabel || phase}`}
           >
-            <span className="text-grey-700 dark:text-grey-300 text-xs font-mono opacity-1 md:opacity-0 group-hover:opacity-100 transition-opacity gap-2 flex items-center">
+            <span className="text-slate-800 dark:text-slate-100 text-3xl opacity-70 md:opacity-0 group-hover:opacity-70 transition-opacity gap-2 flex items-center">
               +
             </span>
           </button>

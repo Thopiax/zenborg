@@ -2,14 +2,16 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { Trash2 } from "lucide-react";
+import { Calendar, Clock, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
 import { CycleSelector } from "@/components/CycleSelector";
+import { PhaseSelector } from "@/components/PhaseSelector";
 import type { Area } from "@/domain/entities/Area";
 import { type Cycle, validateMomentName } from "@/domain/entities/Moment";
-import { areas$ } from "@/infrastructure/state/store";
+import { Phase } from "@/domain/value-objects/Phase";
+import { areas$, phaseConfigs$ } from "@/infrastructure/state/store";
 import { lastUsedAreaId$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 
@@ -18,12 +20,14 @@ interface MomentFormProps {
   initialName?: string;
   initialAreaId?: string;
   initialCycle?: Cycle | null;
+  initialPhase?: Phase | null;
   /** Whether the moment is allocated (has day/phase). If true, cycle selector is hidden. */
   isAllocated?: boolean;
   onSave: (
     name: string,
     areaId: string,
     cycle: Cycle | null,
+    phase: Phase | null,
     createMore?: boolean
   ) => void;
   onCancel: () => void;
@@ -38,29 +42,34 @@ interface MomentFormProps {
  *
  * Features:
  * - Name input with validation (1-3 words)
- * - Area selection with keyboard shortcuts (1-5, Tab, A)
- * - Cycle selection (only for unallocated moments)
+ * - Area selection: A (opens selector), Tab (cycles areas), 1-9 (quick select)
+ * - Phase selection: P (opens selector), M/A/E (Morning/Afternoon/Evening)
+ * - Cycle selection: C (opens selector), 1-7 (quick select)
  * - Enter to save, Escape to cancel
  * - Optional "Create more" toggle for batch creation
+ *
+ * Keyboard Shortcuts:
+ * - A: Open area selector
+ * - P: Open phase selector
+ * - C: Open cycle selector
+ * - Tab: Cycle through areas (when selector closed)
+ * - Enter: Save moment
+ * - Escape: Cancel or blur input
  */
 export function MomentForm({
   mode,
   initialName = "",
   initialAreaId = "",
   initialCycle = null,
+  initialPhase = null,
   isAllocated = false,
   onSave,
   onCancel,
   showCreateMore = false,
   onDelete,
 }: MomentFormProps) {
-  // Cycle is only editable for unallocated moments (create mode or edit unallocated)
-  const showCycleSelector = useMemo(
-    () => false && mode && isAllocated,
-    // () => mode === "create" || (mode === "edit" && !isAllocated),
-    [mode, isAllocated]
-  );
   const allAreas = use$(areas$);
+  const allPhaseConfigs = use$(phaseConfigs$);
   const lastUsedAreaId = use$(lastUsedAreaId$);
   const areasList: Area[] = useMemo(
     () => Object.values(allAreas).sort((a, b) => a.order - b.order),
@@ -80,8 +89,12 @@ export function MomentForm({
     return areasList[0]?.id ?? "";
   });
   const [cycle, setCycle] = useState<Cycle | null>(initialCycle ?? "later");
+  const [phase, setPhase] = useState<Phase | null>(
+    initialPhase ?? Phase.MORNING
+  );
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
   const [isCycleSelectorOpen, setIsCycleSelectorOpen] = useState(false);
+  const [isPhaseSelectorOpen, setIsPhaseSelectorOpen] = useState(false);
   const [createMore, setCreateMore] = useState(false);
   // Track whether user has manually changed the area via AreaSelector
   const [hasManuallyChangedArea, setHasManuallyChangedArea] = useState(false);
@@ -145,35 +158,60 @@ export function MomentForm({
     }
   }, [mode]);
 
-  // A - open area selector
-  useHotkeys("a", (e) => {
-    e.preventDefault();
-    setIsAreaSelectorOpen(true);
-  });
+  // Disable form hotkeys when any selector is open to avoid conflicts
+  const formHotkeysEnabled =
+    !isAreaSelectorOpen && !isCycleSelectorOpen && !isPhaseSelectorOpen;
 
-  // H - open cycle selector (only for create mode)
-  useHotkeys("h", (e) => {
-    if (!showCycleSelector) return;
-    e.preventDefault();
-    setIsCycleSelectorOpen(true);
-  });
+  // A - open area selector
+  useHotkeys(
+    "a",
+    (e) => {
+      e.preventDefault();
+      setIsAreaSelectorOpen(true);
+    },
+    { enabled: formHotkeysEnabled }
+  );
+
+  // C - open cycle selector
+  useHotkeys(
+    "c",
+    (e) => {
+      e.preventDefault();
+      setIsCycleSelectorOpen(true);
+    },
+    { enabled: formHotkeysEnabled }
+  );
+
+  // P - open phase selector
+  useHotkeys(
+    "p",
+    (e) => {
+      e.preventDefault();
+      setIsPhaseSelectorOpen(true);
+    },
+    { enabled: formHotkeysEnabled }
+  );
 
   // Tab to cycle areas
-  useHotkeys("tab", (e) => {
-    e.preventDefault();
-    if (!areasList.length) {
-      return;
-    }
-    const currentIndex = areasList.findIndex((a) => a.id === selectedAreaId);
-    const nextIndex = (currentIndex + 1) % areasList.length;
-    const nextArea = areasList[nextIndex];
-    // Persist the selection and mark as manually changed
-    if (nextArea) {
-      setSelectedAreaId(nextArea.id);
-      lastUsedAreaId$.set(nextArea.id);
-      setHasManuallyChangedArea(true);
-    }
-  });
+  useHotkeys(
+    "tab",
+    (e) => {
+      e.preventDefault();
+      if (!areasList.length) {
+        return;
+      }
+      const currentIndex = areasList.findIndex((a) => a.id === selectedAreaId);
+      const nextIndex = (currentIndex + 1) % areasList.length;
+      const nextArea = areasList[nextIndex];
+      // Persist the selection and mark as manually changed
+      if (nextArea) {
+        setSelectedAreaId(nextArea.id);
+        lastUsedAreaId$.set(nextArea.id);
+        setHasManuallyChangedArea(true);
+      }
+    },
+    { enabled: formHotkeysEnabled }
+  );
 
   // Enter to save
   useHotkeys(
@@ -182,18 +220,18 @@ export function MomentForm({
       e.preventDefault();
       handleSave();
     },
-    { enableOnFormTags: true }
+    { enableOnFormTags: true, enabled: formHotkeysEnabled }
   );
 
   // Escape - Smart behavior:
-  // 1. If area/cycle selector is open -> it handles its own escape
+  // 1. If any selector is open -> it handles its own escape
   // 2. If input is focused and has text -> blur input (to allow keyboard shortcuts)
   // 3. Otherwise -> cancel modal
   useHotkeys(
     "escape",
     (e) => {
       // Don't handle escape if any selector is open (they handle their own)
-      if (isAreaSelectorOpen || isCycleSelectorOpen) {
+      if (isAreaSelectorOpen || isCycleSelectorOpen || isPhaseSelectorOpen) {
         return;
       }
 
@@ -217,22 +255,28 @@ export function MomentForm({
     const validation = validateMomentName(name);
     const selectedArea =
       areasList.find((area) => area.id === selectedAreaId) || areasList[0];
-    if (validation.valid && selectedArea) {
+
+    // Area is required - cannot save without an area
+    if (!selectedArea) {
+      return;
+    }
+
+    if (validation.valid) {
       // Persist the selected area ID for future use
       lastUsedAreaId$.set(selectedArea.id);
 
       // If "Create more" is enabled, pass it to parent
       const shouldCreateMore = mode === "create" && createMore;
 
-      // Call onSave with cycle and createMore flag
-      onSave(name.trim(), selectedArea.id, cycle, shouldCreateMore);
+      // Call onSave with cycle, phase, and createMore flag
+      onSave(name.trim(), selectedArea.id, cycle, phase, shouldCreateMore);
 
       // If "Create more" is enabled, reset form immediately
-      // Parent will keep modal open, but preserve area selection
+      // Parent will keep modal open, but preserve area and phase selection
       if (shouldCreateMore) {
         setName("");
         setCycle("later"); // Reset cycle to default "later"
-        // Don't reset selectedAreaId - keep the same area
+        // Don't reset selectedAreaId or phase - keep the same area and phase
         // Refocus input after a brief delay to allow state update
         setTimeout(() => {
           inputRef.current?.focus();
@@ -251,13 +295,30 @@ export function MomentForm({
     }
   };
 
-  const selectedArea =
-    areasList.find((area) => area.id === selectedAreaId) || areasList[0];
+  const selectedArea = areasList.find((area) => area.id === selectedAreaId);
   const validation = validateMomentName(name);
+  const hasArea = selectedArea !== undefined;
+  const canSave = validation.valid && hasArea;
 
-  if (!selectedArea) {
-    return null;
-  }
+  // Get phase config for display
+  const selectedPhaseConfig = phase
+    ? Object.values(allPhaseConfigs).find((pc) => pc.phase === phase)
+    : null;
+
+  // Format cycle label for display
+  const formatCycleLabel = (c: Cycle | null): string => {
+    if (!c) return "Unset";
+    const labels: Record<Cycle, string> = {
+      yesterday: "Yesterday",
+      today: "Today",
+      tomorrow: "Tomorrow",
+      "this-week": "This Week",
+      "next-week": "Next Week",
+      "this-month": "This Month",
+      later: "Later",
+    };
+    return labels[c];
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -270,13 +331,13 @@ export function MomentForm({
 
       {/* Content */}
       <div className="px-6 py-6 flex-1 overflow-y-auto">
-        {/* Name Input */}
+        {/* Name Input - Prominent */}
         <input
           ref={inputRef}
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full text-2xl font-semibold bg-transparent outline-none text-text-primary placeholder:text-text-tertiary mb-6"
+          className="w-full text-4xl font-bold bg-transparent outline-none text-text-primary placeholder:text-text-tertiary mb-8"
           placeholder="Moment name..."
           aria-label="Moment name"
           aria-invalid={!validation.valid}
@@ -285,54 +346,99 @@ export function MomentForm({
         {/* Validation */}
         {!validation.valid && validation.error && name.trim().length > 0 && (
           <p
-            className="text-sm text-red-500 dark:text-red-400 mb-4"
+            className="text-sm text-red-500 dark:text-red-400 mb-6"
             role="alert"
           >
             {validation.error}
           </p>
         )}
 
-        {/* Selectors Row with flex wrap and breathing room */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          {/* Area Selector Trigger - Always first */}
-          <button
-            type="button"
-            onClick={() => setIsAreaSelectorOpen(true)}
-            className="min-w-[200px] flex-1 flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all text-white hover:opacity-90"
-            style={{
-              backgroundColor: selectedArea.color,
-              borderColor: selectedArea.color,
-            }}
-          >
-            <span className="text-lg">{selectedArea.emoji}</span>
-            <span className="font-medium">{selectedArea.name}</span>
-            <kbd className="ml-auto px-1.5 py-0.5 rounded text-xs font-mono bg-white/20 text-white">
-              A
-            </kbd>
-          </button>
+        {/* Area Required Message - Show when no area */}
+        {!hasArea && (
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={() => setIsAreaSelectorOpen(true)}
+              className="w-full px-4 py-3 rounded-lg border-2 border-dashed border-stone-300 dark:border-stone-600 transition-all text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-400 dark:hover:border-stone-500 flex items-center justify-center gap-2"
+            >
+              <span className="font-medium">Add area</span>
+              <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800">
+                A
+              </kbd>
+            </button>
+          </div>
+        )}
 
-          {/* Cycle Selector Trigger - Ghost style, only for unallocated moments */}
-          {showCycleSelector && (
+        {/* Selectors Row - Only show when area is selected */}
+        {hasArea && (
+          <div className="flex flex-col gap-3 mb-6">
+            {/* Area Selector - Colored */}
+            <button
+              type="button"
+              onClick={() => setIsAreaSelectorOpen(true)}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-all text-white hover:opacity-90"
+              style={{
+                backgroundColor: selectedArea.color,
+                borderColor: selectedArea.color,
+              }}
+            >
+              <span className="text-xl">{selectedArea.emoji}</span>
+              <span className="font-semibold flex-1 text-left">
+                {selectedArea.name}
+              </span>
+              <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-white/20 text-white">
+                A
+              </kbd>
+            </button>
+
+            {/* Phase Selector - Ghost with clock icon */}
+            <button
+              type="button"
+              onClick={() => setIsPhaseSelectorOpen(true)}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600"
+            >
+              <Clock
+                className="w-5 h-5 text-stone-400 dark:text-stone-500"
+                strokeWidth={1.5}
+              />
+              <span className="font-mono text-sm flex-1 text-left">
+                {selectedPhaseConfig?.emoji} {selectedPhaseConfig?.label || "Morning"}
+              </span>
+              <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400">
+                P
+              </kbd>
+            </button>
+
+            {/* Cycle Selector - Ghost with calendar icon */}
             <button
               type="button"
               onClick={() => setIsCycleSelectorOpen(true)}
-              className="min-w-[200px] flex-1 flex items-center gap-2 px-4 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 justify-between"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-stone-400">Cycle:</span>
-                <span className="font-mono text-sm">
-                  {cycle
-                    ? cycle.charAt(0).toUpperCase() + cycle.slice(1)
-                    : "Unset"}
-                </span>
-              </div>
+              <Calendar
+                className="w-5 h-5 text-stone-400 dark:text-stone-500"
+                strokeWidth={1.5}
+              />
+              <span className="font-mono text-sm flex-1 text-left">
+                {formatCycleLabel(cycle)}
+              </span>
               <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400">
-                H
+                C
               </kbd>
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Phase Selector Dialog */}
+      <PhaseSelector
+        open={isPhaseSelectorOpen}
+        selectedPhase={phase}
+        onSelectPhase={(newPhase) => {
+          setPhase(newPhase);
+        }}
+        onClose={() => setIsPhaseSelectorOpen(false)}
+      />
 
       {/* Cycle Selector Dialog */}
       <CycleSelector
@@ -397,15 +503,15 @@ export function MomentForm({
         <div className="flex items-center gap-3">
           <button
             onClick={handleSave}
-            disabled={!validation.valid}
+            disabled={!canSave}
             className={cn(
               "px-5 py-2 rounded-lg font-medium transition-all text-white",
-              validation.valid
+              canSave
                 ? "hover:opacity-90 active:scale-95"
                 : "bg-border text-text-tertiary cursor-not-allowed"
             )}
             style={
-              validation.valid
+              canSave && selectedArea
                 ? {
                     backgroundColor: selectedArea.color,
                   }

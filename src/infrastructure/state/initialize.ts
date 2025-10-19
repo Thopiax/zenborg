@@ -29,28 +29,21 @@ export async function initializeStore(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 200));
 
   // Check if data already exists (not first run)
-  const hasAreas = Object.keys(areas$.get()).length > 0;
+  // NOTE: We don't check areas since they're not seeded anymore
   const hasCycles = Object.keys(cycles$.get()).length > 0;
   const hasPhaseConfigs = Object.keys(phaseConfigs$.get()).length > 0;
 
   // If data exists, skip initialization
-  if (hasAreas && hasCycles && hasPhaseConfigs) {
+  if (hasCycles && hasPhaseConfigs) {
     return;
   }
 
   // First run: seed default data
   console.log("[Zenborg] First run detected - initializing default data");
 
-  if (!hasAreas) {
-    const defaultAreas = getDefaultAreas();
-    const areasRecord = defaultAreas.reduce((acc, area) => {
-      acc[area.id] = area;
-      return acc;
-    }, {} as Record<string, (typeof defaultAreas)[0]>);
-
-    areas$.set(areasRecord);
-    console.log("[Zenborg] Created 5 default areas");
-  }
+  // NOTE: Areas are no longer seeded by default.
+  // Users must create their first area from templates in the AreaSelector.
+  // This creates a better first-time experience where users consciously choose their areas.
 
   // Create 4 default phase configurations
   if (!hasPhaseConfigs) {

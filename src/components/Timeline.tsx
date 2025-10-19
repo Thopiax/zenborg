@@ -81,7 +81,7 @@ export function Timeline() {
         className={cn(
           "flex flex-col h-full",
           // Minimal padding
-          "scroll-ml-4 md:scroll-ml-6",
+          "scroll-ml-2 md:scroll-ml-6",
           "gap-1.5 px-2 py-2 md:px-4 md:py-4",
           "transition-opacity duration-300",
           isToday
@@ -119,7 +119,7 @@ export function Timeline() {
             return (
               <div
                 key={phaseConfig.phase}
-                className="flex flex-col flex-1 min-w-[200px] md:min-w-[240px]"
+                className="flex flex-col flex-1 min-w-[200px] md:min-w-[240px] relative"
               >
                 {/* Phase Cell - Height based on 3 cards (64px each) + 2 gaps (12px each) + padding */}
                 <div className="flex-1 p-0.5 md:p-1 h-full">
@@ -131,8 +131,8 @@ export function Timeline() {
                   />
                 </div>
                 {/* Phase Icon at Bottom - More opaque */}
-                <div className="flex items-center justify-center px-1 mt-1 flex-shrink-0">
-                  <PhaseIcon className="text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5" />
+                <div className="absolute left-0 right-0 bottom-0 inset-x-0 flex py-4 items-center justify-center px-1 mt-1 flex-shrink-0">
+                  <PhaseIcon className="opacity-50 text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5" />
                 </div>
               </div>
             );

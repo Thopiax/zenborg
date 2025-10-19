@@ -1,13 +1,16 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import { useState } from "react";
 import { AreaManagementModal } from "@/components/AreaManagementModal";
 import { AreaSelector } from "@/components/AreaSelector";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
+import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { MomentModal } from "@/components/MomentModal";
-import { SettingsButton, SettingsModal } from "@/components/SettingsModal";
+import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
+import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { Timeline } from "@/components/Timeline";
 import { MomentManagerProvider } from "@/contexts/MomentManagerContext";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
@@ -32,6 +35,8 @@ export default function HomePage() {
     areaSelectorMomentId,
     updateMomentArea,
     isCreateModalOpen,
+    prefilledDay,
+    prefilledPhase,
     prefilledAreaId,
     prefilledCycle,
     handleCreateMoment,
@@ -62,6 +67,9 @@ export default function HomePage() {
   // Import clearSelection from useSelection hook
   const { clearSelection, hasAnySelected } = useSelection();
 
+  // Phase settings modal state
+  const [isPhaseSettingsOpen, setIsPhaseSettingsOpen] = useState(false);
+
   // Handle click on background to clear selection
   const handleBackgroundClick = (e: React.MouseEvent) => {
     // Clear selection if clicking outside of moment cards
@@ -89,7 +97,7 @@ export default function HomePage() {
 
         {/* biome-ignore lint/a11y/noStaticElementInteractions: Background click to clear selection */}
         <div
-          className="min-h-screen h-screen md:h-auto bg-background transition-colors flex flex-col"
+          className="min-h-screen h-screen md:h-auto bg-background transition-colors flex flex-col overflow-hidden"
           onMouseDown={handleBackgroundClick}
         >
           {/* Main Content */}
@@ -98,15 +106,13 @@ export default function HomePage() {
             style={{
               paddingLeft: "env(safe-area-inset-left)",
               paddingRight: "env(safe-area-inset-right)",
-              paddingTop: "env(safe-area-inset-top)",
-              paddingBottom: "env(safe-area-inset-bottom)",
             }}
           >
             {/* Timeline - Takes remaining space */}
             <div
               className={cn(
                 "flex-1 overflow-hidden",
-                "py-2 md:py-3",
+                // "py-2 md:py-3",
                 "flex flex-col justify-center"
               )}
             >
@@ -119,7 +125,7 @@ export default function HomePage() {
             </div>
           </main>
 
-          {/* Settings Button - Fixed top-right with safe area support */}
+          {/* Hamburger Menu Button - Fixed top-right with safe area support */}
           <div
             className="fixed z-40"
             style={{
@@ -127,7 +133,10 @@ export default function HomePage() {
               right: "max(1.5rem, env(safe-area-inset-right) + 1rem)",
             }}
           >
-            <SettingsButton onClick={() => setIsSettingsOpen(true)} />
+            <HamburgerMenuButton
+              isOpen={isSettingsOpen}
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            />
           </div>
 
           {/* Area Selector - Modal for changing moment area (triggered by 'A' key) */}
@@ -148,6 +157,7 @@ export default function HomePage() {
             mode="create"
             initialAreaId={prefilledAreaId}
             initialCycle={prefilledCycle ? (prefilledCycle as any) : null}
+            initialPhase={prefilledPhase ? (prefilledPhase as any) : null}
             onSave={handleCreateMoment}
             onCancel={handleCancelCreate}
           />
@@ -165,6 +175,11 @@ export default function HomePage() {
             initialCycle={
               editingMomentId
                 ? allMoments[editingMomentId]?.cycle ?? null
+                : null
+            }
+            initialPhase={
+              editingMomentId
+                ? allMoments[editingMomentId]?.phase ?? null
                 : null
             }
             isAllocated={
@@ -186,10 +201,20 @@ export default function HomePage() {
             onClose={() => setIsAreaManagementOpen(false)}
           />
 
-          {/* Settings Modal - Triggered by Mod+, */}
-          <SettingsModal
+          {/* Settings Drawer - Triggered by Mod+, or hamburger menu */}
+          <SettingsDrawer
             open={isSettingsOpen}
             onClose={() => setIsSettingsOpen(false)}
+            onOpenPhaseSettings={() => {
+              setIsPhaseSettingsOpen(true);
+              setIsSettingsOpen(false);
+            }}
+          />
+
+          {/* Phase Settings Modal - Opened from Settings Drawer */}
+          <PhaseSettingsModal
+            open={isPhaseSettingsOpen}
+            onClose={() => setIsPhaseSettingsOpen(false)}
           />
         </div>
       </DnDProvider>

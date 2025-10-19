@@ -1,9 +1,12 @@
 "use client";
 
+import { use$ } from "@legendapp/state/react";
+import { Calendar, Clock } from "lucide-react";
 import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { useSelection } from "@/hooks/useSelection";
+import { phaseConfigs$ } from "@/infrastructure/state/store";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
@@ -37,9 +40,18 @@ interface MomentCardProps {
  * - Calm, minimalist design with color-matched rings
  * - Full accessibility with ARIA labels
  */
-export function MomentCard({ moment, area, contextMomentIds }: MomentCardProps) {
+export function MomentCard({
+  moment,
+  area,
+  contextMomentIds,
+}: MomentCardProps) {
   const { handleOpenEditModal } = useMomentManager();
-  const { isSelected: isSelectedMoment, toggleSelection, selectRange } = useSelection();
+  const {
+    isSelected: isSelectedMoment,
+    toggleSelection,
+    selectRange,
+  } = useSelection();
+  const allPhaseConfigs = use$(phaseConfigs$);
 
   const isSelected = isSelectedMoment(moment.id);
 
@@ -67,6 +79,11 @@ export function MomentCard({ moment, area, contextMomentIds }: MomentCardProps) 
   // Get accessible text colors based on area color
   const textColors = getTextColorsForBackground(area.color);
 
+  // Get phase config for displaying emoji
+  const phaseConfig = moment.phase
+    ? Object.values(allPhaseConfigs).find((pc) => pc.phase === moment.phase)
+    : null;
+
   // Descriptive ARIA label for accessibility
   const ariaLabel = isSelected
     ? `${moment.name} in ${area.name} area, selected`
@@ -78,7 +95,7 @@ export function MomentCard({ moment, area, contextMomentIds }: MomentCardProps) 
       className={cn(
         "min-w-[200px]",
         "rounded-lg transition-all cursor-pointer w-full",
-        "focus:outline-none",
+        "focus:outline-none relative",
         // Subtle ring for selection/focus - using area color
         "ring-offset-transparent",
         isSelected
@@ -101,9 +118,12 @@ export function MomentCard({ moment, area, contextMomentIds }: MomentCardProps) 
       aria-label={ariaLabel}
       tabIndex={0}
     >
-      <div className="flex items-center justify-start h-full gap-3">
+      <div className="flex items-center justify-between h-full gap-3">
         <p
-          className={cn("text-lg font-semibold font-mono", textColors.primary)}
+          className={cn(
+            "text-lg font-semibold font-mono line-clamp-1",
+            textColors.primary
+          )}
         >
           {moment.name}
         </p>

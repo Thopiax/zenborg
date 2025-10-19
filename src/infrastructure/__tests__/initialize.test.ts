@@ -10,21 +10,14 @@ describe('Initialize Store', () => {
   })
 
   describe('initializeStore', () => {
-    it('should create default areas on first run', async () => {
+    it('should NOT create default areas on first run (user creates from templates)', async () => {
       await initializeStore()
 
       const areas = areas$.get()
       const areaValues = Object.values(areas)
 
-      expect(areaValues).toHaveLength(6)
-
-      const names = areaValues.map((a) => a.name)
-      expect(names).toContain('Wellness')
-      expect(names).toContain('Craft')
-      expect(names).toContain('Social')
-      expect(names).toContain('Joyful')
-      expect(names).toContain('Introspective')
-      expect(names).toContain('Chore')
+      // Areas are NOT seeded automatically anymore - users create from templates
+      expect(areaValues).toHaveLength(0)
     })
 
     it('should create default phase configurations on first run', async () => {
@@ -115,8 +108,7 @@ describe('Initialize Store', () => {
       // Initialize first
       await initializeStore()
 
-      // Verify data exists
-      expect(Object.keys(areas$.get()).length).toBeGreaterThan(0)
+      // Verify data exists (cycles and phases, but not areas since they're not seeded)
       expect(Object.keys(cycles$.get()).length).toBeGreaterThan(0)
       expect(Object.keys(phaseConfigs$.get()).length).toBeGreaterThan(0)
 
@@ -131,24 +123,13 @@ describe('Initialize Store', () => {
   })
 
   describe('Default Data Validation', () => {
-    it('should create areas with valid properties', async () => {
+    it('should NOT seed default areas (template-based creation)', async () => {
       await initializeStore()
 
       const areaValues = Object.values(areas$.get())
 
-      for (const area of areaValues) {
-        // Check required fields
-        expect(area.id).toBeDefined()
-        expect(area.name).toBeDefined()
-        expect(area.color).toMatch(/^#[0-9a-f]{6}$/)
-        expect(area.emoji).toBeDefined()
-        expect(area.order).toBeGreaterThanOrEqual(0)
-        expect(area.createdAt).toBeDefined()
-        expect(area.updatedAt).toBeDefined()
-
-        // Default areas should be marked as default
-        expect(area.isDefault).toBe(true)
-      }
+      // Areas are no longer automatically seeded - empty on first run
+      expect(areaValues).toHaveLength(0)
     })
 
     it('should create phase configs with valid time boundaries', async () => {

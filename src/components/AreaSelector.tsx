@@ -1,15 +1,9 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { useEffect } from "react";
-import {
-  CommandDialog,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  CommandShortcut,
-} from "@/components/ui/command";
-import type { Area } from "@/domain/entities/Area";
+import { useEffect, useState } from "react";
+import { SelectorDialog, type SelectorOption } from "@/components/SelectorDialog";
+import { createArea, DEFAULT_AREAS, type Area } from "@/domain/entities/Area";
 import { areas$ } from "@/infrastructure/state/store";
 
 interface AreaSelectorProps {
@@ -40,69 +34,84 @@ export function AreaSelector({
     (a, b) => a.order - b.order
   );
 
-  // Handle number key shortcuts (1-5)
+  const [showTemplates, setShowTemplates] = useState(areasList.length === 0);
+
+  // Update showTemplates when areas change
   useEffect(() => {
-    if (!open) return;
+    setShowTemplates(areasList.length === 0);
+  }, [areasList.length]);
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Number keys 1-5 for quick selection
-      if (e.key >= "1" && e.key <= "5") {
-        e.preventDefault();
-        const index = Number.parseInt(e.key) - 1;
-        if (index < areasList.length) {
-          onSelectArea(areasList[index].id);
-          onClose();
-        }
-      }
-    };
+  // Handle creating area from template
+  const handleCreateFromTemplate = (templateName: string) => {
+    const index = DEFAULT_AREAS.findIndex((t) => t.name === templateName);
+    const template = DEFAULT_AREAS[index];
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, areasList, onSelectArea, onClose]);
+    if (!template) return;
+
+    const newArea = createArea(
+      template.name,
+      template.color,
+      template.emoji,
+      index
+    );
+
+    if ("error" in newArea) {
+      console.error("Failed to create area:", newArea.error);
+      return;
+    }
+
+    // Add to store
+    areas$[newArea.id].set(newArea);
+
+    // Select the newly created area
+    onSelectArea(newArea.id);
+  };
+
+  // Build options based on whether we're showing templates or existing areas
+  const options: SelectorOption[] = showTemplates
+    ? DEFAULT_AREAS.map((template, index) => ({
+        value: template.name,
+        label: template.name,
+        hotkey: String(index + 1),
+        icon: template.emoji,
+        leftAccent: {
+          color: template.color,
+        },
+      }))
+    : areasList.map((area, index) => ({
+        value: area.id,
+        label: area.name,
+        hotkey: String(index + 1),
+        icon: area.emoji,
+        leftAccent: {
+          color: area.color,
+        },
+      }));
+
+  const handleSelect = (value: string) => {
+    if (showTemplates) {
+      handleCreateFromTemplate(value);
+    } else {
+      onSelectArea(value);
+    }
+  };
 
   return (
-    <CommandDialog
+    <SelectorDialog
       open={open}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) onClose();
-      }}
-      title="Select Area"
-      description="Choose an area for your moment"
-      showCloseButton={false}
-      className="max-w-2xl"
-    >
-      <CommandList className="max-h-96">
-        <CommandGroup heading="Areas">
-          {areasList.map((area, index) => {
-            const numberKey = index + 1;
-
-            return (
-              <CommandItem
-                key={area.id}
-                value={area.id}
-                onSelect={() => {
-                  onSelectArea(area.id);
-                  onClose();
-                }}
-                className="cursor-pointer px-4 py-4 text-base"
-              >
-                <div
-                  className="w-1 h-8 rounded-full mr-3 flex-shrink-0"
-                  style={{ backgroundColor: area.color }}
-                  aria-hidden="true"
-                />
-                <span className="text-2xl mr-3" aria-hidden="true">
-                  {area.emoji}
-                </span>
-                <span className="flex-1 font-medium text-lg">{area.name}</span>
-                <CommandShortcut className="text-base">
-                  {numberKey}
-                </CommandShortcut>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
+      title={showTemplates ? "Create your first area" : "Select Area"}
+      description={
+        showTemplates
+          ? "Choose from templates to get started"
+          : "Choose an area for your moment"
+      }
+      heading={showTemplates ? "Templates" : "Areas"}
+      options={options}
+      selectedValue={showTemplates ? null : selectedAreaId}
+      onSelect={handleSelect}
+      onClose={onClose}
+      maxWidth="max-w-2xl"
+      enableHotkeys
+    />
   );
 }
