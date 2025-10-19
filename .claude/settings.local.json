@@ -52,7 +52,14 @@
       "WebFetch(domain:github.com)",
       "Bash(pnpm add react-round-slider)",
       "Bash(pnpm remove mz-react-round-slider)",
-      "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_a0CbkS/**)"
+      "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_a0CbkS/**)",
+      "Bash(cat package.json)",
+      "Bash(pnpm add emojibase-data fuse.js)",
+      "Bash(npx shadcn@latest add popover -y)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "Bash(cat src/components/ui/popover.tsx)",
+      "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_8r9nMt/**)",
+      "Bash(git checkout src/lib/dates.ts)"
     ],
     "deny": [],
     "ask": []

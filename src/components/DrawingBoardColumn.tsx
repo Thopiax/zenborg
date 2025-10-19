@@ -3,7 +3,7 @@
 /** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
 "use client";
 
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
   useSortable,
@@ -11,11 +11,16 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
+import { Archive, Edit, MoreVertical } from "lucide-react";
+import { useState } from "react";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { areas$ } from "@/infrastructure/state/store";
 import type { DrawingBoardGroupBy } from "@/infrastructure/state/ui-store";
-import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
+import {
+  isDuplicateMode$,
+  openArchiveAreaDialog,
+} from "@/infrastructure/state/ui-store";
 import type { MomentGroup } from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import { EmptyMomentCard } from "./EmptyMomentCard";
@@ -26,6 +31,7 @@ interface DrawingBoardColumnProps {
   groupBy: DrawingBoardGroupBy;
   isOnlyColumn?: boolean; // True when there's only one column (skip horizontal layout)
   onCreateMoment?: (areaId?: string, horizon?: string) => void;
+  onEditArea?: (areaId: string) => void; // Open area management modal focused on this area
 }
 
 /**
@@ -44,8 +50,10 @@ export function DrawingBoardColumn({
   groupBy,
   isOnlyColumn = false,
   onCreateMoment,
+  onEditArea,
 }: DrawingBoardColumnProps) {
   const allAreas = use$(areas$);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Droppable configuration for the column
   const { setNodeRef, isOver } = useDroppable({
@@ -70,10 +78,10 @@ export function DrawingBoardColumn({
     if (groupBy === "area") {
       // Create with this area pre-selected
       onCreateMoment(group.groupId);
-    } else if (groupBy === "cycle") {
-      // Create with this cycle pre-selected
-      const cycleValue = group.groupId.replace("cycle-", "");
-      onCreateMoment(undefined, cycleValue === "unset" ? "" : cycleValue);
+    } else if (groupBy === "horizon") {
+      // Create with this horizon pre-selected
+      const horizonValue = group.groupId.replace("horizon-", "");
+      onCreateMoment(undefined, horizonValue === "unset" ? "" : horizonValue);
     }
   };
 
@@ -101,6 +109,57 @@ export function DrawingBoardColumn({
             {group.moments.length}
           </span>
         </div>
+
+        {/* Area menu (only for area grouping) */}
+        {groupBy === "area" && onEditArea && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-stone-500 hover:text-stone-900 dark:hover:text-stone-100"
+              aria-label="Area options"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+
+            {isMenuOpen && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setIsMenuOpen(false)}
+                  aria-hidden="true"
+                />
+
+                {/* Dropdown menu */}
+                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg min-w-[160px] py-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onEditArea(group.groupId);
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors flex items-center gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit Area
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openArchiveAreaDialog(group.groupId, group.groupLabel);
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors flex items-center gap-2"
+                  >
+                    <Archive className="w-4 h-4" />
+                    Archive
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Colored Divider */}
@@ -137,9 +196,7 @@ export function DrawingBoardColumn({
             <EmptyMomentCard
               onClick={handleEmptyClick}
               label={
-                groupBy === "area"
-                  ? `Add to ${group.groupLabel}`
-                  : "Add moment"
+                groupBy === "area" ? `add to ${group.groupLabel}` : "add moment"
               }
             />
           )}
@@ -203,7 +260,11 @@ function SortableMomentCard({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <MomentCard moment={moment} area={area} contextMomentIds={contextMomentIds} />
+      <MomentCard
+        moment={moment}
+        area={area}
+        contextMomentIds={contextMomentIds}
+      />
     </div>
   );
 }

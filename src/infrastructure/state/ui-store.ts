@@ -1,4 +1,6 @@
 import { observable } from "@legendapp/state";
+import type { Horizon } from "@/domain/entities/Moment";
+import type { Phase } from "@/domain/value-objects/Phase";
 
 /**
  * UI State Store - Transient application state
@@ -37,9 +39,9 @@ export const isDuplicateMode$ = observable<boolean>(false);
  * Determines how unallocated moments are organized
  * Persisted to localStorage
  */
-export type DrawingBoardGroupBy = "none" | "area" | "created" | "cycle";
+export type DrawingBoardGroupBy = "none" | "area" | "created" | "horizon";
 
-export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("none");
+export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("area");
 
 /**
  * Drawing board expanded state
@@ -66,6 +68,164 @@ export const focusedCell$ = observable<{
   day: string;
   phase: import("@/domain/value-objects/Phase").Phase;
 } | null>(null);
+
+// ============================================================================
+// Modal/Dialog State
+// ============================================================================
+
+/**
+ * Moment form dialog state
+ * Controls the create/edit moment modal
+ * Ephemeral - not persisted
+ */
+export interface MomentFormState {
+  open: boolean;
+  mode: "create" | "edit";
+  /** Form field values - directly editable via the store */
+  name: string;
+  areaId: string;
+  horizon: Horizon | null;
+  phase: Phase | null;
+  isAllocated: boolean;
+  showCreateMore: boolean;
+  /** For edit mode: the moment ID being edited */
+  editingMomentId: string | null;
+  /** For create mode: prefilled allocation data (when creating from timeline click) */
+  prefilledAllocation: {
+    day?: string;
+    phase?: string;
+  } | null;
+}
+
+export const momentFormState$ = observable<MomentFormState>({
+  open: false,
+  mode: "create",
+  name: "",
+  areaId: "",
+  horizon: null,
+  phase: null,
+  isAllocated: false,
+  showCreateMore: false,
+  editingMomentId: null,
+  prefilledAllocation: null,
+});
+
+/**
+ * Helper function to open moment form in create mode
+ */
+export function openMomentFormCreate(params?: {
+  areaId?: string;
+  horizon?: Horizon | null;
+  phase?: Phase | null;
+  day?: string;
+  phaseStr?: string;
+}) {
+  // Use provided areaId, or fall back to last used area
+  const areaId = params?.areaId || lastUsedAreaId$.peek() || "";
+
+  momentFormState$.set({
+    open: true,
+    mode: "create",
+    name: "",
+    areaId,
+    horizon: params?.horizon ?? null,
+    phase: params?.phase ?? null,
+    isAllocated: false,
+    showCreateMore: true,
+    editingMomentId: null,
+    prefilledAllocation:
+      params?.day && params?.phaseStr
+        ? { day: params.day, phase: params.phaseStr }
+        : null,
+  });
+}
+
+/**
+ * Helper function to open moment form in edit mode
+ */
+export function openMomentFormEdit(
+  momentId: string,
+  moment: {
+    name: string;
+    areaId: string;
+    horizon: Horizon | null;
+    phase: Phase | null;
+    day: string | null;
+  }
+) {
+  momentFormState$.set({
+    open: true,
+    mode: "edit",
+    name: moment.name,
+    areaId: moment.areaId,
+    horizon: moment.horizon,
+    phase: moment.phase,
+    isAllocated: !!(moment.day && moment.phase),
+    showCreateMore: false,
+    editingMomentId: momentId,
+    prefilledAllocation: null,
+  });
+}
+
+/**
+ * Helper function to close moment form
+ */
+export function closeMomentForm() {
+  momentFormState$.set({
+    open: false,
+    mode: "create",
+    name: "",
+    areaId: "",
+    horizon: null,
+    phase: null,
+    isAllocated: false,
+    showCreateMore: false,
+    editingMomentId: null,
+    prefilledAllocation: null,
+  });
+}
+
+/**
+ * Archive area confirmation dialog state
+ * Controls the area archival confirmation modal
+ * Ephemeral - not persisted
+ *
+ * Note: Areas are never truly deleted - they are archived to preserve
+ * data integrity for historical moments that reference them.
+ */
+export interface ArchiveAreaDialogState {
+  open: boolean;
+  areaId: string | null;
+  areaName: string | null;
+}
+
+export const archiveAreaDialogState$ = observable<ArchiveAreaDialogState>({
+  open: false,
+  areaId: null,
+  areaName: null,
+});
+
+/**
+ * Helper function to open archive area dialog
+ */
+export function openArchiveAreaDialog(areaId: string, areaName: string) {
+  archiveAreaDialogState$.set({
+    open: true,
+    areaId,
+    areaName,
+  });
+}
+
+/**
+ * Helper function to close archive area dialog
+ */
+export function closeArchiveAreaDialog() {
+  archiveAreaDialogState$.set({
+    open: false,
+    areaId: null,
+    areaName: null,
+  });
+}
 
 // ============================================================================
 // Future UI State (examples for when needed)

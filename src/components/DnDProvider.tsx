@@ -9,13 +9,10 @@
 
 import {
   type CollisionDetection,
-  closestCenter,
   DndContext,
   type DragEndEvent,
-  type DragOverEvent,
   DragOverlay,
   type DragStartEvent,
-  getFirstCollision,
   KeyboardSensor,
   MouseSensor,
   pointerWithin,
@@ -28,7 +25,7 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { use$ } from "@legendapp/state/react";
 import { useState } from "react";
-import type { Cycle, Moment } from "@/domain/entities/Moment";
+import type { Horizon } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
 import {
@@ -489,13 +486,13 @@ export function DnDProvider({ children }: DnDProviderProps) {
       console.log(`Moving moment ${momentId} to area ${newAreaId}`);
       moments$[momentId].areaId.set(newAreaId);
       moments$[momentId].updatedAt.set(new Date().toISOString());
-    } else if (groupBy === "cycle") {
-      // Extract cycle value from column ID (format: "cycle-now", "cycle-soon", etc.)
-      const cycleValue = columnId.replace("cycle-", "");
-      const newCycle = cycleValue === "unset" ? null : cycleValue;
+    } else if (groupBy === "horizon") {
+      // Extract horizon value from column ID (format: "horizon-now", "horizon-soon", etc.)
+      const horizonValue = columnId.replace("horizon-", "");
+      const newHorizon = horizonValue === "unset" ? null : horizonValue;
 
-      // Don't update if already has this cycle
-      if (moment.cycle === newCycle) {
+      // Don't update if already has this horizon
+      if (moment.horizon === newHorizon) {
         if (shouldUnallocate) {
           endBatch("Unallocated moment to drawing board");
         }
@@ -503,8 +500,10 @@ export function DnDProvider({ children }: DnDProviderProps) {
       }
 
       // Update moment's cycle
-      console.log(`Setting moment ${momentId} cycle to ${newCycle || "unset"}`);
-      moments$[momentId].cycle.set(newCycle as Cycle);
+      console.log(
+        `Setting moment ${momentId} horizon to ${newHorizon || "unset"}`
+      );
+      moments$[momentId].horizon.set(newHorizon as Horizon | null);
       moments$[momentId].updatedAt.set(new Date().toISOString());
     } else {
       // Other grouping modes (created) are read-only

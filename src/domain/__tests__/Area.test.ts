@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  canDeleteArea,
+  archiveArea,
+  canDeleteArchivedArea,
   createArea,
   getDefaultAreas,
   isAreaError,
+  unarchiveArea,
   updateArea,
 } from "../entities/Area";
 import { createMoment } from "../entities/Moment";
@@ -315,25 +317,55 @@ describe("Area", () => {
     });
   });
 
-  describe("canDeleteArea", () => {
-    it("should allow deletion when no moments reference the area", () => {
+  describe("archiveArea", () => {
+    it("should archive an area (soft delete)", () => {
       const result = createArea("Learning", "#9333ea", "📚", 0);
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
-        expect(canDeleteArea(result, [])).toBe(true);
+        const archived = archiveArea(result);
+        expect(archived.isArchived).toBe(true);
+        expect(archived.id).toBe(result.id);
+        expect(archived.name).toBe(result.name);
+      }
+    });
+  });
+
+  describe("unarchiveArea", () => {
+    it("should unarchive an archived area", () => {
+      const result = createArea("Learning", "#9333ea", "📚", 0);
+      expect(isAreaError(result)).toBe(false);
+
+      if (!isAreaError(result)) {
+        const archived = archiveArea(result);
+        const unarchived = unarchiveArea(archived);
+        expect(unarchived.isArchived).toBe(false);
+        expect(unarchived.id).toBe(result.id);
+      }
+    });
+  });
+
+  describe("canDeleteArchivedArea", () => {
+    it("should allow deletion of archived area when no moments reference it", () => {
+      const result = createArea("Learning", "#9333ea", "📚", 0);
+      expect(isAreaError(result)).toBe(false);
+
+      if (!isAreaError(result)) {
+        const archived = archiveArea(result);
+        expect(canDeleteArchivedArea(archived, [])).toBe(true);
       }
     });
 
-    it("should prevent deletion when moments reference the area", () => {
+    it("should prevent deletion of archived area when moments reference it", () => {
       const areaResult = createArea("Learning", "#9333ea", "📚", 0);
       expect(isAreaError(areaResult)).toBe(false);
 
       if (!isAreaError(areaResult)) {
+        const archived = archiveArea(areaResult);
         const moment = createMoment("Reading", areaResult.id);
 
         if ("id" in moment) {
-          expect(canDeleteArea(areaResult, [moment])).toBe(false);
+          expect(canDeleteArchivedArea(archived, [moment])).toBe(false);
         }
       }
     });
@@ -345,26 +377,11 @@ describe("Area", () => {
       expect(isAreaError(area2Result)).toBe(false);
 
       if (!isAreaError(area1Result) && !isAreaError(area2Result)) {
+        const archived = archiveArea(area1Result);
         const moment = createMoment("Reading", area2Result.id);
 
         if ("id" in moment) {
-          expect(canDeleteArea(area1Result, [moment])).toBe(true);
-        }
-      }
-    });
-
-    it("should prevent deletion when any moment references the area", () => {
-      const area1Result = createArea("Learning", "#9333ea", "📚", 0);
-      const area2Result = createArea("Work", "#3b82f6", "💼", 1);
-      expect(isAreaError(area1Result)).toBe(false);
-      expect(isAreaError(area2Result)).toBe(false);
-
-      if (!isAreaError(area1Result) && !isAreaError(area2Result)) {
-        const moment1 = createMoment("Reading", area1Result.id);
-        const moment2 = createMoment("Meeting", area2Result.id);
-
-        if ("id" in moment1 && "id" in moment2) {
-          expect(canDeleteArea(area1Result, [moment1, moment2])).toBe(false);
+          expect(canDeleteArchivedArea(archived, [moment])).toBe(true);
         }
       }
     });

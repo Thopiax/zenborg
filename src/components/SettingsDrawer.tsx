@@ -8,11 +8,10 @@ import {
   Keyboard,
   Monitor,
   Moon,
-  Plus,
   RotateCcw,
   Settings2,
+  Smartphone,
   Sun,
-  Trash2,
   Upload,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -31,22 +30,20 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import type { Area } from "@/domain/entities/Area";
-import { canDeleteArea, createArea, updateArea } from "@/domain/entities/Area";
 import {
   exportGardenData,
   importGardenData,
 } from "@/infrastructure/state/export-import";
 import { resetStore } from "@/infrastructure/state/initialize";
-import { areas$, moments$ } from "@/infrastructure/state/store";
-import { ColorPicker } from "./ColorPicker";
 import { ConfirmableAction } from "./ConfirmableAction";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
+import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
 
 interface SettingsDrawerProps {
   open: boolean;
   onClose: () => void;
   onOpenPhaseSettings: () => void;
+  onOpenAreaManagement: () => void;
 }
 
 /**
@@ -60,6 +57,7 @@ export const SettingsDrawer = observer(function SettingsDrawer({
   open,
   onClose,
   onOpenPhaseSettings,
+  onOpenAreaManagement,
 }: SettingsDrawerProps) {
   const [importMessage, setImportMessage] = useState<{
     type: "success" | "error";
@@ -69,28 +67,23 @@ export const SettingsDrawer = observer(function SettingsDrawer({
   const [isResetting, setIsResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Area management state
-  const [isCreatingArea, setIsCreatingArea] = useState(false);
-  const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
-  const [areaFormData, setAreaFormData] = useState({
-    name: "",
-    color: "#10b981",
-    emoji: "🔵",
-  });
-
   // Theme management
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
+  // PWA state
+  const [pwaInstalled, setPwaInstalled] = useState(false);
+  const [pwaInstructions, setPwaInstructions] = useState<{
+    platform: "ios" | "android" | "desktop" | "unknown";
+    instructions: string[];
+  }>({ platform: "unknown", instructions: [] });
+
   // Avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
+    setPwaInstalled(isPWA());
+    setPwaInstructions(getPWAInstructions());
   }, []);
-
-  const areas = Object.values(areas$.get() || {}).sort(
-    (a, b) => a.order - b.order
-  );
-  const allMoments = Object.values(moments$.get() || {});
 
   const handleExport = () => {
     try {
@@ -173,91 +166,6 @@ export const SettingsDrawer = observer(function SettingsDrawer({
     }
   };
 
-  // Area management handlers
-  const handleStartCreateArea = () => {
-    setAreaFormData({ name: "", color: "#10b981", emoji: "🔵" });
-    setIsCreatingArea(true);
-    setEditingAreaId(null);
-  };
-
-  const handleStartEditArea = (area: Area) => {
-    setAreaFormData({
-      name: area.name,
-      color: area.color,
-      emoji: area.emoji,
-    });
-    setEditingAreaId(area.id);
-    setIsCreatingArea(false);
-  };
-
-  const handleSaveCreateArea = () => {
-    if (!areaFormData.name.trim()) return;
-
-    const maxOrder = areas.reduce((max, area) => Math.max(max, area.order), -1);
-
-    const result = createArea(
-      areaFormData.name.trim(),
-      areaFormData.color,
-      areaFormData.emoji,
-      maxOrder + 1
-    );
-
-    if ("error" in result) {
-      alert(result.error);
-      return;
-    }
-
-    areas$.set((prev) => ({
-      ...prev,
-      [result.id]: result,
-    }));
-
-    setIsCreatingArea(false);
-    setAreaFormData({ name: "", color: "#10b981", emoji: "🔵" });
-  };
-
-  const handleSaveEditArea = () => {
-    if (!editingAreaId || !areaFormData.name.trim()) return;
-
-    const existingArea = areas$.get()[editingAreaId];
-    if (!existingArea) return;
-
-    const result = updateArea(existingArea, {
-      name: areaFormData.name.trim(),
-      color: areaFormData.color,
-      emoji: areaFormData.emoji,
-    });
-
-    if ("error" in result) {
-      alert(result.error);
-      return;
-    }
-
-    areas$[editingAreaId].set(result);
-    setEditingAreaId(null);
-  };
-
-  const handleDeleteArea = (areaId: string) => {
-    const area = areas$.get()[areaId];
-    if (!area) return;
-
-    const canDelete = canDeleteArea(area, allMoments);
-    if (!canDelete) {
-      alert("Cannot delete area: moments are still assigned to it.");
-      return;
-    }
-
-    if (confirm(`Delete "${area.name}"? This cannot be undone.`)) {
-      areas$[areaId].delete();
-    }
-  };
-
-  const handleCancelAreaEdit = () => {
-    setIsCreatingArea(false);
-    setEditingAreaId(null);
-    setAreaFormData({ name: "", color: "#10b981", emoji: "🔵" });
-  };
-
   return (
     <Drawer open={open} onOpenChange={onClose} direction="right">
       <DrawerContent className="w-full md:w-[400px] h-full md:h-auto bg-stone-50 dark:bg-stone-900 border-l border-stone-200 dark:border-stone-700">
@@ -272,200 +180,22 @@ export const SettingsDrawer = observer(function SettingsDrawer({
 
         <div className="flex-1 overflow-y-auto p-4">
           <Accordion type="single" collapsible className="space-y-2">
-            {/* Areas Section */}
+            {/* Areas Section (Link Button) */}
             <AccordionItem
               value="areas"
               className="border-stone-200 dark:border-stone-700"
             >
-              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
+              <button
+                onClick={onOpenAreaManagement}
+                className="flex w-full items-center justify-between px-2 py-4 text-left text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                type="button"
+              >
                 <div className="flex items-center gap-2">
                   <Settings2 className="w-4 h-4" />
                   <span>Areas</span>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3 px-2">
-                  {/* Create New Area Button */}
-                  {!isCreatingArea && !editingAreaId && (
-                    <button
-                      onClick={handleStartCreateArea}
-                      className="w-full p-3 border-2 border-dashed border-stone-300 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-600 rounded-lg transition-colors flex items-center justify-center gap-2 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-                      type="button"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span className="text-sm">Create New Area</span>
-                    </button>
-                  )}
-
-                  {/* Create Form */}
-                  {isCreatingArea && (
-                    <div className="p-3 border-2 border-stone-400 dark:border-stone-600 rounded-lg bg-stone-100 dark:bg-stone-800 space-y-3">
-                      <h4 className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                        New Area
-                      </h4>
-                      <input
-                        type="text"
-                        placeholder="Area name"
-                        value={areaFormData.name}
-                        onChange={(e) =>
-                          setAreaFormData({
-                            ...areaFormData,
-                            name: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 focus:outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
-                        autoFocus
-                      />
-                      <div className="flex items-center gap-3">
-                        <ColorPicker
-                          value={areaFormData.color}
-                          onChange={(color) =>
-                            setAreaFormData({ ...areaFormData, color })
-                          }
-                        />
-                        <input
-                          type="text"
-                          placeholder="Emoji"
-                          value={areaFormData.emoji}
-                          onChange={(e) =>
-                            setAreaFormData({
-                              ...areaFormData,
-                              emoji: e.target.value,
-                            })
-                          }
-                          className="w-16 px-2 py-2 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg text-center text-xl focus:outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
-                          maxLength={2}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleSaveCreateArea}
-                          disabled={!areaFormData.name.trim()}
-                          className="flex-1 px-3 py-2 bg-stone-700 dark:bg-stone-300 text-stone-50 dark:text-stone-900 rounded-lg hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                          type="button"
-                        >
-                          Create
-                        </button>
-                        <button
-                          onClick={handleCancelAreaEdit}
-                          className="px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 text-sm"
-                          type="button"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Areas List */}
-                  <div className="space-y-2">
-                    {areas.map((area) => (
-                      <div
-                        key={area.id}
-                        className={`p-3 rounded-lg border transition-all ${
-                          editingAreaId === area.id
-                            ? "border-stone-400 dark:border-stone-600 bg-stone-100 dark:bg-stone-800"
-                            : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 bg-stone-50 dark:bg-stone-900"
-                        }`}
-                      >
-                        {editingAreaId === area.id ? (
-                          // Edit Form
-                          <div className="space-y-3">
-                            <input
-                              type="text"
-                              value={areaFormData.name}
-                              onChange={(e) =>
-                                setAreaFormData({
-                                  ...areaFormData,
-                                  name: e.target.value,
-                                })
-                              }
-                              className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
-                              autoFocus
-                            />
-                            <div className="flex items-center gap-3">
-                              <ColorPicker
-                                value={areaFormData.color}
-                                onChange={(color) =>
-                                  setAreaFormData({ ...areaFormData, color })
-                                }
-                              />
-                              <input
-                                type="text"
-                                value={areaFormData.emoji}
-                                onChange={(e) =>
-                                  setAreaFormData({
-                                    ...areaFormData,
-                                    emoji: e.target.value,
-                                  })
-                                }
-                                className="w-16 px-2 py-2 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg text-center text-xl focus:outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
-                                maxLength={2}
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleSaveEditArea}
-                                disabled={!areaFormData.name.trim()}
-                                className="flex-1 px-3 py-2 bg-stone-700 dark:bg-stone-300 text-stone-50 dark:text-stone-900 rounded-lg hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                                type="button"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={handleCancelAreaEdit}
-                                className="px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 text-sm"
-                                type="button"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          // Display Mode
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 flex items-center gap-3">
-                              <div
-                                className="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
-                                style={{ backgroundColor: area.color }}
-                              >
-                                {area.emoji}
-                              </div>
-                              <div className="flex-1">
-                                <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                                  {area.name}
-                                </div>
-                                {area.isDefault && (
-                                  <div className="text-xs text-stone-500 dark:text-stone-500">
-                                    Default
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleStartEditArea(area)}
-                                className="px-2 py-1 text-xs rounded-lg hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-                                type="button"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteArea(area.id)}
-                                className="p-1 rounded-lg hover:bg-red-500/10 transition-colors text-stone-500 dark:text-stone-600 hover:text-red-500"
-                                aria-label="Delete area"
-                                type="button"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </AccordionContent>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </AccordionItem>
 
             {/* Phase Settings Section (Link Button) */}
@@ -629,6 +359,111 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                       </div>
                     )}
                   </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* PWA Installation Section */}
+            <AccordionItem
+              value="pwa"
+              className="border-stone-200 dark:border-stone-700"
+            >
+              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4" />
+                  <span>Install App</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4 px-2">
+                  {mounted ? (
+                    pwaInstalled ? (
+                      // Already installed
+                      <div className="p-4 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-stone-900 dark:bg-stone-100 flex items-center justify-center">
+                            <Smartphone className="w-5 h-5 text-stone-50 dark:text-stone-900" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-1">
+                              App Installed
+                            </h4>
+                            <p className="text-xs text-stone-600 dark:text-stone-400">
+                              You're using Zenborg as a standalone app. Enjoy
+                              the full-screen experience!
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // Not installed - show instructions
+                      <>
+                        <div className="space-y-3">
+                          <div>
+                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-2">
+                              Why install Zenborg?
+                            </h4>
+                            <ul className="space-y-1.5 text-sm text-stone-600 dark:text-stone-400">
+                              <li className="flex items-start gap-2">
+                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
+                                  ✓
+                                </span>
+                                <span>Full-screen without browser chrome</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
+                                  ✓
+                                </span>
+                                <span>Faster access from home screen</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
+                                  ✓
+                                </span>
+                                <span>Works offline with local data</span>
+                              </li>
+                            </ul>
+                          </div>
+
+                          <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
+                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
+                              How to install:
+                            </h4>
+                            <ol className="space-y-2.5">
+                              {pwaInstructions.instructions.map(
+                                (instruction, index) => (
+                                  <li
+                                    key={index}
+                                    className="flex items-start gap-3 text-sm text-stone-700 dark:text-stone-300"
+                                  >
+                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-50 dark:text-stone-900 flex items-center justify-center text-xs font-bold">
+                                      {index + 1}
+                                    </span>
+                                    <span className="pt-0.5">{instruction}</span>
+                                  </li>
+                                )
+                              )}
+                            </ol>
+                          </div>
+
+                          {pwaInstructions.platform === "ios" && (
+                            <div className="p-3 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
+                              <p className="text-xs text-stone-600 dark:text-stone-400">
+                                <strong className="text-stone-900 dark:text-stone-100">
+                                  Note:
+                                </strong>{" "}
+                                On iOS, you must use Safari to install the app.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )
+                  ) : (
+                    <div className="text-center py-6 text-sm text-stone-500 dark:text-stone-500">
+                      Loading...
+                    </div>
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>

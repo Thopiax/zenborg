@@ -140,7 +140,7 @@ export function Timeline() {
       ref={containerRef}
       className={cn(
         "w-full h-full flex overflow-x-scroll snap-x snap-mandatory scroll-smooth scrollbar-hide",
-        // Minimal gap and padding
+        // Minimal gap and padding on left/top, safe area padding on right
         "gap-3 md:gap-4 px-2 md:px-4",
         "transition-opacity duration-300",
         isReady ? "opacity-100" : "opacity-0"
@@ -148,6 +148,8 @@ export function Timeline() {
       style={{
         // Enable momentum scrolling on iOS/Safari
         WebkitOverflowScrolling: "touch",
+        // Ensure right padding includes safe area (bottom in landscape)
+        paddingRight: "max(1rem, env(safe-area-inset-right))",
       }}
     >
       {timelineDays.map(({ date, isToday }, index) => (

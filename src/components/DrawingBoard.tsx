@@ -6,7 +6,7 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Select,
   SelectContent,
@@ -17,18 +17,22 @@ import {
 import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
-import { areas$, unallocatedMoments$ } from "@/infrastructure/state/store";
+import { activeAreas$, areas$, unallocatedMoments$ } from "@/infrastructure/state/store";
 import {
   type DrawingBoardGroupBy,
   drawingBoardExpanded$,
   drawingBoardGroupBy$,
   isDuplicateMode$,
 } from "@/infrastructure/state/ui-store";
-import { groupByArea, groupByCreated, groupByCycle } from "@/lib/grouping";
+import { groupByArea, groupByCreated, groupByHorizon } from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
 import { DrawingBoardColumn } from "./DrawingBoardColumn";
 import { MomentCard } from "./MomentCard";
+
+interface DrawingBoardProps {
+  onEditArea?: (areaId: string) => void;
+}
 
 /**
  * DrawingBoard - Collapsible container for unallocated moments
@@ -39,10 +43,11 @@ import { MomentCard } from "./MomentCard";
  * - Collapsible to save space
  * - Supports drag and drop to/from timeline
  */
-export function DrawingBoard() {
+export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
   const isExpanded = use$(drawingBoardExpanded$);
   const unallocated = use$(unallocatedMoments$);
-  const allAreas = use$(areas$);
+  const allAreas = use$(areas$); // All areas including archived (for moment card display)
+  const activeAreasArray = use$(activeAreas$); // Only active areas (for grouping columns)
   const groupBy = use$(drawingBoardGroupBy$);
   const { handleOpenCreateModal } = useMomentManager();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,14 +72,29 @@ export function DrawingBoard() {
   }, [isExpanded]);
 
   // Group moments based on current groupBy setting
-  const groups =
-    groupBy === "area"
-      ? groupByArea(unallocated, allAreas)
-      : groupBy === "created"
-      ? groupByCreated(unallocated)
-      : groupBy === "cycle"
-      ? groupByCycle(unallocated)
-      : null;
+  // Convert activeAreasArray back to Record for groupByArea compatibility
+  const activeAreasRecord = useMemo(() => {
+    return activeAreasArray.reduce((acc, area) => {
+      acc[area.id] = area;
+      return acc;
+    }, {} as Record<string, typeof activeAreasArray[0]>);
+  }, [activeAreasArray]);
+
+  const groups = useMemo(() => {
+    switch (groupBy) {
+      case "area":
+        // Use activeAreasRecord so only active areas get columns
+        return groupByArea(unallocated, activeAreasRecord);
+      case "created":
+        return groupByCreated(unallocated);
+      case "horizon":
+        return groupByHorizon(unallocated);
+      case "none":
+        return null;
+      default:
+        return null;
+    }
+  }, [groupBy, unallocated, activeAreasRecord]);
 
   const handleGroupByChange = (value: DrawingBoardGroupBy) => {
     drawingBoardGroupBy$.set(value);
@@ -136,7 +156,7 @@ export function DrawingBoard() {
               <SelectItem value="none">None</SelectItem>
               <SelectItem value="area">Area</SelectItem>
               <SelectItem value="created">Created</SelectItem>
-              <SelectItem value="cycle">Cycle</SelectItem>
+              <SelectItem value="horizon">Horizon</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -151,6 +171,7 @@ export function DrawingBoard() {
                   group={group}
                   groupBy={groupBy}
                   onCreateMoment={handleCreateFromColumn}
+                  onEditArea={onEditArea}
                 />
               ))}
             </div>

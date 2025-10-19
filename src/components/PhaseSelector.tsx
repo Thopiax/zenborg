@@ -2,33 +2,44 @@
 
 import { use$ } from "@legendapp/state/react";
 import { useMemo } from "react";
-import { SelectorDialog, type SelectorOption } from "@/components/SelectorDialog";
+import {
+  type SelectorOption,
+  SelectorPopover,
+} from "@/components/SelectorPopover";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
 import { phaseConfigs$ } from "@/infrastructure/state/store";
 
 interface PhaseSelectorProps {
   open: boolean;
   selectedPhase: Phase | null;
-  onSelectPhase: (phase: Phase) => void;
+  onSelectPhase: (phase: Phase | null) => void;
   onClose: () => void;
+  /** Called when popover should open (when trigger is clicked) */
+  onOpen?: () => void;
+  /** The trigger button/element that opens this popover */
+  trigger: React.ReactNode;
+  /** Element to use as collision boundary (e.g., dialog container) */
+  collisionBoundary?: Element | null | Array<Element | null>;
 }
 
 /**
- * PhaseSelector - Ghost-style command palette for selecting phases
+ * PhaseSelector - Compact popover for selecting phases
  *
- * Monochromatic design with number shortcuts (1-4)
+ * Monochromatic design with letter shortcuts (M/A/E)
  * Features:
- * - Number keys (1-4) for quick selection
- * - Arrow keys for navigation
- * - Enter to confirm
- * - Escape to cancel
- * - Built with shadcn/ui Command component
+ * - Letter keys (M/A/E) for quick selection
+ * - Compact popover UI (no title, max 50% width)
+ * - No z-index conflicts with parent dialogs
+ * - Built with shadcn/ui Popover component
  */
 export function PhaseSelector({
   open,
   selectedPhase,
   onSelectPhase,
   onClose,
+  onOpen,
+  trigger,
+  collisionBoundary,
 }: PhaseSelectorProps) {
   const allPhaseConfigs = use$(phaseConfigs$);
   const phaseConfigsList: PhaseConfig[] = useMemo(
@@ -48,27 +59,35 @@ export function PhaseSelector({
     [Phase.NIGHT]: undefined, // No hotkey for night
   };
 
-  // Build options from phase configs
-  const options: SelectorOption<Phase>[] = phaseConfigsList.map((phaseConfig) => ({
-    value: phaseConfig.phase,
-    label: phaseConfig.label,
-    hotkey: phaseHotkeys[phaseConfig.phase],
-    icon: phaseConfig.emoji,
-    className: "font-mono text-stone-700 dark:text-stone-300",
-  }));
+  // Build options from phase configs, with a null option at the top
+  const options: SelectorOption<Phase | null>[] = [
+    {
+      value: null,
+      label: "No Phase",
+      hotkey: "X",
+      icon: "--",
+      className: "font-mono text-stone-500 dark:text-stone-400",
+    },
+    ...phaseConfigsList.map((phaseConfig) => ({
+      value: phaseConfig.phase,
+      label: phaseConfig.label,
+      hotkey: phaseHotkeys[phaseConfig.phase],
+      icon: phaseConfig.emoji,
+      className: "font-mono text-stone-700 dark:text-stone-300",
+    })),
+  ];
 
   return (
-    <SelectorDialog
+    <SelectorPopover
       open={open}
-      title="Select Phase"
-      description="Choose a time of day for your moment"
-      heading="Phase"
+      trigger={trigger}
       options={options}
       selectedValue={selectedPhase}
       onSelect={onSelectPhase}
       onClose={onClose}
-      maxWidth="max-w-md"
+      onOpen={onOpen}
       enableHotkeys
+      collisionBoundary={collisionBoundary}
     />
   );
 }

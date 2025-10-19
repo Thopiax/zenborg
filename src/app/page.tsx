@@ -1,22 +1,39 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AreaManagementModal } from "@/components/AreaManagementModal";
-import { AreaSelector } from "@/components/AreaSelector";
+import { ConfirmableAction } from "@/components/ConfirmableAction";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
+import { HomeScreen } from "@/components/HomeScreen";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
-import { MomentModal } from "@/components/MomentModal";
+import { MomentFormDialog } from "@/components/MomentFormDialog";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { Timeline } from "@/components/Timeline";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { MomentManagerProvider } from "@/contexts/MomentManagerContext";
+import { archiveArea, hasAreaMoments } from "@/domain/entities/Area";
+import type { Horizon } from "@/domain/entities/Moment";
+import type { Phase } from "@/domain/value-objects/Phase";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
 import { useSelection } from "@/hooks/useSelection";
-import { moments$ } from "@/infrastructure/state/store";
+import { areas$, moments$ } from "@/infrastructure/state/store";
+import {
+  momentFormState$,
+  archiveAreaDialogState$,
+  closeArchiveAreaDialog,
+} from "@/infrastructure/state/ui-store";
+import { isPWA } from "@/lib/pwa-utils";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,26 +43,49 @@ import { cn } from "@/lib/utils";
  * - 3x3 Timeline grid (Yesterday, Today, Tomorrow × Morning, Afternoon, Evening)
  * - Drawing Board for unallocated moments
  * - Simple keyboard shortcuts: M (create), A (area), Enter (edit), Delete
+ *
+ * Shows HomeScreen if not installed as PWA
  */
 export default function HomePage() {
+  // Check if app is installed as PWA
+  const [isInstalledPWA, setIsInstalledPWA] = useState<boolean | null>(null);
+  const [isLandscape, setIsLandscape] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check PWA status
+    const checkPWAStatus = () => {
+      setIsInstalledPWA(isPWA());
+    };
+
+    // Check orientation
+    const checkOrientation = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+
+    checkPWAStatus();
+    checkOrientation();
+
+    // Listen for display mode changes (e.g., when user installs PWA)
+    const mediaQuery = window.matchMedia("(display-mode: standalone)");
+    const handleDisplayModeChange = () => checkPWAStatus();
+
+    mediaQuery.addEventListener("change", handleDisplayModeChange);
+
+    // Listen for orientation changes
+    window.addEventListener("resize", checkOrientation);
+    window.addEventListener("orientationchange", checkOrientation);
+
+    return () => {
+      mediaQuery.removeEventListener("change", handleDisplayModeChange);
+      window.removeEventListener("resize", checkOrientation);
+      window.removeEventListener("orientationchange", checkOrientation);
+    };
+  }, []);
   // Enable global keyboard shortcuts and get state for modals
   const {
-    isAreaSelectorOpen,
-    setIsAreaSelectorOpen,
-    areaSelectorMomentId,
-    updateMomentArea,
-    isCreateModalOpen,
-    prefilledDay,
-    prefilledPhase,
-    prefilledAreaId,
-    prefilledCycle,
     handleCreateMoment,
-    handleCancelCreate,
     handleOpenCreateModal,
-    isEditCardOpen,
-    editingMomentId,
     handleSaveEdit,
-    handleCancelEdit,
     handleDeleteEdit,
     handleOpenEditModal,
     isAreaManagementOpen,
@@ -54,21 +94,60 @@ export default function HomePage() {
     setIsSettingsOpen,
   } = useGlobalKeyboard();
 
+  // Unified save handler that works for both create and edit modes
+  const handleMomentFormSave = (
+    name: string,
+    areaId: string,
+    horizon: Horizon | null,
+    phase: Phase | null,
+    createMore?: boolean
+  ) => {
+    // The hook handlers will check the mode from the store
+    const mode = momentFormState$.mode.peek();
+    if (mode === "create") {
+      handleCreateMoment(name, areaId, horizon, phase, createMore);
+    } else {
+      handleSaveEdit(name, areaId, horizon, phase);
+    }
+  };
+
   // Get the focused moment's current area
   const allMoments = use$(moments$);
 
   useGlobalSelection(Object.keys(allMoments));
-
-  const areaSelectorMoment = areaSelectorMomentId
-    ? allMoments[areaSelectorMomentId]
-    : null;
-  const currentAreaId = areaSelectorMoment?.areaId || "";
 
   // Import clearSelection from useSelection hook
   const { clearSelection, hasAnySelected } = useSelection();
 
   // Phase settings modal state
   const [isPhaseSettingsOpen, setIsPhaseSettingsOpen] = useState(false);
+
+  // Area management state for DrawingBoard
+  const [focusAreaId, setFocusAreaId] = useState<string | undefined>(undefined);
+  const archiveAreaState = use$(archiveAreaDialogState$);
+
+  // Handle edit area from DrawingBoard
+  const handleEditArea = (areaId: string) => {
+    setFocusAreaId(areaId);
+    setIsAreaManagementOpen(true);
+  };
+
+  // Archive area (simple, no double confirmation)
+  const handleConfirmArchiveArea = () => {
+    if (!archiveAreaState.areaId) return;
+
+    const area = areas$.get()[archiveAreaState.areaId];
+    if (!area) {
+      closeArchiveAreaDialog();
+      return;
+    }
+
+    // Archive the area (soft delete) - this preserves data integrity
+    const archivedArea = archiveArea(area);
+    areas$[archiveAreaState.areaId].set(archivedArea);
+
+    closeArchiveAreaDialog();
+  };
 
   // Handle click on background to clear selection
   const handleBackgroundClick = (e: React.MouseEvent) => {
@@ -86,6 +165,17 @@ export default function HomePage() {
     }
   };
 
+  // Show nothing while checking status (avoid flash)
+  if (isInstalledPWA === null || isLandscape === null) {
+    return null;
+  }
+
+  // Show home screen ONLY if not installed as PWA AND in portrait mode
+  // Once they rotate to landscape, let them try the app
+  if (!isInstalledPWA && !isLandscape) {
+    return <HomeScreen />;
+  }
+
   return (
     <MomentManagerProvider
       handleOpenCreateModal={handleOpenCreateModal}
@@ -101,27 +191,24 @@ export default function HomePage() {
           onMouseDown={handleBackgroundClick}
         >
           {/* Main Content */}
-          <main
-            className="flex-1 flex flex-col overflow-hidden"
-            style={{
-              paddingLeft: "env(safe-area-inset-left)",
-              paddingRight: "env(safe-area-inset-right)",
-            }}
-          >
-            {/* Timeline - Takes remaining space */}
+          <main className="flex-1 flex flex-col overflow-hidden">
+            {/* Timeline - Takes remaining space, with safe area insets */}
             <div
               className={cn(
                 "flex-1 overflow-hidden",
-                // "py-2 md:py-3",
                 "flex flex-col justify-center"
               )}
+              style={{
+                paddingLeft: "env(safe-area-inset-left)",
+                paddingTop: "env(safe-area-inset-top)",
+              }}
             >
               <Timeline />
             </div>
 
-            {/* Drawing Board - Collapsible below Timeline */}
+            {/* Drawing Board - Full-width, no safe area cropping */}
             <div className="flex-shrink-0">
-              <DrawingBoard />
+              <DrawingBoard onEditArea={handleEditArea} />
             </div>
           </main>
 
@@ -139,66 +226,20 @@ export default function HomePage() {
             />
           </div>
 
-          {/* Area Selector - Modal for changing moment area (triggered by 'A' key) */}
-          {areaSelectorMomentId && (
-            <AreaSelector
-              open={isAreaSelectorOpen}
-              selectedAreaId={currentAreaId}
-              onSelectArea={(areaId) =>
-                updateMomentArea(areaSelectorMomentId, areaId)
-              }
-              onClose={() => setIsAreaSelectorOpen(false)}
-            />
-          )}
-
-          {/* Create Modal - Triggered by Shift+M */}
-          <MomentModal
-            open={isCreateModalOpen}
-            mode="create"
-            initialAreaId={prefilledAreaId}
-            initialCycle={prefilledCycle ? (prefilledCycle as any) : null}
-            initialPhase={prefilledPhase ? (prefilledPhase as any) : null}
-            onSave={handleCreateMoment}
-            onCancel={handleCancelCreate}
-          />
-
-          {/* Edit Modal - Triggered by Enter on focused moment */}
-          <MomentModal
-            open={isEditCardOpen}
-            mode="edit"
-            initialName={
-              editingMomentId ? allMoments[editingMomentId]?.name : ""
-            }
-            initialAreaId={
-              editingMomentId ? allMoments[editingMomentId]?.areaId : ""
-            }
-            initialCycle={
-              editingMomentId
-                ? allMoments[editingMomentId]?.cycle ?? null
-                : null
-            }
-            initialPhase={
-              editingMomentId
-                ? allMoments[editingMomentId]?.phase ?? null
-                : null
-            }
-            isAllocated={
-              editingMomentId
-                ? !!(
-                    allMoments[editingMomentId]?.day &&
-                    allMoments[editingMomentId]?.phase
-                  )
-                : false
-            }
-            onSave={handleSaveEdit}
-            onCancel={handleCancelEdit}
+          {/* Moment Form Dialog - Reads state from UI store */}
+          <MomentFormDialog
+            onSave={handleMomentFormSave}
             onDelete={handleDeleteEdit}
           />
 
-          {/* Area Management Modal - Triggered by Mod+Shift+A */}
+          {/* Area Management Modal - Triggered by Mod+Shift+A or DrawingBoard edit */}
           <AreaManagementModal
             open={isAreaManagementOpen}
-            onClose={() => setIsAreaManagementOpen(false)}
+            onClose={() => {
+              setIsAreaManagementOpen(false);
+              setFocusAreaId(undefined);
+            }}
+            focusAreaId={focusAreaId}
           />
 
           {/* Settings Drawer - Triggered by Mod+, or hamburger menu */}
@@ -209,6 +250,10 @@ export default function HomePage() {
               setIsPhaseSettingsOpen(true);
               setIsSettingsOpen(false);
             }}
+            onOpenAreaManagement={() => {
+              setIsAreaManagementOpen(true);
+              setIsSettingsOpen(false);
+            }}
           />
 
           {/* Phase Settings Modal - Opened from Settings Drawer */}
@@ -216,6 +261,43 @@ export default function HomePage() {
             open={isPhaseSettingsOpen}
             onClose={() => setIsPhaseSettingsOpen(false)}
           />
+
+          {/* PWA Install Prompt - Shows on mobile landscape when not installed */}
+          <PWAInstallPrompt />
+
+          {/* Archive Area Confirmation - Simple Dialog */}
+          {archiveAreaState.open && archiveAreaState.areaName && (
+            <Dialog open={true} onOpenChange={closeArchiveAreaDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Archive {archiveAreaState.areaName}?</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-stone-600 dark:text-stone-400">
+                    This area will be hidden from selectors, but all moments
+                    assigned to it will remain intact. You can unarchive it
+                    later from Area Management.
+                  </p>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={closeArchiveAreaDialog}
+                      className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-200 hover:bg-stone-300 text-stone-900 dark:bg-stone-700 dark:hover:bg-stone-600 dark:text-stone-100 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmArchiveArea}
+                      className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-200 dark:hover:bg-stone-300 dark:text-stone-900 transition-colors"
+                    >
+                      Archive
+                    </button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </DnDProvider>
     </MomentManagerProvider>

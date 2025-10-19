@@ -264,7 +264,7 @@ export function CircularPhaseSlider({
   ];
 
   return (
-    <div className="relative w-full max-w-md mx-auto py-8 select-none">
+    <div className="relative w-full max-w-md mx-auto select-none">
       <svg
         ref={svgRef}
         width={SIZE}

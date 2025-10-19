@@ -4,14 +4,20 @@ import type { Moment } from "@/domain/entities/Moment";
 import { createMoment } from "@/domain/entities/Moment";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import {
-  moments$,
-  updateMomentWithHistory,
+  allocateMomentWithHistory,
   createMomentWithHistory,
   deleteMomentWithHistory,
-  allocateMomentWithHistory,
+  moments$,
   unallocateMomentWithHistory,
+  updateMomentWithHistory,
 } from "@/infrastructure/state/store";
-import { drawingBoardExpanded$ } from "@/infrastructure/state/ui-store";
+import {
+  closeMomentForm,
+  drawingBoardExpanded$,
+  momentFormState$,
+  openMomentFormCreate,
+  openMomentFormEdit,
+} from "@/infrastructure/state/ui-store";
 import { useFocusManager } from "./useFocusManager";
 import { useHistory } from "./useHistory";
 import { useSelection } from "./useSelection";
@@ -75,16 +81,6 @@ export function useGlobalKeyboard() {
 
   // UI state for CRUD operations
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
-  const [areaSelectorMomentId, setAreaSelectorMomentId] = useState<
-    string | null
-  >(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [prefilledDay, setPrefilledDay] = useState<string | undefined>();
-  const [prefilledPhase, setPrefilledPhase] = useState<string | undefined>();
-  const [prefilledAreaId, setPrefilledAreaId] = useState<string | undefined>();
-  const [prefilledCycle, setPrefilledCycle] = useState<string | undefined>();
-  const [isEditCardOpen, setIsEditCardOpen] = useState(false);
-  const [editingMomentId, setEditingMomentId] = useState<string | null>(null);
   const [isAreaManagementOpen, setIsAreaManagementOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -92,27 +88,12 @@ export function useGlobalKeyboard() {
   const [yankBuffer, setYankBuffer] = useState<Moment | null>(null);
 
   // Disable global shortcuts when any modal is open to allow typing
+  const isMomentFormOpen = momentFormState$.open.peek();
   const globalShortcutsEnabled =
-    !isEditCardOpen &&
+    !isMomentFormOpen &&
     !isAreaSelectorOpen &&
-    !isCreateModalOpen &&
     !isAreaManagementOpen &&
     !isSettingsOpen;
-
-  // ==================== GLOBAL SHORTCUTS ====================
-
-  // Escape - close area selector only
-  // Note: Create/Edit modals handle their own Escape behavior
-  useHotkeys(
-    "escape",
-    (e) => {
-      if (isAreaSelectorOpen) {
-        e.preventDefault();
-        setIsAreaSelectorOpen(false);
-      }
-    },
-    { enableOnFormTags: true, enabled: !isCreateModalOpen && !isEditCardOpen }
-  );
 
   // ==================== CRUD SHORTCUTS (Linear-style) ====================
 
@@ -121,26 +102,14 @@ export function useGlobalKeyboard() {
     "n",
     (e) => {
       e.preventDefault();
-      setIsCreateModalOpen(true);
+      openMomentFormCreate();
     },
     { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
 
-  // A (Shift+a) - Open area selector for focused moment
-  useHotkeys(
-    "shift+a",
-    (e) => {
-      if (!focusedMomentId) return;
-      e.preventDefault();
-      setAreaSelectorMomentId(focusedMomentId);
-      setIsAreaSelectorOpen(true);
-    },
-    { enabled: globalShortcutsEnabled }
-  );
-
   // Mod+Shift+A - Open area management
   useHotkeys(
-    "mod+shift+a",
+    "shift+a",
     (e) => {
       e.preventDefault();
       setIsAreaManagementOpen(true);
@@ -174,8 +143,10 @@ export function useGlobalKeyboard() {
     (e) => {
       if (!focusedMomentId) return;
       e.preventDefault();
-      setEditingMomentId(focusedMomentId);
-      setIsEditCardOpen(true);
+      const moment = moments$[focusedMomentId].peek();
+      if (moment) {
+        openMomentFormEdit(focusedMomentId, moment);
+      }
     },
     { enabled: globalShortcutsEnabled }
   );
@@ -388,7 +359,6 @@ export function useGlobalKeyboard() {
   const updateMomentArea = (momentId: string, newAreaId: string) => {
     updateMomentWithHistory(momentId, { areaId: newAreaId });
     setIsAreaSelectorOpen(false);
-    setAreaSelectorMomentId(null);
   };
 
   const handleCreateMoment = (
@@ -405,11 +375,12 @@ export function useGlobalKeyboard() {
       createMomentWithHistory(result);
 
       // If day/phase were prefilled from timeline click, allocate the moment
-      if (prefilledDay && prefilledPhase) {
+      const prefilledAllocation = momentFormState$.prefilledAllocation.peek();
+      if (prefilledAllocation?.day && prefilledAllocation?.phase) {
         allocateMomentWithHistory(
           result.id,
-          prefilledDay,
-          prefilledPhase as any, // Type assertion needed
+          prefilledAllocation.day,
+          prefilledAllocation.phase as any, // Type assertion needed
           0 // Will be adjusted by DnD
         );
       }
@@ -419,19 +390,9 @@ export function useGlobalKeyboard() {
 
     // Only close modal if "create more" is not enabled
     if (!createMore) {
-      setIsCreateModalOpen(false);
-      setPrefilledDay(undefined);
-      setPrefilledPhase(undefined);
+      closeMomentForm();
     }
     // If createMore is true, keep modal open and form will reset itself
-  };
-
-  const handleCancelCreate = () => {
-    setIsCreateModalOpen(false);
-    setPrefilledDay(undefined);
-    setPrefilledPhase(undefined);
-    setPrefilledAreaId(undefined);
-    setPrefilledCycle(undefined);
   };
 
   const handleOpenCreateModal = (
@@ -440,11 +401,12 @@ export function useGlobalKeyboard() {
     areaId?: string,
     cycle?: string
   ) => {
-    setPrefilledDay(day);
-    setPrefilledPhase(phase);
-    setPrefilledAreaId(areaId);
-    setPrefilledCycle(cycle);
-    setIsCreateModalOpen(true);
+    openMomentFormCreate({
+      day,
+      phaseStr: phase,
+      areaId,
+      horizon: cycle as import("@/domain/entities/Moment").Cycle,
+    });
   };
 
   const handleSaveEdit = (
@@ -453,6 +415,7 @@ export function useGlobalKeyboard() {
     cycle: import("@/domain/entities/Moment").Cycle | null,
     phase: import("@/domain/value-objects/Phase").Phase | null
   ) => {
+    const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {
       // Update existing moment with history tracking
       updateMomentWithHistory(editingMomentId, {
@@ -462,50 +425,35 @@ export function useGlobalKeyboard() {
         // Note: phase is not directly updated here, it's part of allocation
       });
     }
-    setIsEditCardOpen(false);
-    setEditingMomentId(null);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditCardOpen(false);
-    setEditingMomentId(null);
+    closeMomentForm();
   };
 
   const handleDeleteEdit = () => {
+    const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {
       // Delete the moment with history tracking
       deleteMomentWithHistory(editingMomentId);
-      setIsEditCardOpen(false);
-      setEditingMomentId(null);
+      closeMomentForm();
     }
   };
 
   const handleOpenEditModal = (momentId: string) => {
-    setEditingMomentId(momentId);
-    setIsEditCardOpen(true);
+    const moment = moments$[momentId].peek();
+    if (moment) {
+      openMomentFormEdit(momentId, moment);
+    }
   };
 
   // Return state and helpers for components
   return {
     isAreaSelectorOpen,
     setIsAreaSelectorOpen,
-    areaSelectorMomentId,
     updateMomentArea,
     focusedMomentId,
-    // Create modal state
-    isCreateModalOpen,
-    prefilledDay,
-    prefilledPhase,
-    prefilledAreaId,
-    prefilledCycle,
+    // Moment form callbacks
     handleCreateMoment,
-    handleCancelCreate,
     handleOpenCreateModal,
-    // Edit card state
-    isEditCardOpen,
-    editingMomentId,
     handleSaveEdit,
-    handleCancelEdit,
     handleDeleteEdit,
     handleOpenEditModal,
     // Area management state

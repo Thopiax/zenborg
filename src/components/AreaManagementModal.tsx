@@ -2,16 +2,29 @@
 "use client";
 
 import { observer } from "@legendapp/state/react";
-import { Plus, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { Archive as ArchiveIcon, ChevronDown, ChevronRight, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { Area } from "@/domain/entities/Area";
-import { canDeleteArea, createArea, updateArea } from "@/domain/entities/Area";
+import {
+  archiveArea,
+  canDeleteArchivedArea,
+  createArea,
+  unarchiveArea,
+  updateArea,
+} from "@/domain/entities/Area";
 import { areas$, moments$ } from "@/infrastructure/state/store";
-import { ColorPicker } from "./ColorPicker";
+import { AreaCard } from "./AreaCard";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 
 interface AreaManagementModalProps {
   open: boolean;
   onClose: () => void;
+  focusAreaId?: string; // Optional: auto-open edit mode for specific area
 }
 
 /**
@@ -19,60 +32,73 @@ interface AreaManagementModalProps {
  *
  * Features:
  * - List all areas with color/emoji
- * - Create new areas
+ * - Create new areas (inline card-based)
  * - Edit existing areas (inline)
- * - Delete areas (with FK constraint check)
+ * - Archive areas (soft delete - preserves data integrity)
  * - Reorder areas (drag & drop - TODO)
  */
 export const AreaManagementModal = observer(function AreaManagementModal({
   open,
   onClose,
+  focusAreaId,
 }: AreaManagementModalProps) {
-  const [isCreating, setIsCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    color: "#10b981",
-    emoji: "🔵",
-  });
+  const [newAreaDraft, setNewAreaDraft] = useState<Area | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const areaRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const areas = Object.values(areas$.get() || {}).sort(
-    (a, b) => a.order - b.order
-  );
+  const allAreasUnsorted = Object.values(areas$.get() || {});
+  const activeAreas = allAreasUnsorted
+    .filter((a) => !a.isArchived)
+    .sort((a, b) => a.order - b.order);
+  const archivedAreas = allAreasUnsorted
+    .filter((a) => a.isArchived)
+    .sort((a, b) => a.order - b.order);
   const allMoments = Object.values(moments$.get() || {});
 
-  if (!open) {
-    return null;
-  }
+  // Auto-focus on specific area when focusAreaId is provided
+  useEffect(() => {
+    if (open && focusAreaId) {
+      // Scroll to the area after a brief delay
+      setTimeout(() => {
+        areaRefs.current[focusAreaId]?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
+    }
+  }, [open, focusAreaId]);
 
   const handleStartCreate = () => {
-    setFormData({ name: "", color: "#10b981", emoji: "🔵" });
-    setIsCreating(true);
-    setEditingId(null);
+    // Calculate order: place new area at the end
+    const maxOrder = activeAreas.reduce((max, area) => Math.max(max, area.order), -1);
+
+    // Create a draft area (not yet persisted)
+    const draft: Area = {
+      id: `draft-${Date.now()}`, // Temporary ID
+      name: "",
+      color: "#10b981",
+      emoji: "🔵",
+      isDefault: false,
+      isArchived: false,
+      order: maxOrder + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setNewAreaDraft(draft);
   };
 
-  const handleStartEdit = (area: Area) => {
-    setFormData({
-      name: area.name,
-      color: area.color,
-      emoji: area.emoji,
-    });
-    setEditingId(area.id);
-    setIsCreating(false);
-  };
-
-  const handleSaveCreate = () => {
-    if (!formData.name.trim()) return;
+  const handleSaveNewArea = (name: string, color: string, emoji: string) => {
+    if (!name.trim()) {
+      // Cancel creation if name is empty
+      setNewAreaDraft(null);
+      return;
+    }
 
     // Calculate order: place new area at the end
-    const maxOrder = areas.reduce((max, area) => Math.max(max, area.order), -1);
+    const maxOrder = activeAreas.reduce((max, area) => Math.max(max, area.order), -1);
 
-    const result = createArea(
-      formData.name.trim(),
-      formData.color,
-      formData.emoji,
-      maxOrder + 1
-    );
+    const result = createArea(name.trim(), color, emoji, maxOrder + 1);
 
     if ("error" in result) {
       alert(result.error);
@@ -84,264 +110,194 @@ export const AreaManagementModal = observer(function AreaManagementModal({
       [result.id]: result,
     }));
 
-    setIsCreating(false);
-    setFormData({ name: "", color: "#10b981", emoji: "🔵" });
+    setNewAreaDraft(null);
   };
 
-  const handleSaveEdit = () => {
-    if (!editingId || !formData.name.trim()) return;
+  const handleCancelNewArea = () => {
+    setNewAreaDraft(null);
+  };
 
-    const existingArea = areas$.get()[editingId];
-    if (!existingArea) return;
-
-    const result = updateArea(existingArea, {
-      name: formData.name.trim(),
-      color: formData.color,
-      emoji: formData.emoji,
-    });
+  const handleUpdateArea = (area: Area, updates: Partial<Area>) => {
+    const result = updateArea(area, updates);
 
     if ("error" in result) {
       alert(result.error);
       return;
     }
 
-    areas$[editingId].set(result);
-    setEditingId(null);
+    areas$[area.id].set(result);
   };
 
-  const handleDelete = (areaId: string) => {
+  const handleArchiveArea = (areaId: string) => {
     const area = areas$.get()[areaId];
     if (!area) return;
 
-    const canDelete = canDeleteArea(area, allMoments);
-    if (!canDelete) {
-      alert("Cannot delete area: moments are still assigned to it.");
+    if (confirm(`Archive "${area.name}"?`)) {
+      const archivedArea = archiveArea(area);
+      areas$[areaId].set(archivedArea);
+    }
+  };
+
+  const handleUnarchiveArea = (areaId: string) => {
+    const area = areas$.get()[areaId];
+    if (!area) return;
+
+    const unarchivedArea = unarchiveArea(area);
+    areas$[areaId].set(unarchivedArea);
+  };
+
+  const handleDeleteArchivedArea = (areaId: string) => {
+    const area = areas$.get()[areaId];
+    if (!area) return;
+
+    if (!canDeleteArchivedArea(area, allMoments)) {
+      alert("Cannot delete: this archived area still has moments assigned to it.");
       return;
     }
 
-    if (confirm(`Delete "${area.name}"? This cannot be undone.`)) {
+    if (confirm(`Permanently delete "${area.name}"? This cannot be undone.`)) {
       areas$[areaId].delete();
     }
   };
 
-  const handleCancel = () => {
-    setIsCreating(false);
-    setEditingId(null);
-    setFormData({ name: "", color: "#10b981", emoji: "🔵" });
-  };
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="hidden md:block fixed inset-0 bg-black/40 dark:bg-black/60 z-50 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Manage Areas</DialogTitle>
+        </DialogHeader>
 
-      {/* Modal */}
-      <div
-        className="fixed inset-0 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-50 md:w-full md:max-w-2xl md:mx-4 md:inset-auto"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="area-modal-title"
-      >
-        <div className="bg-surface md:rounded-xl shadow-2xl overflow-hidden border-0 md:border border-border flex flex-col h-full md:h-auto md:max-h-[85dvh]">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-border">
-            <h2
-              id="area-modal-title"
-              className="text-xl font-semibold text-text-primary"
-            >
-              Manage Areas
-            </h2>
+        <div className="space-y-4">
+          {/* Create New Area Button */}
+          {!newAreaDraft && (
             <button
-              onClick={onClose}
-              className="p-2 rounded-lg hover:bg-border transition-colors text-text-secondary hover:text-text-primary"
-              aria-label="Close"
+              onClick={handleStartCreate}
+              className="w-full p-4 border-2 border-dashed border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 rounded-lg transition-colors flex items-center justify-center gap-2 text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300"
               type="button"
             >
-              <X className="w-5 h-5" />
+              <Plus className="w-5 h-5" />
+              <span>Create New Area</span>
             </button>
+          )}
+
+          {/* New Area Draft (inline card) */}
+          {newAreaDraft && (
+            <div
+              ref={(el) => {
+                areaRefs.current[newAreaDraft.id] = el;
+              }}
+            >
+              <AreaCard
+                area={newAreaDraft}
+                canDelete={true}
+                isNew={true}
+                onUpdate={(updates) => {
+                  // Update the draft state
+                  setNewAreaDraft({ ...newAreaDraft, ...updates });
+                }}
+                onDelete={handleCancelNewArea}
+                onSaveNew={(name, color, emoji) =>
+                  handleSaveNewArea(name, color, emoji)
+                }
+              />
+            </div>
+          )}
+
+          {/* Active Areas List */}
+          <div className="space-y-2">
+            {activeAreas.map((area) => (
+              <div
+                key={area.id}
+                ref={(el) => {
+                  areaRefs.current[area.id] = el;
+                }}
+              >
+                <AreaCard
+                  area={area}
+                  canDelete={true}
+                  onUpdate={(updates) => handleUpdateArea(area, updates)}
+                  onDelete={() => handleArchiveArea(area.id)}
+                />
+              </div>
+            ))}
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/* Create New Area Button */}
-            {!isCreating && !editingId && (
+          {/* Archived Areas Section - Collapsible */}
+          {archivedAreas.length > 0 && (
+            <div className="pt-4 border-t border-stone-200 dark:border-stone-700">
               <button
-                onClick={handleStartCreate}
-                className="w-full p-4 border-2 border-dashed border-border hover:border-text-tertiary rounded-lg transition-colors flex items-center justify-center gap-2 text-text-secondary hover:text-text-primary"
                 type="button"
+                onClick={() => setShowArchived(!showArchived)}
+                className="w-full flex items-center justify-between px-2 py-2 text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
               >
-                <Plus className="w-5 h-5" />
-                <span>Create New Area</span>
-              </button>
-            )}
-
-            {/* Create Form */}
-            {isCreating && (
-              <div className="p-4 border-2 border-text-tertiary rounded-lg bg-surface-elevated space-y-3">
-                <h3 className="font-medium text-text-primary">New Area</h3>
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Area name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-text-tertiary"
-                    autoFocus
-                  />
-                  <div className="flex items-center gap-3">
-                    <ColorPicker
-                      value={formData.color}
-                      onChange={(color) => setFormData({ ...formData, color })}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Emoji"
-                      value={formData.emoji}
-                      onChange={(e) =>
-                        setFormData({ ...formData, emoji: e.target.value })
-                      }
-                      className="w-20 px-3 py-2 bg-surface border border-border rounded-lg text-center text-xl focus:outline-none focus:ring-2 focus:ring-text-tertiary"
-                      maxLength={2}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleSaveCreate}
-                      disabled={!formData.name.trim()}
-                      className="flex-1 px-4 py-2 bg-text-primary text-surface rounded-lg hover:bg-text-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      type="submit"
-                    >
-                      Create
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      className="px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors text-text-secondary hover:text-text-primary"
-                      type="reset"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Areas List */}
-            <div className="space-y-2">
-              {areas.map((area) => (
-                <div
-                  key={area.id}
-                  className={`p-4 rounded-lg border transition-all ${
-                    editingId === area.id
-                      ? "border-text-tertiary bg-surface-elevated"
-                      : "border-border hover:border-text-tertiary bg-surface"
-                  }`}
-                >
-                  {editingId === area.id ? (
-                    // Edit Form
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-text-tertiary"
-                        autoFocus
-                      />
-                      <div className="flex items-center gap-3">
-                        <ColorPicker
-                          value={formData.color}
-                          onChange={(color) =>
-                            setFormData({ ...formData, color })
-                          }
-                        />
-                        <input
-                          type="text"
-                          value={formData.emoji}
-                          onChange={(e) =>
-                            setFormData({ ...formData, emoji: e.target.value })
-                          }
-                          className="w-20 px-3 py-2 bg-surface border border-border rounded-lg text-center text-xl focus:outline-none focus:ring-2 focus:ring-text-tertiary"
-                          maxLength={2}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleSaveEdit}
-                          disabled={!formData.name.trim()}
-                          className="flex-1 px-4 py-2 bg-text-primary text-surface rounded-lg hover:bg-text-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          type="submit"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={handleCancel}
-                          className="px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors text-text-secondary hover:text-text-primary"
-                          type="reset"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
+                <div className="flex items-center gap-2">
+                  {showArchived ? (
+                    <ChevronDown className="w-4 h-4" />
                   ) : (
-                    // Display Mode
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 flex items-center gap-3">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-                          style={{ backgroundColor: area.color }}
-                        >
-                          {area.emoji}
-                        </div>
-                        <div>
-                          <div className="font-medium text-text-primary">
+                    <ChevronRight className="w-4 h-4" />
+                  )}
+                  <ArchiveIcon className="w-4 h-4" />
+                  <span>Archived Areas ({archivedAreas.length})</span>
+                </div>
+              </button>
+
+              {showArchived && (
+                <div className="mt-2 space-y-2 pl-6">
+                  {archivedAreas.map((area) => (
+                    <div
+                      key={area.id}
+                      className="p-3 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-base">{area.emoji}</span>
+                          <span className="text-sm font-medium text-stone-900 dark:text-stone-100">
                             {area.name}
-                          </div>
-                          {area.isDefault && (
-                            <div className="text-xs text-text-tertiary">
-                              Default area
-                            </div>
+                          </span>
+                          <span
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: area.color }}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleUnarchiveArea(area.id)}
+                            className="px-2 py-1 text-xs rounded hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 flex items-center gap-1"
+                            title="Unarchive"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Restore
+                          </button>
+                          {canDeleteArchivedArea(area, allMoments) && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteArchivedArea(area.id)}
+                              className="px-2 py-1 text-xs rounded hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1"
+                              title="Delete permanently"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete
+                            </button>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleStartEdit(area)}
-                          className="px-3 py-1.5 text-sm rounded-lg hover:bg-surface-elevated transition-colors text-text-secondary hover:text-text-primary"
-                          type="button"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(area.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-text-tertiary hover:text-red-500"
-                          aria-label="Delete area"
-                          type="button"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-
-          {/* Footer */}
-          <div className="p-6 border-t border-border">
-            <p className="text-sm text-text-tertiary">
-              {areas.length} {areas.length === 1 ? "area" : "areas"}
-            </p>
-          </div>
+          )}
         </div>
-      </div>
-    </>
+
+        {/* Footer */}
+        <div className="pt-4 border-t border-stone-200 dark:border-stone-700">
+          <p className="text-sm text-stone-500 dark:text-stone-500">
+            {activeAreas.length} active {activeAreas.length === 1 ? "area" : "areas"}
+            {archivedAreas.length > 0 && `, ${archivedAreas.length} archived`}
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 });

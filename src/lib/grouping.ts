@@ -2,9 +2,15 @@
  * Grouping utilities for organizing moments in the drawing board
  */
 
+import {
+  format,
+  isThisMonth,
+  isThisWeek,
+  isToday,
+  isYesterday,
+} from "date-fns";
 import type { Area } from "@/domain/entities/Area";
-import type { Moment, Cycle } from "@/domain/entities/Moment";
-import { format, isToday, isYesterday, isThisWeek, isThisMonth } from "date-fns";
+import type { Horizon, Moment } from "@/domain/entities/Moment";
 
 /**
  * Grouped collection of moments
@@ -19,13 +25,16 @@ export interface MomentGroup {
 
 /**
  * Group moments by area
- * Shows all areas, including empty ones
+ * Shows all provided areas (caller is responsible for filtering)
+ *
+ * Note: Caller should pass only active areas if archived areas should be hidden.
+ * Moments referencing archived areas will be included in their respective groups.
  */
 export function groupByArea(
   moments: Moment[],
   areas: Record<string, Area>
 ): MomentGroup[] {
-  // Initialize all areas as empty groups
+  // Initialize all provided areas as empty groups
   const allAreas = Object.values(areas).sort((a, b) => a.order - b.order);
   const grouped = new Map<string, MomentGroup>(
     allAreas.map((area) => [
@@ -128,12 +137,12 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
 }
 
 /**
- * Group moments by cycle (time perspective)
+ * Group moments by horizon (time perspective)
  * Categories: This Week, Next Week, This Month, Later, Unset
- * Shows all cycle levels, including empty ones
+ * Shows all horizon levels, including empty ones
  * Monochrome design - no color coding
  */
-export function groupByCycle(moments: Moment[]): MomentGroup[] {
+export function groupByHorizon(moments: Moment[]): MomentGroup[] {
   const groups: Record<string, Moment[]> = {
     thisWeek: [],
     nextWeek: [],
@@ -143,46 +152,45 @@ export function groupByCycle(moments: Moment[]): MomentGroup[] {
   };
 
   for (const moment of moments) {
-    if (moment.cycle === "this-week") {
-      groups.thisWeek.push(moment);
-    } else if (moment.cycle === "next-week") {
-      groups.nextWeek.push(moment);
-    } else if (moment.cycle === "this-month") {
-      groups.thisMonth.push(moment);
-    } else if (moment.cycle === "later") {
-      groups.later.push(moment);
-    } else {
-      groups.unset.push(moment);
+    switch (moment.horizon) {
+      case "this-week":
+        groups.thisWeek.push(moment);
+        break;
+      case "next-week":
+        groups.nextWeek.push(moment);
+        break;
+      case "this-month":
+        groups.thisMonth.push(moment);
+        break;
+      case "later":
+      default:
+        groups.later.push(moment);
+        break;
     }
   }
 
-  // Return all cycle levels in order (This Week > Next Week > This Month > Later > Unset)
+  // Return all horizon levels in order (This Week > Next Week > This Month > Later > Unset)
   // No colors - monochrome design
   return [
     {
-      groupId: "cycle-this-week",
+      groupId: "horizon-this-week",
       groupLabel: "This Week",
       moments: groups.thisWeek,
     },
     {
-      groupId: "cycle-next-week",
+      groupId: "horizon-next-week",
       groupLabel: "Next Week",
       moments: groups.nextWeek,
     },
     {
-      groupId: "cycle-this-month",
+      groupId: "horizon-this-month",
       groupLabel: "This Month",
       moments: groups.thisMonth,
     },
     {
-      groupId: "cycle-later",
+      groupId: "horizon-later",
       groupLabel: "Later",
       moments: groups.later,
-    },
-    {
-      groupId: "cycle-unset",
-      groupLabel: "Unset",
-      moments: groups.unset,
     },
   ];
 }
@@ -191,7 +199,7 @@ export function groupByCycle(moments: Moment[]): MomentGroup[] {
  * Get grouping function based on grouping mode
  */
 export function getGroupingFunction(
-  groupBy: "none" | "area" | "created" | "cycle"
+  groupBy: "none" | "area" | "created" | "horizon"
 ): ((moments: Moment[], areas?: Record<string, Area>) => MomentGroup[]) | null {
   switch (groupBy) {
     case "area":
@@ -201,8 +209,8 @@ export function getGroupingFunction(
       };
     case "created":
       return groupByCreated;
-    case "cycle":
-      return groupByCycle;
+    case "horizon":
+      return groupByHorizon;
     case "none":
     default:
       return null;

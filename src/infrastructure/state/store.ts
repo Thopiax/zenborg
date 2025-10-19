@@ -54,16 +54,16 @@ export const phaseConfigs$ = observable<Record<string, PhaseConfig>>({});
  * Imported and re-exported from history.ts
  */
 export {
-  history$,
-  startBatch,
-  endBatch,
-  recordOperation,
-  undo,
-  redo,
-  canUndo,
   canRedo,
+  canUndo,
   clearHistory,
+  endBatch,
   getHistoryStats,
+  history$,
+  recordOperation,
+  redo,
+  startBatch,
+  undo,
   withBatch,
 } from "./history";
 
@@ -72,21 +72,21 @@ export {
  * Imported and re-exported from history-middleware.ts
  */
 export {
-  createMomentWithHistory,
-  updateMomentWithHistory,
-  deleteMomentWithHistory,
-  bulkDeleteMomentsWithHistory,
   allocateMomentWithHistory,
-  unallocateMomentWithHistory,
-  moveMomentWithHistory,
-  duplicateMomentWithHistory,
-  reorderMomentsWithHistory,
-  selectMomentsWithHistory,
-  deselectMomentsWithHistory,
-  clearSelectionWithHistory,
-  selectAllWithHistory,
-  applyOperation,
   applyInverseOperation,
+  applyOperation,
+  bulkDeleteMomentsWithHistory,
+  clearSelectionWithHistory,
+  createMomentWithHistory,
+  deleteMomentWithHistory,
+  deselectMomentsWithHistory,
+  duplicateMomentWithHistory,
+  moveMomentWithHistory,
+  reorderMomentsWithHistory,
+  selectAllWithHistory,
+  selectMomentsWithHistory,
+  unallocateMomentWithHistory,
+  updateMomentWithHistory,
 } from "./history-middleware";
 
 // ============================================================================
@@ -128,6 +128,18 @@ export const visiblePhases$ = observable(() => {
   const configs = phaseConfigs$.get();
   return Object.values(configs)
     .filter((config) => config.isVisible)
+    .sort((a, b) => a.order - b.order);
+});
+
+/**
+ * All active (non-archived) areas, sorted by order
+ * Computed from areas$ - automatically updates when areas change
+ * Archived areas are filtered out to keep the UI clean
+ */
+export const activeAreas$ = observable(() => {
+  const allAreas = areas$.get();
+  return Object.values(allAreas)
+    .filter((area) => !area.isArchived)
     .sort((a, b) => a.order - b.order);
 });
 

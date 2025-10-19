@@ -99,9 +99,9 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
         <div className="space-y-8 py-4">
           {/* Circular Timeline Slider */}
           <div className="space-y-6">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 text-center">
+            {/* <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 text-center">
               Daily Timeline
-            </h3>
+            </h3> */}
 
             <CircularPhaseSlider
               phaseConfigs={phaseConfigs}

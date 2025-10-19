@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useEffect } from "react";
 import {
   CommandDialog,
@@ -28,6 +29,10 @@ export interface SelectorOption<T = string> {
     width?: string;
     height?: string;
   };
+  /** Custom element rendered on the right side (e.g., action button) */
+  rightElement?: React.ReactNode;
+  /** Whether the dialog should close after selecting this option (default: true) */
+  closeOnSelect?: boolean;
   /** Custom className for the option */
   className?: string;
 }
@@ -45,6 +50,12 @@ interface SelectorDialogProps<T = string> {
   maxWidth?: string;
   /** Enable keyboard shortcuts automatically */
   enableHotkeys?: boolean;
+  /** Optional content rendered before the options list (e.g., inline form) */
+  beforeOptions?: React.ReactNode;
+  /** Optional content rendered after the options list */
+  afterOptions?: React.ReactNode;
+  /** Optional content rendered in the header on the right side (e.g., action buttons) */
+  rightHeader?: React.ReactNode;
 }
 
 /**
@@ -85,6 +96,9 @@ export function SelectorDialog<T = string>({
   onClose,
   maxWidth = "max-w-md",
   enableHotkeys = true,
+  beforeOptions,
+  afterOptions,
+  rightHeader,
 }: SelectorDialogProps<T>) {
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -116,12 +130,16 @@ export function SelectorDialog<T = string>({
       title={title}
       description={description}
       showCloseButton={false}
+      rightHeader={rightHeader}
       className={maxWidth}
+      value={selectedValue ? String(selectedValue) : undefined}
     >
       <CommandList className="max-h-96 p-2">
+        {beforeOptions}
         <CommandGroup heading={heading} className="gap-1.5">
           {options.map((option, index) => {
             const isSelected = selectedValue === option.value;
+            const shouldClose = option.closeOnSelect ?? true;
 
             return (
               <CommandItem
@@ -129,14 +147,28 @@ export function SelectorDialog<T = string>({
                 value={String(option.value)}
                 onSelect={() => {
                   onSelect(option.value);
-                  onClose();
+                  if (shouldClose) {
+                    onClose();
+                  }
                 }}
                 className={cn(
-                  "cursor-pointer px-4 py-4 mb-1.5 rounded-lg",
-                  isSelected && "bg-stone-100 dark:bg-stone-800",
+                  "cursor-pointer px-4 py-4 mb-1.5 rounded-lg transition-all",
+                  // Override cmdk's default keyboard selection styling (subtle for keyboard nav)
+                  "data-[selected=true]:bg-stone-200/40 dark:data-[selected=true]:bg-stone-700/40",
+                  // Hover state
+                  "hover:bg-stone-200/60 dark:hover:bg-stone-700/60",
+                  // Our explicit selected state (checkmark) takes precedence
+                  isSelected &&
+                    "!bg-stone-900 !text-stone-50 dark:!bg-stone-100 dark:!text-stone-900",
+                  isSelected && "hover:!bg-stone-800 dark:hover:!bg-stone-200",
                   option.className
                 )}
               >
+                {/* Selected indicator (checkmark) - appears on the far left */}
+                <div className="w-5 h-5 mr-3 flex-shrink-0 flex items-center justify-center">
+                  {isSelected && <Check className="w-5 h-5" strokeWidth={3} />}
+                </div>
+
                 {/* Left accent (e.g., colored bar for areas) */}
                 {option.leftAccent && (
                   <div
@@ -166,22 +198,42 @@ export function SelectorDialog<T = string>({
                     {option.label}
                   </span>
                   {option.description && (
-                    <span className="text-sm text-stone-500 dark:text-stone-400 block mt-0.5">
+                    <span
+                      className={cn(
+                        "text-sm block mt-0.5",
+                        isSelected
+                          ? "text-stone-200 dark:text-stone-700"
+                          : "text-stone-500 dark:text-stone-400"
+                      )}
+                    >
                       {option.description}
                     </span>
                   )}
                 </div>
 
                 {/* Hotkey shortcut */}
-                {option.hotkey && (
-                  <CommandShortcut className="text-base font-mono bg-stone-100 dark:bg-stone-800 px-2 py-1 rounded">
-                    {option.hotkey}
-                  </CommandShortcut>
+                {(option.rightElement || option.hotkey) && (
+                  <div className="flex items-center gap-2">
+                    {option.rightElement}
+                    {option.hotkey && (
+                      <CommandShortcut
+                        className={cn(
+                          "text-base font-mono px-2 py-1 rounded",
+                          isSelected
+                            ? "bg-stone-700 text-stone-100 dark:bg-stone-300 dark:text-stone-900"
+                            : "bg-stone-100 dark:bg-stone-800"
+                        )}
+                      >
+                        {option.hotkey}
+                      </CommandShortcut>
+                    )}
+                  </div>
                 )}
               </CommandItem>
             );
           })}
         </CommandGroup>
+        {afterOptions}
       </CommandList>
     </CommandDialog>
   );

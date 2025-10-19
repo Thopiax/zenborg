@@ -1,19 +1,12 @@
 import type { Phase } from "../value-objects/Phase";
 
 /**
- * Cycle - Time perspective for moments
+ * Horizon - Time perspective for moments
  *
- * Day-specific cycles (yesterday, today, tomorrow) auto-allocate moments to specific days.
- * Time-range cycles (this-week, next-week, this-month, later) organize moments in the drawing board.
+ * Horizons organize unallocated moments in the drawing board.
+ * All allocated moments go to "this week" in the timeline.
  */
-export type Cycle =
-  | "yesterday"
-  | "today"
-  | "tomorrow"
-  | "this-week"
-  | "next-week"
-  | "this-month"
-  | "later";
+export type Horizon = "this-week" | "next-week" | "this-month" | "later";
 
 /**
  * Moment - A named intention (1-3 words maximum)
@@ -29,7 +22,7 @@ export interface Moment {
   phase: Phase | null;
   day: string | null; // ISO date: "2025-01-15"
   order: number; // 0-2 (max 3 per phase)
-  cycle: Cycle | null; // Temporal scope for drawing board organization
+  horizon: Horizon | null; // Temporal scope for drawing board organization
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }
@@ -116,13 +109,13 @@ export function canAllocateToPhase(
  *
  * @param name - Moment name (1-3 words)
  * @param areaId - ID of the area this moment belongs to
- * @param cycle - Optional time cycle
+ * @param horizon - Optional time horizon
  * @returns New moment or error if validation fails
  */
 export function createMoment(
   name: string,
   areaId: string,
-  cycle: Cycle | null = null
+  horizon: Horizon | null = null
 ): MomentResult {
   const validation = validateMomentName(name);
 
@@ -143,7 +136,7 @@ export function createMoment(
     phase: null,
     day: null,
     order: 0,
-    cycle,
+    horizon,
     createdAt: now,
     updatedAt: now,
   };
@@ -151,7 +144,7 @@ export function createMoment(
 
 /**
  * Allocates a moment to a specific day and phase
- * Cycle is cleared when allocating (only relevant for unallocated moments)
+ * Horizon is cleared when allocating (only relevant for unallocated moments)
  *
  * @param moment - The moment to allocate
  * @param day - ISO date string
@@ -174,7 +167,7 @@ export function allocateMoment(
     day,
     phase,
     order,
-    cycle: null, // Clear cycle when allocating
+    horizon: null, // Clear horizon when allocating
     updatedAt: new Date().toISOString(),
   };
 }
@@ -220,19 +213,16 @@ export function updateMomentName(
 }
 
 /**
- * Updates the cycle of a moment
+ * Updates the horizon of a moment
  *
  * @param moment - The moment to update
- * @param cycle - New time cycle
+ * @param horizon - New time horizon
  * @returns Updated moment
  */
-export function updateMomentCycle(
-  moment: Moment,
-  cycle: Cycle | null
-): Moment {
+export function updateMomentHorizon(moment: Moment, horizon: Horizon | null): Moment {
   return {
     ...moment,
-    cycle,
+    horizon,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -244,32 +234,4 @@ export function isMomentError(
   result: MomentResult
 ): result is { error: string } {
   return "error" in result;
-}
-
-/**
- * Checks if a cycle represents a specific day (yesterday/today/tomorrow)
- * These cycles should auto-allocate moments to the timeline
- */
-export function isDaySpecificCycle(cycle: Cycle | null): boolean {
-  return cycle === "yesterday" || cycle === "today" || cycle === "tomorrow";
-}
-
-/**
- * Gets the ISO date string for a day-specific cycle
- *
- * @param cycle - Must be "yesterday", "today", or "tomorrow"
- * @returns ISO date string (e.g., "2025-01-15")
- */
-export function getDateForCycle(
-  cycle: "yesterday" | "today" | "tomorrow"
-): string {
-  const date = new Date();
-
-  if (cycle === "yesterday") {
-    date.setDate(date.getDate() - 1);
-  } else if (cycle === "tomorrow") {
-    date.setDate(date.getDate() + 1);
-  }
-
-  return date.toISOString().split("T")[0];
 }

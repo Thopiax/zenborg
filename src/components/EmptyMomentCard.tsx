@@ -1,8 +1,8 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { momentCard } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
-import { Plus } from "lucide-react";
 
 interface EmptyMomentCardProps {
   onClick: () => void;
@@ -25,7 +25,7 @@ interface EmptyMomentCardProps {
  */
 export function EmptyMomentCard({
   onClick,
-  label = "Add moment",
+  label = "add moment",
 }: EmptyMomentCardProps) {
   return (
     <button

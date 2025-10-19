@@ -70,7 +70,6 @@ interface TimelineCellProps {
 export function TimelineCell({
   day,
   phase,
-  isHighlighted = false,
   dayLabel,
   phaseLabel,
   phaseIndex = 0,
@@ -100,32 +99,9 @@ export function TimelineCell({
   // Check if current drop would be valid
   const wouldAcceptDrop = !isFull; // Simple check for now, validation happens in DnDProvider
 
-  // Helper to convert ISO date to cycle
-  const getCycleFromDay = (isoDate: string): string => {
-    const today = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date(Date.now() + 86400000)
-      .toISOString()
-      .split("T")[0];
-    const yesterday = new Date(Date.now() - 86400000)
-      .toISOString()
-      .split("T")[0];
-
-    if (isoDate === today) return "today";
-    if (isoDate === tomorrow) return "tomorrow";
-    if (isoDate === yesterday) return "yesterday";
-    return "later"; // Fallback for other dates
-  };
-
   // Handle empty cell click - opens Drawing Board or create modal
   const handleEmptyCellClick = () => {
-    // If there are no unallocated moments, open create modal directly with prefilled cycle and phase
-    if (unallocated.length === 0) {
-      const cycle = getCycleFromDay(day);
-      handleOpenCreateModal(day, phase, undefined, cycle);
-    } else {
-      // Otherwise, expand Drawing Board to show unallocated moments
-      drawingBoardExpanded$.set(true);
-    }
+    handleOpenCreateModal(day, phase, undefined, "this-week");
   };
 
   // Generate accessible label
@@ -191,7 +167,7 @@ export function TimelineCell({
             type="button"
             onClick={handleEmptyCellClick}
             className="flex items-center justify-center h-full w-full rounded-md transition-colors cursor-pointer group"
-            aria-label={`Add moment to ${phaseLabel || phase}`}
+            aria-label={`add moment to ${phaseLabel || phase}`}
           >
             <span className="text-slate-800 dark:text-slate-100 text-3xl opacity-70 md:opacity-0 group-hover:opacity-70 transition-opacity gap-2 flex items-center">
               +
