@@ -70,10 +70,10 @@ export function DrawingBoardColumn({
     if (groupBy === "area") {
       // Create with this area pre-selected
       onCreateMoment(group.groupId);
-    } else if (groupBy === "horizon") {
-      // Create with this horizon pre-selected
-      const horizonValue = group.groupId.replace("horizon-", "");
-      onCreateMoment(undefined, horizonValue === "unset" ? "" : horizonValue);
+    } else if (groupBy === "cycle") {
+      // Create with this cycle pre-selected
+      const cycleValue = group.groupId.replace("cycle-", "");
+      onCreateMoment(undefined, cycleValue === "unset" ? "" : cycleValue);
     }
   };
 
