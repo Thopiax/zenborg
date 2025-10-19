@@ -81,7 +81,7 @@ export function AreaCard({
     setValidationError(null);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.currentTarget.blur(); // Trigger save
     } else if (e.key === "Escape") {
