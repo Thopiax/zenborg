@@ -44,7 +44,7 @@ export function Timeline() {
           // Fade in after scroll completes
           setIsReady(true);
         });
-      }, 100);
+      }, 200);
     }
   }, []);
 
