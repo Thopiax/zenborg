@@ -17,7 +17,11 @@ import {
 import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
-import { activeAreas$, areas$, unallocatedMoments$ } from "@/infrastructure/state/store";
+import {
+  activeAreas$,
+  areas$,
+  unallocatedMoments$,
+} from "@/infrastructure/state/store";
 import {
   type DrawingBoardGroupBy,
   drawingBoardExpanded$,
@@ -77,7 +81,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
     return activeAreasArray.reduce((acc, area) => {
       acc[area.id] = area;
       return acc;
-    }, {} as Record<string, typeof activeAreasArray[0]>);
+    }, {} as Record<string, (typeof activeAreasArray)[0]>);
   }, [activeAreasArray]);
 
   const groups = useMemo(() => {
@@ -107,44 +111,41 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
 
   const label = "Planning (P)";
 
-  // Collapsed state - simple banner
-  if (!isExpanded) {
-    return (
-      <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        <button
-          type="button"
-          onClick={() => drawingBoardExpanded$.set(true)}
-          className="w-full px-6 py-3 flex items-center justify-between hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-        >
-          <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 uppercase tracking-wider font-semibold">
-            {label}
-          </h2>
-          <ChevronUp className="h-4 w-4 text-stone-500" />
-        </button>
-      </div>
-    );
-  }
-
-  // Expanded state - full DrawingBoard
+  // Unified structure with animated expand/collapse
   return (
     <div
       ref={containerRef}
       className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0"
     >
-      {/* Header - Fully clickable to close */}
+      {/* Header - Toggles expand/collapse */}
       <button
         type="button"
-        onClick={() => drawingBoardExpanded$.set(false)}
-        className="flex w-full items-center justify-between px-6 py-3 border-b border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+        onClick={() => drawingBoardExpanded$.set(!isExpanded)}
+        className="flex w-full items-center justify-between px-6 py-3 hover:bg-stone-100 dark:hover:bg-stone-800 transition-all duration-fast transition-smooth"
+        style={{
+          borderBottom: isExpanded
+            ? "1px solid var(--border)"
+            : "none",
+        }}
       >
         <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 uppercase tracking-wider font-semibold">
           {label}
         </h2>
-        <ChevronDown className="h-4 w-4 text-stone-500" />
+        {isExpanded ? (
+          <ChevronDown className="h-4 w-4 text-stone-500 transition-transform duration-medium transition-elastic" />
+        ) : (
+          <ChevronUp className="h-4 w-4 text-stone-500 transition-transform duration-medium transition-elastic" />
+        )}
       </button>
 
-      {/* Content Area */}
-      <div className="bg-white dark:bg-stone-950">
+      {/* Content Area - Animated with grid-rows approach */}
+      <div
+        className={cn(
+          "bg-white dark:bg-stone-950 grid transition-all duration-medium transition-elastic overflow-hidden",
+          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        )}
+      >
+        <div className="overflow-hidden">
         {/* Group by selector inside content area */}
         <div className="flex items-center gap-2 px-6 pt-6 pb-3">
           <span className="text-xs text-stone-500 font-mono">Group by:</span>
@@ -182,7 +183,8 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
             ref={setNodeRef}
             className={cn(
               "bg-white dark:bg-stone-950 p-8",
-              "transition-all duration-200 relative",
+              // Smooth transitions for drag-over states
+              "transition-all duration-fast transition-smooth relative",
               "min-h-[400px] w-full",
               isOver && "bg-stone-100/30 dark:bg-stone-800/30"
             )}
@@ -235,6 +237,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

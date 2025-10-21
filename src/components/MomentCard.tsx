@@ -7,7 +7,12 @@ import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { useSelection } from "@/hooks/useSelection";
 import { phaseConfigs$ } from "@/infrastructure/state/store";
-import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
+import {
+  animation,
+  getTextColorsForBackground,
+  momentCard,
+  shadows,
+} from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
 interface MomentCardProps {
@@ -94,16 +99,21 @@ export function MomentCard({
       type="button"
       className={cn(
         "min-w-[200px]",
-        "rounded-lg transition-all cursor-pointer w-full",
+        "rounded-lg cursor-pointer w-full",
         "focus:outline-none relative",
+        // Elastic transitions for natural, organic feel (using design system classes)
+        "transition-all duration-medium transition-elastic",
         // Subtle ring for selection/focus - using area color
         "ring-offset-transparent",
         isSelected
           ? "ring-2 ring-offset-2"
-          : "ring-0 hover:ring-2 hover:ring-offset-2"
+          : "ring-0 hover:ring-2 hover:ring-offset-2",
+        // Subtle lift on hover for depth
+        "hover:-translate-y-0.5"
       )}
       style={{
         backgroundColor: area.color,
+        // Use design tokens for sizing
         minHeight: momentCard.minHeight,
         paddingLeft: momentCard.paddingX,
         paddingRight: momentCard.paddingX,

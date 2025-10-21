@@ -123,12 +123,15 @@ export function TimelineCell({
         // Height: flexible to fill available space, with flex layout to distribute cards
         "h-full flex flex-col min-h-[240px]",
         "p-2 rounded-md",
-        "transition-all",
+        // Smooth transitions for drag hover states
+        "transition-all duration-fast transition-smooth",
         "focus-within:outline-none shadow-inner",
+        // Subtle glassmorphism for depth
+        "glass-base backdrop-blur-sm",
         // Phase-based gradient background
         "md:p-2.5",
         phaseBackgrounds[phaseIndex],
-        // Drag hover states
+        // Drag hover states with smooth ring transitions
         isOver &&
           wouldAcceptDrop &&
           "ring-2 ring-slate-400 dark:ring-slate-300",
@@ -167,7 +170,7 @@ export function TimelineCell({
           <button
             type="button"
             onClick={handleEmptyCellClick}
-            className="flex items-center justify-center h-full w-full rounded-md transition-colors cursor-pointer group"
+            className="flex items-center justify-center h-full w-full rounded-md transition-all duration-fast transition-smooth cursor-pointer group"
             aria-label={`add moment to ${phaseLabel || phase}`}
           >
             <span className="text-slate-800 dark:text-slate-100 text-3xl opacity-70 md:opacity-0 group-hover:opacity-70 transition-opacity gap-2 flex items-center">

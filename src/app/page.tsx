@@ -138,7 +138,7 @@ export default function HomePage() {
 
         {/* biome-ignore lint/a11y/noStaticElementInteractions: Background click to clear selection */}
         <div
-          className="min-h-screen h-screen md:h-auto bg-background transition-colors flex flex-col overflow-hidden"
+          className="min-h-dvh h-dvh md:h-auto bg-background transition-colors flex flex-col overflow-hidden"
           onMouseDown={handleBackgroundClick}
         >
           {/* Main Content */}

@@ -32,12 +32,19 @@ export function EmptyMomentCard({
       type="button"
       className={cn(
         "min-w-[200px] w-full",
-        "rounded-lg transition-all cursor-pointer",
+        "rounded-lg cursor-pointer",
         "focus:outline-none",
+        // Glassmorphism with dashed border
         "border-2 border-dashed border-stone-300 dark:border-stone-700",
         "bg-stone-50/50 dark:bg-stone-900/50",
+        "glass-base backdrop-blur-sm",
+        // Elastic transitions for natural feel
+        "transition-all duration-medium transition-elastic",
+        // Enhanced hover states
         "hover:border-stone-400 dark:hover:border-stone-600",
         "hover:bg-stone-100/50 dark:hover:bg-stone-800/50",
+        "hover:-translate-y-0.5",
+        // Focus states
         "focus:ring-2 focus:ring-stone-400 focus:ring-offset-2 focus:ring-offset-stone-50 dark:focus:ring-offset-stone-900"
       )}
       style={{

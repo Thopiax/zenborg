@@ -58,7 +58,9 @@ const DialogContent = React.forwardRef<
         ref={ref}
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid w-full gap-4 border shadow-lg duration-200 overflow-y-auto",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid w-full gap-4 border shadow-lg overflow-y-auto",
+          // Elastic zoom animation for natural feel (400ms elastic ease)
+          "duration-medium transition-elastic",
           // Mobile landscape: full-screen, no rounded corners, no padding constraints
           "max-md:landscape:inset-0 max-md:landscape:h-dvh max-md:landscape:max-w-none max-md:landscape:max-h-none max-md:landscape:rounded-none max-md:landscape:p-6",
           // Desktop/tablet: centered modal with constraints

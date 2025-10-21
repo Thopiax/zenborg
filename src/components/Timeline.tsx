@@ -71,7 +71,8 @@ export function Timeline() {
           // Minimal padding
           "scroll-ml-2 md:scroll-ml-6",
           "gap-1.5 px-2 py-2 md:px-4 md:py-4",
-          "transition-opacity duration-300",
+          // Smooth opacity transitions for past days
+          "transition-opacity duration-medium transition-smooth",
           isToday
             ? "snap-start snap-always border border-slate-400/30 dark:ring-slate-300 rounded-md shadow-sm"
             : "snap-start",
@@ -141,8 +142,9 @@ export function Timeline() {
       className={cn(
         "w-full h-full flex overflow-x-scroll snap-x snap-mandatory scroll-smooth scrollbar-hide",
         // Minimal gap and padding on left/top, safe area padding on right
-        "gap-3 md:gap-4 px-2 md:px-4",
-        "transition-opacity duration-300",
+        "gap-3 md:gap-4 px-2 md:px-4 py-2 md:py-4",
+        // Smooth fade-in on load
+        "transition-opacity duration-slow transition-smooth",
         isReady ? "opacity-100" : "opacity-0"
       )}
       style={{

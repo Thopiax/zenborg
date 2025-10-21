@@ -35,14 +35,14 @@ export const touchTarget = {
 /**
  * Typography Scale
  * Optimized for readability and hierarchy
+ * Includes fluid sizing with clamp() for responsive design
  */
 export const typography = {
   // Moment names
   moment: {
-    size: "1.25rem", // 20px
+    size: "1.25rem", // 20px (fixed for now, consider fluid in Phase 4)
     weight: "600", // semibold
     lineHeight: "1.75rem", // 28px
-    family: "var(--font-mono)", // monospace for Vim feel
   },
 
   // Phase labels
@@ -76,6 +76,14 @@ export const typography = {
     lineHeight: "1rem", // 16px
     family: "inherit",
   },
+
+  // Fluid typography (Phase 4 - ready for implementation)
+  fluid: {
+    moment: "clamp(1.125rem, 2.5vw, 1.5rem)", // 18-24px
+    dayLabel: "clamp(1.5rem, 4vw, 2rem)", // 24-32px
+    phase: "clamp(0.875rem, 2vw, 1.125rem)", // 14-18px
+    hero: "clamp(2rem, 8svw, 5rem)", // For future compass view
+  },
 } as const;
 
 /**
@@ -102,14 +110,29 @@ export const borderWidth = {
 } as const;
 
 /**
- * Animation Durations
- * Smooth, but not sluggish
+ * Animation Durations & Easing
+ * Physics-based easing for natural, organic motion
  */
 export const animation = {
+  // Durations
   fast: "150ms", // Quick interactions (hover, focus)
-  normal: "250ms", // Standard transitions
-  slow: "350ms", // Deliberate animations (modals)
-  easing: "cubic-bezier(0.4, 0, 0.2, 1)", // ease-in-out
+  medium: "400ms", // Component transitions (expand, reveal)
+  slow: "600ms", // Page transitions (modals, views)
+
+  // Easing curves (physics-based)
+  elastic: "cubic-bezier(.25, 1, .5, 1)", // Settle with overshoot - for entering, hover, expand
+  smooth: "cubic-bezier(.4, 0, .2, 1)", // Standard ease - for exits, fades
+  bounce: "cubic-bezier(.68, -.55, .265, 1.55)", // Strong bounce - use sparingly
+
+  // CSS variable references
+  cssVars: {
+    durationFast: "var(--duration-fast)",
+    durationMedium: "var(--duration-medium)",
+    durationSlow: "var(--duration-slow)",
+    easeElastic: "var(--ease-elastic)",
+    easeSmooth: "var(--ease-smooth)",
+    easeBounce: "var(--ease-bounce)",
+  },
 } as const;
 
 /**
@@ -163,12 +186,52 @@ export const breakpoints = {
 
 /**
  * Shadow Styles
- * Minimal shadows for flat design
+ * Minimal shadows for flat design with wabi-sabi depth
  */
 export const shadows = {
   none: "shadow-none",
   subtle: "shadow-sm", // Very subtle elevation
   card: "shadow-md", // Card elevation (sparingly used)
+  // Glass shadows (for glassmorphism)
+  glass: "0 1px 2px oklch(0% 0 0 / 0.05), 0 4px 8px oklch(0% 0 0 / 0.1)",
+  glassHover: "0 4px 8px oklch(0% 0 0 / 0.1), 0 12px 24px oklch(0% 0 0 / 0.15)",
+} as const;
+
+/**
+ * Glassmorphism Utilities
+ * Material design patterns with backdrop blur and transparency
+ *
+ * Usage:
+ * - Apply glass-moment class for moment cards
+ * - Apply glass-overlay class for modals/drawers
+ * - Use CSS custom properties: --glass-blur, --glass-opacity-light, --glass-opacity-heavy
+ */
+export const glassmorphism = {
+  // Blur values
+  blur: "clamp(1px, 0.125em, 4px)", // Scales with font size
+  blurHeavy: "calc(clamp(1px, 0.125em, 4px) * 2)",
+
+  // Opacity values
+  opacityLight: 0.1,
+  opacityHeavy: 0.25,
+
+  // CSS variable references
+  cssVars: {
+    blur: "var(--glass-blur)",
+    opacityLight: "var(--glass-opacity-light)",
+    opacityHeavy: "var(--glass-opacity-heavy)",
+  },
+
+  // Helper: Create glassmorphism style object for area-colored backgrounds
+  momentCard: (areaColor: string) => ({
+    backdropFilter: "blur(var(--glass-blur))",
+    WebkitBackdropFilter: "blur(var(--glass-blur))",
+    background: `linear-gradient(135deg,
+      oklch(from ${areaColor} l c h / var(--glass-opacity-light)),
+      oklch(from ${areaColor} l c h / var(--glass-opacity-heavy))
+    )`,
+    boxShadow: shadows.glass,
+  }),
 } as const;
 
 /**

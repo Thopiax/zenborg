@@ -167,6 +167,24 @@
   --focus-normal: #a855f7; /* purple-500 */
   --focus-cell: #8b5cf6; /* violet-500 */
   --radius: 0.625rem;
+
+  /* Design System - Spacing */
+  --spacing: 0.25rem; /* 4px base unit */
+
+  /* Design System - Animation Easing (Physics-based) */
+  --ease-elastic: cubic-bezier(.25, 1, .5, 1); /* Settle with overshoot */
+  --ease-smooth: cubic-bezier(.4, 0, .2, 1); /* Standard ease */
+  --ease-bounce: cubic-bezier(.68, -.55, .265, 1.55); /* Strong bounce */
+
+  /* Design System - Animation Durations */
+  --duration-fast: 150ms; /* Micro-interactions */
+  --duration-medium: 400ms; /* Component transitions */
+  --duration-slow: 600ms; /* Page transitions */
+
+  /* Design System - Glassmorphism */
+  --glass-blur: clamp(1px, 0.125em, 4px);
+  --glass-opacity-light: 0.1;
+  --glass-opacity-heavy: 0.25;
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
   --card: oklch(1 0 0);
@@ -446,4 +464,104 @@ button {
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+/*---break---
+ */
+
+/**
+ * Zenborg Design System Utilities
+ * Physics-based animations and material design patterns
+ */
+
+/* Animation Easing Utilities */
+@layer utilities {
+  /* Elastic settle - for entering elements, hovers, expansions */
+  .transition-elastic {
+    transition-timing-function: var(--ease-elastic);
+  }
+
+  /* Smooth exit - for leaving elements, collapses */
+  .transition-smooth {
+    transition-timing-function: var(--ease-smooth);
+  }
+
+  /* Bounce - for playful interactions (use sparingly) */
+  .transition-bounce {
+    transition-timing-function: var(--ease-bounce);
+  }
+
+  /* Duration utilities */
+  .duration-fast {
+    transition-duration: var(--duration-fast);
+  }
+
+  .duration-medium {
+    transition-duration: var(--duration-medium);
+  }
+
+  .duration-slow {
+    transition-duration: var(--duration-slow);
+  }
+
+  /* Combined utilities for common patterns */
+  .transition-elastic-medium {
+    transition-timing-function: var(--ease-elastic);
+    transition-duration: var(--duration-medium);
+  }
+
+  .transition-smooth-fast {
+    transition-timing-function: var(--ease-smooth);
+    transition-duration: var(--duration-fast);
+  }
+}
+
+/* Glassmorphism Utilities */
+@layer utilities {
+  /* Base glass effect - subtle blur with transparent background */
+  .glass-base {
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+  }
+
+  /* Glass moment card - area-colored with gradient */
+  .glass-moment {
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    box-shadow:
+      0 1px 2px oklch(0% 0 0 / 0.05),
+      0 4px 8px oklch(0% 0 0 / 0.1);
+  }
+
+  /* Glass overlay - for modals, drawers */
+  .glass-overlay {
+    backdrop-filter: blur(calc(var(--glass-blur) * 2));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 2));
+    background: oklch(from var(--surface) l c h / var(--glass-opacity-heavy));
+  }
+
+  /* Performance safeguard - disable blur if motion is reduced */
+  @media (prefers-reduced-motion: reduce) {
+    .glass-base,
+    .glass-moment,
+    .glass-overlay {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  /* Fallback for browsers that don't support backdrop-filter */
+  @supports not (backdrop-filter: blur(1px)) {
+    .glass-base,
+    .glass-moment,
+    .glass-overlay {
+      background: var(--surface-alt);
+    }
+  }
+}
+
+/* Spacing Utilities - Based on 4px system */
+@layer utilities {
+  /* Use calc(var(--spacing) * N) for custom spacing */
+  /* Example: padding: calc(var(--spacing) * 4) = 16px */
 }
