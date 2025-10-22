@@ -63,14 +63,17 @@ export default function HomePage() {
     areaId: string,
     horizon: Horizon | null,
     phase: Phase | null,
-    createMore?: boolean
+    createMore?: boolean,
+    attitude?: import("@/domain/value-objects/Attitude").Attitude | null,
+    tags?: string[],
+    customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
   ) => {
     // The hook handlers will check the mode from the store
     const mode = momentFormState$.mode.peek();
     if (mode === "create") {
-      handleCreateMoment(name, areaId, horizon, phase, createMore);
+      handleCreateMoment(name, areaId, horizon, phase, createMore, attitude, tags, customMetric);
     } else {
-      handleSaveEdit(name, areaId, horizon, phase);
+      handleSaveEdit(name, areaId, horizon, phase, attitude, tags, customMetric);
     }
   };
 

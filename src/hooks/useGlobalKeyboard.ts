@@ -363,18 +363,23 @@ export function useGlobalKeyboard() {
     areaId: string,
     horizon: import("@/domain/entities/Moment").Horizon | null,
     phase: import("@/domain/value-objects/Phase").Phase | null,
-    createMore?: boolean
+    createMore?: boolean,
+    attitude?: import("@/domain/value-objects/Attitude").Attitude | null,
+    tags?: string[],
+    customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
   ) => {
-    // Create new moment
-    const result = createMoment(name, areaId);
+    // Create new moment with attitude, tags, and customMetric
+    const result = createMoment(
+      name,
+      areaId,
+      horizon,
+      attitude ?? null,
+      tags ?? [],
+      customMetric
+    );
     if (!("error" in result)) {
       // Create moment with history tracking
       createMomentWithHistory(result);
-
-      // Set horizon if provided
-      if (horizon) {
-        moments$[result.id].horizon.set(horizon);
-      }
 
       // If day/phase were prefilled from timeline click, allocate the moment
       const prefilledAllocation = momentFormState$.prefilledAllocation.peek();
@@ -416,7 +421,10 @@ export function useGlobalKeyboard() {
     name: string,
     areaId: string,
     horizon: Horizon | null,
-    phase: Phase | null
+    phase: Phase | null,
+    attitude?: import("@/domain/value-objects/Attitude").Attitude | null,
+    tags?: string[],
+    customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
   ) => {
     const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {
@@ -425,6 +433,9 @@ export function useGlobalKeyboard() {
         name,
         areaId,
         horizon,
+        attitude: attitude ?? null,
+        tags: tags ?? [],
+        customMetric,
         // Note: phase is not directly updated here, it's part of allocation
       });
     }

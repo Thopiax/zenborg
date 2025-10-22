@@ -6,8 +6,10 @@ import { Calendar, Clock, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
+import { AttitudeSelector } from "@/components/AttitudeSelector";
 import { HorizonSelector } from "@/components/HorizonSelector";
 import { PhaseSelector } from "@/components/PhaseSelector";
+import { TagInput } from "@/components/TagInput";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { type Horizon, validateMomentName } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { Attitude } from "@/domain/value-objects/Attitude";
 import {
   activeAreas$,
   areas$,
@@ -35,7 +38,10 @@ interface MomentFormDialogProps {
     areaId: string,
     horizon: Horizon | null,
     phase: Phase | null,
-    createMore?: boolean
+    createMore?: boolean,
+    attitude?: Attitude | null,
+    tags?: string[],
+    customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
   ) => void;
   /** For edit mode: called when user confirms deletion */
   onDelete?: () => void;
@@ -71,6 +77,9 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     phase,
     showCreateMore,
     isAllocated,
+    attitude,
+    tags,
+    customMetric,
   } = formState;
 
   // Use activeAreas$ which filters out archived areas and sorts by order
@@ -82,6 +91,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
   const [isHorizonSelectorOpen, setIsHorizonSelectorOpen] = useState(false);
   const [isPhaseSelectorOpen, setIsPhaseSelectorOpen] = useState(false);
+  const [isAttitudeSelectorOpen, setIsAttitudeSelectorOpen] = useState(false);
   const [createMore, setCreateMore] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -97,6 +107,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     setIsAreaSelectorOpen(false);
     setIsHorizonSelectorOpen(false);
     setIsPhaseSelectorOpen(false);
+    setIsAttitudeSelectorOpen(false);
   }, [open]);
 
   // Auto-focus and select input
@@ -111,7 +122,10 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
   // Disable form hotkeys when any selector is open to avoid conflicts
   const formHotkeysEnabled =
-    !isAreaSelectorOpen && !isHorizonSelectorOpen && !isPhaseSelectorOpen;
+    !isAreaSelectorOpen &&
+    !isHorizonSelectorOpen &&
+    !isPhaseSelectorOpen &&
+    !isAttitudeSelectorOpen;
 
   // A - open area selector
   useHotkeys(
@@ -139,6 +153,16 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     (e) => {
       e.preventDefault();
       setIsPhaseSelectorOpen(true);
+    },
+    { enabled: formHotkeysEnabled && open }
+  );
+
+  // Shift+A - open attitude selector
+  useHotkeys(
+    "shift+a",
+    (e) => {
+      e.preventDefault();
+      setIsAttitudeSelectorOpen(true);
     },
     { enabled: formHotkeysEnabled && open }
   );
@@ -190,8 +214,17 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       // If "Create more" is enabled, pass it to parent
       const shouldCreateMore = mode === "create" && createMore;
 
-      // Call onSave with cycle, phase, and createMore flag
-      onSave(name.trim(), selectedArea.id, horizon, phase, shouldCreateMore);
+      // Call onSave with all form fields including attitude, tags, and customMetric
+      onSave(
+        name.trim(),
+        selectedArea.id,
+        horizon,
+        phase,
+        shouldCreateMore,
+        attitude,
+        tags,
+        customMetric
+      );
 
       // If "Create more" is enabled, reset form immediately
       // Parent will keep modal open, but preserve area and phase selection
@@ -404,6 +437,58 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                     }
                   />
                 )}
+              </div>
+
+              {/* Attitude Selector */}
+              <AttitudeSelector
+                open={isAttitudeSelectorOpen}
+                selectedAttitude={attitude}
+                onSelectAttitude={(newAttitude) => {
+                  momentFormState$.attitude.set(newAttitude);
+                  // Clear custom metric if attitude is not PUSHING
+                  if (newAttitude !== Attitude.PUSHING) {
+                    momentFormState$.customMetric.set(undefined);
+                  }
+                }}
+                onClose={() => setIsAttitudeSelectorOpen(false)}
+                onOpen={() => setIsAttitudeSelectorOpen(true)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                  >
+                    <span className="text-sm flex-1 text-left truncate">
+                      {attitude ? (
+                        <>
+                          • {attitude.charAt(0) + attitude.slice(1).toLowerCase()}
+                        </>
+                      ) : (
+                        <span className="text-stone-400 dark:text-stone-500">
+                          pure presence
+                        </span>
+                      )}
+                    </span>
+                    <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                      ⇧A
+                    </kbd>
+                  </button>
+                }
+              />
+
+              {/* Tags Input */}
+              <div className="border border-stone-200 dark:border-stone-700 rounded-lg p-4">
+                <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
+                  Tags (optional)
+                </p>
+                <TagInput
+                  tags={tags}
+                  onTagsChange={(newTags) => {
+                    momentFormState$.tags.set(newTags);
+                  }}
+                  placeholder="Add tag..."
+                  maxTags={10}
+                />
               </div>
             </div>
           ) : (

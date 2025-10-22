@@ -118,7 +118,6 @@ export function AttitudeSelector({
       onOpen={onOpen}
       trigger={trigger}
       collisionBoundary={collisionBoundary}
-      placeholder="Choose attitude..."
     />
   );
 }
