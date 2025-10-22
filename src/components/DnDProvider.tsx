@@ -588,6 +588,25 @@ export function DnDProvider({ children }: DnDProviderProps) {
       );
       moments$[momentId].horizon.set(newHorizon as Horizon | null);
       moments$[momentId].updatedAt.set(new Date().toISOString());
+    } else if (groupBy === "phase") {
+      // Extract phase value from column ID (format: "phase-MORNING", "phase-AFTERNOON", etc.)
+      const phaseValue = columnId.replace("phase-", "");
+      const newPhase = phaseValue === "unset" ? null : phaseValue;
+
+      // Don't update if already has this phase
+      if (moment.phase === newPhase) {
+        if (shouldUnallocate) {
+          endBatch("Unallocated moment to drawing board");
+        }
+        return;
+      }
+
+      // Update moment's phase
+      console.log(
+        `Setting moment ${momentId} phase to ${newPhase || "unset"}`
+      );
+      moments$[momentId].phase.set(newPhase as Phase | null);
+      moments$[momentId].updatedAt.set(new Date().toISOString());
     } else {
       // Other grouping modes (created) are read-only
       console.log("Ignoring drop - grouping mode is read-only:", groupBy);

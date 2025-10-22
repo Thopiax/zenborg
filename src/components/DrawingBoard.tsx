@@ -13,6 +13,7 @@ import type { Moment } from "@/domain/entities/Moment";
 import {
   activeAreas$,
   areas$,
+  phaseConfigs$,
   unallocatedMoments$,
 } from "@/infrastructure/state/store";
 import {
@@ -21,7 +22,7 @@ import {
   drawingBoardSortMode$,
   isDuplicateMode$,
 } from "@/infrastructure/state/ui-store";
-import { groupByArea, groupByCreated, groupByHorizon } from "@/lib/grouping";
+import { groupByArea, groupByCreated, groupByHorizon, groupByPhase } from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
 import { DrawingBoardColumn } from "./DrawingBoardColumn";
@@ -51,6 +52,7 @@ export function DrawingBoard({
   const unallocated = use$(unallocatedMoments$);
   const allAreas = use$(areas$); // All areas including archived (for moment card display)
   const activeAreasArray = use$(activeAreas$); // Only active areas (for grouping columns)
+  const phaseConfigsRecord = use$(phaseConfigs$); // Phase configurations
   const groupBy = use$(drawingBoardGroupBy$);
   const sortMode = use$(drawingBoardSortMode$);
   const { handleOpenCreateModal } = useMomentManager();
@@ -91,12 +93,15 @@ export function DrawingBoard({
         return groupByArea(unallocated, activeAreasRecord);
       case "horizon":
         return groupByHorizon(unallocated);
+      case "phase":
+        // Convert phaseConfigs record to array for groupByPhase
+        return groupByPhase(unallocated, Object.values(phaseConfigsRecord));
       case "none":
         return null;
       default:
         return null;
     }
-  }, [groupBy, unallocated, activeAreasRecord]);
+  }, [groupBy, unallocated, activeAreasRecord, phaseConfigsRecord]);
 
   // Sort unallocated moments for flat view
   const sortedUnallocated = useMemo(() => {
@@ -116,9 +121,9 @@ export function DrawingBoard({
     });
   }, [unallocated, sortMode]);
 
-  const handleCreateFromColumn = (areaId?: string, cycle?: string) => {
+  const handleCreateFromColumn = (areaId?: string, cycle?: string, phase?: string) => {
     // Open create modal with pre-filled properties
-    handleOpenCreateModal(undefined, undefined, areaId, cycle);
+    handleOpenCreateModal(undefined, phase, areaId, cycle);
   };
 
   const label = "Planning (P)";
