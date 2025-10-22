@@ -15,6 +15,7 @@ import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import {
   areas$,
@@ -121,7 +122,7 @@ export function TimelineCell({
       ref={setNodeRef}
       className={cn(
         // Height: flexible to fill available space, with flex layout to distribute cards
-        "h-full flex flex-col min-h-[240px]",
+        "h-full flex flex-col min-h-[240px] relative",
         "p-2 rounded-md",
         // Smooth transitions for drag hover states
         "transition-all duration-fast transition-smooth",
@@ -142,7 +143,15 @@ export function TimelineCell({
       aria-live={isFull ? "polite" : "off"}
       aria-atomic="true"
     >
-      <div className="flex-1 flex flex-col justify-start">
+      {/* Phase Icon - Background element at bottom with low z-index */}
+      <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center z-0 pointer-events-none">
+        <PhaseIcon
+          phase={phase}
+          className="opacity-50 text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5"
+        />
+      </div>
+
+      <div className="flex-1 flex flex-col justify-start relative z-10">
         {cellMoments.length > 0 ? (
           <SortableContext
             items={cellMoments.map((m) => m.id)}
