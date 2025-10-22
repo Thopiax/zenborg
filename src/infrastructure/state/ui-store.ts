@@ -39,7 +39,7 @@ export const isDuplicateMode$ = observable<boolean>(false);
  * Determines how unallocated moments are organized
  * Persisted to localStorage
  */
-export type DrawingBoardGroupBy = "none" | "area" | "created" | "horizon";
+export type DrawingBoardGroupBy = "none" | "area" | "created" | "horizon" | "phase";
 
 export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("area");
 
