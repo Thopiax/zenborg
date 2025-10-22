@@ -50,6 +50,16 @@ export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("area");
  */
 export const drawingBoardExpanded$ = observable<boolean>(false);
 
+/**
+ * Drawing board sorting mode
+ * - "auto": Moments are sorted by order (primary) and createdAt (secondary)
+ * - "manual": Moments are sorted only by user's drag-and-drop reordering
+ * Persisted to localStorage
+ */
+export type DrawingBoardSortMode = "auto" | "manual";
+
+export const drawingBoardSortMode$ = observable<DrawingBoardSortMode>("auto");
+
 // ============================================================================
 // Focus State (for keyboard navigation)
 // ============================================================================
@@ -228,6 +238,57 @@ export function closeArchiveAreaDialog() {
     areaId: null,
     areaName: null,
   });
+}
+
+/**
+ * Sorting mode conflict dialog state
+ * Shown when user tries to manually reorder moments while in auto-sort mode
+ * Ephemeral - not persisted
+ */
+export interface SortModeConflictDialogState {
+  open: boolean;
+  pendingReorder: {
+    activeId: string;
+    overId: string;
+    columnId?: string;
+  } | null;
+}
+
+export const sortModeConflictDialogState$ = observable<SortModeConflictDialogState>({
+  open: false,
+  pendingReorder: null,
+});
+
+/**
+ * Helper function to open sort mode conflict dialog
+ */
+export function openSortModeConflictDialog(activeId: string, overId: string, columnId?: string) {
+  sortModeConflictDialogState$.set({
+    open: true,
+    pendingReorder: {
+      activeId,
+      overId,
+      columnId,
+    },
+  });
+}
+
+/**
+ * Helper function to close sort mode conflict dialog
+ */
+export function closeSortModeConflictDialog() {
+  sortModeConflictDialogState$.set({
+    open: false,
+    pendingReorder: null,
+  });
+}
+
+/**
+ * Helper function to switch to manual sort mode and apply pending reorder
+ */
+export function switchToManualSort() {
+  drawingBoardSortMode$.set("manual");
+  closeSortModeConflictDialog();
 }
 
 // ============================================================================

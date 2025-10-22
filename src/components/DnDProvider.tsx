@@ -35,7 +35,11 @@ import {
 } from "@/infrastructure/state/history-middleware";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, moments$ } from "@/infrastructure/state/store";
-import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
+import {
+  isDuplicateMode$,
+  drawingBoardSortMode$,
+  openSortModeConflictDialog,
+} from "@/infrastructure/state/ui-store";
 import {
   calculateNextOrder,
   canDropInCell,
@@ -232,6 +236,21 @@ export function DnDProvider({ children }: DnDProviderProps) {
         return;
       }
 
+      // Reorder within drawing board (both moments are unallocated)
+      if (
+        !activeMoment.day &&
+        !activeMoment.phase &&
+        !overMoment.day &&
+        !overMoment.phase
+      ) {
+        console.log("[DnD] Reordering within drawing board");
+        handleDrawingBoardReorder(
+          active.id as string,
+          over.id as string
+        );
+        return;
+      }
+
       // Moving from timeline to drawing board (dropping on an unallocated moment)
       if (
         dragData?.sourceType === "timeline" &&
@@ -319,6 +338,55 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     // Apply with history tracking
     reorderMomentsWithHistory(day, phase, reorders);
+  }
+
+  function handleDrawingBoardReorder(activeId: string, overId: string) {
+    // Check if we're in auto-sort mode
+    const sortMode = drawingBoardSortMode$.peek();
+
+    if (sortMode === "auto") {
+      // Show dialog asking if user wants to switch to manual mode
+      console.log("[DnD] Auto-sort mode active, showing conflict dialog");
+      openSortModeConflictDialog(activeId, overId);
+      return;
+    }
+
+    // We're in manual mode, proceed with reordering
+    console.log("[DnD] Manual sort mode, reordering drawing board moments");
+
+    // Get all unallocated moments, sorted by current order
+    const unallocatedMoments = Object.values(allMoments)
+      .filter((m) => !m.day && !m.phase)
+      .sort((a, b) => a.order - b.order);
+
+    const oldIndex = unallocatedMoments.findIndex((m) => m.id === activeId);
+    const newIndex = unallocatedMoments.findIndex((m) => m.id === overId);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      console.warn("[DnD] Could not find moments in unallocated list");
+      return;
+    }
+
+    // Reorder the array
+    const reordered = [...unallocatedMoments];
+    const [movedItem] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, movedItem);
+
+    // Update the order property for all unallocated moments
+    // Use batch operation for performance
+    startBatch();
+    reordered.forEach((moment, index) => {
+      if (moment.order !== index) {
+        moments$[moment.id].order.set(index);
+        moments$[moment.id].updatedAt.set(new Date().toISOString());
+      }
+    });
+    endBatch("Reordered drawing board moments");
+
+    console.log(
+      "[DnD] Reordered drawing board:",
+      reordered.map((m) => m.name)
+    );
   }
 
   function handleDropOnTimelineCell(
