@@ -176,6 +176,26 @@ export function DrawingBoardColumn({
         strategy={verticalListSortingStrategy}
       >
         <div className="flex flex-col gap-3 p-4 min-h-[300px] pb-48">
+          {/* Empty state for area grouping when no moments */}
+          {groupBy === "area" && group.moments.length === 0 && (
+            <div className="flex flex-col items-center justify-center min-h-[240px] gap-3 py-8">
+              <div className="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
+                <span className="text-2xl" aria-hidden="true">
+                  {group.emoji || "📝"}
+                </span>
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-medium text-stone-600 dark:text-stone-400">
+                  No {group.groupLabel} moments yet
+                </p>
+                <p className="text-xs text-stone-500 dark:text-stone-500">
+                  Click below to add your first
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Existing moments */}
           {group.moments.map((moment) => {
             const area = allAreas[moment.areaId];
             if (!area) return null;
@@ -201,7 +221,7 @@ export function DrawingBoardColumn({
             />
           )}
 
-          {/* Show message if no creation allowed */}
+          {/* Show message if no creation allowed (for read-only groupings) */}
           {!canCreateFromColumn && group.moments.length === 0 && (
             <div className="flex items-center justify-center min-h-[200px]">
               <p className="text-xs text-stone-400 font-mono text-center">
