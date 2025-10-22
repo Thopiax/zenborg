@@ -7,13 +7,6 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
@@ -23,7 +16,6 @@ import {
   unallocatedMoments$,
 } from "@/infrastructure/state/store";
 import {
-  type DrawingBoardGroupBy,
   drawingBoardExpanded$,
   drawingBoardGroupBy$,
   drawingBoardSortMode$,
@@ -33,6 +25,7 @@ import { groupByArea, groupByCreated, groupByHorizon } from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
 import { DrawingBoardColumn } from "./DrawingBoardColumn";
+import { DrawingBoardToolbar } from "./DrawingBoardToolbar";
 import { MomentCard } from "./MomentCard";
 
 interface DrawingBoardProps {
@@ -120,10 +113,6 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
     });
   }, [unallocated, sortMode]);
 
-  const handleGroupByChange = (value: DrawingBoardGroupBy) => {
-    drawingBoardGroupBy$.set(value);
-  };
-
   const handleCreateFromColumn = (areaId?: string, cycle?: string) => {
     // Open create modal with pre-filled properties
     handleOpenCreateModal(undefined, undefined, areaId, cycle);
@@ -166,44 +155,8 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
         )}
       >
         <div className="overflow-hidden">
-        {/* Group by selector and sort mode toggle */}
-        <div className="flex items-center gap-4 px-6 pt-6 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-stone-500 font-mono">Group by:</span>
-            <Select value={groupBy} onValueChange={handleGroupByChange}>
-              <SelectTrigger className="h-7 w-[140px] text-xs font-mono">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                <SelectItem value="area">Area</SelectItem>
-                <SelectItem value="created">Created</SelectItem>
-                <SelectItem value="horizon">Horizon</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Sort mode toggle (only shown for ungrouped view) */}
-          {groupBy === "none" && (
-            <button
-              type="button"
-              onClick={() =>
-                drawingBoardSortMode$.set(sortMode === "auto" ? "manual" : "auto")
-              }
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 transition-colors"
-              title={
-                sortMode === "auto"
-                  ? "Click to enable manual sorting"
-                  : "Click to enable automatic sorting"
-              }
-            >
-              <span className="text-stone-600 dark:text-stone-400">Sort:</span>
-              <span className="font-semibold text-stone-900 dark:text-stone-100">
-                {sortMode === "auto" ? "Auto" : "Manual"}
-              </span>
-            </button>
-          )}
-        </div>
+        {/* Toolbar with grouping and sorting controls */}
+        <DrawingBoardToolbar />
 
         {/* Grouped or Flat Layout */}
         {groups ? (
