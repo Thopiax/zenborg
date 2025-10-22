@@ -67,7 +67,7 @@ export function CircularPhaseSlider({
   const [draggingPointer, setDraggingPointer] = useState<number | null>(null);
 
   // Constants
-  const SIZE = 400;
+  const SIZE = 480; // Increased from 400 to accommodate labels
   const CENTER = SIZE / 2;
   const OUTER_RADIUS = 160;
   const INNER_RADIUS = 115; // Slightly thinner donut (45px vs 50px)
@@ -166,6 +166,42 @@ export function CircularPhaseSlider({
     ].join(" ");
   };
 
+  // Validate that hour is strictly increasing from previous phase
+  const isValidHour = (pointerIndex: number, newHour: number): boolean => {
+    const currentHours = [...pointerHours];
+    currentHours[pointerIndex] = newHour;
+
+    // Check strict ordering: Night(0) < Morning(1) < Afternoon(2) < Evening(3) < Night(0)+24
+    // Night wraps around, so we need special handling
+    const [night, morning, afternoon, evening] = currentHours;
+
+    // Morning must be after night (considering night might be 22-23 and morning 0-11)
+    // Night is typically in evening hours (18-23), morning in early hours (0-11)
+    if (morning <= night && night >= 12) {
+      // Night is in PM, morning is in AM - this is valid
+    } else if (morning <= night && night < 12) {
+      // Both in AM or both in PM with morning before night - invalid
+      return false;
+    }
+
+    // Afternoon must be strictly after morning
+    if (afternoon <= morning) {
+      return false;
+    }
+
+    // Evening must be strictly after afternoon
+    if (evening <= afternoon) {
+      return false;
+    }
+
+    // Night must be strictly after evening (both should be in PM hours typically)
+    if (night <= evening && evening < 18) {
+      return false;
+    }
+
+    return true;
+  };
+
   // Handle pointer drag
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handlePointerMove = useCallback(
@@ -185,6 +221,11 @@ export function CircularPhaseSlider({
 
       const angle = (Math.atan2(y, x) * 180) / Math.PI;
       const hour = angleToHour(angle);
+
+      // Validate strictly increasing constraint
+      if (!isValidHour(draggingPointer, hour)) {
+        return; // Reject invalid hour
+      }
 
       // Update the appropriate phase based on which pointer is being dragged
       const phaseMap = [nightPhase, morningPhase, afternoonPhase, eveningPhase];
@@ -218,6 +259,7 @@ export function CircularPhaseSlider({
       afternoonPhase,
       eveningPhase,
       onUpdatePhase,
+      pointerHours,
     ]
   );
 
@@ -380,6 +422,9 @@ export function CircularPhaseSlider({
           const iconPos = polarToCartesian(midAngle, midRadius);
           const IconComponent = phases[index].Icon;
 
+          // Use darker color for better contrast (night phase gets lighter color)
+          const iconColor = index === 0 ? "#e7e5e4" : "#44403c"; // night: stone-200, others: stone-700
+
           return (
             <foreignObject
               key={`icon-${index}`}
@@ -391,8 +436,8 @@ export function CircularPhaseSlider({
             >
               <div className="flex items-center justify-center w-full h-full">
                 <IconComponent
-                  className="w-6 h-6 opacity-60"
-                  style={{ color: COLORS.text.light }}
+                  className="w-6 h-6"
+                  style={{ color: iconColor }}
                 />
               </div>
             </foreignObject>
@@ -478,18 +523,31 @@ export function CircularPhaseSlider({
                 pointerEvents="none"
               />
 
-              {/* Hour label */}
-              <text
-                x={labelPos.x}
-                y={labelPos.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="text-sm font-mono font-medium"
-                fill={COLORS.text.light}
-                pointerEvents="none"
-              >
-                {formatHour(hour)}
-              </text>
+              {/* Hour label with background */}
+              <g pointerEvents="none">
+                {/* Label background for better visibility */}
+                <rect
+                  x={labelPos.x - 24}
+                  y={labelPos.y - 10}
+                  width={48}
+                  height={20}
+                  rx={4}
+                  fill={COLORS.ui.background}
+                  stroke={COLORS.ui.borderLight}
+                  strokeWidth={0.5}
+                  opacity={0.95}
+                />
+                <text
+                  x={labelPos.x}
+                  y={labelPos.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="text-sm font-mono font-medium"
+                  fill={COLORS.text.light}
+                >
+                  {formatHour(hour)}
+                </text>
+              </g>
             </g>
           );
         })}
