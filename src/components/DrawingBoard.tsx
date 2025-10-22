@@ -43,7 +43,10 @@ interface DrawingBoardProps {
  * - Supports drag and drop to/from timeline
  * - Toolbar with grouping and area management
  */
-export function DrawingBoard({ onEditArea, onManageAreas }: DrawingBoardProps = {}) {
+export function DrawingBoard({
+  onEditArea,
+  onManageAreas,
+}: DrawingBoardProps = {}) {
   const isExpanded = use$(drawingBoardExpanded$);
   const unallocated = use$(unallocatedMoments$);
   const allAreas = use$(areas$); // All areas including archived (for moment card display)
@@ -86,8 +89,6 @@ export function DrawingBoard({ onEditArea, onManageAreas }: DrawingBoardProps = 
       case "area":
         // Use activeAreasRecord so only active areas get columns
         return groupByArea(unallocated, activeAreasRecord);
-      case "created":
-        return groupByCreated(unallocated);
       case "horizon":
         return groupByHorizon(unallocated);
       case "none":
@@ -134,9 +135,7 @@ export function DrawingBoard({ onEditArea, onManageAreas }: DrawingBoardProps = 
         onClick={() => drawingBoardExpanded$.set(!isExpanded)}
         className="flex w-full items-center justify-between px-6 py-3 hover:bg-stone-100 dark:hover:bg-stone-800 transition-all duration-fast transition-smooth"
         style={{
-          borderBottom: isExpanded
-            ? "1px solid var(--border)"
-            : "none",
+          borderBottom: isExpanded ? "1px solid var(--border)" : "none",
         }}
       >
         <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 uppercase tracking-wider font-semibold">
@@ -157,84 +156,84 @@ export function DrawingBoard({ onEditArea, onManageAreas }: DrawingBoardProps = 
         )}
       >
         <div className="overflow-hidden">
-        {/* Toolbar with grouping and area management */}
-        <DrawingBoardToolbar onManageAreas={onManageAreas} />
+          {/* Toolbar with grouping and area management */}
+          <DrawingBoardToolbar onManageAreas={onManageAreas} />
 
-        {/* Grouped or Flat Layout */}
-        {groups ? (
-          <div>
-            <div className="flex gap-4 overflow-x-auto px-6 py-8 snap-x snap-mandatory scroll-smooth">
-              {groups.map((group) => (
-                <DrawingBoardColumn
-                  key={group.groupId}
-                  group={group}
-                  groupBy={groupBy}
-                  onCreateMoment={handleCreateFromColumn}
-                  onEditArea={onEditArea}
-                />
-              ))}
+          {/* Grouped or Flat Layout */}
+          {groups ? (
+            <div>
+              <div className="flex gap-4 overflow-x-auto px-6 py-8 snap-x snap-mandatory scroll-smooth">
+                {groups.map((group) => (
+                  <DrawingBoardColumn
+                    key={group.groupId}
+                    group={group}
+                    groupBy={groupBy}
+                    onCreateMoment={handleCreateFromColumn}
+                    onEditArea={onEditArea}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : (
-          /* Flat Layout (no grouping) */
-          <div
-            ref={setNodeRef}
-            className={cn(
-              "bg-white dark:bg-stone-950 p-8",
-              // Smooth transitions for drag-over states
-              "transition-all duration-fast transition-smooth relative",
-              "min-h-[400px] w-full",
-              isOver && "bg-stone-100/30 dark:bg-stone-800/30"
-            )}
-          >
-            {/* Drop Zone Indicator - Only visible when dragging over */}
-            {isOver && (
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="border-4 border-dashed border-stone-400 dark:border-stone-500 rounded-xl absolute inset-4 bg-stone-100/20 dark:bg-stone-800/20 animate-pulse">
-                  <div className="flex items-center justify-center h-full">
-                    <div className="bg-stone-800/90 dark:bg-stone-200/90 text-white dark:text-stone-900 px-6 py-3 rounded-lg shadow-lg">
-                      <p className="text-lg font-bold font-mono">
-                        Drop here to unallocate
-                      </p>
+          ) : (
+            /* Flat Layout (no grouping) */
+            <div
+              ref={setNodeRef}
+              className={cn(
+                "bg-white dark:bg-stone-950 p-8",
+                // Smooth transitions for drag-over states
+                "transition-all duration-fast transition-smooth relative",
+                "min-h-[400px] w-full",
+                isOver && "bg-stone-100/30 dark:bg-stone-800/30"
+              )}
+            >
+              {/* Drop Zone Indicator - Only visible when dragging over */}
+              {isOver && (
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  <div className="border-4 border-dashed border-stone-400 dark:border-stone-500 rounded-xl absolute inset-4 bg-stone-100/20 dark:bg-stone-800/20 animate-pulse">
+                    <div className="flex items-center justify-center h-full">
+                      <div className="bg-stone-800/90 dark:bg-stone-200/90 text-white dark:text-stone-900 px-6 py-3 rounded-lg shadow-lg">
+                        <p className="text-lg font-bold font-mono">
+                          Drop here to unallocate
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Unallocated moments */}
-            {sortedUnallocated.length === 0 ? (
-              <div className="min-h-[350px] flex flex-col items-center justify-center gap-3">
-                <p className="text-stone-400 text-sm font-mono text-center">
-                  No unallocated moments yet
-                </p>
-                <p className="text-xs text-stone-500 font-mono">
-                  Press{" "}
-                  <kbd className="px-1.5 py-0.5 rounded bg-stone-200 dark:bg-stone-700">
-                    N
-                  </kbd>{" "}
-                  to create your first moment
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-3 items-start content-start min-h-[350px]">
-                {sortedUnallocated.map((moment) => {
-                  const area = allAreas[moment.areaId];
-                  if (!area) return null;
+              {/* Unallocated moments */}
+              {sortedUnallocated.length === 0 ? (
+                <div className="min-h-[350px] flex flex-col items-center justify-center gap-3">
+                  <p className="text-stone-400 text-sm font-mono text-center">
+                    No unallocated moments yet
+                  </p>
+                  <p className="text-xs text-stone-500 font-mono">
+                    Press{" "}
+                    <kbd className="px-1.5 py-0.5 rounded bg-stone-200 dark:bg-stone-700">
+                      N
+                    </kbd>{" "}
+                    to create your first moment
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-3 items-start content-start min-h-[350px]">
+                  {sortedUnallocated.map((moment) => {
+                    const area = allAreas[moment.areaId];
+                    if (!area) return null;
 
-                  return (
-                    <DraggableMomentCard
-                      key={moment.id}
-                      moment={moment}
-                      area={area}
-                      contextMomentIds={sortedUnallocated.map((m) => m.id)}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+                    return (
+                      <DraggableMomentCard
+                        key={moment.id}
+                        moment={moment}
+                        area={area}
+                        contextMomentIds={sortedUnallocated.map((m) => m.id)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
