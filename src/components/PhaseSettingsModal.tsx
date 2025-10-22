@@ -88,7 +88,7 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full max-w-full max-h-full sm:max-w-3xl sm:max-h-[85dvh] overflow-y-auto rounded-none sm:rounded-lg p-4 sm:p-6">
+      <DialogContent className="w-full h-full max-w-full max-h-full sm:max-w-3xl sm:max-h-[85dvh] overflow-y-auto rounded-none sm:rounded-lg p-0 gap-0">
         <DialogHeader>
           <DialogTitle>Phase Settings</DialogTitle>
           <DialogDescription>
@@ -96,7 +96,7 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-8 py-4">
+        <div className="space-y-8 px-6 py-6">
           {/* Circular Timeline Slider */}
           <div className="space-y-6">
             {/* <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 text-center">
@@ -222,7 +222,7 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
         </div>
 
         {/* Info */}
-        <div className="pt-4 border-t border-stone-200 dark:border-stone-700">
+        <div className="px-6 pt-4 pb-6 border-t border-stone-200 dark:border-stone-700">
           <p className="text-xs text-stone-500 dark:text-stone-400">
             Adjust the timeline sliders to set your daily rhythm. Phase
             boundaries automatically update adjacent phases.
