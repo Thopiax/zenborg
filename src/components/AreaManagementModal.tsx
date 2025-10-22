@@ -167,7 +167,7 @@ export const AreaManagementModal = observer(function AreaManagementModal({
           <DialogTitle>Manage Areas</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 px-6">
           {/* Create New Area Button */}
           {!newAreaDraft && (
             <button
@@ -291,7 +291,7 @@ export const AreaManagementModal = observer(function AreaManagementModal({
         </div>
 
         {/* Footer */}
-        <div className="pt-4 border-t border-stone-200 dark:border-stone-700">
+        <div className="px-6 pt-4 pb-6 border-t border-stone-200 dark:border-stone-700">
           <p className="text-sm text-stone-500 dark:text-stone-500">
             {activeAreas.length} active {activeAreas.length === 1 ? "area" : "areas"}
             {archivedAreas.length > 0 && `, ${archivedAreas.length} archived`}

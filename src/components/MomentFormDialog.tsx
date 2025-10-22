@@ -262,8 +262,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         onEscapeKeyDown={preventCloseOnEscape}
       >
         {/* Header */}
-        <DialogHeader className="px-6 py-4 border-b border-border">
-          <DialogTitle className="text-sm font-medium text-text-secondary">
+        <DialogHeader className="border-b border-stone-200 dark:border-stone-700">
+          <DialogTitle className="text-sm font-medium text-stone-600 dark:text-stone-400">
             {mode === "create" ? "New moment" : "Edit moment"}
           </DialogTitle>
         </DialogHeader>
@@ -276,7 +276,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
             type="text"
             value={name}
             onChange={(e) => momentFormState$.name.set(e.target.value)}
-            className="w-full text-4xl font-bold bg-transparent outline-none text-text-primary placeholder:text-text-tertiary mb-8"
+            className="w-full text-4xl font-bold bg-transparent outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 mb-8"
             placeholder="Moment name..."
             aria-label="Moment name"
             aria-invalid={!validation.valid}
@@ -431,7 +431,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-6 py-4 bg-surface-alt/50 border-t border-border flex-row items-center justify-between backdrop-blur-sm">
+        <DialogFooter className="bg-stone-100/50 dark:bg-stone-800/50 border-t border-stone-200 dark:border-stone-700 flex-row items-center justify-between backdrop-blur-sm">
           {/* Left side: Create more checkbox OR Delete button */}
           {showCreateMore && mode === "create" ? (
             <label className="flex items-center gap-2 cursor-pointer">
@@ -439,9 +439,9 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 type="checkbox"
                 checked={createMore}
                 onChange={(e) => setCreateMore(e.target.checked)}
-                className="w-4 h-4 rounded border-border bg-surface-alt text-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
+                className="w-4 h-4 rounded border-stone-300 dark:border-stone-600 bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-500 focus:ring-offset-0"
               />
-              <span className="text-sm text-text-secondary">Create more</span>
+              <span className="text-sm text-stone-600 dark:text-stone-400">Create more</span>
             </label>
           ) : mode === "edit" && onDelete ? (
             <button
@@ -470,7 +470,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
               "px-5 py-2 rounded-lg font-medium transition-all text-white",
               canSave
                 ? "hover:opacity-90 active:scale-95"
-                : "bg-border text-text-tertiary cursor-not-allowed"
+                : "bg-stone-300 dark:bg-stone-700 text-stone-500 dark:text-stone-400 cursor-not-allowed"
             )}
             style={
               canSave && selectedArea

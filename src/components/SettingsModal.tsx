@@ -147,7 +147,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
         </DialogHeader>
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 border-b border-stone-200 dark:border-stone-700">
+        <div className="flex gap-1 border-b border-stone-200 dark:border-stone-700 px-6">
           <button
             type="button"
             onClick={() => setActiveTab("data")}
@@ -184,7 +184,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
         </div>
 
         {/* Tab Content */}
-        <div className="py-4">
+        <div className="px-6 py-4">
           {/* My Data Tab */}
           {activeTab === "data" && (
             <div className="space-y-6">
