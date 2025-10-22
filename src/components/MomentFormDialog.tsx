@@ -46,17 +46,19 @@ interface MomentFormDialogProps {
  *
  * Features:
  * - Name input with validation (1-3 words)
- * - Area selection: A (opens selector), Tab (cycles areas), 1-9 (quick select)
- * - Phase selection: P (opens selector), M/A/E (Morning/Afternoon/Evening)
- * - Cycle selection: C (opens selector), 1-7 (quick select)
+ * - Area selection: A (opens selector)
+ * - Phase selection: P (opens selector)
+ * - Horizon selection: H (opens selector, hidden for allocated moments)
  * - Enter to save, Escape to cancel
  * - Optional "Create more" toggle for batch creation
  *
- * Keyboard Shortcuts:
+ * Keyboard Navigation:
+ * - Tab: Cycle forward through fields (input → area → phase → horizon)
+ * - Shift+Tab: Cycle backward through fields
+ * - Up/Down arrows: Navigate between fields
  * - A: Open area selector
  * - P: Open phase selector
  * - H: Open horizon selector
- * - Tab: Cycle through areas (when selector closed)
  * - Enter: Save moment
  */
 export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
@@ -87,6 +89,9 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const areaSelectorRef = useRef<HTMLButtonElement>(null);
+  const phaseSelectorRef = useRef<HTMLButtonElement>(null);
+  const horizonSelectorRef = useRef<HTMLButtonElement>(null);
 
   // Reset local UI state when dialog opens
   useEffect(() => {
@@ -143,24 +148,79 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     { enabled: formHotkeysEnabled && open }
   );
 
-  // Tab to cycle areas
+  // Get focusable elements in order
+  const getFocusableElements = (): HTMLElement[] => {
+    const elements: HTMLElement[] = [];
+    if (inputRef.current) elements.push(inputRef.current);
+    if (areaSelectorRef.current) elements.push(areaSelectorRef.current);
+    if (phaseSelectorRef.current) elements.push(phaseSelectorRef.current);
+    // Only include horizon selector if moment is not allocated
+    if (horizonSelectorRef.current && !isAllocated) {
+      elements.push(horizonSelectorRef.current);
+    }
+    return elements;
+  };
+
+  // Tab to cycle through form fields (input → area → phase → horizon)
   useHotkeys(
     "tab",
     (e) => {
       e.preventDefault();
-      if (!areasList.length) {
-        return;
-      }
-      const currentIndex = areasList.findIndex((a) => a.id === selectedAreaId);
-      const nextIndex = (currentIndex + 1) % areasList.length;
-      const nextArea = areasList[nextIndex];
-      // Persist the selection
-      if (nextArea) {
-        momentFormState$.areaId.set(nextArea.id);
-        lastUsedAreaId$.set(nextArea.id);
-      }
+      const focusable = getFocusableElements();
+      const currentIndex = focusable.findIndex(
+        (el) => el === document.activeElement
+      );
+      const nextIndex = (currentIndex + 1) % focusable.length;
+      focusable[nextIndex]?.focus();
     },
-    { enabled: formHotkeysEnabled && open }
+    { enabled: formHotkeysEnabled && open, enableOnFormTags: true }
+  );
+
+  // Shift+Tab to cycle backwards
+  useHotkeys(
+    "shift+tab",
+    (e) => {
+      e.preventDefault();
+      const focusable = getFocusableElements();
+      const currentIndex = focusable.findIndex(
+        (el) => el === document.activeElement
+      );
+      const prevIndex =
+        currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1;
+      focusable[prevIndex]?.focus();
+    },
+    { enabled: formHotkeysEnabled && open, enableOnFormTags: true }
+  );
+
+  // Down arrow to move to next field
+  useHotkeys(
+    "down",
+    (e) => {
+      e.preventDefault();
+      const focusable = getFocusableElements();
+      const currentIndex = focusable.findIndex(
+        (el) => el === document.activeElement
+      );
+      const nextIndex = (currentIndex + 1) % focusable.length;
+      focusable[nextIndex]?.focus();
+    },
+    { enabled: formHotkeysEnabled && open, enableOnFormTags: true }
+  );
+
+  // Up arrow to move to previous field
+  useHotkeys(
+    "up",
+    (e) => {
+      e.preventDefault();
+      const focusable = getFocusableElements();
+      const currentIndex = focusable.findIndex(
+        (el) => el === document.activeElement
+      );
+      const prevIndex =
+        currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1;
+      focusable[prevIndex]?.focus();
+    },
+    { enabled: formHotkeysEnabled && open, enableOnFormTags: true }
   );
 
   // Enter to save
@@ -309,6 +369,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 collisionBoundary={dialogRef.current}
                 trigger={
                   <button
+                    ref={areaSelectorRef}
                     type="button"
                     className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-all text-white hover:opacity-90"
                     style={{
@@ -346,6 +407,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                   collisionBoundary={dialogRef.current}
                   trigger={
                     <button
+                      ref={phaseSelectorRef}
                       type="button"
                       className={cn(
                         "flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
@@ -387,6 +449,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                     collisionBoundary={dialogRef.current}
                     trigger={
                       <button
+                        ref={horizonSelectorRef}
                         type="button"
                         className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
                       >
@@ -421,6 +484,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 collisionBoundary={dialogRef.current}
                 trigger={
                   <button
+                    ref={areaSelectorRef}
                     type="button"
                     className="w-full px-4 py-3 rounded-lg border-2 border-dashed border-stone-300 dark:border-stone-600 transition-all text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-400 dark:hover:border-stone-500 flex items-center justify-center gap-2"
                   >
