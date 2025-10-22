@@ -1,6 +1,7 @@
 import { observable } from "@legendapp/state";
 import type { Horizon } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
+import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 
 /**
  * UI State Store - Transient application state
@@ -105,6 +106,10 @@ export interface MomentFormState {
     day?: string;
     phase?: string;
   } | null;
+  /** Attitudes & Tags (Phase 2 features) */
+  attitude: Attitude | null;
+  tags: string[];
+  customMetric?: CustomMetric;
 }
 
 export const momentFormState$ = observable<MomentFormState>({
@@ -118,6 +123,9 @@ export const momentFormState$ = observable<MomentFormState>({
   showCreateMore: false,
   editingMomentId: null,
   prefilledAllocation: null,
+  attitude: null,
+  tags: [],
+  customMetric: undefined,
 });
 
 /**
@@ -150,6 +158,9 @@ export function openMomentFormCreate(params?: {
       params?.day && params?.phaseStr
         ? { day: params.day, phase: params.phaseStr }
         : null,
+    attitude: null,
+    tags: [],
+    customMetric: undefined,
   });
 }
 
@@ -164,6 +175,9 @@ export function openMomentFormEdit(
     horizon: Horizon | null;
     phase: Phase | null;
     day: string | null;
+    attitude: Attitude | null;
+    tags: string[];
+    customMetric?: CustomMetric;
   }
 ) {
   momentFormState$.set({
@@ -177,6 +191,9 @@ export function openMomentFormEdit(
     showCreateMore: false,
     editingMomentId: momentId,
     prefilledAllocation: null,
+    attitude: moment.attitude,
+    tags: moment.tags,
+    customMetric: moment.customMetric,
   });
 }
 
@@ -195,6 +212,9 @@ export function closeMomentForm() {
     showCreateMore: false,
     editingMomentId: null,
     prefilledAllocation: null,
+    attitude: null,
+    tags: [],
+    customMetric: undefined,
   });
 }
 

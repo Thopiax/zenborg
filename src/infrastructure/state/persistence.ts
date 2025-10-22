@@ -8,7 +8,14 @@
 import { observablePersistIndexedDB } from "@legendapp/state/persist-plugins/indexeddb";
 import { ObservablePersistLocalStorage } from "@legendapp/state/persist-plugins/local-storage";
 import { configureSynced, syncObservable } from "@legendapp/state/sync";
-import { areas$, cycles$, moments$, phaseConfigs$ } from "./store";
+import {
+  areas$,
+  crystallizedRoutines$,
+  cycles$,
+  metricLogs$,
+  moments$,
+  phaseConfigs$,
+} from "./store";
 import { drawingBoardGroupBy$, lastUsedAreaId$ } from "./ui-store";
 
 /**
@@ -44,8 +51,15 @@ export function configurePersistence(): void {
       persist: {
         plugin: observablePersistIndexedDB({
           databaseName: "zenborg",
-          version: 1,
-          tableNames: ["moments", "areas", "cycles", "phaseConfigs"],
+          version: 2, // Incremented for new tables
+          tableNames: [
+            "moments",
+            "areas",
+            "cycles",
+            "phaseConfigs",
+            "crystallizedRoutines",
+            "metricLogs",
+          ],
         }),
       },
     });
@@ -94,6 +108,24 @@ export function configurePersistence(): void {
       persistIndexedDBOptions({
         persist: {
           name: "phaseConfigs",
+        },
+      })
+    );
+
+    syncObservable(
+      crystallizedRoutines$,
+      persistIndexedDBOptions({
+        persist: {
+          name: "crystallizedRoutines",
+        },
+      })
+    );
+
+    syncObservable(
+      metricLogs$,
+      persistIndexedDBOptions({
+        persist: {
+          name: "metricLogs",
         },
       })
     );

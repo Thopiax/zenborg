@@ -6,7 +6,8 @@ import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { useSelection } from "@/hooks/useSelection";
-import { phaseConfigs$ } from "@/infrastructure/state/store";
+import { metricLogs$, moments$, phaseConfigs$ } from "@/infrastructure/state/store";
+import { getAttitudeFeedback } from "@/lib/attitude-feedback";
 import {
   animation,
   getTextColorsForBackground,
@@ -14,6 +15,7 @@ import {
   shadows,
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
+import { getAttitudeLabel } from "@/domain/value-objects/Attitude";
 
 interface MomentCardProps {
   moment: Moment;
@@ -57,8 +59,19 @@ export function MomentCard({
     selectRange,
   } = useSelection();
   const allPhaseConfigs = use$(phaseConfigs$);
+  const allMoments = use$(moments$);
+  const allMetricLogs = use$(metricLogs$);
 
   const isSelected = isSelectedMoment(moment.id);
+
+  // Get attitude feedback if moment has an attitude
+  const attitudeFeedback = moment.attitude
+    ? getAttitudeFeedback(
+        moment,
+        Object.values(allMoments),
+        Object.values(allMetricLogs)
+      )
+    : null;
 
   const handleClick = (e: React.MouseEvent) => {
     // Shift + click → Range selection (if contextMomentIds provided)
@@ -128,7 +141,8 @@ export function MomentCard({
       aria-label={ariaLabel}
       tabIndex={0}
     >
-      <div className="flex items-center justify-between h-full gap-3">
+      <div className="flex flex-col gap-2 h-full">
+        {/* Moment name */}
         <p
           className={cn(
             "text-lg font-semibold font-mono line-clamp-1",
@@ -137,6 +151,60 @@ export function MomentCard({
         >
           {moment.name}
         </p>
+
+        {/* Attitude indicator and feedback */}
+        {moment.attitude && (
+          <div className="flex flex-col gap-1">
+            <span
+              className={cn(
+                "text-xs font-medium opacity-90",
+                textColors.secondary
+              )}
+            >
+              • {getAttitudeLabel(moment.attitude)}
+            </span>
+            {attitudeFeedback && (
+              <span
+                className={cn(
+                  "text-xs opacity-80 font-mono",
+                  textColors.secondary
+                )}
+              >
+                {attitudeFeedback}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Tags */}
+        {moment.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-auto">
+            {moment.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className={cn(
+                  "text-xs px-1.5 py-0.5 rounded font-mono opacity-80",
+                  textColors.secondary
+                )}
+                style={{
+                  backgroundColor: `${area.color}33`, // 20% opacity of area color
+                }}
+              >
+                #{tag}
+              </span>
+            ))}
+            {moment.tags.length > 3 && (
+              <span
+                className={cn(
+                  "text-xs px-1.5 py-0.5 rounded font-mono opacity-60",
+                  textColors.secondary
+                )}
+              >
+                +{moment.tags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </button>
   );

@@ -2,6 +2,8 @@ import { observable } from "@legendapp/state";
 import type { Area } from "@/domain/entities/Area";
 import type { Cycle } from "@/domain/entities/Cycle";
 import type { Moment } from "@/domain/entities/Moment";
+import type { CrystallizedRoutine } from "@/domain/entities/CrystallizedRoutine";
+import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
 
 /**
@@ -44,6 +46,18 @@ export const cycles$ = observable<Record<string, Cycle>>({});
  * Phase configurations collection - keyed by config ID
  */
 export const phaseConfigs$ = observable<Record<string, PhaseConfig>>({});
+
+/**
+ * Crystallized routines collection - keyed by routine ID
+ * Moments that have graduated to "being" attitude
+ */
+export const crystallizedRoutines$ = observable<Record<string, CrystallizedRoutine>>({});
+
+/**
+ * Metric logs collection - keyed by log ID
+ * Performance tracking entries for PUSHING attitude moments
+ */
+export const metricLogs$ = observable<Record<string, MetricLog>>({});
 
 // ============================================================================
 // History State
@@ -181,13 +195,92 @@ export const momentsByDayAndPhase$ = observable(() => {
   }, {} as Record<string, Record<string, Moment[]>>);
 });
 
+/**
+ * All unique tags across all moments, sorted alphabetically
+ * Computed from moments$ - automatically updates when moments change
+ */
+export const allTags$ = observable(() => {
+  const moments = moments$.get();
+  const tagsSet = new Set<string>();
+
+  for (const moment of Object.values(moments)) {
+    for (const tag of moment.tags) {
+      tagsSet.add(tag);
+    }
+  }
+
+  return Array.from(tagsSet).sort();
+});
+
+/**
+ * Tag usage count - how many moments have each tag
+ * Returns structure: { "running": 8, "creative": 5, ... }
+ */
+export const tagUsageCount$ = observable(() => {
+  const moments = moments$.get();
+  const counts: Record<string, number> = {};
+
+  for (const moment of Object.values(moments)) {
+    for (const tag of moment.tags) {
+      counts[tag] = (counts[tag] || 0) + 1;
+    }
+  }
+
+  return counts;
+});
+
+/**
+ * Moments grouped by tag
+ * Returns structure: { "running": [...moments], "creative": [...moments] }
+ */
+export const momentsByTag$ = observable(() => {
+  const moments = moments$.get();
+  const byTag: Record<string, Moment[]> = {};
+
+  for (const moment of Object.values(moments)) {
+    for (const tag of moment.tags) {
+      if (!byTag[tag]) {
+        byTag[tag] = [];
+      }
+      byTag[tag].push(moment);
+    }
+  }
+
+  return byTag;
+});
+
+/**
+ * Metric logs grouped by moment ID
+ * Returns structure: { "moment-id": [...logs], ... }
+ */
+export const metricLogsByMoment$ = observable(() => {
+  const logs = metricLogs$.get();
+  const byMoment: Record<string, MetricLog[]> = {};
+
+  for (const log of Object.values(logs)) {
+    if (!byMoment[log.momentId]) {
+      byMoment[log.momentId] = [];
+    }
+    byMoment[log.momentId].push(log);
+  }
+
+  // Sort logs by date (newest first) for each moment
+  for (const momentId in byMoment) {
+    byMoment[momentId].sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }
+
+  return byMoment;
+});
+
 // ============================================================================
 // Database Management
 // ============================================================================
 
 /**
  * Reset all data to initial state
- * WARNING: This permanently deletes all moments, areas, cycles, and settings
+ * WARNING: This permanently deletes all moments, areas, cycles, crystallized routines, metric logs, and settings
  */
 export function resetDatabase() {
   console.log("[resetDatabase] Resetting all data...");
@@ -197,6 +290,8 @@ export function resetDatabase() {
   areas$.set({});
   cycles$.set({});
   phaseConfigs$.set({});
+  crystallizedRoutines$.set({});
+  metricLogs$.set({});
 
   console.log("[resetDatabase] Database reset complete");
 
