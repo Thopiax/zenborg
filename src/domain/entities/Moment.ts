@@ -117,25 +117,35 @@ export function canAllocateToPhase(
 }
 
 /**
+ * Parameters for creating a new moment
+ */
+export interface CreateMomentProps {
+  name: string;
+  areaId: string;
+  horizon?: Horizon | null;
+  phase?: Phase | null;
+  attitude?: Attitude | null;
+  tags?: string[];
+  customMetric?: CustomMetric;
+}
+
+/**
  * Creates a new unallocated moment
  *
- * @param name - Moment name (1-3 words)
- * @param areaId - ID of the area this moment belongs to
- * @param horizon - Optional time horizon
- * @param attitude - Optional attitude (default: null for pure presence)
- * @param tags - Optional tags (default: empty array)
- * @param customMetric - Optional custom metric (only for PUSHING attitude)
+ * @param props - Moment creation parameters
  * @returns New moment or error if validation fails
  */
-export function createMoment(
-  name: string,
-  areaId: string,
-  horizon: Horizon | null = null,
-  phase: Phase | null = null,
-  attitude: Attitude | null = null,
-  tags: string[] = [],
-  customMetric?: CustomMetric
-): MomentResult {
+export function createMoment(props: CreateMomentProps): MomentResult {
+  const {
+    name,
+    areaId,
+    horizon = null,
+    phase = null,
+    attitude = null,
+    tags = [],
+    customMetric,
+  } = props;
+
   const validation = validateMomentName(name);
 
   if (!validation.valid) {
@@ -165,21 +175,28 @@ export function createMoment(
 }
 
 /**
+ * Parameters for allocating a moment
+ */
+export interface AllocateMomentProps {
+  day: string;
+  phase: Phase;
+  order: number;
+}
+
+/**
  * Allocates a moment to a specific day and phase
  * Horizon is cleared when allocating (only relevant for unallocated moments)
  *
  * @param moment - The moment to allocate
- * @param day - ISO date string
- * @param phase - Phase to allocate to
- * @param order - Position within the phase (0-2)
+ * @param props - Allocation parameters
  * @returns Updated moment
  */
 export function allocateMoment(
   moment: Moment,
-  day: string,
-  phase: Phase,
-  order: number
+  props: AllocateMomentProps
 ): Moment {
+  const { day, phase, order } = props;
+
   if (order < 0 || order > 2) {
     throw new Error("Order must be between 0 and 2");
   }
@@ -211,17 +228,25 @@ export function unallocateMoment(moment: Moment): Moment {
 }
 
 /**
+ * Parameters for updating a moment's name
+ */
+export interface UpdateMomentNameProps {
+  name: string;
+}
+
+/**
  * Updates the name of a moment
  *
  * @param moment - The moment to update
- * @param newName - New name (1-3 words)
+ * @param props - Update parameters
  * @returns Updated moment or error if validation fails
  */
 export function updateMomentName(
   moment: Moment,
-  newName: string
+  props: UpdateMomentNameProps
 ): MomentResult {
-  const validation = validateMomentName(newName);
+  const { name } = props;
+  const validation = validateMomentName(name);
 
   if (!validation.valid) {
     return { error: validation.error! };
@@ -229,25 +254,98 @@ export function updateMomentName(
 
   return {
     ...moment,
-    name: newName.trim(),
+    name: name.trim(),
     updatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Parameters for updating a moment's horizon
+ */
+export interface UpdateMomentHorizonProps {
+  horizon: Horizon | null;
 }
 
 /**
  * Updates the horizon of a moment
  *
  * @param moment - The moment to update
- * @param horizon - New time horizon
+ * @param props - Update parameters
  * @returns Updated moment
  */
 export function updateMomentHorizon(
   moment: Moment,
-  horizon: Horizon | null
+  props: UpdateMomentHorizonProps
 ): Moment {
+  const { horizon } = props;
   return {
     ...moment,
     horizon,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Parameters for updating a moment's area
+ */
+export interface UpdateMomentAreaProps {
+  areaId: string;
+}
+
+/**
+ * Updates the area of a moment
+ *
+ * @param moment - The moment to update
+ * @param props - Update parameters
+ * @returns Updated moment or error if validation fails
+ */
+export function updateMomentArea(
+  moment: Moment,
+  props: UpdateMomentAreaProps
+): MomentResult {
+  const { areaId } = props;
+
+  if (!areaId || !areaId.trim()) {
+    return { error: "Area ID cannot be empty" };
+  }
+
+  return {
+    ...moment,
+    areaId: areaId.trim(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Parameters for updating a moment's phase grouping
+ */
+export interface UpdateMomentPhaseGroupingProps {
+  phase: Phase | null;
+}
+
+/**
+ * Updates the phase grouping for an unallocated moment
+ * Business rule: Only unallocated moments can have phase grouping
+ *
+ * @param moment - The moment to update
+ * @param props - Update parameters
+ * @returns Updated moment or error if validation fails
+ */
+export function updateMomentPhaseGrouping(
+  moment: Moment,
+  props: UpdateMomentPhaseGroupingProps
+): MomentResult {
+  const { phase } = props;
+
+  if (moment.day !== null) {
+    return {
+      error: "Cannot set phase grouping for allocated moments",
+    };
+  }
+
+  return {
+    ...moment,
+    phase,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -298,13 +396,24 @@ export function normalizeTag(tag: string): string | null {
 }
 
 /**
+ * Parameters for adding a tag to a moment
+ */
+export interface AddTagToMomentProps {
+  tag: string;
+}
+
+/**
  * Adds a tag to a moment
  *
  * @param moment - The moment to update
- * @param tag - Tag to add (will be normalized)
+ * @param props - Tag parameters
  * @returns Updated moment or error if validation fails
  */
-export function addTagToMoment(moment: Moment, tag: string): MomentResult {
+export function addTagToMoment(
+  moment: Moment,
+  props: AddTagToMomentProps
+): MomentResult {
+  const { tag } = props;
   const normalized = normalizeTag(tag);
 
   if (!normalized) {
@@ -327,13 +436,24 @@ export function addTagToMoment(moment: Moment, tag: string): MomentResult {
 }
 
 /**
+ * Parameters for removing a tag from a moment
+ */
+export interface RemoveTagFromMomentProps {
+  tag: string;
+}
+
+/**
  * Removes a tag from a moment
  *
  * @param moment - The moment to update
- * @param tag - Tag to remove
+ * @param props - Tag parameters
  * @returns Updated moment
  */
-export function removeTagFromMoment(moment: Moment, tag: string): Moment {
+export function removeTagFromMoment(
+  moment: Moment,
+  props: RemoveTagFromMomentProps
+): Moment {
+  const { tag } = props;
   return {
     ...moment,
     tags: moment.tags?.filter((t) => t !== tag) || [],
@@ -342,13 +462,24 @@ export function removeTagFromMoment(moment: Moment, tag: string): Moment {
 }
 
 /**
+ * Parameters for setting moment tags
+ */
+export interface SetMomentTagsProps {
+  tags: string[];
+}
+
+/**
  * Sets all tags for a moment (replaces existing tags)
  *
  * @param moment - The moment to update
- * @param tags - New tags array (will be normalized and validated)
+ * @param props - Tag parameters
  * @returns Updated moment
  */
-export function setMomentTags(moment: Moment, tags: string[]): Moment {
+export function setMomentTags(
+  moment: Moment,
+  props: SetMomentTagsProps
+): Moment {
+  const { tags } = props;
   const validTags = tags
     .map(normalizeTag)
     .filter((t): t is string => t !== null);
@@ -365,16 +496,24 @@ export function setMomentTags(moment: Moment, tags: string[]): Moment {
 // ============================================================================
 
 /**
+ * Parameters for setting moment attitude
+ */
+export interface SetMomentAttitudeProps {
+  attitude: Attitude | null;
+}
+
+/**
  * Sets the attitude for a moment
  *
  * @param moment - The moment to update
- * @param attitude - New attitude (null for pure presence)
+ * @param props - Attitude parameters
  * @returns Updated moment
  */
 export function setMomentAttitude(
   moment: Moment,
-  attitude: Attitude | null
+  props: SetMomentAttitudeProps
 ): Moment {
+  const { attitude } = props;
   return {
     ...moment,
     attitude,
@@ -386,27 +525,36 @@ export function setMomentAttitude(
 }
 
 /**
+ * Parameters for setting a custom metric
+ */
+export interface SetMomentCustomMetricProps {
+  customMetric: CustomMetric;
+}
+
+/**
  * Sets the custom metric for a moment with PUSHING attitude
  *
  * @param moment - The moment to update
- * @param metric - Custom metric definition
+ * @param props - Custom metric parameters
  * @returns Updated moment or error if validation fails
  */
 export function setMomentCustomMetric(
   moment: Moment,
-  metric: CustomMetric
+  props: SetMomentCustomMetricProps
 ): MomentResult {
+  const { customMetric } = props;
+
   if (moment.attitude !== Attitude.PUSHING) {
     return { error: "Custom metrics are only available for PUSHING attitude" };
   }
 
-  if (!metric.name || !metric.unit) {
+  if (!customMetric.name || !customMetric.unit) {
     return { error: "Metric must have a name and unit" };
   }
 
   return {
     ...moment,
-    customMetric: metric,
+    customMetric,
     updatedAt: new Date().toISOString(),
   };
 }

@@ -362,7 +362,7 @@ describe("Area", () => {
 
       if (!isAreaError(areaResult)) {
         const archived = archiveArea(areaResult);
-        const moment = createMoment("Reading", areaResult.id);
+        const moment = createMoment({ name: "Reading", areaId: areaResult.id });
 
         if ("id" in moment) {
           expect(canDeleteArchivedArea(archived, [moment])).toBe(false);
@@ -378,7 +378,7 @@ describe("Area", () => {
 
       if (!isAreaError(area1Result) && !isAreaError(area2Result)) {
         const archived = archiveArea(area1Result);
-        const moment = createMoment("Reading", area2Result.id);
+        const moment = createMoment({ name: "Reading", areaId: area2Result.id });
 
         if ("id" in moment) {
           expect(canDeleteArchivedArea(archived, [moment])).toBe(true);

@@ -66,7 +66,7 @@ describe("Moment", () => {
 
   describe("createMoment", () => {
     it("should create a valid moment", () => {
-      const result = createMoment("Morning Run", "area-1");
+      const result = createMoment({ name: "Morning Run", areaId: "area-1" });
 
       expect(isMomentError(result)).toBe(false);
       if (!isMomentError(result)) {
@@ -82,7 +82,10 @@ describe("Moment", () => {
     });
 
     it("should reject invalid name", () => {
-      const result = createMoment("Too many words here", "area-1");
+      const result = createMoment({
+        name: "Too many words here",
+        areaId: "area-1",
+      });
 
       expect(isMomentError(result)).toBe(true);
       if (isMomentError(result)) {
@@ -91,7 +94,7 @@ describe("Moment", () => {
     });
 
     it("should reject empty areaId", () => {
-      const result = createMoment("Running", "");
+      const result = createMoment({ name: "Running", areaId: "" });
 
       expect(isMomentError(result)).toBe(true);
       if (isMomentError(result)) {
@@ -100,7 +103,7 @@ describe("Moment", () => {
     });
 
     it("should trim name", () => {
-      const result = createMoment("  Running  ", "area-1");
+      const result = createMoment({ name: "  Running  ", areaId: "area-1" });
 
       expect(isMomentError(result)).toBe(false);
       if (!isMomentError(result)) {
@@ -111,16 +114,15 @@ describe("Moment", () => {
 
   describe("allocateMoment", () => {
     it("should allocate moment to a phase", () => {
-      const moment = createMoment("Running", "area-1");
+      const moment = createMoment({ name: "Running", areaId: "area-1" });
       expect(isMomentError(moment)).toBe(false);
 
       if (!isMomentError(moment)) {
-        const allocated = allocateMoment(
-          moment,
-          "2025-01-15",
-          Phase.MORNING,
-          0
-        );
+        const allocated = allocateMoment(moment, {
+          day: "2025-01-15",
+          phase: Phase.MORNING,
+          order: 0,
+        });
 
         expect(allocated.day).toBe("2025-01-15");
         expect(allocated.phase).toBe(Phase.MORNING);
@@ -130,16 +132,24 @@ describe("Moment", () => {
     });
 
     it("should throw error for invalid order", () => {
-      const moment = createMoment("Running", "area-1");
+      const moment = createMoment({ name: "Running", areaId: "area-1" });
       expect(isMomentError(moment)).toBe(false);
 
       if (!isMomentError(moment)) {
         expect(() =>
-          allocateMoment(moment, "2025-01-15", Phase.MORNING, -1)
+          allocateMoment(moment, {
+            day: "2025-01-15",
+            phase: Phase.MORNING,
+            order: -1,
+          })
         ).toThrow("Order must be between 0 and 2");
 
         expect(() =>
-          allocateMoment(moment, "2025-01-15", Phase.MORNING, 3)
+          allocateMoment(moment, {
+            day: "2025-01-15",
+            phase: Phase.MORNING,
+            order: 3,
+          })
         ).toThrow("Order must be between 0 and 2");
       }
     });
@@ -147,16 +157,15 @@ describe("Moment", () => {
 
   describe("unallocateMoment", () => {
     it("should unallocate a moment", () => {
-      const moment = createMoment("Running", "area-1");
+      const moment = createMoment({ name: "Running", areaId: "area-1" });
       expect(isMomentError(moment)).toBe(false);
 
       if (!isMomentError(moment)) {
-        const allocated = allocateMoment(
-          moment,
-          "2025-01-15",
-          Phase.MORNING,
-          1
-        );
+        const allocated = allocateMoment(moment, {
+          day: "2025-01-15",
+          phase: Phase.MORNING,
+          order: 1,
+        });
         const unallocated = unallocateMoment(allocated);
 
         expect(unallocated.day).toBeNull();
@@ -169,11 +178,11 @@ describe("Moment", () => {
 
   describe("updateMomentName", () => {
     it("should update moment name", () => {
-      const moment = createMoment("Running", "area-1");
+      const moment = createMoment({ name: "Running", areaId: "area-1" });
       expect(isMomentError(moment)).toBe(false);
 
       if (!isMomentError(moment)) {
-        const updated = updateMomentName(moment, "Morning Jog");
+        const updated = updateMomentName(moment, { name: "Morning Jog" });
 
         expect(isMomentError(updated)).toBe(false);
         if (!isMomentError(updated)) {
@@ -184,11 +193,13 @@ describe("Moment", () => {
     });
 
     it("should reject invalid new name", () => {
-      const moment = createMoment("Running", "area-1");
+      const moment = createMoment({ name: "Running", areaId: "area-1" });
       expect(isMomentError(moment)).toBe(false);
 
       if (!isMomentError(moment)) {
-        const updated = updateMomentName(moment, "Too many words here");
+        const updated = updateMomentName(moment, {
+          name: "Too many words here",
+        });
 
         expect(isMomentError(updated)).toBe(true);
         if (isMomentError(updated)) {
@@ -208,24 +219,24 @@ describe("Moment", () => {
     });
 
     it("should allow allocation when phase has 1 moment", () => {
-      const moment1 = createMoment("Running", "area-1");
+      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
       expect(isMomentError(moment1)).toBe(false);
 
       if (!isMomentError(moment1)) {
-        const allocated = allocateMoment(moment1, day, phase, 0);
+        const allocated = allocateMoment(moment1, { day, phase, order: 0 });
         expect(canAllocateToPhase([allocated], day, phase)).toBe(true);
       }
     });
 
     it("should allow allocation when phase has 2 moments", () => {
-      const moment1 = createMoment("Running", "area-1");
-      const moment2 = createMoment("Meditation", "area-1");
+      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
+      const moment2 = createMoment({ name: "Meditation", areaId: "area-1" });
       expect(isMomentError(moment1)).toBe(false);
       expect(isMomentError(moment2)).toBe(false);
 
       if (!isMomentError(moment1) && !isMomentError(moment2)) {
-        const allocated1 = allocateMoment(moment1, day, phase, 0);
-        const allocated2 = allocateMoment(moment2, day, phase, 1);
+        const allocated1 = allocateMoment(moment1, { day, phase, order: 0 });
+        const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
         expect(canAllocateToPhase([allocated1, allocated2], day, phase)).toBe(
           true
         );
@@ -233,9 +244,9 @@ describe("Moment", () => {
     });
 
     it("should reject allocation when phase has 3 moments", () => {
-      const moment1 = createMoment("Running", "area-1");
-      const moment2 = createMoment("Meditation", "area-1");
-      const moment3 = createMoment("Breakfast", "area-1");
+      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
+      const moment2 = createMoment({ name: "Meditation", areaId: "area-1" });
+      const moment3 = createMoment({ name: "Breakfast", areaId: "area-1" });
       expect(isMomentError(moment1)).toBe(false);
       expect(isMomentError(moment2)).toBe(false);
       expect(isMomentError(moment3)).toBe(false);
@@ -245,9 +256,9 @@ describe("Moment", () => {
         !isMomentError(moment2) &&
         !isMomentError(moment3)
       ) {
-        const allocated1 = allocateMoment(moment1, day, phase, 0);
-        const allocated2 = allocateMoment(moment2, day, phase, 1);
-        const allocated3 = allocateMoment(moment3, day, phase, 2);
+        const allocated1 = allocateMoment(moment1, { day, phase, order: 0 });
+        const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
+        const allocated3 = allocateMoment(moment3, { day, phase, order: 2 });
         expect(
           canAllocateToPhase([allocated1, allocated2, allocated3], day, phase)
         ).toBe(false);
@@ -255,9 +266,9 @@ describe("Moment", () => {
     });
 
     it("should not count moments from different days", () => {
-      const moment1 = createMoment("Running", "area-1");
-      const moment2 = createMoment("Meditation", "area-1");
-      const moment3 = createMoment("Breakfast", "area-1");
+      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
+      const moment2 = createMoment({ name: "Meditation", areaId: "area-1" });
+      const moment3 = createMoment({ name: "Breakfast", areaId: "area-1" });
       expect(isMomentError(moment1)).toBe(false);
       expect(isMomentError(moment2)).toBe(false);
       expect(isMomentError(moment3)).toBe(false);
@@ -267,9 +278,13 @@ describe("Moment", () => {
         !isMomentError(moment2) &&
         !isMomentError(moment3)
       ) {
-        const allocated1 = allocateMoment(moment1, day, phase, 0);
-        const allocated2 = allocateMoment(moment2, day, phase, 1);
-        const allocated3 = allocateMoment(moment3, "2025-01-16", phase, 0);
+        const allocated1 = allocateMoment(moment1, { day, phase, order: 0 });
+        const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
+        const allocated3 = allocateMoment(moment3, {
+          day: "2025-01-16",
+          phase,
+          order: 0,
+        });
         expect(
           canAllocateToPhase([allocated1, allocated2, allocated3], day, phase)
         ).toBe(true);
@@ -277,9 +292,9 @@ describe("Moment", () => {
     });
 
     it("should not count moments from different phases", () => {
-      const moment1 = createMoment("Running", "area-1");
-      const moment2 = createMoment("Meditation", "area-1");
-      const moment3 = createMoment("Breakfast", "area-1");
+      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
+      const moment2 = createMoment({ name: "Meditation", areaId: "area-1" });
+      const moment3 = createMoment({ name: "Breakfast", areaId: "area-1" });
       expect(isMomentError(moment1)).toBe(false);
       expect(isMomentError(moment2)).toBe(false);
       expect(isMomentError(moment3)).toBe(false);
@@ -289,9 +304,13 @@ describe("Moment", () => {
         !isMomentError(moment2) &&
         !isMomentError(moment3)
       ) {
-        const allocated1 = allocateMoment(moment1, day, phase, 0);
-        const allocated2 = allocateMoment(moment2, day, phase, 1);
-        const allocated3 = allocateMoment(moment3, day, Phase.AFTERNOON, 0);
+        const allocated1 = allocateMoment(moment1, { day, phase, order: 0 });
+        const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
+        const allocated3 = allocateMoment(moment3, {
+          day,
+          phase: Phase.AFTERNOON,
+          order: 0,
+        });
         expect(
           canAllocateToPhase([allocated1, allocated2, allocated3], day, phase)
         ).toBe(true);

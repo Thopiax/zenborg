@@ -46,7 +46,7 @@ export type DrawingBoardGroupBy =
   | "created"
   | "horizon"
   | "attitude"
-  | "phase
+  | "phase"
   | "tag";
 
 export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("area");

@@ -51,7 +51,7 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       moments$[moment.id].set(moment)
@@ -65,7 +65,7 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       moments$[moment.id].set(moment)
@@ -82,7 +82,7 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       moments$[moment.id].set(moment)
@@ -100,7 +100,7 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       const momentId = moment.id
@@ -124,8 +124,8 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
 
       moments$[moment1.id].set(moment1)
@@ -141,8 +141,8 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
 
       moments$[moment1.id].set(moment1)
@@ -165,7 +165,7 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       moments$[moment.id].set(moment)
@@ -179,8 +179,8 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
 
       moments$[moment1.id].set(moment1)
@@ -235,9 +235,9 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
-      const moment3 = createMoment('Evening Walk', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
+      const moment3 = createMoment({ name: 'Evening Walk', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2 || 'error' in moment3) {
         throw new Error('Moment creation failed')
       }
@@ -271,8 +271,8 @@ describe('Store', () => {
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
 
       moments$[moment1.id].set(moment1)
