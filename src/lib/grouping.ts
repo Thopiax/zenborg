@@ -11,6 +11,7 @@ import {
 } from "date-fns";
 import type { Area } from "@/domain/entities/Area";
 import type { Horizon, Moment } from "@/domain/entities/Moment";
+import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
 
 /**
  * Sort moments by order (primary) and createdAt (secondary)
@@ -216,10 +217,74 @@ export function groupByHorizon(moments: Moment[]): MomentGroup[] {
 }
 
 /**
+ * Group moments by phase of day
+ * Categories: Morning, Afternoon, Evening, Night
+ * Shows all visible phases in order
+ * Uses phase configuration for labels, emojis, and colors
+ */
+export function groupByPhase(
+  moments: Moment[],
+  phaseConfigs: PhaseConfig[]
+): MomentGroup[] {
+  // Get visible phases sorted by order
+  const visiblePhases = phaseConfigs
+    .filter((config) => config.isVisible)
+    .sort((a, b) => a.order - b.order);
+
+  // Initialize groups for all visible phases
+  const groups: MomentGroup[] = visiblePhases.map((config) => ({
+    groupId: `phase-${config.phase}`,
+    groupLabel: config.label,
+    color: config.color,
+    emoji: config.emoji,
+    moments: [],
+  }));
+
+  // Add unallocated phase group (moments without phase assignment)
+  groups.push({
+    groupId: "phase-unset",
+    groupLabel: "No Phase",
+    moments: [],
+  });
+
+  // Group moments by their phase
+  const groupsMap = new Map<string, Moment[]>();
+  for (const group of groups) {
+    groupsMap.set(group.groupId, []);
+  }
+
+  for (const moment of moments) {
+    if (moment.phase) {
+      const groupId = `phase-${moment.phase}`;
+      const groupMoments = groupsMap.get(groupId);
+      if (groupMoments) {
+        groupMoments.push(moment);
+      }
+    } else {
+      // Moments without phase go to "No Phase" group
+      const groupMoments = groupsMap.get("phase-unset");
+      if (groupMoments) {
+        groupMoments.push(moment);
+      }
+    }
+  }
+
+  // Fill in sorted moments for each group
+  for (const group of groups) {
+    const groupMoments = groupsMap.get(group.groupId);
+    if (groupMoments) {
+      group.moments = sortMoments(groupMoments);
+    }
+  }
+
+  return groups;
+}
+
+/**
  * Get grouping function based on grouping mode
  */
 export function getGroupingFunction(
-  groupBy: "none" | "area" | "created" | "horizon"
+  groupBy: "none" | "area" | "created" | "horizon" | "phase"
 ): ((moments: Moment[], areas?: Record<string, Area>) => MomentGroup[]) | null {
   switch (groupBy) {
     case "area":
@@ -231,6 +296,8 @@ export function getGroupingFunction(
       return groupByCreated;
     case "horizon":
       return groupByHorizon;
+    case "phase":
+      return groupByPhase;
     case "none":
     default:
       return null;
