@@ -282,9 +282,13 @@ export function groupByPhase(
 
 /**
  * Get grouping function based on grouping mode
+ *
+ * Note: Phase grouping is not included here because it requires different
+ * parameters (PhaseConfig[] instead of Record<string, Area>). Handle phase
+ * grouping separately by calling groupByPhase directly.
  */
 export function getGroupingFunction(
-  groupBy: "none" | "area" | "created" | "horizon" | "phase"
+  groupBy: "none" | "area" | "created" | "horizon"
 ): ((moments: Moment[], areas?: Record<string, Area>) => MomentGroup[]) | null {
   switch (groupBy) {
     case "area":
@@ -296,8 +300,6 @@ export function getGroupingFunction(
       return groupByCreated;
     case "horizon":
       return groupByHorizon;
-    case "phase":
-      return groupByPhase;
     case "none":
     default:
       return null;
