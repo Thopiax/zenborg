@@ -38,6 +38,7 @@ export interface MomentGroup {
   color?: string; // Optional color for the group (used for area grouping)
   emoji?: string; // Optional emoji for the group (used for area grouping)
   icon?: React.ComponentType<{ className?: string }>; // Optional icon component (used for phase grouping)
+  showEmptyState?: boolean; // Whether to show empty state when no moments (default: true)
   moments: Moment[];
 }
 
@@ -254,10 +255,12 @@ export function groupByPhase(
   }));
 
   // Add unallocated phase group (moments without phase assignment)
+  // No empty state for this group - it's a catch-all for unorganized moments
   groups.push({
     groupId: "phase-unset",
     groupLabel: "No Phase",
     color: "#e7e5e4", // stone-200
+    showEmptyState: false, // Calmer appearance - no promotional empty state
     moments: [],
   });
 
