@@ -1,5 +1,5 @@
+import { Attitude, type CustomMetric } from "../value-objects/Attitude";
 import type { Phase } from "../value-objects/Phase";
-import type { Attitude, CustomMetric } from "../value-objects/Attitude";
 
 /**
  * Horizon - Time perspective for moments
@@ -33,7 +33,7 @@ export interface Moment {
   // Attitudes & Tags (Phase 2 features)
   attitude: Attitude | null; // Optional relationship mode
   customMetric?: CustomMetric; // Only for PUSHING attitude
-  tags: string[]; // Flexible organization labels
+  tags: string[] | null; // Flexible organization labels
 
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
@@ -240,7 +240,10 @@ export function updateMomentName(
  * @param horizon - New time horizon
  * @returns Updated moment
  */
-export function updateMomentHorizon(moment: Moment, horizon: Horizon | null): Moment {
+export function updateMomentHorizon(
+  moment: Moment,
+  horizon: Horizon | null
+): Moment {
   return {
     ...moment,
     horizon,
@@ -304,17 +307,20 @@ export function addTagToMoment(moment: Moment, tag: string): MomentResult {
   const normalized = normalizeTag(tag);
 
   if (!normalized) {
-    return { error: "Invalid tag format. Use lowercase, alphanumeric, and hyphens only." };
+    return {
+      error:
+        "Invalid tag format. Use lowercase, alphanumeric, and hyphens only.",
+    };
   }
 
   // Check if tag already exists
-  if (moment.tags.includes(normalized)) {
+  if (moment.tags?.includes(normalized)) {
     return moment; // Already has this tag, no-op
   }
 
   return {
     ...moment,
-    tags: [...moment.tags, normalized],
+    tags: [...(moment.tags || []), normalized],
     updatedAt: new Date().toISOString(),
   };
 }
@@ -329,7 +335,7 @@ export function addTagToMoment(moment: Moment, tag: string): MomentResult {
 export function removeTagFromMoment(moment: Moment, tag: string): Moment {
   return {
     ...moment,
-    tags: moment.tags.filter((t) => t !== tag),
+    tags: moment.tags?.filter((t) => t !== tag) || [],
     updatedAt: new Date().toISOString(),
   };
 }
@@ -364,12 +370,16 @@ export function setMomentTags(moment: Moment, tags: string[]): Moment {
  * @param attitude - New attitude (null for pure presence)
  * @returns Updated moment
  */
-export function setMomentAttitude(moment: Moment, attitude: Attitude | null): Moment {
+export function setMomentAttitude(
+  moment: Moment,
+  attitude: Attitude | null
+): Moment {
   return {
     ...moment,
     attitude,
     // Clear custom metric if attitude is not PUSHING
-    customMetric: attitude === Attitude.PUSHING ? moment.customMetric : undefined,
+    customMetric:
+      attitude === Attitude.PUSHING ? moment.customMetric : undefined,
     updatedAt: new Date().toISOString(),
   };
 }

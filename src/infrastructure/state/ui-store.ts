@@ -1,7 +1,7 @@
 import { observable } from "@legendapp/state";
-import type { Horizon } from "@/domain/entities/Moment";
-import type { Phase } from "@/domain/value-objects/Phase";
+import type { Horizon, Moment } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
+import type { Phase } from "@/domain/value-objects/Phase";
 
 /**
  * UI State Store - Transient application state
@@ -108,7 +108,7 @@ export interface MomentFormState {
   } | null;
   /** Attitudes & Tags (Phase 2 features) */
   attitude: Attitude | null;
-  tags: string[];
+  tags?: string[];
   customMetric?: CustomMetric;
 }
 
@@ -167,19 +167,7 @@ export function openMomentFormCreate(params?: {
 /**
  * Helper function to open moment form in edit mode
  */
-export function openMomentFormEdit(
-  momentId: string,
-  moment: {
-    name: string;
-    areaId: string;
-    horizon: Horizon | null;
-    phase: Phase | null;
-    day: string | null;
-    attitude: Attitude | null;
-    tags: string[];
-    customMetric?: CustomMetric;
-  }
-) {
+export function openMomentFormEdit(momentId: string, moment: Moment) {
   momentFormState$.set({
     open: true,
     mode: "edit",
@@ -192,7 +180,7 @@ export function openMomentFormEdit(
     editingMomentId: momentId,
     prefilledAllocation: null,
     attitude: moment.attitude,
-    tags: moment.tags,
+    tags: moment.tags || [],
     customMetric: moment.customMetric,
   });
 }
@@ -274,15 +262,20 @@ export interface SortModeConflictDialogState {
   } | null;
 }
 
-export const sortModeConflictDialogState$ = observable<SortModeConflictDialogState>({
-  open: false,
-  pendingReorder: null,
-});
+export const sortModeConflictDialogState$ =
+  observable<SortModeConflictDialogState>({
+    open: false,
+    pendingReorder: null,
+  });
 
 /**
  * Helper function to open sort mode conflict dialog
  */
-export function openSortModeConflictDialog(activeId: string, overId: string, columnId?: string) {
+export function openSortModeConflictDialog(
+  activeId: string,
+  overId: string,
+  columnId?: string
+) {
   sortModeConflictDialogState$.set({
     open: true,
     pendingReorder: {

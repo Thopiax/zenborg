@@ -1,9 +1,9 @@
 import { observable } from "@legendapp/state";
 import type { Area } from "@/domain/entities/Area";
-import type { Cycle } from "@/domain/entities/Cycle";
-import type { Moment } from "@/domain/entities/Moment";
 import type { CrystallizedRoutine } from "@/domain/entities/CrystallizedRoutine";
+import type { Cycle } from "@/domain/entities/Cycle";
 import type { MetricLog } from "@/domain/entities/MetricLog";
+import type { Moment } from "@/domain/entities/Moment";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
 
 /**
@@ -51,7 +51,9 @@ export const phaseConfigs$ = observable<Record<string, PhaseConfig>>({});
  * Crystallized routines collection - keyed by routine ID
  * Moments that have graduated to "being" attitude
  */
-export const crystallizedRoutines$ = observable<Record<string, CrystallizedRoutine>>({});
+export const crystallizedRoutines$ = observable<
+  Record<string, CrystallizedRoutine>
+>({});
 
 /**
  * Metric logs collection - keyed by log ID
@@ -204,6 +206,8 @@ export const allTags$ = observable(() => {
   const tagsSet = new Set<string>();
 
   for (const moment of Object.values(moments)) {
+    if (!moment.tags) continue;
+
     for (const tag of moment.tags) {
       tagsSet.add(tag);
     }
@@ -221,6 +225,8 @@ export const tagUsageCount$ = observable(() => {
   const counts: Record<string, number> = {};
 
   for (const moment of Object.values(moments)) {
+    if (!moment.tags) continue;
+
     for (const tag of moment.tags) {
       counts[tag] = (counts[tag] || 0) + 1;
     }
@@ -238,6 +244,7 @@ export const momentsByTag$ = observable(() => {
   const byTag: Record<string, Moment[]> = {};
 
   for (const moment of Object.values(moments)) {
+    if (!moment.tags) continue;
     for (const tag of moment.tags) {
       if (!byTag[tag]) {
         byTag[tag] = [];
@@ -266,8 +273,8 @@ export const metricLogsByMoment$ = observable(() => {
 
   // Sort logs by date (newest first) for each moment
   for (const momentId in byMoment) {
-    byMoment[momentId].sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
+    byMoment[momentId].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
   }
 

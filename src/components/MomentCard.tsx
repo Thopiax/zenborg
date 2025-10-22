@@ -1,21 +1,19 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { Calendar, Clock } from "lucide-react";
 import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
-import { useSelection } from "@/hooks/useSelection";
-import { metricLogs$, moments$, phaseConfigs$ } from "@/infrastructure/state/store";
-import { getAttitudeFeedback } from "@/lib/attitude-feedback";
-import {
-  animation,
-  getTextColorsForBackground,
-  momentCard,
-  shadows,
-} from "@/lib/design-tokens";
-import { cn } from "@/lib/utils";
 import { getAttitudeLabel } from "@/domain/value-objects/Attitude";
+import { useSelection } from "@/hooks/useSelection";
+import {
+  metricLogs$,
+  moments$,
+  phaseConfigs$,
+} from "@/infrastructure/state/store";
+import { getAttitudeFeedback } from "@/lib/attitude-feedback";
+import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
+import { cn } from "@/lib/utils";
 
 interface MomentCardProps {
   moment: Moment;
@@ -171,36 +169,6 @@ export function MomentCard({
                 )}
               >
                 {attitudeFeedback}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Tags */}
-        {moment.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-auto">
-            {moment.tags.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className={cn(
-                  "text-xs px-1.5 py-0.5 rounded font-mono opacity-80",
-                  textColors.secondary
-                )}
-                style={{
-                  backgroundColor: `${area.color}33`, // 20% opacity of area color
-                }}
-              >
-                #{tag}
-              </span>
-            ))}
-            {moment.tags.length > 3 && (
-              <span
-                className={cn(
-                  "text-xs px-1.5 py-0.5 rounded font-mono opacity-60",
-                  textColors.secondary
-                )}
-              >
-                +{moment.tags.length - 3}
               </span>
             )}
           </div>

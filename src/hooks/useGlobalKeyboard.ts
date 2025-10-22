@@ -28,8 +28,7 @@ import { useSelection } from "./useSelection";
  *
  * CRUD (Linear-style, always active):
  * - N: Create new moment
- * - Shift+A: Change area for focused moment
- * - Mod+Shift+A: Open area management
+ * - Shift+E: Open area management
  * - Enter: Edit focused moment
  * - Delete: Delete focused moment
  * - Mod+Backspace: Delete all selected moments
@@ -108,9 +107,9 @@ export function useGlobalKeyboard() {
     { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
 
-  // Mod+Shift+A - Open area management
+  // Shift+E - Open area management
   useHotkeys(
-    "shift+a",
+    "shift+e",
     (e) => {
       e.preventDefault();
       setIsAreaManagementOpen(true);
