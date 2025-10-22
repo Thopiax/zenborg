@@ -65,10 +65,10 @@ export function DrawingBoardColumn({
     },
   });
 
-  // Only allow drops for area grouping
-  const canAcceptDrops = groupBy === "area";
+  // Allow drops for area and phase grouping (drag to change area or phase)
+  const canAcceptDrops = groupBy === "area" || groupBy === "phase";
 
-  // Only allow click-to-create for area and horizon grouping (not created)
+  // Only allow click-to-create for area, horizon, and phase grouping (not created)
   const canCreateFromColumn = groupBy !== "created" && onCreateMoment;
 
   // Handle click on empty area
@@ -82,6 +82,11 @@ export function DrawingBoardColumn({
       // Create with this horizon pre-selected
       const horizonValue = group.groupId.replace("horizon-", "");
       onCreateMoment(undefined, horizonValue === "unset" ? "" : horizonValue);
+    } else if (groupBy === "phase") {
+      // Create with this phase pre-selected
+      // Note: For now, we just open the create modal
+      // The phase will need to be set manually in the modal
+      onCreateMoment();
     }
   };
 
