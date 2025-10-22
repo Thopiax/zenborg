@@ -95,6 +95,11 @@ export default function HomePage() {
     setIsAreaManagementOpen(true);
   };
 
+  // Handle manage areas from DrawingBoard toolbar
+  const handleManageAreas = () => {
+    setIsAreaManagementOpen(true);
+  };
+
   // Archive area (simple, no double confirmation)
   const handleConfirmArchiveArea = () => {
     if (!archiveAreaState.areaId) return;
@@ -160,7 +165,10 @@ export default function HomePage() {
 
             {/* Drawing Board - Full-width, no safe area cropping */}
             <div className="flex-shrink-0">
-              <DrawingBoard onEditArea={handleEditArea} />
+              <DrawingBoard
+                onEditArea={handleEditArea}
+                onManageAreas={handleManageAreas}
+              />
             </div>
           </main>
 
