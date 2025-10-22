@@ -183,7 +183,9 @@ export function DrawingBoardColumn({
       >
         <div className="flex flex-col gap-3 p-4 min-h-[300px] pb-48">
           {/* Empty state for area and phase grouping when no moments */}
-          {(groupBy === "area" || groupBy === "phase") && group.moments.length === 0 && (
+          {(groupBy === "area" || groupBy === "phase") &&
+           group.moments.length === 0 &&
+           group.showEmptyState !== false && (
             <div className="flex flex-col items-center justify-center min-h-[240px] gap-3 py-8">
               <div className="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
                 {group.icon ? (
