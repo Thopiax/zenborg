@@ -121,9 +121,9 @@ export function DrawingBoard({
     });
   }, [unallocated, sortMode]);
 
-  const handleCreateFromColumn = (areaId?: string, cycle?: string) => {
+  const handleCreateFromColumn = (areaId?: string, cycle?: string, phase?: string) => {
     // Open create modal with pre-filled properties
-    handleOpenCreateModal(undefined, undefined, areaId, cycle);
+    handleOpenCreateModal(undefined, phase, areaId, cycle);
   };
 
   const label = "Planning (P)";

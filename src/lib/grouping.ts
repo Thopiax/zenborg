@@ -12,6 +12,7 @@ import {
 import type { Area } from "@/domain/entities/Area";
 import type { Horizon, Moment } from "@/domain/entities/Moment";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
+import { PHASE_ICONS } from "@/domain/value-objects/phaseStyles";
 
 /**
  * Sort moments by order (primary) and createdAt (secondary)
@@ -36,6 +37,7 @@ export interface MomentGroup {
   groupLabel: string;
   color?: string; // Optional color for the group (used for area grouping)
   emoji?: string; // Optional emoji for the group (used for area grouping)
+  icon?: React.ComponentType<{ className?: string }>; // Optional icon component (used for phase grouping)
   moments: Moment[];
 }
 
@@ -217,10 +219,21 @@ export function groupByHorizon(moments: Moment[]): MomentGroup[] {
 }
 
 /**
+ * Monochrome colors for phase grouping (stone palette)
+ * Follows wabi-sabi design principles with subtle tonal variations
+ */
+const PHASE_COLORS: Record<Phase, string> = {
+  [Phase.MORNING]: "#d6d3d1", // stone-300
+  [Phase.AFTERNOON]: "#a8a29e", // stone-400
+  [Phase.EVENING]: "#78716c", // stone-500
+  [Phase.NIGHT]: "#57534e", // stone-600
+};
+
+/**
  * Group moments by phase of day
  * Categories: Morning, Afternoon, Evening, Night
  * Shows all visible phases in order
- * Uses phase configuration for labels, emojis, and colors
+ * Uses phase configuration for labels and phaseStyles for icons/colors
  */
 export function groupByPhase(
   moments: Moment[],
@@ -235,8 +248,8 @@ export function groupByPhase(
   const groups: MomentGroup[] = visiblePhases.map((config) => ({
     groupId: `phase-${config.phase}`,
     groupLabel: config.label,
-    color: config.color,
-    emoji: config.emoji,
+    color: PHASE_COLORS[config.phase], // Use monochrome colors
+    icon: PHASE_ICONS[config.phase], // Use icons from phaseStyles
     moments: [],
   }));
 
@@ -244,6 +257,7 @@ export function groupByPhase(
   groups.push({
     groupId: "phase-unset",
     groupLabel: "No Phase",
+    color: "#e7e5e4", // stone-200
     moments: [],
   });
 
