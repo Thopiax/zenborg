@@ -55,7 +55,7 @@ interface MomentFormDialogProps {
  * Keyboard Shortcuts:
  * - A: Open area selector
  * - P: Open phase selector
- * - C: Open cycle selector
+ * - H: Open horizon selector
  * - Tab: Cycle through areas (when selector closed)
  * - Enter: Save moment
  */
@@ -228,8 +228,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     ? Object.values(allPhaseConfigs).find((pc) => pc.phase === phase)
     : null;
 
-  // Format cycle label for display
-  const formatCycleLabel = (c: Horizon | null): string => {
+  // Format horizon label for display
+  const formatHorizonLabel = (c: Horizon | null): string => {
     if (!c) return "later";
     const labels: Record<Horizon, string> = {
       "this-week": "this week",
@@ -328,7 +328,12 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
               />
 
               {/* Phase & Cycle Selectors - Side by side (hide horizon for allocated moments) */}
-              <div className={cn("grid gap-3", isAllocated ? "grid-cols-1" : "grid-cols-2")}>
+              <div
+                className={cn(
+                  "grid gap-3",
+                  isAllocated ? "grid-cols-1" : "grid-cols-2"
+                )}
+              >
                 {/* Phase Selector - Ghost with clock icon */}
                 <PhaseSelector
                   open={isPhaseSelectorOpen}
@@ -390,10 +395,10 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                           strokeWidth={1.5}
                         />
                         <span className="font-mono text-sm flex-1 text-left truncate">
-                          {formatCycleLabel(horizon)}
+                          {formatHorizonLabel(horizon)}
                         </span>
                         <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
-                          C
+                          H
                         </kbd>
                       </button>
                     }
@@ -431,7 +436,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         </div>
 
         {/* Footer */}
-        <DialogFooter className="bg-stone-100/50 dark:bg-stone-800/50 border-t border-stone-200 dark:border-stone-700 flex-row items-center justify-between backdrop-blur-sm">
+        <DialogFooter className="flex flex-row items-center justify-end gap-2">
           {/* Left side: Create more checkbox OR Delete button */}
           {showCreateMore && mode === "create" ? (
             <label className="flex items-center gap-2 cursor-pointer">
@@ -441,7 +446,9 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 onChange={(e) => setCreateMore(e.target.checked)}
                 className="w-4 h-4 rounded border-stone-300 dark:border-stone-600 bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-500 focus:ring-offset-0"
               />
-              <span className="text-sm text-stone-600 dark:text-stone-400">Create more</span>
+              <span className="text-sm text-stone-600 dark:text-stone-400">
+                Create more
+              </span>
             </label>
           ) : mode === "edit" && onDelete ? (
             <button

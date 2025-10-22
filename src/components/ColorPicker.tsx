@@ -2,6 +2,11 @@
 
 import { Check } from "lucide-react";
 import { useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface ColorPickerProps {
   value: string;
@@ -44,74 +49,60 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   ];
 
   return (
-    <div className="relative">
-      {/* Color Preview Button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-12 h-12 rounded-lg border-2 border-border hover:border-text-tertiary transition-all shadow-sm"
-        style={{ backgroundColor: value }}
-        aria-label="Pick a color"
-      />
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-12 h-12 rounded-lg border-2 border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 transition-all shadow-sm"
+          style={{ backgroundColor: value }}
+          aria-label="Pick a color"
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-fit p-3" align="start">
+        <div className="grid grid-cols-4 gap-2">
+          {colors.map((color) => (
+            <button
+              key={color.hex}
+              type="button"
+              onClick={() => {
+                onChange(color.hex);
+                setIsOpen(false);
+              }}
+              className="w-12 h-12 rounded-lg border-2 border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 transition-all relative group"
+              style={{ backgroundColor: color.hex }}
+              title={color.name}
+            >
+              {value === color.hex && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Check
+                    className="w-5 h-5 text-white drop-shadow-lg"
+                    strokeWidth={3}
+                  />
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
 
-      {/* Color Grid Popover */}
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-            aria-hidden="true"
+        {/* Custom Color Input */}
+        <div className="mt-3 pt-3 border-t border-stone-200 dark:border-stone-700">
+          <label
+            htmlFor="custom-color-input"
+            className="text-xs text-stone-500 dark:text-stone-400 mb-1 block"
+          >
+            Custom hex
+          </label>
+          <input
+            id="custom-color-input"
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="#000000"
+            className="w-full px-2 py-1.5 text-sm bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-700 rounded text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-300 dark:focus:ring-stone-600 font-mono"
+            maxLength={7}
           />
-
-          {/* Popover */}
-          <div className="absolute top-full mt-2 left-0 z-20 bg-surface border border-border rounded-lg shadow-xl p-3 min-w-[240px]">
-            <div className="grid grid-cols-4 gap-2">
-              {colors.map((color) => (
-                <button
-                  key={color.hex}
-                  type="button"
-                  onClick={() => {
-                    onChange(color.hex);
-                    setIsOpen(false);
-                  }}
-                  className="w-12 h-12 rounded-lg border-2 border-border hover:border-text-tertiary transition-all relative group"
-                  style={{ backgroundColor: color.hex }}
-                  title={color.name}
-                >
-                  {value === color.hex && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Check
-                        className="w-5 h-5 text-white drop-shadow-lg"
-                        strokeWidth={3}
-                      />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom Color Input */}
-            <div className="mt-3 pt-3 border-t border-border">
-              <label
-                htmlFor="custom-color-input"
-                className="text-xs text-text-tertiary mb-1 block"
-              >
-                Custom hex
-              </label>
-              <input
-                id="custom-color-input"
-                type="text"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder="#000000"
-                className="w-full px-2 py-1.5 text-sm bg-surface border border-border rounded text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-text-tertiary font-mono"
-                maxLength={7}
-              />
-            </div>
-          </div>
-        </>
-      )}
-    </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
