@@ -26,6 +26,7 @@ import {
   type DrawingBoardGroupBy,
   drawingBoardExpanded$,
   drawingBoardGroupBy$,
+  drawingBoardSortMode$,
   isDuplicateMode$,
 } from "@/infrastructure/state/ui-store";
 import { groupByArea, groupByCreated, groupByHorizon } from "@/lib/grouping";
@@ -53,6 +54,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
   const allAreas = use$(areas$); // All areas including archived (for moment card display)
   const activeAreasArray = use$(activeAreas$); // Only active areas (for grouping columns)
   const groupBy = use$(drawingBoardGroupBy$);
+  const sortMode = use$(drawingBoardSortMode$);
   const { handleOpenCreateModal } = useMomentManager();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -102,6 +104,12 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
 
   // Sort unallocated moments for flat view
   const sortedUnallocated = useMemo(() => {
+    if (sortMode === "manual") {
+      // Manual mode: just sort by order (user controls the order via drag-and-drop)
+      return [...unallocated].sort((a, b) => a.order - b.order);
+    }
+
+    // Auto mode: sort by order (primary) and creation date (secondary)
     return [...unallocated].sort((a, b) => {
       // Primary sort: by order
       if (a.order !== b.order) {
@@ -110,7 +118,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
       // Secondary sort: by creation date (newest first)
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [unallocated]);
+  }, [unallocated, sortMode]);
 
   const handleGroupByChange = (value: DrawingBoardGroupBy) => {
     drawingBoardGroupBy$.set(value);
@@ -158,20 +166,43 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
         )}
       >
         <div className="overflow-hidden">
-        {/* Group by selector inside content area */}
-        <div className="flex items-center gap-2 px-6 pt-6 pb-3">
-          <span className="text-xs text-stone-500 font-mono">Group by:</span>
-          <Select value={groupBy} onValueChange={handleGroupByChange}>
-            <SelectTrigger className="h-7 w-[140px] text-xs font-mono">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              <SelectItem value="area">Area</SelectItem>
-              <SelectItem value="created">Created</SelectItem>
-              <SelectItem value="horizon">Horizon</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Group by selector and sort mode toggle */}
+        <div className="flex items-center gap-4 px-6 pt-6 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-stone-500 font-mono">Group by:</span>
+            <Select value={groupBy} onValueChange={handleGroupByChange}>
+              <SelectTrigger className="h-7 w-[140px] text-xs font-mono">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="area">Area</SelectItem>
+                <SelectItem value="created">Created</SelectItem>
+                <SelectItem value="horizon">Horizon</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Sort mode toggle (only shown for ungrouped view) */}
+          {groupBy === "none" && (
+            <button
+              type="button"
+              onClick={() =>
+                drawingBoardSortMode$.set(sortMode === "auto" ? "manual" : "auto")
+              }
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 transition-colors"
+              title={
+                sortMode === "auto"
+                  ? "Click to enable manual sorting"
+                  : "Click to enable automatic sorting"
+              }
+            >
+              <span className="text-stone-600 dark:text-stone-400">Sort:</span>
+              <span className="font-semibold text-stone-900 dark:text-stone-100">
+                {sortMode === "auto" ? "Auto" : "Manual"}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Grouped or Flat Layout */}

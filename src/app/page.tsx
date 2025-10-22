@@ -11,6 +11,7 @@ import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { MomentFormDialog } from "@/components/MomentFormDialog";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
+import { SortModeConflictDialog } from "@/components/SortModeConflictDialog";
 import { Timeline } from "@/components/Timeline";
 import {
   Dialog,
@@ -246,6 +247,9 @@ export default function HomePage() {
               </DialogContent>
             </Dialog>
           )}
+
+          {/* Sort Mode Conflict Dialog */}
+          <SortModeConflictDialog />
         </div>
       </DnDProvider>
     </MomentManagerProvider>
