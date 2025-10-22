@@ -32,6 +32,7 @@ export function DrawingBoardToolbar({
     { value: "area", label: "Area" },
     // { value: "created", label: "Created" },
     { value: "horizon", label: "Horizon" },
+    { value: "phase", label: "Phase" },
   ];
 
   const handleGroupByChange = (value: DrawingBoardGroupBy) => {
