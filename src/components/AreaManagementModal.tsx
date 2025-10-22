@@ -73,9 +73,9 @@ function SortableAreaCard({
     <div ref={setNodeRef} style={style}>
       <AreaCard
         area={area}
-        canDelete={true}
+        canDelete={false}
         onUpdate={onUpdate}
-        onDelete={onArchive}
+        onDelete={() => {}} // Not used for active areas
         onArchive={onArchive}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
@@ -141,7 +141,7 @@ export const AreaManagementModal = observer(function AreaManagementModal({
       id: `draft-${Date.now()}`, // Temporary ID
       name: "",
       color: "#10b981",
-      emoji: "🔵",
+      emoji: "❓", // Placeholder - user will pick from emoji picker
       isDefault: false,
       isArchived: false,
       order: maxOrder + 1,
@@ -196,10 +196,8 @@ export const AreaManagementModal = observer(function AreaManagementModal({
     const area = areas$.get()[areaId];
     if (!area) return;
 
-    if (confirm(`Archive "${area.name}"?`)) {
-      const archivedArea = archiveArea(area);
-      areas$[areaId].set(archivedArea);
-    }
+    const archivedArea = archiveArea(area);
+    areas$[areaId].set(archivedArea);
   };
 
   const handleUnarchiveArea = (areaId: string) => {

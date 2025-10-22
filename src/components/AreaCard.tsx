@@ -2,7 +2,7 @@
 "use client";
 
 import { Archive, RotateCcw, Trash2, GripVertical } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Area } from "@/domain/entities/Area";
 import { ColorPicker } from "./ColorPicker";
 import {
@@ -58,6 +58,17 @@ export function AreaCard({
   const [color, setColor] = useState(area.color);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+
+  // Auto-open emoji picker for new areas
+  useEffect(() => {
+    if (isNew) {
+      // Small delay to allow the component to render first
+      const timer = setTimeout(() => {
+        setEmojiPickerOpen(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isNew]);
 
   // Handle save on blur
   const handleSave = () => {
@@ -188,6 +199,7 @@ export function AreaCard({
 
         {/* Actions */}
         <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Active areas: only show archive button */}
           {!isArchived && !isNew && onArchive && (
             <button
               type="button"
@@ -199,23 +211,39 @@ export function AreaCard({
             </button>
           )}
 
-          {isArchived && onUnarchive && (
-            <button
-              type="button"
-              onClick={onUnarchive}
-              className="p-1.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
-              title="Restore area"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
+          {/* Archived areas: show restore and delete buttons */}
+          {isArchived && (
+            <>
+              {onUnarchive && (
+                <button
+                  type="button"
+                  onClick={onUnarchive}
+                  className="p-1.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                  title="Restore area"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                  title="Delete permanently"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </>
           )}
 
-          {canDelete && (
+          {/* New areas: show cancel button */}
+          {isNew && (
             <button
               type="button"
               onClick={onDelete}
               className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
-              title={isArchived ? "Delete permanently" : "Archive area"}
+              title="Cancel"
             >
               <Trash2 className="w-4 h-4" />
             </button>
