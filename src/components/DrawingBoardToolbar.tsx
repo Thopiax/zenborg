@@ -22,13 +22,15 @@ interface DrawingBoardToolbarProps {
  * - Physics-based transitions (fast smooth)
  * - Follows wabi-sabi principles: restraint, clarity
  */
-export function DrawingBoardToolbar({ onManageAreas }: DrawingBoardToolbarProps) {
+export function DrawingBoardToolbar({
+  onManageAreas,
+}: DrawingBoardToolbarProps) {
   const groupBy = use$(drawingBoardGroupBy$);
 
   const groupOptions: { value: DrawingBoardGroupBy; label: string }[] = [
     { value: "none", label: "None" },
     { value: "area", label: "Area" },
-    { value: "created", label: "Created" },
+    // { value: "created", label: "Created" },
     { value: "horizon", label: "Horizon" },
   ];
 
