@@ -100,6 +100,18 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
     }
   }, [groupBy, unallocated, activeAreasRecord]);
 
+  // Sort unallocated moments for flat view
+  const sortedUnallocated = useMemo(() => {
+    return [...unallocated].sort((a, b) => {
+      // Primary sort: by order
+      if (a.order !== b.order) {
+        return a.order - b.order;
+      }
+      // Secondary sort: by creation date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [unallocated]);
+
   const handleGroupByChange = (value: DrawingBoardGroupBy) => {
     drawingBoardGroupBy$.set(value);
   };
@@ -205,7 +217,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
             )}
 
             {/* Unallocated moments */}
-            {unallocated.length === 0 ? (
+            {sortedUnallocated.length === 0 ? (
               <div className="min-h-[350px] flex flex-col items-center justify-center gap-3">
                 <p className="text-stone-400 text-sm font-mono text-center">
                   No unallocated moments yet
@@ -220,7 +232,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
               </div>
             ) : (
               <div className="flex flex-wrap gap-3 items-start content-start min-h-[350px]">
-                {unallocated.map((moment) => {
+                {sortedUnallocated.map((moment) => {
                   const area = allAreas[moment.areaId];
                   if (!area) return null;
 
@@ -229,7 +241,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
                       key={moment.id}
                       moment={moment}
                       area={area}
-                      contextMomentIds={unallocated.map((m) => m.id)}
+                      contextMomentIds={sortedUnallocated.map((m) => m.id)}
                     />
                   );
                 })}
