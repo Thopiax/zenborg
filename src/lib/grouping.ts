@@ -13,6 +13,21 @@ import type { Area } from "@/domain/entities/Area";
 import type { Horizon, Moment } from "@/domain/entities/Moment";
 
 /**
+ * Sort moments by order (primary) and createdAt (secondary)
+ * This ensures consistent ordering for unallocated moments
+ */
+function sortMoments(moments: Moment[]): Moment[] {
+  return moments.sort((a, b) => {
+    // Primary sort: by order
+    if (a.order !== b.order) {
+      return a.order - b.order;
+    }
+    // Secondary sort: by creation date (newest first)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+/**
  * Grouped collection of moments
  */
 export interface MomentGroup {
@@ -57,6 +72,11 @@ export function groupByArea(
     }
   }
 
+  // Sort moments within each group
+  for (const group of grouped.values()) {
+    sortMoments(group.moments);
+  }
+
   // Return in area order
   return Array.from(grouped.values());
 }
@@ -97,7 +117,7 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
     result.push({
       groupId: "created-today",
       groupLabel: "Today",
-      moments: groups.today,
+      moments: sortMoments(groups.today),
     });
   }
 
@@ -105,7 +125,7 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
     result.push({
       groupId: "created-yesterday",
       groupLabel: "Yesterday",
-      moments: groups.yesterday,
+      moments: sortMoments(groups.yesterday),
     });
   }
 
@@ -113,7 +133,7 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
     result.push({
       groupId: "created-this-week",
       groupLabel: "This Week",
-      moments: groups.thisWeek,
+      moments: sortMoments(groups.thisWeek),
     });
   }
 
@@ -121,7 +141,7 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
     result.push({
       groupId: "created-this-month",
       groupLabel: "This Month",
-      moments: groups.thisMonth,
+      moments: sortMoments(groups.thisMonth),
     });
   }
 
@@ -129,7 +149,7 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
     result.push({
       groupId: "created-all-time",
       groupLabel: "All Time",
-      moments: groups.allTime,
+      moments: sortMoments(groups.allTime),
     });
   }
 
@@ -175,22 +195,22 @@ export function groupByHorizon(moments: Moment[]): MomentGroup[] {
     {
       groupId: "horizon-this-week",
       groupLabel: "This Week",
-      moments: groups.thisWeek,
+      moments: sortMoments(groups.thisWeek),
     },
     {
       groupId: "horizon-next-week",
       groupLabel: "Next Week",
-      moments: groups.nextWeek,
+      moments: sortMoments(groups.nextWeek),
     },
     {
       groupId: "horizon-this-month",
       groupLabel: "This Month",
-      moments: groups.thisMonth,
+      moments: sortMoments(groups.thisMonth),
     },
     {
       groupId: "horizon-later",
       groupLabel: "Later",
-      moments: groups.later,
+      moments: sortMoments(groups.later),
     },
   ];
 }
