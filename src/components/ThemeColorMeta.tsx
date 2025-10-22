@@ -4,29 +4,36 @@ import { useTheme } from "next-themes";
 import { useEffect } from "react";
 
 /**
- * ThemeColorMeta - Dynamically updates theme-color meta tag
+ * ThemeColorMeta - Dynamically updates theme-color for manual theme changes
  *
- * Updates the browser/PWA chrome colors based on active theme.
+ * Server-side meta tags with media queries (in layout.tsx) handle system
+ * preference automatically. This component ensures the general theme-color
+ * tag stays in sync when users manually toggle between themes.
+ *
  * Essential for iOS Safari status bar and Android nav bar colors.
  */
 export function ThemeColorMeta() {
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
-    // Get the meta tag or create it if it doesn't exist
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    // Only update if theme has actually resolved (not undefined)
+    if (!resolvedTheme) return;
 
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement("meta");
-      metaThemeColor.setAttribute("name", "theme-color");
-      document.head.appendChild(metaThemeColor);
+    const color = resolvedTheme === "dark" ? "#1c1917" : "#fafaf9"; // stone-900 : stone-50
+
+    // Update or create general theme-color meta tag for browsers without media query support
+    // and to override when user manually changes theme
+    let generalThemeMeta = document.querySelector('meta[name="theme-color"]:not([media])');
+
+    if (!generalThemeMeta) {
+      generalThemeMeta = document.createElement("meta");
+      generalThemeMeta.setAttribute("name", "theme-color");
+      document.head.appendChild(generalThemeMeta);
     }
 
-    // Update theme-color based on resolved theme
-    const color = resolvedTheme === "dark" ? "#1c1917" : "#fafaf9"; // stone-900 : stone-50
-    metaThemeColor.setAttribute("content", color);
+    generalThemeMeta.setAttribute("content", color);
 
-    // Update iOS status bar style
+    // Update iOS status bar style for PWA
     let appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
 
     if (!appleStatusBar) {
@@ -35,10 +42,10 @@ export function ThemeColorMeta() {
       document.head.appendChild(appleStatusBar);
     }
 
-    // black-translucent works better with dark mode, default with light
+    // Use default for light, black-translucent for dark (better contrast)
     const statusBarStyle = resolvedTheme === "dark" ? "black-translucent" : "default";
     appleStatusBar.setAttribute("content", statusBarStyle);
   }, [resolvedTheme]);
 
-  return null; // This component doesn't render anything
+  return null;
 }
