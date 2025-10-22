@@ -15,6 +15,7 @@ import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import {
   areas$,
@@ -179,6 +180,15 @@ export function TimelineCell({
           </button>
         )}
       </div>
+      {/* Phase Icon - Shows below cards when cell has moments */}
+      {cellMoments.length > 0 && (
+        <div className="flex items-center justify-center py-4 mt-2">
+          <PhaseIcon
+            phase={phase}
+            className="opacity-50 text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5"
+          />
+        </div>
+      )}
     </div>
   );
 }
