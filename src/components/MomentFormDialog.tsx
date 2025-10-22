@@ -70,6 +70,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     horizon,
     phase,
     showCreateMore,
+    isAllocated,
   } = formState;
 
   // Use activeAreas$ which filters out archived areas and sorts by order
@@ -122,14 +123,14 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     { enabled: formHotkeysEnabled && open }
   );
 
-  // H - open horizon selector
+  // H - open horizon selector (disabled for allocated moments)
   useHotkeys(
     "h",
     (e) => {
       e.preventDefault();
       setIsHorizonSelectorOpen(true);
     },
-    { enabled: formHotkeysEnabled && open }
+    { enabled: formHotkeysEnabled && open && !isAllocated }
   );
 
   // P - open phase selector
@@ -326,8 +327,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 }
               />
 
-              {/* Phase & Cycle Selectors - Side by side */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Phase & Cycle Selectors - Side by side (hide horizon for allocated moments) */}
+              <div className={cn("grid gap-3", isAllocated ? "grid-cols-1" : "grid-cols-2")}>
                 {/* Phase Selector - Ghost with clock icon */}
                 <PhaseSelector
                   open={isPhaseSelectorOpen}
@@ -368,34 +369,36 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                   }
                 />
 
-                {/* Cycle Selector - Ghost with calendar icon */}
-                <HorizonSelector
-                  open={isHorizonSelectorOpen}
-                  selectedHorizon={horizon}
-                  onSelectHorizon={(newHorizon) => {
-                    momentFormState$.horizon.set(newHorizon);
-                  }}
-                  onClose={() => setIsHorizonSelectorOpen(false)}
-                  onOpen={() => setIsHorizonSelectorOpen(true)}
-                  collisionBoundary={dialogRef.current}
-                  trigger={
-                    <button
-                      type="button"
-                      className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
-                    >
-                      <Calendar
-                        className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
-                        strokeWidth={1.5}
-                      />
-                      <span className="font-mono text-sm flex-1 text-left truncate">
-                        {formatCycleLabel(horizon)}
-                      </span>
-                      <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
-                        C
-                      </kbd>
-                    </button>
-                  }
-                />
+                {/* Cycle Selector - Ghost with calendar icon (hidden for allocated moments) */}
+                {!isAllocated && (
+                  <HorizonSelector
+                    open={isHorizonSelectorOpen}
+                    selectedHorizon={horizon}
+                    onSelectHorizon={(newHorizon) => {
+                      momentFormState$.horizon.set(newHorizon);
+                    }}
+                    onClose={() => setIsHorizonSelectorOpen(false)}
+                    onOpen={() => setIsHorizonSelectorOpen(true)}
+                    collisionBoundary={dialogRef.current}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                      >
+                        <Calendar
+                          className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
+                          strokeWidth={1.5}
+                        />
+                        <span className="font-mono text-sm flex-1 text-left truncate">
+                          {formatCycleLabel(horizon)}
+                        </span>
+                        <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                          C
+                        </kbd>
+                      </button>
+                    }
+                  />
+                )}
               </div>
             </div>
           ) : (
