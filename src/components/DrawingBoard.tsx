@@ -30,6 +30,7 @@ import { MomentCard } from "./MomentCard";
 
 interface DrawingBoardProps {
   onEditArea?: (areaId: string) => void;
+  onManageAreas?: () => void;
 }
 
 /**
@@ -40,8 +41,9 @@ interface DrawingBoardProps {
  * - Use global N to create new moments
  * - Collapsible to save space
  * - Supports drag and drop to/from timeline
+ * - Toolbar with grouping and area management
  */
-export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
+export function DrawingBoard({ onEditArea, onManageAreas }: DrawingBoardProps = {}) {
   const isExpanded = use$(drawingBoardExpanded$);
   const unallocated = use$(unallocatedMoments$);
   const allAreas = use$(areas$); // All areas including archived (for moment card display)
@@ -155,8 +157,8 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
         )}
       >
         <div className="overflow-hidden">
-        {/* Toolbar with grouping and sorting controls */}
-        <DrawingBoardToolbar />
+        {/* Toolbar with grouping and area management */}
+        <DrawingBoardToolbar onManageAreas={onManageAreas} />
 
         {/* Grouped or Flat Layout */}
         {groups ? (
