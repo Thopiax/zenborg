@@ -2,7 +2,24 @@
 "use client";
 
 import { observer } from "@legendapp/state/react";
-import { Archive as ArchiveIcon, ChevronDown, ChevronRight, Plus, RotateCcw, Trash2 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Archive as ArchiveIcon, ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Area } from "@/domain/entities/Area";
 import {
@@ -27,6 +44,45 @@ interface AreaManagementModalProps {
   focusAreaId?: string; // Optional: auto-open edit mode for specific area
 }
 
+// Sortable wrapper for individual area cards
+function SortableAreaCard({
+  area,
+  onUpdate,
+  onArchive,
+}: {
+  area: Area;
+  onUpdate: (updates: Partial<Area>) => void;
+  onArchive: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: area.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <AreaCard
+        area={area}
+        canDelete={true}
+        onUpdate={onUpdate}
+        onDelete={onArchive}
+        onArchive={onArchive}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
+  );
+}
+
 /**
  * AreaManagementModal - Manage custom areas (CRUD + reordering)
  *
@@ -35,7 +91,7 @@ interface AreaManagementModalProps {
  * - Create new areas (inline card-based)
  * - Edit existing areas (inline)
  * - Archive areas (soft delete - preserves data integrity)
- * - Reorder areas (drag & drop - TODO)
+ * - Reorder areas (drag & drop)
  */
 export const AreaManagementModal = observer(function AreaManagementModal({
   open,
@@ -45,6 +101,14 @@ export const AreaManagementModal = observer(function AreaManagementModal({
   const [newAreaDraft, setNewAreaDraft] = useState<Area | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const areaRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const allAreasUnsorted = Object.values(areas$.get() || {});
   const activeAreas = allAreasUnsorted
@@ -160,6 +224,31 @@ export const AreaManagementModal = observer(function AreaManagementModal({
     }
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = activeAreas.findIndex((a) => a.id === active.id);
+    const newIndex = activeAreas.findIndex((a) => a.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Reorder the array
+    const reorderedAreas = arrayMove(activeAreas, oldIndex, newIndex);
+
+    // Update the order property for each area
+    reorderedAreas.forEach((area, index) => {
+      if (area.order !== index) {
+        areas$[area.id].order.set(index);
+      }
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto">
@@ -203,24 +292,34 @@ export const AreaManagementModal = observer(function AreaManagementModal({
             </div>
           )}
 
-          {/* Active Areas List */}
-          <div className="space-y-2">
-            {activeAreas.map((area) => (
-              <div
-                key={area.id}
-                ref={(el) => {
-                  areaRefs.current[area.id] = el;
-                }}
-              >
-                <AreaCard
-                  area={area}
-                  canDelete={true}
-                  onUpdate={(updates) => handleUpdateArea(area, updates)}
-                  onDelete={() => handleArchiveArea(area.id)}
-                />
+          {/* Active Areas List - Draggable */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={activeAreas.map((a) => a.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {activeAreas.map((area) => (
+                  <div
+                    key={area.id}
+                    ref={(el) => {
+                      areaRefs.current[area.id] = el;
+                    }}
+                  >
+                    <SortableAreaCard
+                      area={area}
+                      onUpdate={(updates) => handleUpdateArea(area, updates)}
+                      onArchive={() => handleArchiveArea(area.id)}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
 
           {/* Archived Areas Section - Collapsible */}
           {archivedAreas.length > 0 && (
@@ -242,47 +341,17 @@ export const AreaManagementModal = observer(function AreaManagementModal({
               </button>
 
               {showArchived && (
-                <div className="mt-2 space-y-2 pl-6">
+                <div className="mt-2 space-y-2">
                   {archivedAreas.map((area) => (
-                    <div
+                    <AreaCard
                       key={area.id}
-                      className="p-3 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className="text-base">{area.emoji}</span>
-                          <span className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                            {area.name}
-                          </span>
-                          <span
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: area.color }}
-                          />
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleUnarchiveArea(area.id)}
-                            className="px-2 py-1 text-xs rounded hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 flex items-center gap-1"
-                            title="Unarchive"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                            Restore
-                          </button>
-                          {canDeleteArchivedArea(area, allMoments) && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteArchivedArea(area.id)}
-                              className="px-2 py-1 text-xs rounded hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1"
-                              title="Delete permanently"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      area={area}
+                      canDelete={canDeleteArchivedArea(area, allMoments)}
+                      isArchived={true}
+                      onUpdate={(updates) => handleUpdateArea(area, updates)}
+                      onDelete={() => handleDeleteArchivedArea(area.id)}
+                      onUnarchive={() => handleUnarchiveArea(area.id)}
+                    />
                   ))}
                 </div>
               )}

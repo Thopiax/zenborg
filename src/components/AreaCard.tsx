@@ -125,133 +125,115 @@ export function AreaCard({
     }
   };
 
-  // Helper to determine if text should be light or dark based on background
-  const getTextColor = (bgColor: string) => {
-    // Simple luminance check
-    const hex = bgColor.replace("#", "");
-    const r = Number.parseInt(hex.substring(0, 2), 16);
-    const g = Number.parseInt(hex.substring(2, 4), 16);
-    const b = Number.parseInt(hex.substring(4, 6), 16);
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.5 ? "text-stone-900" : "text-white";
-  };
-
-  const textColorClass = getTextColor(color);
-
   return (
     <div
-      className={`group relative p-4 rounded-lg transition-all ${textColorClass}`}
-      style={{ backgroundColor: color }}
+      className={`group relative p-3 rounded-lg border ${
+        isArchived
+          ? "border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
+          : "border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-950"
+      } transition-all hover:border-stone-300 dark:hover:border-stone-600`}
     >
-      <div className="flex items-center justify-between gap-3">
-        {/* Left: Emoji + Name */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <span className="text-2xl flex-shrink-0">{emoji}</span>
+      <div className="flex items-center gap-3">
+        {/* Drag Handle */}
+        {!isArchived && !isNew && (
+          <button
+            type="button"
+            {...dragHandleProps}
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors flex-shrink-0"
+            aria-label="Drag to reorder"
+          >
+            <GripVertical className="w-4 h-4 text-stone-400 dark:text-stone-500" />
+          </button>
+        )}
 
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={handleKeyDown}
-            autoFocus={isNew}
-            className={`flex-1 px-2 py-1 bg-white/10 hover:bg-white/20 focus:bg-white/30 rounded border-0 outline-none ${textColorClass} placeholder:text-current/50 transition-all font-medium`}
-            placeholder="Area name..."
-          />
-        </div>
-
-        {/* Right: Menu Button */}
-        <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+        {/* Emoji Picker */}
+        <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className={`p-1.5 rounded-lg hover:bg-white/20 ${textColorClass} transition-all flex-shrink-0`}
-              aria-label="Area options"
+              className="text-2xl flex-shrink-0 hover:bg-stone-100 dark:hover:bg-stone-800 rounded w-10 h-10 flex items-center justify-center transition-colors"
+              aria-label="Change emoji"
             >
-              <MoreVertical className="w-5 h-5" />
+              {emoji}
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-56 p-0">
-            <div className="py-1">
-              {/* Modify Color */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowColorPicker(!showColorPicker);
-                  setShowEmojiInput(false);
-                }}
-                className="w-full px-4 py-2 flex items-center gap-3 hover:bg-stone-100 dark:hover:bg-stone-800 text-left text-stone-900 dark:text-stone-100 transition-colors"
-              >
-                <Palette className="w-4 h-4" />
-                <span>Modify color</span>
-              </button>
-
-              {/* Color Picker (shown inline in menu) */}
-              {showColorPicker && (
-                <div className="px-4 py-2 border-t border-stone-200 dark:border-stone-700">
-                  <ColorPicker value={color} onChange={handleColorChange} />
-                </div>
-              )}
-
-              {/* Change Emoji */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowEmojiInput(!showEmojiInput);
-                  setShowColorPicker(false);
-                }}
-                className="w-full px-4 py-2 flex items-center gap-3 hover:bg-stone-100 dark:hover:bg-stone-800 text-left text-stone-900 dark:text-stone-100 transition-colors"
-              >
-                <Smile className="w-4 h-4" />
-                <span>Change emoji</span>
-              </button>
-
-              {/* Emoji Input (shown inline in menu) */}
-              {showEmojiInput && (
-                <div className="px-4 py-2 border-t border-stone-200 dark:border-stone-700">
-                  <input
-                    value={emoji}
-                    onChange={(e) => handleEmojiChange(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        setShowEmojiInput(false);
-                      }
-                    }}
-                    className="w-full text-center text-2xl px-2 py-2 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded outline-none focus:ring-2 focus:ring-stone-400"
-                    maxLength={2}
-                    placeholder="😀"
-                  />
-                </div>
-              )}
-
-              {/* Delete */}
-              <button
-                type="button"
-                onClick={() => {
-                  onDelete();
-                  setMenuOpen(false);
-                }}
-                disabled={!canDelete}
-                className="w-full px-4 py-2 flex items-center gap-3 hover:bg-red-500/10 text-left text-red-600 dark:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-t border-stone-200 dark:border-stone-700"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Delete</span>
-              </button>
-            </div>
+          <PopoverContent className="w-fit p-0" align="start">
+            <EmojiPicker
+              className="h-[342px]"
+              onEmojiSelect={({ emoji }) => handleEmojiSelect(emoji)}
+            >
+              <EmojiPickerSearch />
+              <EmojiPickerContent />
+              <EmojiPickerFooter />
+            </EmojiPicker>
           </PopoverContent>
         </Popover>
+
+        {/* Name Input */}
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={handleSave}
+          onKeyDown={handleKeyDown}
+          autoFocus={isNew}
+          className="flex-1 px-2 py-1 bg-transparent hover:bg-stone-50 dark:hover:bg-stone-900 focus:bg-stone-50 dark:focus:bg-stone-900 rounded border-0 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 transition-all font-medium"
+          placeholder="Area name..."
+          disabled={isArchived}
+        />
+
+        {/* Color Picker (inline) */}
+        <div className="flex-shrink-0">
+          <ColorPicker value={color} onChange={handleColorChange} />
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {!isArchived && !isNew && onArchive && (
+            <button
+              type="button"
+              onClick={onArchive}
+              className="p-1.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+              title="Archive area"
+            >
+              <Archive className="w-4 h-4" />
+            </button>
+          )}
+
+          {isArchived && onUnarchive && (
+            <button
+              type="button"
+              onClick={onUnarchive}
+              className="p-1.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+              title="Restore area"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+
+          {canDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+              title={isArchived ? "Delete permanently" : "Archive area"}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Validation Error (inline, non-blocking) */}
+      {/* Validation Error */}
       {validationError && (
-        <div className={`mt-2 text-xs ${textColorClass} opacity-90`}>
+        <div className="mt-2 text-xs text-red-600 dark:text-red-400">
           {validationError}
         </div>
       )}
 
       {/* New area indicator */}
       {isNew && (
-        <div className={`mt-2 text-xs ${textColorClass} opacity-70`}>
-          Press Enter or click away to save (will disappear if empty)
+        <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+          Press Enter or click away to save
         </div>
       )}
     </div>
