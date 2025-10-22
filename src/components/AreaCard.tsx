@@ -1,53 +1,63 @@
 /** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
 "use client";
 
-import { MoreVertical, Palette, Smile, Trash2 } from "lucide-react";
+import { Archive, RotateCcw, Trash2, GripVertical } from "lucide-react";
 import { useState } from "react";
 import type { Area } from "@/domain/entities/Area";
-import { updateArea } from "@/domain/entities/Area";
 import { ColorPicker } from "./ColorPicker";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  EmojiPicker,
+  EmojiPickerSearch,
+  EmojiPickerContent,
+  EmojiPickerFooter,
+} from "@/components/ui/emoji-picker";
 
 interface AreaCardProps {
   area: Area;
   canDelete: boolean;
   isNew?: boolean; // True for new area creation mode
+  isArchived?: boolean; // True for archived areas
   onUpdate: (updates: Partial<Area>) => void;
   onDelete: () => void;
+  onArchive?: () => void; // Archive action for active areas
+  onUnarchive?: () => void; // Unarchive action for archived areas
   onSaveNew?: (name: string, color: string, emoji: string) => void; // Called on blur for new areas
+  dragHandleProps?: any; // Props for drag handle
 }
 
 /**
- * AreaCard - Simplified full-color card with menu
+ * AreaCard - Flat design with inline controls
  *
  * Features:
- * - Full background color (area.color)
- * - Inline name editing (click to edit)
- * - Three-dot menu: modify color, change emoji, delete
- * - Color picker in popover
- * - Emoji picker in popover
- * - New area creation mode: disappears on blur if empty
+ * - Inline emoji picker (popover)
+ * - Inline name editing
+ * - Inline color picker (always visible)
+ * - Inline action icons (archive/restore/delete)
+ * - Drag and drop support
  */
 export function AreaCard({
   area,
   canDelete,
   isNew = false,
+  isArchived = false,
   onUpdate,
   onDelete,
-  onSaveNew
+  onArchive,
+  onUnarchive,
+  onSaveNew,
+  dragHandleProps,
 }: AreaCardProps) {
   // Local state for optimistic updates
   const [name, setName] = useState(area.name);
   const [emoji, setEmoji] = useState(area.emoji);
   const [color, setColor] = useState(area.color);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showEmojiInput, setShowEmojiInput] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   // Handle save on blur
   const handleSave = () => {
@@ -102,14 +112,16 @@ export function AreaCard({
       // Save immediately for existing areas
       onUpdate({ color: newColor });
     }
-    setShowColorPicker(false);
   };
 
-  const handleEmojiChange = (newEmoji: string) => {
-    setEmoji(newEmoji);
+  const handleEmojiSelect = (selectedEmoji: string) => {
+    setEmoji(selectedEmoji);
+    setEmojiPickerOpen(false);
     // Save emoji
-    if (!isNew) {
-      onUpdate({ emoji: newEmoji });
+    if (isNew) {
+      onUpdate({ emoji: selectedEmoji });
+    } else {
+      onUpdate({ emoji: selectedEmoji });
     }
   };
 
