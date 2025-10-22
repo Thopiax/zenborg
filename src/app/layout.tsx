@@ -20,9 +20,13 @@ export const metadata: Metadata = {
   description:
     "An attention orchestration system for budgeting moments toward personal flourishing",
   manifest: "/manifest.json",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafaf9" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1917" },
+  ],
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent", // Adapts to content, works with both themes
+    statusBarStyle: "default",
     title: "Zenborg",
   },
   icons: {
