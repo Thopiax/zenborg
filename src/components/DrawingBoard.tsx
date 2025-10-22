@@ -13,6 +13,7 @@ import type { Moment } from "@/domain/entities/Moment";
 import {
   activeAreas$,
   areas$,
+  phaseConfigs$,
   unallocatedMoments$,
 } from "@/infrastructure/state/store";
 import {
@@ -27,6 +28,7 @@ import {
   groupByCreated,
   groupByHorizon,
   groupByTag,
+  groupByPhase
 } from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
@@ -57,6 +59,7 @@ export function DrawingBoard({
   const unallocated = use$(unallocatedMoments$);
   const allAreas = use$(areas$); // All areas including archived (for moment card display)
   const activeAreasArray = use$(activeAreas$); // Only active areas (for grouping columns)
+  const phaseConfigsRecord = use$(phaseConfigs$); // Phase configurations
   const groupBy = use$(drawingBoardGroupBy$);
   const sortMode = use$(drawingBoardSortMode$);
   const { handleOpenCreateModal } = useMomentManager();
@@ -101,12 +104,15 @@ export function DrawingBoard({
         return groupByAttitude(unallocated);
       case "tag":
         return groupByTag(unallocated);
+      case "phase":
+        // Convert phaseConfigs record to array for groupByPhase
+        return groupByPhase(unallocated, Object.values(phaseConfigsRecord));
       case "none":
         return null;
       default:
         return null;
     }
-  }, [groupBy, unallocated, activeAreasRecord]);
+  }, [groupBy, unallocated, activeAreasRecord, phaseConfigsRecord]);
 
   // Sort unallocated moments for flat view
   const sortedUnallocated = useMemo(() => {
@@ -129,6 +135,7 @@ export function DrawingBoard({
   const handleCreateFromColumn = (
     areaId?: string,
     cycle?: string,
+    phase?: string,
     attitude?: string
   ) => {
     // Open create modal with pre-filled properties

@@ -36,7 +36,7 @@ describe("Phase", () => {
       expect(configs[2].label).toBe("Evening");
       expect(configs[2].emoji).toBe("🌙");
       expect(configs[3].label).toBe("Night");
-      expect(configs[3].emoji).toBe("🌃");
+      expect(configs[3].emoji).toBe("✨");
     });
 
     it("should have correct time boundaries", () => {

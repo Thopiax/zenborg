@@ -600,6 +600,13 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
       // Don't update if already has this attitude
       if (moment.attitude === newAttitude) {
+    } else if (groupBy === "phase") {
+      // Extract phase value from column ID (format: "phase-MORNING", "phase-AFTERNOON", etc.)
+      const phaseValue = columnId.replace("phase-", "");
+      const newPhase = phaseValue === "unset" ? null : phaseValue;
+
+      // Don't update if already has this phase
+      if (moment.phase === newPhase) {
         if (shouldUnallocate) {
           endBatch("Unallocated moment to drawing board");
         }
@@ -611,6 +618,11 @@ export function DnDProvider({ children }: DnDProviderProps) {
         `Setting moment ${momentId} attitude to ${newAttitude || "none"}`
       );
       moments$[momentId].attitude.set(newAttitude);
+      // Update moment's phase
+      console.log(
+        `Setting moment ${momentId} phase to ${newPhase || "unset"}`
+      );
+      moments$[momentId].phase.set(newPhase as Phase | null);
       moments$[momentId].updatedAt.set(new Date().toISOString());
     } else {
       // Other grouping modes (created, tag) are read-only

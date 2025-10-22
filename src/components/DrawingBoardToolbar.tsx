@@ -34,6 +34,7 @@ export function DrawingBoardToolbar({
     { value: "horizon", label: "Horizon" },
     { value: "attitude", label: "Attitude" },
     { value: "tag", label: "Tag" },
+    { value: "phase", label: "Phase" },
   ];
 
   const handleGroupByChange = (value: DrawingBoardGroupBy) => {

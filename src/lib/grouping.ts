@@ -12,6 +12,8 @@ import {
 import type { Area } from "@/domain/entities/Area";
 import type { Horizon, Moment } from "@/domain/entities/Moment";
 import { ATTITUDE_METADATA, Attitude } from "@/domain/value-objects/Attitude";
+import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
+import { PHASE_ICONS } from "@/domain/value-objects/phaseStyles";
 
 /**
  * Sort moments by order (primary) and createdAt (secondary)
@@ -36,6 +38,8 @@ export interface MomentGroup {
   groupLabel: string;
   color?: string; // Optional color for the group (used for area grouping)
   emoji?: string; // Optional emoji for the group (used for area grouping)
+  icon?: React.ComponentType<{ className?: string }>; // Optional icon component (used for phase grouping)
+  showEmptyState?: boolean; // Whether to show empty state when no moments (default: true)
   moments: Moment[];
 }
 
@@ -345,12 +349,94 @@ export function groupByTag(moments: Moment[]): MomentGroup[] {
       moments: sortMoments(untagged),
     });
   }
+  
+  return groups;
+}
+
+/*
+ * Monochrome colors for phase grouping (stone palette)
+ * Follows wabi-sabi design principles with subtle tonal variations
+ */
+const PHASE_COLORS: Record<Phase, string> = {
+  [Phase.MORNING]: "#d6d3d1", // stone-300
+  [Phase.AFTERNOON]: "#a8a29e", // stone-400
+  [Phase.EVENING]: "#78716c", // stone-500
+  [Phase.NIGHT]: "#57534e", // stone-600
+};
+
+/**
+ * Group moments by phase of day
+ * Categories: Morning, Afternoon, Evening, Night
+ * Shows all visible phases in order
+ * Uses phase configuration for labels and phaseStyles for icons/colors
+ */
+export function groupByPhase(
+  moments: Moment[],
+  phaseConfigs: PhaseConfig[]
+): MomentGroup[] {
+  // Get visible phases sorted by order
+  const visiblePhases = phaseConfigs
+    .filter((config) => config.isVisible)
+    .sort((a, b) => a.order - b.order);
+
+  // Initialize groups for all visible phases
+  const groups: MomentGroup[] = visiblePhases.map((config) => ({
+    groupId: `phase-${config.phase}`,
+    groupLabel: config.label,
+    color: PHASE_COLORS[config.phase], // Use monochrome colors
+    icon: PHASE_ICONS[config.phase], // Use icons from phaseStyles
+    moments: [],
+  }));
+
+  // Add unallocated phase group (moments without phase assignment)
+  // No empty state for this group - it's a catch-all for unorganized moments
+  groups.push({
+    groupId: "phase-unset",
+    groupLabel: "No Phase",
+    color: "#e7e5e4", // stone-200
+    showEmptyState: false, // Calmer appearance - no promotional empty state
+    moments: [],
+  });
+
+  // Group moments by their phase
+  const groupsMap = new Map<string, Moment[]>();
+  for (const group of groups) {
+    groupsMap.set(group.groupId, []);
+  }
+
+  for (const moment of moments) {
+    if (moment.phase) {
+      const groupId = `phase-${moment.phase}`;
+      const groupMoments = groupsMap.get(groupId);
+      if (groupMoments) {
+        groupMoments.push(moment);
+      }
+    } else {
+      // Moments without phase go to "No Phase" group
+      const groupMoments = groupsMap.get("phase-unset");
+      if (groupMoments) {
+        groupMoments.push(moment);
+      }
+    }
+  }
+
+  // Fill in sorted moments for each group
+  for (const group of groups) {
+    const groupMoments = groupsMap.get(group.groupId);
+    if (groupMoments) {
+      group.moments = sortMoments(groupMoments);
+    }
+  }
 
   return groups;
 }
 
 /**
  * Get grouping function based on grouping mode
+ *
+ * Note: Phase grouping is not included here because it requires different
+ * parameters (PhaseConfig[] instead of Record<string, Area>). Handle phase
+ * grouping separately by calling groupByPhase directly.
  */
 export function getGroupingFunction(
   groupBy: "none" | "area" | "created" | "horizon" | "attitude" | "tag"

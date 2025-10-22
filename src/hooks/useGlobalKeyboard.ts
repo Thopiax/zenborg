@@ -382,6 +382,16 @@ export function useGlobalKeyboard() {
       // Create moment with history tracking
       createMomentWithHistory(result);
 
+      // Set horizon if provided
+      if (horizon) {
+        moments$[result.id].horizon.set(horizon);
+      }
+
+      // Set phase if provided (for unallocated moments with phase grouping)
+      if (phase) {
+        moments$[result.id].phase.set(phase);
+      }
+
       // If day/phase were prefilled from timeline click, allocate the moment
       const prefilledAllocation = momentFormState$.prefilledAllocation.peek();
       if (prefilledAllocation?.day && prefilledAllocation?.phase) {

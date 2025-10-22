@@ -33,7 +33,8 @@ interface DrawingBoardColumnProps {
   onCreateMoment?: (
     areaId?: string,
     horizon?: string,
-    attitude?: string
+    attitude?: string,
+    phase?: string
   ) => void;
   onEditArea?: (areaId: string) => void; // Open area management modal focused on this area
 }
@@ -70,7 +71,7 @@ export function DrawingBoardColumn({
   });
 
   // Allow drops for area and attitude grouping
-  const canAcceptDrops = groupBy === "area" || groupBy === "attitude";
+  const canAcceptDrops = groupBy === "area" || groupBy === "attitude" || groupBy === "phase";
 
   // Only allow click-to-create for area, horizon, and attitude grouping (not created or tag)
   const canCreateFromColumn =
@@ -95,6 +96,10 @@ export function DrawingBoardColumn({
         undefined,
         attitudeValue === "none" ? "" : attitudeValue
       );
+    } else if (groupBy === "phase") {
+      // Create with this phase pre-selected
+      const phaseValue = group.groupId.replace("phase-", "");
+      onCreateMoment(undefined, undefined, undefined, phaseValue === "unset" ? undefined : phaseValue);
     }
   };
 
@@ -110,11 +115,13 @@ export function DrawingBoardColumn({
       {/* Column Header */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          {group.emoji && (
+          {group.icon ? (
+            <group.icon className="h-4 w-4 text-stone-600 dark:text-stone-400" />
+          ) : group.emoji ? (
             <span className="text-base" aria-hidden="true">
               {group.emoji}
             </span>
-          )}
+          ) : null}
           <h3 className="text-sm font-mono font-medium text-stone-700 dark:text-stone-300">
             {group.groupLabel}
           </h3>
@@ -189,13 +196,19 @@ export function DrawingBoardColumn({
         strategy={verticalListSortingStrategy}
       >
         <div className="flex flex-col gap-3 p-4 min-h-[300px] pb-48">
-          {/* Empty state for area grouping when no moments */}
-          {groupBy === "area" && group.moments.length === 0 && (
+          {/* Empty state for area and phase grouping when no moments */}
+          {(groupBy === "area" || groupBy === "phase") &&
+           group.moments.length === 0 &&
+           group.showEmptyState !== false && (
             <div className="flex flex-col items-center justify-center min-h-[240px] gap-3 py-8">
               <div className="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
-                <span className="text-2xl" aria-hidden="true">
-                  {group.emoji || "📝"}
-                </span>
+                {group.icon ? (
+                  <group.icon className="h-6 w-6 text-stone-600 dark:text-stone-400" />
+                ) : (
+                  <span className="text-2xl" aria-hidden="true">
+                    {group.emoji || "📝"}
+                  </span>
+                )}
               </div>
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium text-stone-600 dark:text-stone-400">

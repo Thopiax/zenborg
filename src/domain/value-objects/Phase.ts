@@ -68,7 +68,7 @@ export const DEFAULT_PHASE_CONFIGS: Omit<
   {
     phase: Phase.NIGHT,
     label: "Night",
-    emoji: "🌃",
+    emoji: "✨",
     color: "#1e293b",
     startHour: 22,
     endHour: 6,
