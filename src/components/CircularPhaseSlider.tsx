@@ -67,7 +67,7 @@ export function CircularPhaseSlider({
   const [draggingPointer, setDraggingPointer] = useState<number | null>(null);
 
   // Constants
-  const SIZE = 400;
+  const SIZE = 480; // Increased from 400 to accommodate labels
   const CENTER = SIZE / 2;
   const OUTER_RADIUS = 160;
   const INNER_RADIUS = 115; // Slightly thinner donut (45px vs 50px)
@@ -422,6 +422,9 @@ export function CircularPhaseSlider({
           const iconPos = polarToCartesian(midAngle, midRadius);
           const IconComponent = phases[index].Icon;
 
+          // Use darker color for better contrast (night phase gets lighter color)
+          const iconColor = index === 0 ? "#e7e5e4" : "#44403c"; // night: stone-200, others: stone-700
+
           return (
             <foreignObject
               key={`icon-${index}`}
@@ -433,8 +436,8 @@ export function CircularPhaseSlider({
             >
               <div className="flex items-center justify-center w-full h-full">
                 <IconComponent
-                  className="w-6 h-6 opacity-60"
-                  style={{ color: COLORS.text.light }}
+                  className="w-6 h-6"
+                  style={{ color: iconColor }}
                 />
               </div>
             </foreignObject>
@@ -520,18 +523,31 @@ export function CircularPhaseSlider({
                 pointerEvents="none"
               />
 
-              {/* Hour label */}
-              <text
-                x={labelPos.x}
-                y={labelPos.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="text-sm font-mono font-medium"
-                fill={COLORS.text.light}
-                pointerEvents="none"
-              >
-                {formatHour(hour)}
-              </text>
+              {/* Hour label with background */}
+              <g pointerEvents="none">
+                {/* Label background for better visibility */}
+                <rect
+                  x={labelPos.x - 24}
+                  y={labelPos.y - 10}
+                  width={48}
+                  height={20}
+                  rx={4}
+                  fill={COLORS.ui.background}
+                  stroke={COLORS.ui.borderLight}
+                  strokeWidth={0.5}
+                  opacity={0.95}
+                />
+                <text
+                  x={labelPos.x}
+                  y={labelPos.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="text-sm font-mono font-medium"
+                  fill={COLORS.text.light}
+                >
+                  {formatHour(hour)}
+                </text>
+              </g>
             </g>
           );
         })}
