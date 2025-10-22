@@ -127,6 +127,7 @@ export function SelectorPopover<T = string>({
   return (
     <Popover
       open={open}
+      modal={true}
       onOpenChange={(isOpen) => {
         if (isOpen) {
           onOpen?.();
@@ -139,13 +140,13 @@ export function SelectorPopover<T = string>({
       <PopoverContent
         side={side}
         align={align}
-        className="w-auto min-w-[20vw] max-w-[50vw] !p-0 max-h-[30vh] overflow-hidden h-full"
+        className="w-auto min-w-[20vw] max-w-[50vw] max-h-[40vh] overflow-y-auto !p-0"
         sideOffset={8}
         collisionPadding={16}
         // collisionBoundary={collisionBoundary}
       >
         {/* Before options content (e.g., inline forms) */}
-        <div className="flex flex-col overflow-y-auto">
+        <div className="flex flex-col">
           {beforeOptions && (
             <>
               <div className="p-4">{beforeOptions}</div>
@@ -212,7 +213,7 @@ export function SelectorPopover<T = string>({
                         className={cn(
                           "text-sm block mt-0.5",
                           isSelected
-                            ? "text-stone-200 dark:text-stone-700"
+                            ? "text-stone-500 dark:text-stone-400"
                             : "text-stone-500 dark:text-stone-400"
                         )}
                       >

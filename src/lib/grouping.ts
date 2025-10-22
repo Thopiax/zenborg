@@ -11,6 +11,7 @@ import {
 } from "date-fns";
 import type { Area } from "@/domain/entities/Area";
 import type { Horizon, Moment } from "@/domain/entities/Moment";
+import { ATTITUDE_METADATA, Attitude } from "@/domain/value-objects/Attitude";
 
 /**
  * Sort moments by order (primary) and createdAt (secondary)
@@ -216,10 +217,143 @@ export function groupByHorizon(moments: Moment[]): MomentGroup[] {
 }
 
 /**
+ * Group moments by attitude
+ * Shows all attitude levels including moments with no attitude
+ * Monochrome design - no color coding
+ */
+export function groupByAttitude(moments: Moment[]): MomentGroup[] {
+  const groups: Record<string, Moment[]> = {
+    beginning: [],
+    keeping: [],
+    building: [],
+    pushing: [],
+    being: [],
+    none: [],
+  };
+
+  for (const moment of moments) {
+    switch (moment.attitude) {
+      case Attitude.BEGINNING:
+        groups.beginning.push(moment);
+        break;
+      case Attitude.KEEPING:
+        groups.keeping.push(moment);
+        break;
+      case Attitude.BUILDING:
+        groups.building.push(moment);
+        break;
+      case Attitude.PUSHING:
+        groups.pushing.push(moment);
+        break;
+      case Attitude.BEING:
+        groups.being.push(moment);
+        break;
+      default:
+        groups.none.push(moment);
+        break;
+    }
+  }
+
+  // Return all attitudes in order
+  // No colors - monochrome design
+  return [
+    {
+      groupId: "attitude-beginning",
+      groupLabel: ATTITUDE_METADATA[Attitude.BEGINNING].label,
+      emoji: ATTITUDE_METADATA[Attitude.BEGINNING].icon,
+      moments: sortMoments(groups.beginning),
+    },
+    {
+      groupId: "attitude-keeping",
+      groupLabel: ATTITUDE_METADATA[Attitude.KEEPING].label,
+      emoji: ATTITUDE_METADATA[Attitude.KEEPING].icon,
+      moments: sortMoments(groups.keeping),
+    },
+    {
+      groupId: "attitude-building",
+      groupLabel: ATTITUDE_METADATA[Attitude.BUILDING].label,
+      emoji: ATTITUDE_METADATA[Attitude.BUILDING].icon,
+      moments: sortMoments(groups.building),
+    },
+    {
+      groupId: "attitude-pushing",
+      groupLabel: ATTITUDE_METADATA[Attitude.PUSHING].label,
+      emoji: ATTITUDE_METADATA[Attitude.PUSHING].icon,
+      moments: sortMoments(groups.pushing),
+    },
+    {
+      groupId: "attitude-being",
+      groupLabel: ATTITUDE_METADATA[Attitude.BEING].label,
+      emoji: ATTITUDE_METADATA[Attitude.BEING].icon,
+      moments: sortMoments(groups.being),
+    },
+    {
+      groupId: "attitude-none",
+      groupLabel: "No Attitude",
+      emoji: "○",
+      moments: sortMoments(groups.none),
+    },
+  ];
+}
+
+/**
+ * Group moments by tags
+ * Creates a group for each unique tag found in moments
+ * Moments with multiple tags appear in multiple groups
+ * Includes an "Untagged" group for moments without tags
+ */
+export function groupByTag(moments: Moment[]): MomentGroup[] {
+  // Collect all unique tags
+  const tagSet = new Set<string>();
+  const untagged: Moment[] = [];
+
+  for (const moment of moments) {
+    const hasTags = moment.tags && moment.tags.length > 0;
+
+    if (!hasTags) {
+      untagged.push(moment);
+    } else {
+      for (const tag of moment.tags!) {
+        tagSet.add(tag);
+      }
+    }
+  }
+
+  // Sort tags alphabetically
+  const sortedTags = Array.from(tagSet).sort();
+
+  // Create groups for each tag
+  const groups: MomentGroup[] = sortedTags.map((tag) => {
+    const taggedMoments = moments.filter((moment) =>
+      moment.tags?.includes(tag)
+    );
+
+    return {
+      groupId: `tag-${tag}`,
+      groupLabel: `#${tag}`,
+      emoji: "#️⃣",
+      moments: sortMoments(taggedMoments),
+    };
+  });
+
+  // Add untagged group at the end if there are untagged moments
+  if (untagged.length > 0) {
+    groups.push({
+      groupId: "tag-none",
+      groupLabel: "Untagged",
+      emoji: "○",
+      moments: sortMoments(untagged),
+    });
+  }
+
+  return groups;
+}
+
+/**
  * Get grouping function based on grouping mode
  */
 export function getGroupingFunction(
-  groupBy: "none" | "area" | "created" | "horizon"
+  groupBy: "none" | "area" | "created" | "horizon" | "attitude" | "tag"
 ): ((moments: Moment[], areas?: Record<string, Area>) => MomentGroup[]) | null {
   switch (groupBy) {
     case "area":
@@ -231,6 +365,10 @@ export function getGroupingFunction(
       return groupByCreated;
     case "horizon":
       return groupByHorizon;
+    case "attitude":
+      return groupByAttitude;
+    case "tag":
+      return groupByTag;
     case "none":
     default:
       return null;

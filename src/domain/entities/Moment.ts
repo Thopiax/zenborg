@@ -131,6 +131,7 @@ export function createMoment(
   name: string,
   areaId: string,
   horizon: Horizon | null = null,
+  phase: Phase | null = null,
   attitude: Attitude | null = null,
   tags: string[] = [],
   customMetric?: CustomMetric
@@ -151,7 +152,7 @@ export function createMoment(
     id: crypto.randomUUID(),
     name: name.trim(),
     areaId: areaId.trim(),
-    phase: null,
+    phase,
     day: null,
     order: 0,
     horizon,

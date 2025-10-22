@@ -139,38 +139,29 @@ export function MomentCard({
       aria-label={ariaLabel}
       tabIndex={0}
     >
-      <div className="flex flex-col gap-2 h-full">
+      <div className="flex flex-row items-baseline gap-2 h-full">
         {/* Moment name */}
         <p
           className={cn(
-            "text-lg font-semibold font-mono line-clamp-1",
+            "text-lg font-semibold font-mono line-clamp-1 flex-shrink-0",
             textColors.primary
           )}
         >
           {moment.name}
         </p>
-
-        {/* Attitude indicator and feedback */}
-        {moment.attitude && (
-          <div className="flex flex-col gap-1">
-            <span
-              className={cn(
-                "text-xs font-medium opacity-90",
-                textColors.secondary
-              )}
-            >
-              • {getAttitudeLabel(moment.attitude)}
-            </span>
-            {attitudeFeedback && (
-              <span
+        {moment.tags && (
+          <div className="flex flex-row justify-start text-ellipsis gap-1 overflow-hidden">
+            {moment.tags.map((tag) => (
+              <div
+                key={tag}
                 className={cn(
-                  "text-xs opacity-80 font-mono",
-                  textColors.secondary
+                  "text-xs font-mono opacity-60",
+                  textColors.primary
                 )}
               >
-                {attitudeFeedback}
-              </span>
-            )}
+                #{tag}
+              </div>
+            ))}
           </div>
         )}
       </div>

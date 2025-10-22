@@ -59,7 +59,9 @@
       "WebFetch(domain:ui.shadcn.com)",
       "Bash(cat src/components/ui/popover.tsx)",
       "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_8r9nMt/**)",
-      "Bash(git checkout src/lib/dates.ts)"
+      "Bash(git checkout src/lib/dates.ts)",
+      "WebFetch(domain:www.radix-ui.com)",
+      "mcp__sequential-thinking__sequentialthinking"
     ],
     "deny": [],
     "ask": []

@@ -588,8 +588,32 @@ export function DnDProvider({ children }: DnDProviderProps) {
       );
       moments$[momentId].horizon.set(newHorizon as Horizon | null);
       moments$[momentId].updatedAt.set(new Date().toISOString());
+    } else if (groupBy === "attitude") {
+      // Extract attitude value from column ID (format: "attitude-beginning", "attitude-none", etc.)
+      const attitudeValue = columnId.replace("attitude-", "");
+      const newAttitude =
+        attitudeValue === "none"
+          ? null
+          : (attitudeValue.toUpperCase() as
+              | import("@/domain/value-objects/Attitude").Attitude
+              | null);
+
+      // Don't update if already has this attitude
+      if (moment.attitude === newAttitude) {
+        if (shouldUnallocate) {
+          endBatch("Unallocated moment to drawing board");
+        }
+        return;
+      }
+
+      // Update moment's attitude
+      console.log(
+        `Setting moment ${momentId} attitude to ${newAttitude || "none"}`
+      );
+      moments$[momentId].attitude.set(newAttitude);
+      moments$[momentId].updatedAt.set(new Date().toISOString());
     } else {
-      // Other grouping modes (created) are read-only
+      // Other grouping modes (created, tag) are read-only
       console.log("Ignoring drop - grouping mode is read-only:", groupBy);
     }
 

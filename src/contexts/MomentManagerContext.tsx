@@ -7,7 +7,8 @@ interface MomentManagerContextValue {
     prefilledDay?: string,
     prefilledPhase?: string,
     prefilledAreaId?: string,
-    prefilledCycle?: string
+    prefilledCycle?: string,
+    prefilledAttitude?: string
   ) => void;
   handleOpenEditModal: (momentId: string) => void;
 }
@@ -26,7 +27,8 @@ export function MomentManagerProvider({
     prefilledDay?: string,
     prefilledPhase?: string,
     prefilledAreaId?: string,
-    prefilledCycle?: string
+    prefilledCycle?: string,
+    prefilledAttitude?: string
   ) => void;
   handleOpenEditModal: (momentId: string) => void;
 }) {

@@ -40,7 +40,13 @@ export const isDuplicateMode$ = observable<boolean>(false);
  * Determines how unallocated moments are organized
  * Persisted to localStorage
  */
-export type DrawingBoardGroupBy = "none" | "area" | "created" | "horizon";
+export type DrawingBoardGroupBy =
+  | "none"
+  | "area"
+  | "created"
+  | "horizon"
+  | "attitude"
+  | "tag";
 
 export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("area");
 
@@ -137,6 +143,7 @@ export function openMomentFormCreate(params?: {
   phase?: Phase | null;
   day?: string;
   phaseStr?: string;
+  attitude?: Attitude;
 }) {
   // Use provided areaId, or fall back to last used area
   const areaId = params?.areaId || lastUsedAreaId$.peek() || "";
@@ -158,7 +165,7 @@ export function openMomentFormCreate(params?: {
       params?.day && params?.phaseStr
         ? { day: params.day, phase: params.phaseStr }
         : null,
-    attitude: null,
+    attitude: params?.attitude ?? null,
     tags: [],
     customMetric: undefined,
   });

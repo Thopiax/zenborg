@@ -44,13 +44,13 @@ export function AttitudeSelector({
   trigger,
   collisionBoundary,
 }: AttitudeSelectorProps) {
-  // Map attitudes to their letter shortcuts
+  // Map attitudes to their number shortcuts
   const attitudeHotkeys: Record<Attitude, string> = {
-    [Attitude.BEGINNING]: "B",
-    [Attitude.KEEPING]: "K",
-    [Attitude.BUILDING]: "L", // L for "Building" (B is taken)
-    [Attitude.PUSHING]: "P",
-    [Attitude.BEING]: "G", // G for "beinG" (B is taken)
+    [Attitude.BEGINNING]: "1",
+    [Attitude.KEEPING]: "2",
+    [Attitude.BUILDING]: "3",
+    [Attitude.PUSHING]: "4",
+    [Attitude.BEING]: "5",
   };
 
   // Build options from attitudes, with a null option at the top
@@ -58,9 +58,9 @@ export function AttitudeSelector({
     () => [
       {
         value: null,
-        label: "Pure Presence",
-        description: "Just allocate and show up. No tracking.",
-        hotkey: "X",
+        label: "Pure presence",
+        description: "No tracking or progression",
+        hotkey: "0",
         icon: "○",
         className: "font-mono text-stone-700 dark:text-stone-300",
       },
@@ -69,7 +69,7 @@ export function AttitudeSelector({
         label: ATTITUDE_METADATA[Attitude.BEGINNING].label,
         description: ATTITUDE_METADATA[Attitude.BEGINNING].description,
         hotkey: attitudeHotkeys[Attitude.BEGINNING],
-        icon: "•",
+        icon: "◇",
         className: "font-mono text-stone-700 dark:text-stone-300",
       },
       {
@@ -77,7 +77,7 @@ export function AttitudeSelector({
         label: ATTITUDE_METADATA[Attitude.KEEPING].label,
         description: ATTITUDE_METADATA[Attitude.KEEPING].description,
         hotkey: attitudeHotkeys[Attitude.KEEPING],
-        icon: "•",
+        icon: "◌",
         className: "font-mono text-stone-700 dark:text-stone-300",
       },
       {
@@ -85,7 +85,7 @@ export function AttitudeSelector({
         label: ATTITUDE_METADATA[Attitude.BUILDING].label,
         description: ATTITUDE_METADATA[Attitude.BUILDING].description,
         hotkey: attitudeHotkeys[Attitude.BUILDING],
-        icon: "•",
+        icon: "△",
         className: "font-mono text-stone-700 dark:text-stone-300",
       },
       {
@@ -93,7 +93,7 @@ export function AttitudeSelector({
         label: ATTITUDE_METADATA[Attitude.PUSHING].label,
         description: ATTITUDE_METADATA[Attitude.PUSHING].description,
         hotkey: attitudeHotkeys[Attitude.PUSHING],
-        icon: "•",
+        icon: "↑",
         className: "font-mono text-stone-700 dark:text-stone-300",
       },
       {
@@ -101,7 +101,7 @@ export function AttitudeSelector({
         label: ATTITUDE_METADATA[Attitude.BEING].label,
         description: ATTITUDE_METADATA[Attitude.BEING].description,
         hotkey: attitudeHotkeys[Attitude.BEING],
-        icon: "•",
+        icon: "◉",
         className: "font-mono text-stone-700 dark:text-stone-300",
       },
     ],

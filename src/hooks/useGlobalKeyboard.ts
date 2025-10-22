@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import type { Horizon, Moment } from "@/domain/entities/Moment";
 import { createMoment } from "@/domain/entities/Moment";
+import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import {
@@ -360,18 +361,19 @@ export function useGlobalKeyboard() {
   const handleCreateMoment = (
     name: string,
     areaId: string,
-    horizon: import("@/domain/entities/Moment").Horizon | null,
-    phase: import("@/domain/value-objects/Phase").Phase | null,
+    horizon: Horizon | null,
+    phase: Phase | null,
     createMore?: boolean,
-    attitude?: import("@/domain/value-objects/Attitude").Attitude | null,
+    attitude?: Attitude | null,
     tags?: string[],
-    customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
+    customMetric?: CustomMetric
   ) => {
     // Create new moment with attitude, tags, and customMetric
     const result = createMoment(
       name,
       areaId,
       horizon,
+      phase,
       attitude ?? null,
       tags ?? [],
       customMetric
@@ -405,7 +407,8 @@ export function useGlobalKeyboard() {
     day?: string,
     phase?: string,
     areaId?: string,
-    horizon?: string
+    horizon?: string,
+    attitude?: string
   ) => {
     openMomentFormCreate({
       day,
@@ -413,6 +416,7 @@ export function useGlobalKeyboard() {
       phase: phase as Phase | undefined,
       areaId,
       horizon: horizon as Horizon | undefined,
+      attitude: attitude ? (attitude.toUpperCase() as Attitude) : undefined,
     });
   };
 
@@ -421,9 +425,9 @@ export function useGlobalKeyboard() {
     areaId: string,
     horizon: Horizon | null,
     phase: Phase | null,
-    attitude?: import("@/domain/value-objects/Attitude").Attitude | null,
+    attitude?: Attitude | null,
     tags?: string[],
-    customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
+    customMetric?: CustomMetric
   ) => {
     const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {

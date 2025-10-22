@@ -48,32 +48,38 @@ export const ATTITUDE_METADATA: Record<
     label: string;
     description: string;
     shows: string;
+    icon: string;
   }
 > = {
   [Attitude.BEGINNING]: {
     label: "Beginning",
     description: "First encounters, exploration",
     shows: "Count of times allocated",
+    icon: "◇",
   },
   [Attitude.KEEPING]: {
     label: "Keeping",
     description: "Sporadic engagement, maintaining connection",
     shows: "Days since last allocation",
+    icon: "◌",
   },
   [Attitude.BUILDING]: {
     label: "Building",
     description: "Regular practice, developing capacity",
     shows: "Frequency patterns over time",
+    icon: "△",
   },
   [Attitude.PUSHING]: {
     label: "Pushing",
     description: "Focused progression, specific goals",
     shows: "Custom performance metrics",
+    icon: "↑",
   },
   [Attitude.BEING]: {
     label: "Being",
     description: "Integrated, automatic, part of identity",
     shows: "Moves to Crystallized Routines",
+    icon: "◉",
   },
 };
 
@@ -96,4 +102,11 @@ export function getAttitudeDescription(attitude: Attitude): string {
  */
 export function getAttitudeShows(attitude: Attitude): string {
   return ATTITUDE_METADATA[attitude].shows;
+}
+
+/**
+ * Get icon for an attitude
+ */
+export function getAttitudeIcon(attitude: Attitude): string {
+  return ATTITUDE_METADATA[attitude].icon;
 }

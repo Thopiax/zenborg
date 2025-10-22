@@ -21,7 +21,13 @@ import {
   drawingBoardSortMode$,
   isDuplicateMode$,
 } from "@/infrastructure/state/ui-store";
-import { groupByArea, groupByCreated, groupByHorizon } from "@/lib/grouping";
+import {
+  groupByArea,
+  groupByAttitude,
+  groupByCreated,
+  groupByHorizon,
+  groupByTag,
+} from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
 import { DrawingBoardColumn } from "./DrawingBoardColumn";
@@ -91,6 +97,10 @@ export function DrawingBoard({
         return groupByArea(unallocated, activeAreasRecord);
       case "horizon":
         return groupByHorizon(unallocated);
+      case "attitude":
+        return groupByAttitude(unallocated);
+      case "tag":
+        return groupByTag(unallocated);
       case "none":
         return null;
       default:
@@ -116,9 +126,13 @@ export function DrawingBoard({
     });
   }, [unallocated, sortMode]);
 
-  const handleCreateFromColumn = (areaId?: string, cycle?: string) => {
+  const handleCreateFromColumn = (
+    areaId?: string,
+    cycle?: string,
+    attitude?: string
+  ) => {
     // Open create modal with pre-filled properties
-    handleOpenCreateModal(undefined, undefined, areaId, cycle);
+    handleOpenCreateModal(undefined, undefined, areaId, cycle, attitude);
   };
 
   const label = "Planning (P)";

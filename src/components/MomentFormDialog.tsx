@@ -25,6 +25,7 @@ import {
 } from "@/domain/entities/Moment";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import {
   activeAreas$,
   allTags$,
@@ -215,6 +216,14 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       const tag = tagMatch[1];
       addTag(tag);
     }
+  };
+
+  const handleNameBlur = () => {
+    // On blur, close tag autocomplete
+    setIsTagAutocompleteOpen(false);
+
+    // Check for any tags in the name to extract
+    extractRemainingTags();
   };
 
   // Handle name input change - detect tags for autocomplete and extraction
@@ -471,6 +480,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
               className="w-full text-4xl font-bold bg-transparent outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
               placeholder="Moment name..."
               aria-label="Moment name"
+              onBlur={handleNameBlur}
               aria-invalid={!validation.valid}
             />
 
@@ -487,7 +497,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
               )}
 
             {/* Tag Autocomplete - Shows below entire input */}
-            {isTagAutocompleteOpen && (
+            {/* {isTagAutocompleteOpen && (
               <TagAutocomplete
                 open={isTagAutocompleteOpen}
                 searchValue={currentTagSearch}
@@ -500,7 +510,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 collisionBoundary={dialogRef.current}
                 trigger={<div className="w-full" />}
               />
-            )}
+            )} */}
 
             {/* Tag Badges */}
             <TagBadges tags={tags || []} onRemoveTag={removeTag} />
@@ -508,7 +518,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
           {/* Selectors Row - Only show when area is selected */}
           {hasArea && selectedArea ? (
-            <div className="flex flex-col gap-3 mb-6">
+            <div className="flex flex-col gap-3">
               {/* Area Selector - Colored */}
               <AreaSelector
                 open={isAreaSelectorOpen}
@@ -541,55 +551,41 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 }
               />
 
-              {/* Phase & Cycle Selectors - Side by side (hide horizon for allocated moments) */}
-              <div
-                className={cn(
-                  "grid gap-3",
-                  isAllocated ? "grid-cols-1" : "grid-cols-2"
+              {/* Selected values shown as full-width buttons */}
+              <div className="flex flex-col gap-3">
+                {/* Phase Selector - Show as button if selected */}
+                {phase && (
+                  <PhaseSelector
+                    open={isPhaseSelectorOpen}
+                    selectedPhase={phase}
+                    onSelectPhase={(newPhase) => {
+                      momentFormState$.phase.set(newPhase);
+                    }}
+                    onClose={() => setIsPhaseSelectorOpen(false)}
+                    onOpen={() => setIsPhaseSelectorOpen(true)}
+                    collisionBoundary={dialogRef.current}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                      >
+                        <PhaseIcon
+                          phase={phase}
+                          className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
+                        />
+                        <span className="font-mono text-sm flex-1 text-left truncate">
+                          {selectedPhaseConfig?.label}
+                        </span>
+                        <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                          P
+                        </kbd>
+                      </button>
+                    }
+                  />
                 )}
-              >
-                {/* Phase Selector - Ghost with clock icon */}
-                <PhaseSelector
-                  open={isPhaseSelectorOpen}
-                  selectedPhase={phase}
-                  onSelectPhase={(newPhase) => {
-                    momentFormState$.phase.set(newPhase);
-                  }}
-                  onClose={() => setIsPhaseSelectorOpen(false)}
-                  onOpen={() => setIsPhaseSelectorOpen(true)}
-                  collisionBoundary={dialogRef.current}
-                  trigger={
-                    <button
-                      type="button"
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
-                      )}
-                    >
-                      <Clock
-                        className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
-                        strokeWidth={1.5}
-                      />
-                      <span className="font-mono text-sm flex-1 text-left truncate">
-                        {phase ? (
-                          <>
-                            {selectedPhaseConfig?.emoji}{" "}
-                            {selectedPhaseConfig?.label}
-                          </>
-                        ) : (
-                          <span className="text-stone-400 dark:text-stone-500">
-                            no phase
-                          </span>
-                        )}
-                      </span>
-                      <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
-                        P
-                      </kbd>
-                    </button>
-                  }
-                />
 
-                {/* Cycle Selector - Ghost with calendar icon (hidden for allocated moments) */}
-                {!isAllocated && (
+                {/* Horizon Selector - Show as button if selected (hide for allocated moments) */}
+                {!isAllocated && horizon && (
                   <HorizonSelector
                     open={isHorizonSelectorOpen}
                     selectedHorizon={horizon}
@@ -618,45 +614,119 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                     }
                   />
                 )}
+
+                {/* Attitude Selector - Show as button if selected */}
+                {attitude && (
+                  <AttitudeSelector
+                    open={isAttitudeSelectorOpen}
+                    selectedAttitude={attitude}
+                    onSelectAttitude={(newAttitude) => {
+                      momentFormState$.attitude.set(newAttitude);
+                      // Clear custom metric if attitude is not PUSHING
+                      if (newAttitude !== Attitude.PUSHING) {
+                        momentFormState$.customMetric.set(undefined);
+                      }
+                    }}
+                    onClose={() => setIsAttitudeSelectorOpen(false)}
+                    onOpen={() => setIsAttitudeSelectorOpen(true)}
+                    collisionBoundary={dialogRef.current}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                      >
+                        <span className="font-mono text-sm flex-1 text-left truncate">
+                          {attitude === Attitude.BEGINNING && "◇"}
+                          {attitude === Attitude.KEEPING && "◌"}
+                          {attitude === Attitude.BUILDING && "△"}
+                          {attitude === Attitude.PUSHING && "↑"}
+                          {attitude === Attitude.BEING && "◉"}{" "}
+                          {attitude.charAt(0) + attitude.slice(1).toLowerCase()}
+                        </span>
+                        <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                          ⇧A
+                        </kbd>
+                      </button>
+                    }
+                  />
+                )}
               </div>
 
-              {/* Attitude Selector */}
-              <AttitudeSelector
-                open={isAttitudeSelectorOpen}
-                selectedAttitude={attitude}
-                onSelectAttitude={(newAttitude) => {
-                  momentFormState$.attitude.set(newAttitude);
-                  // Clear custom metric if attitude is not PUSHING
-                  if (newAttitude !== Attitude.PUSHING) {
-                    momentFormState$.customMetric.set(undefined);
-                  }
-                }}
-                onClose={() => setIsAttitudeSelectorOpen(false)}
-                onOpen={() => setIsAttitudeSelectorOpen(true)}
-                collisionBoundary={dialogRef.current}
-                trigger={
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
-                  >
-                    <span className="text-sm flex-1 text-left truncate">
-                      {attitude ? (
-                        <>
-                          •{" "}
-                          {attitude.charAt(0) + attitude.slice(1).toLowerCase()}
-                        </>
-                      ) : (
-                        <span className="text-stone-400 dark:text-stone-500">
-                          pure presence
-                        </span>
-                      )}
-                    </span>
-                    <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
-                      ⇧A
-                    </kbd>
-                  </button>
-                }
-              />
+              {/* Subtle wrapped row for empty selectors */}
+              <div className="flex flex-wrap gap-3 items-center mt-8 mb-2">
+                {/* Phase - subtle label if not selected */}
+                {!phase && (
+                  <PhaseSelector
+                    open={isPhaseSelectorOpen}
+                    selectedPhase={phase}
+                    onSelectPhase={(newPhase) => {
+                      momentFormState$.phase.set(newPhase);
+                    }}
+                    onClose={() => setIsPhaseSelectorOpen(false)}
+                    onOpen={() => setIsPhaseSelectorOpen(true)}
+                    collisionBoundary={dialogRef.current}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                      >
+                        <Clock className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        <span className="text-xs font-mono">no phase</span>
+                      </button>
+                    }
+                  />
+                )}
+
+                {/* Horizon - subtle label if not selected (hide for allocated moments) */}
+                {!isAllocated && !horizon && (
+                  <HorizonSelector
+                    open={isHorizonSelectorOpen}
+                    selectedHorizon={horizon}
+                    onSelectHorizon={(newHorizon) => {
+                      momentFormState$.horizon.set(newHorizon);
+                    }}
+                    onClose={() => setIsHorizonSelectorOpen(false)}
+                    onOpen={() => setIsHorizonSelectorOpen(true)}
+                    collisionBoundary={dialogRef.current}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                      >
+                        <Calendar className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        <span className="text-xs font-mono">later</span>
+                      </button>
+                    }
+                  />
+                )}
+
+                {/* Attitude - subtle label if not selected */}
+                {!attitude && (
+                  <AttitudeSelector
+                    open={isAttitudeSelectorOpen}
+                    selectedAttitude={attitude}
+                    onSelectAttitude={(newAttitude) => {
+                      momentFormState$.attitude.set(newAttitude);
+                      // Clear custom metric if attitude is not PUSHING
+                      if (newAttitude !== Attitude.PUSHING) {
+                        momentFormState$.customMetric.set(undefined);
+                      }
+                    }}
+                    onClose={() => setIsAttitudeSelectorOpen(false)}
+                    onOpen={() => setIsAttitudeSelectorOpen(true)}
+                    collisionBoundary={dialogRef.current}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                      >
+                        <span className="text-sm font-mono">○</span>
+                        <span className="text-xs font-mono">Pure presence</span>
+                      </button>
+                    }
+                  />
+                )}
+              </div>
             </div>
           ) : (
             <div className="mb-6">
