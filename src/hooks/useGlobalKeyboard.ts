@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { MomentCreationService } from "@/application/services/MomentCreationService";
+import { MomentUpdateService } from "@/application/services/MomentUpdateService";
 import type { Horizon, Moment } from "@/domain/entities/Moment";
 import { createMoment, isMomentError } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
-import { MomentCreationService } from "@/application/services/MomentCreationService";
-import { MomentUpdateService } from "@/application/services/MomentUpdateService";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import {
-  allocateMomentWithHistory,
   createMomentWithHistory,
   deleteMomentWithHistory,
   moments$,
@@ -458,7 +457,7 @@ export function useGlobalKeyboard() {
         attitude,
         tags,
         customMetric,
-        // Note: phase is not directly updated here, it's part of allocation
+        phase,
       });
 
       // Handle result

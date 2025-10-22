@@ -1,7 +1,6 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { getAttitudeLabel } from "@/domain/value-objects/Attitude";
@@ -11,6 +10,7 @@ import {
   moments$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
+import { openMomentFormEdit } from "@/infrastructure/state/ui-store";
 import { getAttitudeFeedback } from "@/lib/attitude-feedback";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
@@ -50,7 +50,6 @@ export function MomentCard({
   area,
   contextMomentIds,
 }: MomentCardProps) {
-  const { handleOpenEditModal } = useMomentManager();
   const {
     isSelected: isSelectedMoment,
     toggleSelection,
@@ -88,7 +87,7 @@ export function MomentCard({
     }
     // Regular click → Open global edit modal
     else {
-      handleOpenEditModal(moment.id);
+      openMomentFormEdit(moment.id, moment);
     }
   };
 

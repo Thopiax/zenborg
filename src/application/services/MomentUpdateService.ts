@@ -1,10 +1,7 @@
-import type { Moment, MomentResult } from "@/domain/entities/Moment";
-import {
-  isMomentError,
-  updateMomentName,
-} from "@/domain/entities/Moment";
+import type { Horizon, Moment, MomentResult } from "@/domain/entities/Moment";
+import { isMomentError, updateMomentName } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
-import type { Horizon } from "@/domain/entities/Moment";
+import type { Phase } from "@/domain/value-objects/Phase";
 
 /**
  * Parameters for updating a moment
@@ -14,6 +11,7 @@ export interface UpdateMomentParams {
   areaId?: string;
   horizon?: Horizon | null;
   attitude?: Attitude | null;
+  phase?: Phase | null;
   tags?: string[];
   customMetric?: CustomMetric;
 }
@@ -75,6 +73,9 @@ export class MomentUpdateService {
     }
     if ("customMetric" in updates) {
       updated.customMetric = updates.customMetric;
+    }
+    if ("phase" in updates) {
+      updated.phase = updates.phase!;
     }
 
     return updated;

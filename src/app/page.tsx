@@ -19,7 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MomentManagerProvider } from "@/contexts/MomentManagerContext";
 import { archiveArea, hasAreaMoments } from "@/domain/entities/Area";
 import type { Horizon } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
@@ -137,11 +136,7 @@ export default function HomePage() {
   };
 
   return (
-    <MomentManagerProvider
-      handleOpenCreateModal={handleOpenCreateModal}
-      handleOpenEditModal={handleOpenEditModal}
-    >
-      <DnDProvider>
+    <DnDProvider>
         {/* Landscape Prompt - Shows on mobile portrait mode only */}
         <LandscapePrompt />
 
@@ -263,6 +258,5 @@ export default function HomePage() {
           <SortModeConflictDialog />
         </div>
       </DnDProvider>
-    </MomentManagerProvider>
   );
 }

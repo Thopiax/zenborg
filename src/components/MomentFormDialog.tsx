@@ -296,7 +296,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     { enabled: formHotkeysEnabled && open }
   );
 
-
   // Get focusable elements in order
   const getFocusableElements = (): HTMLElement[] => {
     const elements: HTMLElement[] = [];
@@ -635,47 +634,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                     }
                   />
                 )}
-              >
-                {/* Phase Selector - Ghost with clock icon */}
-                <PhaseSelector
-                  open={isPhaseSelectorOpen}
-                  selectedPhase={phase}
-                  onSelectPhase={(newPhase) => {
-                    momentFormState$.phase.set(newPhase);
-                  }}
-                  onClose={() => setIsPhaseSelectorOpen(false)}
-                  onOpen={() => setIsPhaseSelectorOpen(true)}
-                  collisionBoundary={dialogRef.current}
-                  trigger={
-                    <button
-                      ref={phaseSelectorRef}
-                      type="button"
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
-                      )}
-                    >
-                      <Clock
-                        className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
-                        strokeWidth={1.5}
-                      />
-                      <span className="font-mono text-sm flex-1 text-left truncate">
-                        {phase ? (
-                          <>
-                            {selectedPhaseConfig?.emoji}{" "}
-                            {selectedPhaseConfig?.label}
-                          </>
-                        ) : (
-                          <span className="text-stone-400 dark:text-stone-500">
-                            no phase
-                          </span>
-                        )}
-                      </span>
-                      <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
-                        P
-                      </kbd>
-                    </button>
-                  }
-                />
 
                 {/* Horizon Selector - Show as button if selected (hide for allocated moments) */}
                 {!isAllocated && horizon && (

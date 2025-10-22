@@ -7,9 +7,10 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
-import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Horizon, Moment } from "@/domain/entities/Moment";
+import type { Attitude } from "@/domain/value-objects/Attitude";
+import type { Phase } from "@/domain/value-objects/Phase";
 import {
   activeAreas$,
   areas$,
@@ -21,14 +22,15 @@ import {
   drawingBoardGroupBy$,
   drawingBoardSortMode$,
   isDuplicateMode$,
+  openMomentFormCreate,
 } from "@/infrastructure/state/ui-store";
 import {
   groupByArea,
   groupByAttitude,
   groupByCreated,
   groupByHorizon,
+  groupByPhase,
   groupByTag,
-  groupByPhase
 } from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
@@ -62,7 +64,6 @@ export function DrawingBoard({
   const phaseConfigsRecord = use$(phaseConfigs$); // Phase configurations
   const groupBy = use$(drawingBoardGroupBy$);
   const sortMode = use$(drawingBoardSortMode$);
-  const { handleOpenCreateModal } = useMomentManager();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Droppable configuration (only for flat "none" view)
@@ -139,7 +140,12 @@ export function DrawingBoard({
     attitude?: string
   ) => {
     // Open create modal with pre-filled properties
-    handleOpenCreateModal(undefined, undefined, areaId, cycle, attitude);
+    openMomentFormCreate({
+      areaId,
+      horizon: cycle as Horizon | undefined,
+      phase: phase as Phase | undefined,
+      attitude: attitude ? (attitude.toUpperCase() as Attitude) : undefined,
+    });
   };
 
   const label = "Planning (P)";

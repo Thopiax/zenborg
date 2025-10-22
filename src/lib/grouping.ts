@@ -262,6 +262,12 @@ export function groupByAttitude(moments: Moment[]): MomentGroup[] {
   // No colors - monochrome design
   return [
     {
+      groupId: "attitude-none",
+      groupLabel: "Pure presence",
+      emoji: "○",
+      moments: sortMoments(groups.none),
+    },
+    {
       groupId: "attitude-beginning",
       groupLabel: ATTITUDE_METADATA[Attitude.BEGINNING].label,
       emoji: ATTITUDE_METADATA[Attitude.BEGINNING].icon,
@@ -290,12 +296,6 @@ export function groupByAttitude(moments: Moment[]): MomentGroup[] {
       groupLabel: ATTITUDE_METADATA[Attitude.BEING].label,
       emoji: ATTITUDE_METADATA[Attitude.BEING].icon,
       moments: sortMoments(groups.being),
-    },
-    {
-      groupId: "attitude-none",
-      groupLabel: "No Attitude",
-      emoji: "○",
-      moments: sortMoments(groups.none),
     },
   ];
 }
@@ -335,7 +335,6 @@ export function groupByTag(moments: Moment[]): MomentGroup[] {
     return {
       groupId: `tag-${tag}`,
       groupLabel: `#${tag}`,
-      emoji: "#️⃣",
       moments: sortMoments(taggedMoments),
     };
   });
@@ -345,11 +344,10 @@ export function groupByTag(moments: Moment[]): MomentGroup[] {
     groups.push({
       groupId: "tag-none",
       groupLabel: "Untagged",
-      emoji: "○",
       moments: sortMoments(untagged),
     });
   }
-  
+
   return groups;
 }
 

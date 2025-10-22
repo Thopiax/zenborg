@@ -26,6 +26,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { use$ } from "@legendapp/state/react";
 import { useState } from "react";
 import type { Horizon } from "@/domain/entities/Moment";
+import type { Attitude } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
 import {
@@ -36,8 +37,8 @@ import {
 import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import {
-  isDuplicateMode$,
   drawingBoardSortMode$,
+  isDuplicateMode$,
   openSortModeConflictDialog,
 } from "@/infrastructure/state/ui-store";
 import {
@@ -244,10 +245,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
         !overMoment.phase
       ) {
         console.log("[DnD] Reordering within drawing board");
-        handleDrawingBoardReorder(
-          active.id as string,
-          over.id as string
-        );
+        handleDrawingBoardReorder(active.id as string, over.id as string);
         return;
       }
 
@@ -594,12 +592,19 @@ export function DnDProvider({ children }: DnDProviderProps) {
       const newAttitude =
         attitudeValue === "none"
           ? null
-          : (attitudeValue.toUpperCase() as
-              | import("@/domain/value-objects/Attitude").Attitude
-              | null);
+          : (attitudeValue.toUpperCase() as Attitude | null);
 
       // Don't update if already has this attitude
       if (moment.attitude === newAttitude) {
+        return;
+      }
+
+      // Update moment's attitude
+      console.log(
+        `Setting moment ${momentId} attitude to ${newAttitude || "none"}`
+      );
+      moments$[momentId].attitude.set(newAttitude);
+      moments$[momentId].updatedAt.set(new Date().toISOString());
     } else if (groupBy === "phase") {
       // Extract phase value from column ID (format: "phase-MORNING", "phase-AFTERNOON", etc.)
       const phaseValue = columnId.replace("phase-", "");
@@ -613,15 +618,8 @@ export function DnDProvider({ children }: DnDProviderProps) {
         return;
       }
 
-      // Update moment's attitude
-      console.log(
-        `Setting moment ${momentId} attitude to ${newAttitude || "none"}`
-      );
-      moments$[momentId].attitude.set(newAttitude);
       // Update moment's phase
-      console.log(
-        `Setting moment ${momentId} phase to ${newPhase || "unset"}`
-      );
+      console.log(`Setting moment ${momentId} phase to ${newPhase || "unset"}`);
       moments$[momentId].phase.set(newPhase as Phase | null);
       moments$[momentId].updatedAt.set(new Date().toISOString());
     } else {
