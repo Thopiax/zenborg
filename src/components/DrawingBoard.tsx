@@ -7,13 +7,6 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
@@ -23,19 +16,21 @@ import {
   unallocatedMoments$,
 } from "@/infrastructure/state/store";
 import {
-  type DrawingBoardGroupBy,
   drawingBoardExpanded$,
   drawingBoardGroupBy$,
+  drawingBoardSortMode$,
   isDuplicateMode$,
 } from "@/infrastructure/state/ui-store";
 import { groupByArea, groupByCreated, groupByHorizon } from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
 import { DrawingBoardColumn } from "./DrawingBoardColumn";
+import { DrawingBoardToolbar } from "./DrawingBoardToolbar";
 import { MomentCard } from "./MomentCard";
 
 interface DrawingBoardProps {
   onEditArea?: (areaId: string) => void;
+  onManageAreas?: () => void;
 }
 
 /**
@@ -46,13 +41,15 @@ interface DrawingBoardProps {
  * - Use global N to create new moments
  * - Collapsible to save space
  * - Supports drag and drop to/from timeline
+ * - Toolbar with grouping and area management
  */
-export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
+export function DrawingBoard({ onEditArea, onManageAreas }: DrawingBoardProps = {}) {
   const isExpanded = use$(drawingBoardExpanded$);
   const unallocated = use$(unallocatedMoments$);
   const allAreas = use$(areas$); // All areas including archived (for moment card display)
   const activeAreasArray = use$(activeAreas$); // Only active areas (for grouping columns)
   const groupBy = use$(drawingBoardGroupBy$);
+  const sortMode = use$(drawingBoardSortMode$);
   const { handleOpenCreateModal } = useMomentManager();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -100,9 +97,23 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
     }
   }, [groupBy, unallocated, activeAreasRecord]);
 
-  const handleGroupByChange = (value: DrawingBoardGroupBy) => {
-    drawingBoardGroupBy$.set(value);
-  };
+  // Sort unallocated moments for flat view
+  const sortedUnallocated = useMemo(() => {
+    if (sortMode === "manual") {
+      // Manual mode: just sort by order (user controls the order via drag-and-drop)
+      return [...unallocated].sort((a, b) => a.order - b.order);
+    }
+
+    // Auto mode: sort by order (primary) and creation date (secondary)
+    return [...unallocated].sort((a, b) => {
+      // Primary sort: by order
+      if (a.order !== b.order) {
+        return a.order - b.order;
+      }
+      // Secondary sort: by creation date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [unallocated, sortMode]);
 
   const handleCreateFromColumn = (areaId?: string, cycle?: string) => {
     // Open create modal with pre-filled properties
@@ -146,21 +157,8 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
         )}
       >
         <div className="overflow-hidden">
-        {/* Group by selector inside content area */}
-        <div className="flex items-center gap-2 px-6 pt-6 pb-3">
-          <span className="text-xs text-stone-500 font-mono">Group by:</span>
-          <Select value={groupBy} onValueChange={handleGroupByChange}>
-            <SelectTrigger className="h-7 w-[140px] text-xs font-mono">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              <SelectItem value="area">Area</SelectItem>
-              <SelectItem value="created">Created</SelectItem>
-              <SelectItem value="horizon">Horizon</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Toolbar with grouping and area management */}
+        <DrawingBoardToolbar onManageAreas={onManageAreas} />
 
         {/* Grouped or Flat Layout */}
         {groups ? (
@@ -205,7 +203,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
             )}
 
             {/* Unallocated moments */}
-            {unallocated.length === 0 ? (
+            {sortedUnallocated.length === 0 ? (
               <div className="min-h-[350px] flex flex-col items-center justify-center gap-3">
                 <p className="text-stone-400 text-sm font-mono text-center">
                   No unallocated moments yet
@@ -220,7 +218,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
               </div>
             ) : (
               <div className="flex flex-wrap gap-3 items-start content-start min-h-[350px]">
-                {unallocated.map((moment) => {
+                {sortedUnallocated.map((moment) => {
                   const area = allAreas[moment.areaId];
                   if (!area) return null;
 
@@ -229,7 +227,7 @@ export function DrawingBoard({ onEditArea }: DrawingBoardProps = {}) {
                       key={moment.id}
                       moment={moment}
                       area={area}
-                      contextMomentIds={unallocated.map((m) => m.id)}
+                      contextMomentIds={sortedUnallocated.map((m) => m.id)}
                     />
                   );
                 })}
