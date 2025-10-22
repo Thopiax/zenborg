@@ -262,7 +262,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         onEscapeKeyDown={preventCloseOnEscape}
       >
         {/* Header */}
-        <DialogHeader className="px-6 py-4 border-b border-stone-200 dark:border-stone-700">
+        <DialogHeader className="border-b border-stone-200 dark:border-stone-700">
           <DialogTitle className="text-sm font-medium text-stone-600 dark:text-stone-400">
             {mode === "create" ? "New moment" : "Edit moment"}
           </DialogTitle>
@@ -431,7 +431,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-6 py-4 bg-stone-100/50 dark:bg-stone-800/50 border-t border-stone-200 dark:border-stone-700 flex-row items-center justify-between backdrop-blur-sm">
+        <DialogFooter className="bg-stone-100/50 dark:bg-stone-800/50 border-t border-stone-200 dark:border-stone-700 flex-row items-center justify-between backdrop-blur-sm">
           {/* Left side: Create more checkbox OR Delete button */}
           {showCreateMore && mode === "create" ? (
             <label className="flex items-center gap-2 cursor-pointer">
