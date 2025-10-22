@@ -44,7 +44,7 @@ export const PHASE_STYLES: Record<Phase, PhaseStyle> = {
   },
   [Phase.NIGHT]: {
     phase: Phase.NIGHT,
-    emoji: "🌃",
+    emoji: "✨",
     icon: Bed,
     background: "bg-slate-950 dark:bg-slate-900", // cool stillness
     text: "text-slate-50 dark:text-slate-200",

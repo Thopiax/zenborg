@@ -166,6 +166,42 @@ export function CircularPhaseSlider({
     ].join(" ");
   };
 
+  // Validate that hour is strictly increasing from previous phase
+  const isValidHour = (pointerIndex: number, newHour: number): boolean => {
+    const currentHours = [...pointerHours];
+    currentHours[pointerIndex] = newHour;
+
+    // Check strict ordering: Night(0) < Morning(1) < Afternoon(2) < Evening(3) < Night(0)+24
+    // Night wraps around, so we need special handling
+    const [night, morning, afternoon, evening] = currentHours;
+
+    // Morning must be after night (considering night might be 22-23 and morning 0-11)
+    // Night is typically in evening hours (18-23), morning in early hours (0-11)
+    if (morning <= night && night >= 12) {
+      // Night is in PM, morning is in AM - this is valid
+    } else if (morning <= night && night < 12) {
+      // Both in AM or both in PM with morning before night - invalid
+      return false;
+    }
+
+    // Afternoon must be strictly after morning
+    if (afternoon <= morning) {
+      return false;
+    }
+
+    // Evening must be strictly after afternoon
+    if (evening <= afternoon) {
+      return false;
+    }
+
+    // Night must be strictly after evening (both should be in PM hours typically)
+    if (night <= evening && evening < 18) {
+      return false;
+    }
+
+    return true;
+  };
+
   // Handle pointer drag
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handlePointerMove = useCallback(
@@ -185,6 +221,11 @@ export function CircularPhaseSlider({
 
       const angle = (Math.atan2(y, x) * 180) / Math.PI;
       const hour = angleToHour(angle);
+
+      // Validate strictly increasing constraint
+      if (!isValidHour(draggingPointer, hour)) {
+        return; // Reject invalid hour
+      }
 
       // Update the appropriate phase based on which pointer is being dragged
       const phaseMap = [nightPhase, morningPhase, afternoonPhase, eveningPhase];
@@ -218,6 +259,7 @@ export function CircularPhaseSlider({
       afternoonPhase,
       eveningPhase,
       onUpdatePhase,
+      pointerHours,
     ]
   );
 
