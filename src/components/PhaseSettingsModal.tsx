@@ -88,7 +88,7 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full max-w-full max-h-full sm:max-w-3xl sm:max-h-[85dvh] overflow-y-auto rounded-none sm:rounded-lg p-4 sm:p-6">
+      <DialogContent className="w-full h-full max-w-full max-h-full sm:max-w-3xl sm:max-h-[85dvh] overflow-y-auto rounded-none sm:rounded-lg p-0 gap-0">
         <DialogHeader>
           <DialogTitle>Phase Settings</DialogTitle>
           <DialogDescription>
@@ -96,7 +96,7 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-8 py-4">
+        <div className="space-y-8 px-6 py-6">
           {/* Circular Timeline Slider */}
           <div className="space-y-6">
             {/* <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 text-center">
@@ -117,7 +117,7 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
 
           {/* Phase Configuration */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
               Phase Details
             </h3>
 
@@ -127,8 +127,8 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
                   key={config.id}
                   className={`p-3 rounded-lg border transition-all ${
                     editingId === config.id
-                      ? "border-slate-400 dark:border-slate-500 bg-slate-100 dark:bg-slate-800"
-                      : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                      ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
+                      : "border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -141,7 +141,7 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
                           onChange={(e) =>
                             setFormData({ ...formData, emoji: e.target.value })
                           }
-                          className="w-12 px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-center text-lg focus:outline-none focus:ring-2 focus:ring-slate-400"
+                          className="w-12 px-2 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded text-center text-lg focus:outline-none focus:ring-2 focus:ring-stone-400"
                           maxLength={2}
                         />
                         <input
@@ -150,20 +150,20 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
                           onChange={(e) =>
                             setFormData({ ...formData, label: e.target.value })
                           }
-                          className="flex-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                          className="flex-1 px-2 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-stone-400"
                           autoFocus
                         />
                         <button
                           onClick={handleSaveEdit}
                           disabled={!formData.label.trim()}
-                          className="px-2 py-1 text-xs bg-slate-700 dark:bg-slate-300 text-slate-50 dark:text-slate-900 rounded hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-2 py-1 text-xs bg-stone-700 dark:bg-stone-300 text-stone-50 dark:text-stone-900 rounded hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           type="button"
                         >
                           Save
                         </button>
                         <button
                           onClick={handleCancelEdit}
-                          className="px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                          className="px-2 py-1 text-xs text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
                           type="button"
                         >
                           Cancel
@@ -175,10 +175,10 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
                         <div className="flex items-center gap-3 flex-1">
                           <span className="text-lg">{config.emoji}</span>
                           <div className="flex-1">
-                            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
                               {config.label}
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                            <div className="text-xs text-stone-500 dark:text-stone-400 font-mono">
                               {formatHour(config.startHour)} -{" "}
                               {formatHour(config.endHour)}
                             </div>
@@ -187,7 +187,7 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleStartEdit(config)}
-                            className="px-2 py-1 text-xs rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                            className="px-2 py-1 text-xs rounded hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
                             type="button"
                           >
                             Edit
@@ -199,12 +199,12 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
                             onClick={() => handleVisibilityToggle(config.id)}
                             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                               config.isVisible
-                                ? "bg-slate-700 dark:bg-slate-300"
-                                : "bg-slate-300 dark:bg-slate-700"
+                                ? "bg-stone-700 dark:bg-stone-300"
+                                : "bg-stone-300 dark:bg-stone-700"
                             }`}
                           >
                             <span
-                              className={`inline-block h-3 w-3 transform rounded-full bg-slate-50 dark:bg-slate-900 transition-transform ${
+                              className={`inline-block h-3 w-3 transform rounded-full bg-stone-50 dark:bg-stone-900 transition-transform ${
                                 config.isVisible
                                   ? "translate-x-5"
                                   : "translate-x-1"
@@ -222,8 +222,8 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
         </div>
 
         {/* Info */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+        <div className="px-6 pt-4 pb-6 border-t border-stone-200 dark:border-stone-700">
+          <p className="text-xs text-stone-500 dark:text-stone-400">
             Adjust the timeline sliders to set your daily rhythm. Phase
             boundaries automatically update adjacent phases.
           </p>
