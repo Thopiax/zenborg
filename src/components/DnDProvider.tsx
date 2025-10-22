@@ -63,7 +63,17 @@ export function DnDProvider({ children }: DnDProviderProps) {
     const pointerCollisions = pointerWithin(args);
 
     if (pointerCollisions.length > 0) {
-      // Filter to prefer droppable containers over sortable items
+      // Separate sortable items (moments) from droppable containers (cells)
+      const sortableCollisions = pointerCollisions.filter((collision) => {
+        const id = collision.id.toString();
+        // Sortable items don't start with these prefixes - they're moment IDs
+        return !(
+          id.startsWith("timeline-") ||
+          id.startsWith("drawing-board") ||
+          id.startsWith("column-")
+        );
+      });
+
       const droppableCollisions = pointerCollisions.filter((collision) => {
         const id = collision.id.toString();
         return (
@@ -73,7 +83,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
         );
       });
 
-      // Return droppable if found, otherwise return all collisions
+      // Prioritize sortable items (moments) for reordering within same cell
+      // Only fall back to droppable containers if no sortable items found
+      if (sortableCollisions.length > 0) {
+        return sortableCollisions;
+      }
+
       if (droppableCollisions.length > 0) {
         return droppableCollisions;
       }
