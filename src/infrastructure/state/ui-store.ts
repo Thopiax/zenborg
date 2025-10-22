@@ -123,6 +123,9 @@ export function openMomentFormCreate(params?: {
   // Use provided areaId, or fall back to last used area
   const areaId = params?.areaId || lastUsedAreaId$.peek() || "";
 
+  // If day and phase are provided, the moment is being created for a specific timeline cell
+  const isAllocated = !!(params?.day && params?.phaseStr);
+
   momentFormState$.set({
     open: true,
     mode: "create",
@@ -130,7 +133,7 @@ export function openMomentFormCreate(params?: {
     areaId,
     horizon: params?.horizon ?? null,
     phase: params?.phase ?? null,
-    isAllocated: false,
+    isAllocated,
     showCreateMore: true,
     editingMomentId: null,
     prefilledAllocation:
