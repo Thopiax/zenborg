@@ -406,6 +406,7 @@ export function useGlobalKeyboard() {
     openMomentFormCreate({
       day,
       phaseStr: phase,
+      phase: phase as Phase | undefined,
       areaId,
       horizon: horizon as Horizon | undefined,
     });
