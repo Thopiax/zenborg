@@ -15,13 +15,13 @@ Zenborg is a **local-first web application** for conscious attention allocation.
 - **Orchestration, not elimination**: Accept distractions, budget for them
 - **Consciousness as currency**: Allocate attention, not time
 - **Presence over outcomes**: No "done" buttons, no completion tracking
-- **Vim-inspired efficiency**: Modal keyboard interactions for power users
+- **Keyboard-first efficiency**: Modal keyboard interactions for power users
 
 ## Features
 
 - **3-word moments** - Name your intentions clearly (e.g., "Morning Run", "Deep Work")
 - **Phase-based days** - Morning, Afternoon, Evening, Night (customizable)
-- **Vim modal system** - Navigate with `hjkl`, allocate with `:ty1`, create with `i`
+- **Modal keyboard system** - Navigate with keyboard shortcuts, allocate with commands
 - **Local-first** - All data stored in IndexedDB, works offline
 - **Minimal design** - Monochromatic UI, flat hierarchy, no modals
 - **PWA ready** - Install as a standalone app
@@ -40,13 +40,13 @@ pnpm dev
 
 ## Basic Usage
 
-```vim
+```bash
 i                    # Enter Insert mode - create a moment
 Morning Run          # Type 1-3 words
 Tab Tab              # Cycle through areas (Wellness, Craft, etc.)
 Enter                # Save
 
-j j                  # Navigate down with Vim keys
+j j                  # Navigate down with keyboard
 t 1                  # Quick allocate: Today, Morning
 Enter                # Confirm
 ```
