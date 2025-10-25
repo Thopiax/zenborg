@@ -27,6 +27,6 @@ Add any other context, mockups, or examples here.
 How does this align with Zenborg's core principles?
 - Presence over performance
 - 3-word constraint
-- Vim-first interaction
+- Keyboard-first interaction
 - Local-first data
 - Mindful tech (calm, not attention-extracting)
