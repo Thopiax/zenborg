@@ -41,15 +41,22 @@
 
 ### Technical Stack
 
-- **Language**: TypeScript/Node.js (or Python for speed)
+- **Language**: TypeScript/Node.js
 - **ActivityWatch Client**: REST API calls to `http://localhost:5600`
-- **LLM**: Ollama with Llama 3.2 3B
+- **Classifier**: Transformer.js with BART or DeBERTa (zero-shot classification)
 - **Output**: Terminal only (colored text for states)
 
 ### Implementation (4-6 hours)
 
 ```typescript
-// pseudocode
+import { pipeline } from '@xenova/transformers'
+
+// Load classifier once (auto-downloads model on first run)
+const classifier = await pipeline(
+  'zero-shot-classification',
+  'facebook/bart-large-mnli'
+)
+
 while (true) {
   // 1. Get current intention from user
   const intention = await promptUser("What are you working on?")
@@ -68,17 +75,30 @@ while (true) {
   const summary = aggregateActivity(activity)
   // { "Chrome - Linear": 480s, "Chrome - Twitter": 120s, ... }
 
-  // 5. Classify with Ollama
-  const result = await classifyAlignment({
-    intention,
-    theme,
-    activity: summary
-  })
+  // 5. Build activity description
+  const activityText = Object.entries(summary)
+    .map(([key, duration]) => `${key} (${duration}s)`)
+    .join(', ')
 
-  // 6. Print to terminal
-  printCompass(result.classification) // 🧭 ↑ or 🧭 ↙
-  console.log(`Confidence: ${result.confidence}`)
-  console.log(`Reason: ${result.briefReason}`)
+  const description = `
+    Working on: ${intention} (${theme} work)
+    Recent activity: ${activityText}
+  `
+
+  // 6. Classify with Transformer.js
+  const result = await classifier(description, [
+    'aligned with stated intention',
+    'drifting from stated intention',
+    'neutral or transitional activity',
+    'no significant activity'
+  ])
+
+  const classification = result.labels[0]
+  const confidence = result.scores[0]
+
+  // 7. Print to terminal
+  printCompass(classification) // 🧭 ↑ or 🧭 ↙
+  console.log(`Confidence: ${(confidence * 100).toFixed(0)}%`)
 }
 ```
 
@@ -89,9 +109,9 @@ while (true) {
 ### Setup (Day 0)
 
 1. Install ActivityWatch (manual setup is fine for MVT)
-2. Install Ollama + pull Llama 3.2 3B
-3. Build CLI tool (4-6 hours)
-4. Verify: Run tool, confirm it fetches AW data and calls Ollama
+2. `npm install @xenova/transformers` (auto-downloads BART on first run)
+3. Build CLI tool (2-4 hours - simpler than Ollama approach)
+4. Verify: Run tool, confirm it fetches AW data and classifies with Transformer.js
 
 ### Day 1: Personal Dogfooding
 
@@ -114,7 +134,7 @@ while (true) {
 - Self-correct: Does returning to Jupyter change compass back to "aligned"?
 
 **Questions to Answer**:
-- How quickly did LLM detect drift?
+- How quickly did the classifier detect drift?
 - Was the feedback helpful or annoying?
 - Did you feel guilt, or just awareness?
 
@@ -139,8 +159,8 @@ while (true) {
 
 ### Must Pass (Go/No-Go)
 
-✅ **Classification accuracy > 70%** (subjective, user agreement with LLM)
-✅ **Response time < 3 seconds** (Ollama call completes quickly)
+✅ **Classification accuracy > 70%** (subjective, user agreement with classifier)
+✅ **Response time < 1 second** (Transformer.js inference completes quickly)
 ✅ **Users self-correct at least once** when shown "drifting"
 ✅ **No one says "this is annoying/distracting"** (neutral or positive feedback only)
 
@@ -152,8 +172,8 @@ while (true) {
 
 ### Failure Modes (Stop/Rethink)
 
-❌ **Classification < 60% accurate** → LLM not good enough, try different model/prompt
-❌ **Response time > 5 seconds** → Too slow for real-time, need smaller model
+❌ **Classification < 60% accurate** → Zero-shot not working, try semantic similarity instead
+❌ **Response time > 2 seconds** → Too slow for real-time, switch to smaller/faster model
 ❌ **Users ignore compass entirely** → Ambient feedback ineffective, try different UI
 ❌ **Users feel guilt/shame** → Messaging is wrong, need gentler framing
 
@@ -165,6 +185,8 @@ while (true) {
 $ npm run test-compass
 
 🧭 Attention Compass - ActivityWatch Integration Test
+Loading classifier... (first run downloads BART model ~400MB)
+✓ Classifier ready (facebook/bart-large-mnli)
 
 What are you working on? (3 words max)
 > Product Spec
@@ -178,8 +200,7 @@ Theme? (product/data/ux/strategy)
 [5 minutes pass]
 
 ─────────────────────────────────────────
-🧭 ↑ ALIGNED (confidence: 0.82)
-Reason: "Linear, Notion - matches product work"
+🧭 ↑ ALIGNED (confidence: 82%)
 
 Recent activity:
 - Linear - Product Roadmap (4m 20s)
@@ -190,8 +211,7 @@ Recent activity:
 [10 minutes pass]
 
 ─────────────────────────────────────────
-🧭 ↙ DRIFTING (confidence: 0.91)
-Reason: "Twitter browsing - misaligned with product work"
+🧭 ↙ DRIFTING (confidence: 91%)
 
 Recent activity:
 - Chrome - Twitter (8m 40s)
@@ -204,8 +224,7 @@ Recent activity:
 [15 minutes pass]
 
 ─────────────────────────────────────────
-🧭 ↑ ALIGNED (confidence: 0.88)
-Reason: "Back to Linear - aligned with product work"
+🧭 ↑ ALIGNED (confidence: 88%)
 
 Recent activity:
 - Linear - Product Roadmap (12m 30s)
@@ -237,7 +256,8 @@ Recent activity:
 
 - **Is semantic understanding working?** (e.g., "Slack #product-team" correctly classified as aligned)
 - **Are edge cases handled?** (e.g., research on Twitter for product spec)
-- **Is the LLM too strict or too lenient?**
+- **Is zero-shot classification too strict or too lenient?**
+- **Does BART work well, or should we try DeBERTa/semantic similarity?**
 
 ### On User Behavior
 
@@ -248,7 +268,7 @@ Recent activity:
 ### On Technical Feasibility
 
 - **Is 5-min polling the right interval?** (or 10 min? 15 min?)
-- **Is Llama 3.2 3B fast enough?** (or do we need smaller model?)
+- **Is Transformer.js fast enough for real-time feedback?** (< 1 second?)
 - **Does ActivityWatch data quality hold up?** (window titles, URLs accurate?)
 
 ---
@@ -257,17 +277,21 @@ Recent activity:
 
 ### If Classification Is Inaccurate
 
-**Option A**: Use simpler keyword matching (no LLM)
-- Pro: Faster, more predictable
-- Con: Misses semantic nuance
+**Option A**: Switch from zero-shot to semantic similarity
+- Pro: Faster, simpler, often more accurate for narrow domains
+- Con: Requires tuning similarity thresholds
 
-**Option B**: Fine-tune LLM on personal work patterns
-- Pro: Higher accuracy over time
-- Con: Requires training data, more complex
+**Option B**: Use keyword matching (no ML at all)
+- Pro: Fastest, most predictable
+- Con: Misses semantic nuance entirely
 
 **Option C**: Let user correct classifications (feedback loop)
 - Pro: Improves over time, user feels in control
-- Con: Adds friction
+- Con: Adds friction, doesn't improve model
+
+**Option D**: Try different zero-shot model (DeBERTa instead of BART)
+- Pro: May have better accuracy for intent classification
+- Con: Still relatively slow compared to similarity
 
 ### If Ambient Feedback Is Ineffective
 
@@ -386,6 +410,65 @@ Recent activity:
 
 **If all 5 are "yes" → Build the full thing.**
 **If any are "no" → Pivot or stop.**
+
+---
+
+## Bonus: Journal Note Semantic Annotation
+
+Since we're already loading Transformer.js models for ActivityWatch classification, **the same models can power semantic journal features**:
+
+### Use Cases
+
+**1. Semantic Search**
+```typescript
+// Find journal entries related to current moment
+const embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2')
+
+const momentEmbedding = await embedder("Product Spec: prioritizing roadmap")
+const noteEmbeddings = await embedder(journalNotes.map(n => n.content))
+
+const similarities = cosineSimilarity(momentEmbedding, noteEmbeddings)
+const relatedNotes = journalNotes
+  .map((note, i) => ({ note, score: similarities[i] }))
+  .filter(({ score }) => score > 0.6)
+  .sort((a, b) => b.score - a.score)
+```
+
+**2. Auto-Tagging Notes**
+```typescript
+// Tag note with theme (product/data/ux/strategy)
+const classifier = await pipeline('zero-shot-classification', 'facebook/bart-large-mnli')
+
+const result = await classifier(journalNote.content, [
+  'product work and prioritization',
+  'data analysis and experiments',
+  'UX design and prototyping',
+  'strategic thinking and planning'
+])
+
+journalNote.theme = result.labels[0]
+journalNote.confidence = result.scores[0]
+```
+
+**3. Find Similar Past Moments**
+```typescript
+// When creating moment "Product Spec", show related past moments
+const currentEmbedding = await embedder("Product Spec")
+const pastEmbeddings = await embedder(pastMoments.map(m => m.name))
+
+const similar = pastMoments
+  .map((m, i) => ({ moment: m, score: similarities[i] }))
+  .filter(({ score }) => score > 0.8)
+```
+
+### Integration Points
+
+- **Moment creation**: Suggest related journal notes
+- **Journal writing**: Auto-tag with themes from current moment
+- **Reflection**: "Show me notes from when I worked on similar moments"
+- **Search**: Semantic search across all notes and moments
+
+**Advantage**: One model download, multiple features. Zero-config semantic intelligence across the whole app.
 
 ---
 

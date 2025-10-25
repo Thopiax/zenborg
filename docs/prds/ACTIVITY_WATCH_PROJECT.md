@@ -165,55 +165,114 @@ interface ActivitySummary {
 type AlignmentType = "aligned" | "neutral" | "drifting" | "untracked"
 ```
 
-### LLM Classification Service
+### Semantic Classification Service (Transformer.js)
 
-**Local Model Options** (ranked by preference):
-1. **Ollama** with Llama 3.2 3B (fastest, good balance)
-2. **llama.cpp** with Phi-3 Mini (smallest, edge devices)
-3. **Fallback**: Claude API (privacy implications, requires API key)
+**Model Choice**: **Transformer.js** with zero-shot classification
 
-**Classification Prompt Template**:
+**Why Transformer.js**:
+- ✅ Zero external dependencies (no Ollama/llama.cpp install)
+- ✅ Runs in browser or Node.js (WASM + WebGPU)
+- ✅ Auto-downloads models on first use (cached locally)
+- ✅ Fast inference for classification tasks (< 500ms)
+- ✅ Reusable for journal note semantic annotation
+- ✅ Works offline immediately after first model download
+
+**Model Options** (ranked by preference):
+1. **`facebook/bart-large-mnli`** - Zero-shot classification (best accuracy)
+2. **`MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`** - Faster, still accurate
+3. **Sentence transformers** + cosine similarity (ultra-fast, good enough)
+
+**Classification Approach**:
+
 ```typescript
-const CLASSIFICATION_PROMPT = `You are an attention alignment classifier for a mindful productivity system.
+import { pipeline } from '@xenova/transformers'
 
-CURRENT INTENTION:
-- Moment: "${moment.name}"
-- Area: ${moment.area.name}
-- Theme: ${moment.area.themeDescription}
-- Phase: ${phase} (${phaseEmoji})
+// Load zero-shot classifier (once, cached)
+const classifier = await pipeline(
+  'zero-shot-classification',
+  'facebook/bart-large-mnli'
+)
 
-OBSERVED ACTIVITY (last 15 min):
-${activitySummary}
+// Define candidate labels based on moment's theme
+const labels = {
+  aligned: [
+    moment.area.themeDescription, // "Writing specs, prioritizing features"
+    ...moment.area.keywords, // ["linear", "notion", "spec"]
+  ],
+  drifting: [
+    "social media browsing",
+    "news reading",
+    "entertainment",
+    "unrelated work"
+  ],
+  neutral: [
+    "email communication",
+    "team chat",
+    "quick searches",
+    "context switching"
+  ]
+}
 
-TASK: Classify alignment as:
-- ALIGNED: Activity clearly matches the stated intention and theme
-- NEUTRAL: Ambiguous or transitional (email, Slack, quick searches, switching contexts)
-- DRIFTING: Clear misalignment with stated intention
-- UNTRACKED: No significant digital activity detected
+// Build activity description from AW events
+const activityDescription = `
+User is working on: "${moment.name}" (${moment.area.name} - ${moment.area.themeDescription})
 
-GUIDELINES:
-- Consider semantic meaning, not just keywords
-  (e.g., "Slack #product-team" is aligned with product work)
-- Short diversions (<2 min) are NEUTRAL, not drifting
-- Respect nuance: research on Twitter for a product spec is aligned
-- If no clear activity, classify as UNTRACKED (not a failure)
+Recent activity (last 15 min):
+${activity.map(a => `- ${a.app}: ${a.windowTitle} (${a.duration}s)`).join('\n')}
+`
 
-OUTPUT (JSON only, no explanation):
-{
-  "classification": "aligned" | "neutral" | "drifting" | "untracked",
-  "confidence": 0.0-1.0,
-  "themeDetected": "product" | "data" | "ux" | "strategy" | null,
-  "briefReason": "Short explanation (max 10 words)"
-}`;
+// Classify alignment
+const result = await classifier(activityDescription, [
+  'aligned with stated intention',
+  'drifting from stated intention',
+  'neutral or transitional activity',
+  'no significant digital activity'
+])
+
+// Map to AlignmentType
+const classification = mapToAlignment(result.labels[0], result.scores[0])
+// { classification: "aligned", confidence: 0.89, themeDetected: "product" }
 ```
 
-**Response Parsing**:
+**Alternative: Semantic Similarity** (faster, simpler):
+
+```typescript
+import { pipeline } from '@xenova/transformers'
+
+// Load sentence transformer (faster than zero-shot)
+const embedder = await pipeline(
+  'feature-extraction',
+  'Xenova/all-MiniLM-L6-v2'
+)
+
+// Embed intention
+const intentionEmbedding = await embedder(
+  `${moment.name}: ${moment.area.themeDescription}`
+)
+
+// Embed observed activity
+const activityEmbedding = await embedder(
+  activity.map(a => `${a.app} ${a.windowTitle}`).join('. ')
+)
+
+// Compute cosine similarity
+const similarity = cosineSimilarity(intentionEmbedding, activityEmbedding)
+
+// Classify based on threshold
+const classification =
+  similarity > 0.7 ? 'aligned' :
+  similarity > 0.4 ? 'neutral' :
+  similarity > 0.2 ? 'drifting' :
+  'untracked'
+```
+
+**Response Format**:
 ```typescript
 interface ClassificationResult {
-  classification: AlignmentType
-  confidence: number
-  themeDetected: string | null
-  briefReason: string
+  classification: AlignmentType // "aligned" | "neutral" | "drifting" | "untracked"
+  confidence: number // 0.0-1.0 (from model scores)
+  themeDetected: string | null // "product" | "data" | "ux" | "strategy"
+  method: 'zero-shot' | 'similarity' // which approach was used
 }
 
 // Store in IndexedDB as AlignmentEvent
@@ -257,22 +316,23 @@ interface ClassificationResult {
 
 ---
 
-### Phase 1c: Local LLM Integration (Week 2)
-**Goal**: Classify alignment using Ollama locally
+### Phase 1c: Semantic Classification (Week 2)
+**Goal**: Classify alignment using Transformer.js
 
 **Tasks**:
-1. Detect Ollama installation (or prompt user to install)
-2. Auto-pull lightweight model (Llama 3.2 3B)
-3. Build classification prompt from current moment + activity
-4. Call Ollama API (http://localhost:11434)
-5. Parse JSON response → AlignmentEvent
+1. Install `@xenova/transformers` (npm package)
+2. Load zero-shot classification model (BART or DeBERTa)
+3. Build activity description from AW events
+4. Classify alignment with candidate labels
+5. Map scores to AlignmentType + confidence
 6. Store classifications in IndexedDB (not raw activity)
 
 **Acceptance**:
-- Classification runs locally, no external API calls
-- Response time < 2 seconds
+- Classification runs in-browser/Node.js, no external dependencies
+- First-run downloads model (100-500MB), then cached
+- Response time < 1 second (after model loaded)
 - Confidence scores calibrated (>0.7 for aligned/drifting)
-- Errors gracefully handled (show "untracked" if LLM fails)
+- Errors gracefully handled (show "untracked" if classification fails)
 
 ---
 
@@ -326,11 +386,10 @@ interface ClassificationResult {
 │ ☑ Show ambient compass indicator                │
 │                                                  │
 │ Classification interval: [5 min] [10 min] [15]  │
-│ LLM Backend: [Ollama (local)] [Claude API]      │
+│ Model: [BART (accurate)] [DeBERTa (fast)]       │
 │                                                  │
 │ Privacy:                                         │
-│ ☑ Process data locally only                     │
-│ ☐ Allow cloud LLM fallback (requires API key)   │
+│ ☑ Process data locally only (in-browser)        │
 │                                                  │
 │ Data Retention:                                  │
 │ Keep alignment history: [7 days] [30] [Forever] │
@@ -338,7 +397,7 @@ interface ClassificationResult {
 │                                                  │
 │ Status:                                          │
 │ ActivityWatch: Running ✓                        │
-│ Ollama: Connected ✓ (Llama 3.2 3B)              │
+│ Transformer.js: Loaded ✓ (BART-large-mnli)      │
 │ Last classification: 2 minutes ago              │
 └─────────────────────────────────────────────────┘
 ```
@@ -363,13 +422,13 @@ interface ClassificationResult {
 ```
 1. User installs Zenborg
 2. ActivityWatch auto-starts in background
-3. Ollama detected (or prompt: "Install Ollama for local AI? [Yes] [Skip]")
-4. If Ollama installed → auto-pull Llama 3.2 3B (progress indicator)
-5. Settings show: "ActivityWatch: Running ✓, Ollama: Ready ✓"
+3. First classification triggers model download (progress: "Loading classifier...")
+4. BART model downloads (400MB, one-time, cached)
+5. Settings show: "ActivityWatch: Running ✓, Transformer.js: Loaded ✓"
 6. Compass indicator appears (faded, no moment allocated yet)
 ```
 
-**Fallback**: If Ollama not installed, extension stays dormant (no crash, no nag).
+**Fallback**: If model download fails (offline, no space), extension stays dormant until next launch.
 
 ---
 
@@ -407,24 +466,24 @@ interface ClassificationResult {
 ## Technical Constraints
 
 ### Performance
-- **Classification latency**: < 2 seconds (local LLM)
+- **Classification latency**: < 1 second (Transformer.js, after model loaded)
 - **UI update latency**: < 500ms (compass indicator)
-- **CPU overhead**: < 5% average (AW watchers + LLM)
-- **Memory**: < 200MB (AW + Ollama model loaded)
+- **CPU overhead**: < 3% average (AW watchers + inference)
+- **Memory**: < 150MB (AW + Transformer.js model in-memory)
 - **Battery impact**: Negligible (10-min polling, not continuous)
 
 ### Privacy
-- **Default**: All data processed locally (AW SQLite + Ollama)
+- **Default**: All data processed locally (AW SQLite + Transformer.js in-browser)
 - **No telemetry**: Classification results stay on device
-- **Optional cloud**: User must explicitly enable + provide API key
+- **No cloud required**: Models downloaded once, cached locally
 - **Data retention**: Default 7 days, user-configurable
 - **GDPR compliance**: Full data export/deletion support
 
 ### Compatibility
 - **Platforms**: macOS, Linux, Windows (AW supports all three)
-- **Browsers**: Chrome, Firefox, Safari (aw-watcher-web)
+- **Browsers**: Chrome (recommended), Firefox, Safari (aw-watcher-web)
 - **Editors**: VS Code, Cursor, Vim/Neovim (window title detection)
-- **Ollama**: Requires 4GB RAM minimum (for 3B model)
+- **Transformer.js**: Requires 2GB RAM minimum, WebGPU recommended for speed
 
 ---
 
@@ -475,8 +534,8 @@ interface ClassificationResult {
 ## Open Questions
 
 **Technical**:
-1. Should we bundle Ollama or just detect/prompt for install?
-   - **Recommendation**: Detect + prompt (Ollama is 500MB+, too large to bundle)
+1. Which Transformer.js model: BART (accurate) or DeBERTa (faster)?
+   - **Recommendation**: Start with BART, add DeBERTa as fast mode option
 
 2. Polling interval: 5 min, 10 min, or user-configurable?
    - **Recommendation**: Default 10 min, configurable down to 5 min
@@ -486,6 +545,9 @@ interface ClassificationResult {
 
 4. Should we show compass when no moment allocated?
    - **Recommendation**: Show as UNTRACKED (○), remind user to allocate
+
+5. Use zero-shot classification or semantic similarity?
+   - **Recommendation**: Zero-shot for better accuracy, similarity as fallback/fast mode
 
 **UX**:
 1. Should compass show confidence score, or just direction?
@@ -536,7 +598,7 @@ interface ClassificationResult {
 **Immediate**:
 1. ✅ PRD approval (this document)
 2. Create technical spike: bundle AW binaries for Next.js app
-3. Test Ollama integration (API calls, model selection)
+3. Test Transformer.js integration (model loading, inference speed)
 4. Design compass component (Figma mockup)
 5. Set up Vitest tests for classification service
 
@@ -546,7 +608,7 @@ interface ClassificationResult {
 - Console logging of aggregated events
 
 **Week 2 Deliverables**:
-- Ollama integration (local LLM classification)
+- Transformer.js integration (zero-shot classification)
 - Compass indicator UI component
 - Real-time classification display
 
