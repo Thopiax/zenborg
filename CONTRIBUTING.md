@@ -71,7 +71,7 @@ See [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation.
 ### Branching
 
 - Create a feature branch from `main`
-- Use descriptive names: `feature/add-phase-config`, `fix/vim-navigation-bug`
+- Use descriptive names: `feature/add-phase-config`, `fix/keyboard-navigation-bug`
 
 ### Commits
 
@@ -96,7 +96,7 @@ Before contributing, please understand Zenborg's core principles:
 
 - **No task completion tracking** - This is about presence, not performance
 - **3-word constraint** - Moments are named in 1-3 words maximum
-- **Vim-first interaction** - Keyboard efficiency is a priority
+- **Keyboard-first interaction** - Keyboard efficiency is a priority
 - **Local-first** - Data stays in the browser (IndexedDB)
 - **Mindful tech** - Intentionally calm, not attention-extracting
 

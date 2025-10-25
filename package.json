@@ -15,13 +15,13 @@
   "homepage": "https://github.com/Thopiax/zenborg#readme",
   "keywords": [
     "attention",
-    "vim",
     "productivity",
     "mindfulness",
     "pwa",
     "local-first",
     "intention",
-    "focus"
+    "focus",
+    "keyboard-shortcuts"
   ],
   "scripts": {
     "dev": "next dev --turbopack",
