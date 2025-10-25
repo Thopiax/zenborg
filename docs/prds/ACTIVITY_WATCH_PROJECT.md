@@ -25,11 +25,10 @@ A **passive ambient awareness system** that:
 1. Observes computer activity via ActivityWatch
 2. Classifies alignment with current moment using local LLM
 3. Provides **peripheral feedback** (ambient compass indicator)
-4. Offers **reflective summaries** (end-of-phase ritual)
 
-**Not**: Performance tracking, productivity metrics, nagging notifications, or guilt-inducing dashboards.
+**Not**: Performance tracking, productivity metrics, nagging notifications, guilt-inducing dashboards, or granular time summaries.
 
-**Is**: A gentle, intelligent mirror that helps you notice drift before hours pass.
+**Is**: A gentle, intelligent mirror that helps you notice drift in the moment, not hours later.
 
 ---
 
@@ -61,35 +60,6 @@ Current: "Product Spec" ☕ Morning
 - **Neutral** (↔): Ambiguous (email, Slack, quick searches)
 - **Drifting** (↙): Clear misalignment detected
 - **Untracked** (○): No digital activity (reading, meetings, thinking)
-
-### End-of-Phase Reflection (Passive, Retrospective)
-
-When a phase completes (e.g., Morning → Afternoon transition):
-
-```
-☕ Morning Complete
-
-┌─────────────────────────────────────────────────┐
-│ Product Spec                    [Craft]         │
-│ ✓ Aligned (2h 15m observed)                     │
-│ → Linear, Notion, Figma mockups                 │
-├─────────────────────────────────────────────────┤
-│ Email Triage                    [Admin]         │
-│ ✗ Drift detected (45m allocated, 12m observed)  │
-│ → Spent 1h 20m on Twitter/HN instead            │
-├─────────────────────────────────────────────────┤
-│ Deep Reading                    [Strategy]      │
-│ ? Untracked (no digital footprint)              │
-└─────────────────────────────────────────────────┘
-
-Press any key to continue to Afternoon...
-```
-
-**Design**:
-- Non-blocking (can dismiss immediately)
-- Shows up once per phase transition
-- No judgement language ("drift detected" not "you failed")
-- Acknowledges untracked time as valid (reading, thinking, meetings)
 
 ---
 
@@ -135,7 +105,6 @@ Press any key to continue to Afternoon...
 ┌──────────────────────────────────────────────────┐
 │          Ambient Feedback Layer                  │
 │  - Compass indicator (real-time UI)              │
-│  - Phase reflection summary (transition screen)  │
 │  - Alignment history (stored in IndexedDB)       │
 └──────────────────────────────────────────────────┘
 ```
@@ -345,35 +314,7 @@ interface ClassificationResult {
 
 ---
 
-### Phase 1e: End-of-Phase Reflection (Week 3)
-**Goal**: Show alignment summary at phase transitions
-
-**Trigger**: When current phase ends (based on PhaseConfig.endHour)
-
-**UI**:
-- Overlay (not modal - can click through)
-- Shows all moments from completed phase
-- For each moment:
-  - Alignment status (✓ aligned, ✗ drifting, ? untracked)
-  - Observed duration (aggregated from AW events)
-  - Top 3 apps/activities
-- Press any key or click to dismiss
-
-**Data**:
-- Query AlignmentEvents for completed phase
-- Aggregate classifications by moment
-- Calculate time spent per classification type
-- Do NOT show percentages or scores (no gamification)
-
-**Acceptance**:
-- Appears automatically at phase transition
-- Non-blocking (can dismiss immediately)
-- Shows accurate time aggregations
-- Works offline (uses cached data)
-
----
-
-### Phase 1f: Settings & Privacy (Week 3)
+### Phase 1e: Settings & Privacy (Week 2-3)
 **Goal**: User control over data collection and feedback
 
 **Settings Panel** (`:settings` command):
@@ -383,7 +324,6 @@ interface ClassificationResult {
 ├─────────────────────────────────────────────────┤
 │ ☑ Enable attention guardrails                   │
 │ ☑ Show ambient compass indicator                │
-│ ☑ Show end-of-phase reflections                 │
 │                                                  │
 │ Classification interval: [5 min] [10 min] [15]  │
 │ LLM Backend: [Ollama (local)] [Claude API]      │
@@ -451,26 +391,7 @@ interface ClassificationResult {
 
 ---
 
-### Flow 3: End-of-Phase Reflection
-```
-1. Morning phase ends (12pm → Afternoon)
-2. Zenborg shows reflection overlay:
-
-   ☕ Morning Complete
-
-   ✓ Product Spec (2h 15m aligned)
-   ✗ Email Triage (1h 20m drifting - Twitter/HN)
-   ? Deep Reading (untracked)
-
-3. User reads, presses Esc
-4. Continues to Afternoon
-```
-
-**Non-Goals**: No lecture, no metrics, no "productivity score". Just a mirror.
-
----
-
-### Flow 4: Disable Extension (User Agency)
+### Flow 3: Disable Extension (User Agency)
 ```
 1. User types :settings
 2. Unchecks "Enable attention guardrails"
@@ -511,14 +432,13 @@ interface ClassificationResult {
 
 **Qualitative** (user interviews):
 - "Did the compass help you notice drift before it became hours?"
-- "Did end-of-phase reflection feel useful or guilt-inducing?"
 - "Was setup truly zero-config, or did you struggle?"
 - "Do you trust that data stays local?"
+- "Does the ambient feedback feel helpful or distracting?"
 
 **Quantitative** (optional telemetry, opt-in):
 - % of moments with aligned classification (target: >60%)
 - Average time-to-notice drift (compass shown → user action)
-- Reflection screen dismissal rate (too annoying if >90%)
 - Extension disable rate (failure if >20% disable within 1 week)
 
 **Technical Health**:
@@ -545,7 +465,7 @@ interface ClassificationResult {
 - ❌ Browser extension (watch via aw-watcher-web is sufficient)
 
 **Future Phases** (not MVP):
-- Phase 2: Trend analysis (weekly patterns, not daily metrics)
+- Phase 2: Longer-term reflection patterns (weekly/monthly, not immediate)
 - Phase 3: Custom theme taxonomy (beyond Area keywords)
 - Phase 4: Multi-device correlation (phone + desktop)
 - Phase 5: Shared themes for teams (opt-in collaboration)
@@ -571,11 +491,11 @@ interface ClassificationResult {
 1. Should compass show confidence score, or just direction?
    - **Recommendation**: Hide confidence (too metric-y), just show state
 
-2. End-of-phase reflection: auto-dismiss after 30 sec, or wait for user?
-   - **Recommendation**: Wait for user (respect attention), but allow click-through
-
-3. What if user has multiple monitors? Where to show compass?
+2. What if user has multiple monitors? Where to show compass?
    - **Recommendation**: Let user drag/position, persist preference
+
+3. Should alignment history be queryable/viewable?
+   - **Recommendation**: Future phase - keep MVP focused on real-time awareness only
 
 **Privacy**:
 1. Should we offer data export (JSON dump of AlignmentEvents)?
@@ -630,10 +550,10 @@ interface ClassificationResult {
 - Compass indicator UI component
 - Real-time classification display
 
-**Week 3 Deliverables**:
-- End-of-phase reflection screen
+**Week 2-3 Deliverables**:
 - Settings panel (privacy controls)
-- E2E test: full flow from moment allocation → drift detection → reflection
+- Data retention & deletion
+- E2E test: full flow from moment allocation → drift detection → self-correction
 
 ---
 
