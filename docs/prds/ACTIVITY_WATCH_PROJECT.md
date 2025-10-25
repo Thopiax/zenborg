@@ -111,36 +111,11 @@ Current: "Product Spec" ☕ Morning
 
 ### Data Model Extensions
 
-**Area** (extended from Zenborg core):
-```typescript
-interface Area {
-  // ... existing fields ...
-  themeKeywords?: string[]  // ["linear", "notion", "spec", "roadmap"]
-  themeDescription?: string // "Product work: writing specs, prioritizing..."
-}
-```
-
-**Default Area Themes** (for user "Thopiax"):
-```typescript
-const DEFAULT_THEMES = {
-  "Product": {
-    keywords: ["linear", "notion", "spec", "roadmap", "jira", "prd"],
-    description: "Writing specs, scopes, prioritizing features"
-  },
-  "Data": {
-    keywords: ["jupyter", "python", "sql", "postgres", "dbt", "pandas"],
-    description: "Exploring data, writing models, running batches, experiments"
-  },
-  "UX": {
-    keywords: ["figma", "framer", "prototype", "design", "css", "component"],
-    description: "Prototyping, fine-tuning interfaces"
-  },
-  "Strategy": {
-    keywords: ["docs", "notes", "research", "reading", "writing"],
-    description: "Slow, deliberate thinking and planning"
-  }
-}
-```
+**Note on Areas vs Moments**:
+- **Areas** are life domains (Wellness, Craft, Social, Joyful, Introspective) per CLAUDE.md
+- **Moments** are specific intentions like "Product Spec", "Data Analysis", "Morning Run"
+- Classification matches activity → **current moment**, not area
+- Moment names provide semantic context (e.g., "Product Spec" implies Linear/Notion/specs)
 
 **AlignmentEvent** (new entity):
 ```typescript
@@ -148,10 +123,9 @@ interface AlignmentEvent {
   id: string                    // UUID
   momentId: string              // FK to Moment
   timestamp: string             // ISO timestamp
-  classification: AlignmentType // "aligned" | "neutral" | "drifting"
+  classification: AlignmentType // "aligned" | "neutral" | "drifting" | "untracked"
   confidence: number            // 0.0-1.0
   observedActivities: ActivitySummary[]
-  themeDetected: string | null  // "product", "data", etc.
   createdAt: string
 }
 
@@ -193,45 +167,26 @@ const classifier = await pipeline(
   'facebook/bart-large-mnli'
 )
 
-// Define candidate labels based on moment's theme
-const labels = {
-  aligned: [
-    moment.area.themeDescription, // "Writing specs, prioritizing features"
-    ...moment.area.keywords, // ["linear", "notion", "spec"]
-  ],
-  drifting: [
-    "social media browsing",
-    "news reading",
-    "entertainment",
-    "unrelated work"
-  ],
-  neutral: [
-    "email communication",
-    "team chat",
-    "quick searches",
-    "context switching"
-  ]
-}
-
 // Build activity description from AW events
 const activityDescription = `
-User is working on: "${moment.name}" (${moment.area.name} - ${moment.area.themeDescription})
+Current intention: "${moment.name}" (${moment.area.name})
+Context: User committed to working on this during ${phase}.
 
 Recent activity (last 15 min):
 ${activity.map(a => `- ${a.app}: ${a.windowTitle} (${a.duration}s)`).join('\n')}
 `
 
-// Classify alignment
+// Classify alignment using moment name as semantic anchor
 const result = await classifier(activityDescription, [
-  'aligned with stated intention',
-  'drifting from stated intention',
-  'neutral or transitional activity',
-  'no significant digital activity'
+  `working on: ${moment.name}`,          // e.g., "working on: Product Spec"
+  'distracted or browsing unrelated content',
+  'transitional activity like email or chat',
+  'no significant activity observed'
 ])
 
 // Map to AlignmentType
 const classification = mapToAlignment(result.labels[0], result.scores[0])
-// { classification: "aligned", confidence: 0.89, themeDetected: "product" }
+// { classification: "aligned", confidence: 0.89 }
 ```
 
 **Alternative: Semantic Similarity** (faster, simpler):
@@ -245,10 +200,9 @@ const embedder = await pipeline(
   'Xenova/all-MiniLM-L6-v2'
 )
 
-// Embed intention
-const intentionEmbedding = await embedder(
-  `${moment.name}: ${moment.area.themeDescription}`
-)
+// Embed intention (just the moment name - it's self-descriptive)
+const intentionEmbedding = await embedder(moment.name)
+// e.g., "Product Spec" or "Morning Run"
 
 // Embed observed activity
 const activityEmbedding = await embedder(
@@ -271,11 +225,10 @@ const classification =
 interface ClassificationResult {
   classification: AlignmentType // "aligned" | "neutral" | "drifting" | "untracked"
   confidence: number // 0.0-1.0 (from model scores)
-  themeDetected: string | null // "product" | "data" | "ux" | "strategy"
   method: 'zero-shot' | 'similarity' // which approach was used
 }
 
-// Store in IndexedDB as AlignmentEvent
+// Store in IndexedDB as AlignmentEvent (linked to moment via momentId)
 ```
 
 ---
@@ -619,55 +572,50 @@ interface ClassificationResult {
 
 ---
 
-## Appendix: User's Default Themes
+## Appendix: Example Moment-to-Activity Mappings
 
-**For "Thopiax" (MVP hardcoded)**:
+**How Semantic Classification Works**:
 
-```typescript
-export const THOPIAX_THEMES = {
-  "Product Work": {
-    keywords: ["linear", "notion", "jira", "asana", "roadmap", "spec", "prd", "priorit"],
-    description: "Writing specs, scopes, prioritizing features, planning roadmaps",
-    exampleActivities: [
-      "Linear - Product Roadmap Q2",
-      "Notion - PRD: New Onboarding Flow",
-      "Slack - #product-team"
-    ]
-  },
-  "Data Work": {
-    keywords: ["jupyter", "python", "sql", "postgres", "dbt", "pandas", "numpy", "colab"],
-    description: "Exploring data, writing models, running batches, tweaking experiments",
-    exampleActivities: [
-      "Jupyter Notebook - user_retention_analysis.ipynb",
-      "pgAdmin - Query: weekly_active_users",
-      "Terminal - python run_experiment.py"
-    ]
-  },
-  "UX Work": {
-    keywords: ["figma", "framer", "sketch", "prototype", "design", "component", "css", "tailwind"],
-    description: "Prototyping interfaces, fine-tuning designs, iterating on components",
-    exampleActivities: [
-      "Figma - Zenborg Compass Redesign",
-      "VS Code - MomentCard.tsx",
-      "Chrome - Tailwind CSS Docs"
-    ]
-  },
-  "Strategy Work": {
-    keywords: ["docs", "notion", "notes", "obsidian", "research", "reading", "writing", "plan"],
-    description: "Slow, deliberate thinking, strategic planning, deep reading",
-    exampleActivities: [
-      "Google Docs - Q3 Strategy Draft",
-      "Notion - Weekly Reflection",
-      "Safari - Reading: Shape Up (Basecamp)"
-    ]
-  }
-}
+Moment names are self-descriptive. The classifier matches observed activity against the moment name semantically:
+
+**Example 1: "Product Spec" (Area: Craft)**
+```
+Moment: "Product Spec"
+Observed: Linear, Notion, Slack #product-team
+Classification: ✓ Aligned (semantic match with spec/planning work)
+
+Moment: "Product Spec"
+Observed: Twitter, Hacker News
+Classification: ✗ Drifting (no semantic connection)
 ```
 
-**Usage in Classification**:
-- When moment.area matches theme name, use corresponding keywords/description
-- LLM considers semantic overlap (e.g., "Slack #product-team" → Product Work)
-- Themes evolve with user (future: custom theme editor)
+**Example 2: "Data Analysis" (Area: Craft)**
+```
+Moment: "Data Analysis"
+Observed: Jupyter Notebook, pgAdmin, Python
+Classification: ✓ Aligned (semantic match with data/analysis work)
+
+Moment: "Data Analysis"
+Observed: Figma, Design System Docs
+Classification: ✗ Drifting (different domain - design vs. data)
+```
+
+**Example 3: "Morning Run" (Area: Wellness)**
+```
+Moment: "Morning Run"
+Observed: No digital activity
+Classification: ? Untracked (expected for physical activity)
+
+Moment: "Morning Run"
+Observed: Strava, Spotify
+Classification: ✓ Aligned (related apps for running)
+```
+
+**Key Insight**: No hardcoded keywords needed. The model understands semantic relationships:
+- "Product Spec" → Linear, Notion, planning tools
+- "Data Analysis" → Jupyter, SQL, Python
+- "UX Prototype" → Figma, design tools
+- "Morning Run" → fitness apps or no digital activity
 
 ---
 

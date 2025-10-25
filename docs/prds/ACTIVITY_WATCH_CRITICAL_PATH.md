@@ -58,9 +58,9 @@ const classifier = await pipeline(
 )
 
 while (true) {
-  // 1. Get current intention from user
-  const intention = await promptUser("What are you working on?")
-  const theme = await promptUser("Theme? (product/data/ux/strategy)")
+  // 1. Get current intention from user (just the moment name)
+  const momentName = await promptUser("What are you working on?")
+  // e.g., "Product Spec", "Data Analysis", "Morning Run"
 
   // 2. Poll ActivityWatch every 5 minutes
   await sleep(5 * 60 * 1000)
@@ -81,14 +81,14 @@ while (true) {
     .join(', ')
 
   const description = `
-    Working on: ${intention} (${theme} work)
+    Current intention: ${momentName}
     Recent activity: ${activityText}
   `
 
-  // 6. Classify with Transformer.js
+  // 6. Classify with Transformer.js (moment name is semantic anchor)
   const result = await classifier(description, [
-    'aligned with stated intention',
-    'drifting from stated intention',
+    `working on: ${momentName}`,  // e.g., "working on: Product Spec"
+    'distracted or browsing unrelated content',
     'neutral or transitional activity',
     'no significant activity'
   ])
@@ -116,7 +116,7 @@ while (true) {
 ### Day 1: Personal Dogfooding
 
 **Morning Session (3 hours)**:
-- Set intention: "Product Spec" (Product theme)
+- Set intention: "Product Spec" (just the moment name)
 - Work normally for 3 hours
 - Observe compass updates every 5 min
 - Note: When did you notice drift? Did you self-correct?
@@ -128,7 +128,7 @@ while (true) {
 - Was 5-min polling too slow/too fast?
 
 **Afternoon Session (3 hours)**:
-- Set intention: "Data Analysis" (Data theme)
+- Set intention: "Data Analysis"
 - Intentionally drift to Twitter/email after 30 min
 - Observe: How long until compass shows "drifting"?
 - Self-correct: Does returning to Jupyter change compass back to "aligned"?
@@ -188,11 +188,8 @@ $ npm run test-compass
 Loading classifier... (first run downloads BART model ~400MB)
 ✓ Classifier ready (facebook/bart-large-mnli)
 
-What are you working on? (3 words max)
+What are you working on? (moment name, 1-3 words)
 > Product Spec
-
-Theme? (product/data/ux/strategy)
-> product
 
 ✓ Monitoring ActivityWatch every 5 minutes...
   Press Ctrl+C to stop or change intention
@@ -434,19 +431,17 @@ const relatedNotes = journalNotes
   .sort((a, b) => b.score - a.score)
 ```
 
-**2. Auto-Tagging Notes**
+**2. Auto-Linking Notes to Moments**
 ```typescript
-// Tag note with theme (product/data/ux/strategy)
+// Find which moment this journal note relates to
 const classifier = await pipeline('zero-shot-classification', 'facebook/bart-large-mnli')
 
-const result = await classifier(journalNote.content, [
-  'product work and prioritization',
-  'data analysis and experiments',
-  'UX design and prototyping',
-  'strategic thinking and planning'
-])
+// Get all active moments
+const moments = ["Product Spec", "Data Analysis", "Morning Run", "Deep Reading"]
 
-journalNote.theme = result.labels[0]
+const result = await classifier(journalNote.content, moments)
+
+journalNote.relatedMoment = result.labels[0]  // Most likely moment
 journalNote.confidence = result.scores[0]
 ```
 
@@ -463,12 +458,12 @@ const similar = pastMoments
 
 ### Integration Points
 
-- **Moment creation**: Suggest related journal notes
-- **Journal writing**: Auto-tag with themes from current moment
+- **Moment creation**: Suggest related journal notes based on moment name
+- **Journal writing**: Auto-link notes to the current moment you're working on
 - **Reflection**: "Show me notes from when I worked on similar moments"
-- **Search**: Semantic search across all notes and moments
+- **Search**: Semantic search across all notes and moments by name/content
 
-**Advantage**: One model download, multiple features. Zero-config semantic intelligence across the whole app.
+**Advantage**: One model download, multiple features. Zero-config semantic intelligence across the whole app. No need to manually tag or categorize anything.
 
 ---
 

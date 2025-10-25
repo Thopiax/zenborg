@@ -11,9 +11,9 @@
 Instead of AI classification, **manually label activities** using ActivityWatch's built-in category system:
 
 1. User downloads & runs ActivityWatch themselves
-2. Zenborg syncs Areas → ActivityWatch categories/labels
-3. User manually labels activities in ActivityWatch UI (or via script)
-4. Zenborg fetches labeled data to show alignment
+2. User manually labels activities in ActivityWatch UI with moment-like names
+3. Zenborg fetches labeled data and matches against current moment
+4. Shows alignment: does activity label match current moment?
 
 **No AI. No classification. Just basic CRUD operations on localhost.**
 
@@ -48,14 +48,11 @@ ActivityWatch has a built-in **event classification system**:
 
 ```
 ┌─────────────────────────────────────────┐
-│         Zenborg Areas                   │
-│  - Product Work                         │
-│  - Data Work                            │
-│  - UX Work                              │
-│  - Strategy Work                        │
+│         Zenborg Current Moment          │
+│  "Product Spec" (Area: Craft)           │
 └─────────┬───────────────────────────────┘
           │
-          │ POST /api/aw/sync-categories
+          │ Fetch events with categories
           ▼
 ┌─────────────────────────────────────────┐
 │    ActivityWatch REST API               │
@@ -66,12 +63,13 @@ ActivityWatch has a built-in **event classification system**:
 │  /api/0/query/                          │
 └─────────┬───────────────────────────────┘
           │
-          │ GET events with $category
+          │ Events with $category labels
           ▼
 ┌─────────────────────────────────────────┐
 │    Zenborg UI - Alignment View          │
-│  "You spent 2h on Product Work"         │
-│  "Last 15min: Linear (Product)"         │
+│  Current: "Product Spec"                │
+│  Last 15min: Linear [Product Work]      │
+│  🧭 ↑ Aligned (category matches intent) │
 └─────────────────────────────────────────┘
 ```
 
@@ -193,30 +191,35 @@ export class ActivityWatchClient {
 }
 ```
 
-### 2. Sync Zenborg Areas → AW Categories
+### 2. Suggest Category Setup (Read-Only)
 
 ```typescript
-// src/application/use-cases/sync-areas-to-aw.ts
+// src/application/use-cases/suggest-aw-categories.ts
 
 import { ActivityWatchClient } from '@/infrastructure/activitywatch/aw-client'
-import { Area } from '@/domain/entities/area'
+import { Moment } from '@/domain/entities/moment'
 
-export async function syncAreasToAW(areas: Area[]): Promise<void> {
+export async function suggestAWCategories(moments: Moment[]): Promise<void> {
   const awClient = new ActivityWatchClient()
 
   // Check if AW is running
   const isRunning = await awClient.isRunning()
   if (!isRunning) {
-    console.warn('ActivityWatch not running, skipping sync')
+    console.warn('ActivityWatch not running')
     return
   }
 
-  // For tiny version: just log categories
-  // User will manually set them in AW UI or via regex rules
-  console.log('Zenborg Areas → ActivityWatch Categories:')
-  areas.forEach(area => {
-    console.log(`  - ${area.name}: ${area.themeKeywords?.join(', ')}`)
+  // For tiny version: just suggest category names based on common moments
+  console.log('💡 Suggested ActivityWatch categories (set up in AW UI):')
+
+  const uniqueMomentNames = [...new Set(moments.map(m => m.name))]
+
+  uniqueMomentNames.forEach(name => {
+    console.log(`  - "${name}" (for moments like: ${name})`)
   })
+
+  console.log('\n👉 Configure these in ActivityWatch UI: http://localhost:5600')
+  console.log('   Settings → Categories → Add Rules')
 
   // Future: Auto-create categorization rules via AW API
   // (AW doesn't have a public API for this yet, needs manual config)
@@ -271,9 +274,13 @@ export async function getAlignmentStatus(
   const lastActivity = Object.values(activitySummary)
     .sort((a, b) => b.duration - a.duration)
 
-  // Check if aligned: does any activity's category match moment's area?
+  // Check if aligned: does any activity's category match moment name?
+  // Supports exact match or fuzzy match (e.g., "Product Work" matches "Product Spec")
   const aligned = lastActivity.some(activity =>
-    activity.category?.includes(currentMoment.area.name)
+    activity.category?.some(cat =>
+      cat.toLowerCase().includes(currentMoment.name.toLowerCase()) ||
+      currentMoment.name.toLowerCase().includes(cat.toLowerCase())
+    )
   )
 
   const totalTime = lastActivity.reduce((sum, a) => sum + a.duration, 0)
@@ -382,23 +389,30 @@ Open ActivityWatch UI (http://localhost:5600):
 
 **Settings → Categories → Add Rules**:
 
+Configure categories based on your common **moment names** (not areas):
+
 ```
-Product Work:
-  - regex: "Linear|Notion|Jira|Asana|PRD"
+Product Spec:
+  - regex: "Linear|Notion|Jira|PRD|Spec|Roadmap"
   - regex: "#product"
 
-Data Work:
-  - regex: "Jupyter|Python|SQL|Postgres|dbt"
+Data Analysis:
+  - regex: "Jupyter|Python|SQL|Postgres|Pandas"
   - regex: "\.ipynb|\.py|\.sql"
 
-UX Work:
+UX Prototype:
   - regex: "Figma|Framer|Sketch|Design"
-  - regex: "\.tsx|\.css|Tailwind"
+  - regex: "\.tsx|\.css|component"
 
-Strategy Work:
-  - regex: "Docs|Notes|Obsidian|Research"
-  - regex: "Strategy|Planning|Reflection"
+Deep Reading:
+  - regex: "Docs|PDF|Reader|Articles"
+  - regex: "Reading|Research"
+
+Email:
+  - regex: "Gmail|Outlook|Mail"
 ```
+
+**Key**: Category names should match your typical moment names ("Product Spec", "Data Analysis"), not areas ("Craft", "Wellness")
 
 ### 3. Test Zenborg Integration
 
@@ -492,31 +506,37 @@ npx tsx scripts/test-aw-integration.ts
 ## Alignment Logic (No AI)
 
 **Simple rule**: Activity is "aligned" if:
-- Activity's `$category` matches current moment's `area.name`
+- Activity's `$category` matches (or relates to) current moment name
 
 **Example**:
 
 ```typescript
-// User is working on moment "Product Spec" (area: "Product Work")
+// User is working on moment "Product Spec" (area: Craft)
+// ActivityWatch categories configured to label Linear/Notion as "Product Spec"
 // Last 15 min activity:
 
 [
-  { app: "Linear", category: ["Product Work"], duration: 600 },
+  { app: "Linear", category: ["Product Spec"], duration: 600 },
   { app: "Slack", category: ["Communication"], duration: 180 },
   { app: "Chrome - Twitter", category: null, duration: 120 }
 ]
 
 // Alignment calculation:
-const productTime = 600  // Linear
+const alignedTime = 600  // Linear (category matches moment name)
 const otherTime = 300    // Slack + Twitter
 
-aligned = productTime > otherTime  // true
+aligned = alignedTime > otherTime  // true
 ```
 
 **Compass state**:
 - `🧭 ↑ Aligned` if > 50% of time in matching category
 - `🧭 ↙ Drifting` if < 50% of time in matching category
 - `🧭 ○ Untracked` if no categorized events
+
+**Matching logic**:
+- Exact match: moment = "Product Spec", category = "Product Spec" → ✓
+- Fuzzy match: moment = "Product Spec", category = "Product Work" → ✓ (user configures synonyms)
+- No match: moment = "Product Spec", category = "Email" → ✗
 
 ---
 
