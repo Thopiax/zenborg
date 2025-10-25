@@ -578,7 +578,7 @@ A: Zen (mindfulness, presence) + Cyborg (technology augmenting human capability)
 
 ## License
 
-Open source (to be determined - likely MIT or Apache 2.0)
+MIT License - See [LICENSE](LICENSE) file for details
 
 ---
 
