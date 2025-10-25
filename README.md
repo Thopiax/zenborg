@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zenborg - Intention Compass
 
-## Getting Started
+> *An attention orchestration system for budgeting moments toward personal flourishing.*
 
-First, run the development server:
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+## What is Zenborg?
+
+Zenborg is a **local-first web application** for conscious attention allocation. Not a task manager. Not a habit tracker. Not a calendar.
+
+**The Question**: *"Where will I place my consciousness today?"*
+
+### Core Philosophy
+
+- **Orchestration, not elimination**: Accept distractions, budget for them
+- **Consciousness as currency**: Allocate attention, not time
+- **Presence over outcomes**: No "done" buttons, no completion tracking
+- **Vim-inspired efficiency**: Modal keyboard interactions for power users
+
+## Features
+
+- **3-word moments** - Name your intentions clearly (e.g., "Morning Run", "Deep Work")
+- **Phase-based days** - Morning, Afternoon, Evening, Night (customizable)
+- **Vim modal system** - Navigate with `hjkl`, allocate with `:ty1`, create with `i`
+- **Local-first** - All data stored in IndexedDB, works offline
+- **Minimal design** - Monochromatic UI, flat hierarchy, no modals
+- **PWA ready** - Install as a standalone app
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Install dependencies
+pnpm install
+
+# Run development server
 pnpm dev
-# or
-bun dev
+
+# Open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Basic Usage
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```vim
+i                    # Enter Insert mode - create a moment
+Morning Run          # Type 1-3 words
+Tab Tab              # Cycle through areas (Wellness, Craft, etc.)
+Enter                # Save
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+j j                  # Navigate down with Vim keys
+t 1                  # Quick allocate: Today, Morning
+Enter                # Confirm
+```
 
-## Learn More
+**Learn more**: See [CLAUDE.md](./CLAUDE.md) for complete documentation.
 
-To learn more about Next.js, take a look at the following resources:
+## Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Next.js 15** - React framework with App Router
+- **TypeScript** - Type-safe development
+- **Tailwind CSS 4** - Utility-first styling
+- **Legend State** - Reactive local-first state management
+- **Vitest + Playwright** - Unit and E2E testing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Contributing
 
-## Deploy on Vercel
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Philosophy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project evolved from a physical whiteboard system using magnets. Key insights:
+
+> "It is not about eliminating distractions from my life. Accept them, make some room for them to avoid them growing too much."
+
+> "I'm not budgeting hours; I'm allocating attention. The difference changes everything."
+
+> "The system measures through presence, not performance. Did I consciously allocate my attention today? That's the only metric that matters."
+
+**Read more**: [CLAUDE.md - Project Philosophy](./CLAUDE.md#project-philosophy-from-attend-system)
+
+## License
+
+MIT License - See [LICENSE](./LICENSE) for details.
+
+## Acknowledgments
+
+Built with the philosophy that **structure should guide our organic growth** and that **technology should enhance rather than extract human attention**.
+
+*"Where will I place my consciousness today?"*
