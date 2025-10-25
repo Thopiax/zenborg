@@ -1,7 +1,28 @@
 {
   "name": "zenborg",
   "version": "0.2.0",
-  "private": true,
+  "description": "An attention orchestration system for budgeting moments toward personal flourishing",
+  "license": "MIT",
+  "private": false,
+  "author": "Thopiax",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Thopiax/zenborg.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Thopiax/zenborg/issues"
+  },
+  "homepage": "https://github.com/Thopiax/zenborg#readme",
+  "keywords": [
+    "attention",
+    "productivity",
+    "mindfulness",
+    "pwa",
+    "local-first",
+    "intention",
+    "focus",
+    "keyboard-shortcuts"
+  ],
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
