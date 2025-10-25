@@ -37,6 +37,6 @@ Add screenshots or GIFs demonstrating the changes.
 
 How does this change align with Zenborg's principles?
 - Presence over performance
-- Vim-first interaction
+- Keyboard-first interaction
 - Local-first data
 - Mindful tech
