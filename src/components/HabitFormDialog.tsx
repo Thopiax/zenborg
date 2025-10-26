@@ -274,6 +274,7 @@ export function HabitFormDialog({
                 open={isTagAutocompleteOpen}
                 searchValue={currentTagSearch}
                 onSelectTag={(tag) => addTag(tag, name, tags)}
+                onRemoveTag={handleRemoveTag}
                 onClose={() => setIsTagAutocompleteOpen(false)}
                 existingTags={tags}
                 maxSuggestions={5}

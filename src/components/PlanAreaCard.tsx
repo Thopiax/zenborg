@@ -99,14 +99,17 @@ export function PlanAreaCard({
     setIsEditingName(false);
   };
 
-  // Enter to save name when editing
+  // Enter to save name when editing (but not when autocomplete is open)
   useHotkeys(
     "enter",
     () => {
       handleSaveName();
     },
-    { enableOnFormTags: true, enabled: isEditingName },
-    [editedName, area.tags]
+    {
+      enableOnFormTags: true,
+      enabled: isEditingName && !isTagAutocompleteOpen,
+    },
+    [editedName, area.tags, isTagAutocompleteOpen]
   );
 
   // Escape to cancel name editing
@@ -144,7 +147,7 @@ export function PlanAreaCard({
     <div
       className="flex flex-col border border-stone-200 dark:border-stone-700 rounded-lg overflow-hidden max-h-[500px]"
       style={{
-        backgroundColor: area.color + "08", // 5% opacity background
+        backgroundColor: `${area.color}08`, // 5% opacity background
       }}
     >
       {/* Area Header */}
@@ -183,14 +186,14 @@ export function PlanAreaCard({
             </div>
 
             {/* Emoji + Name Row */}
-            <div className="flex items-start gap-2">
+            <div className="flex items-baseline">
               {/* Emoji Picker */}
               <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
                     onClick={(e) => e.stopPropagation()}
-                    className="text-lg flex-shrink-0 hover:bg-stone-100 dark:hover:bg-stone-800 rounded w-8 h-8 flex items-center justify-center transition-colors"
+                    className="text-xl flex-shrink-0 hover:bg-stone-100 dark:hover:bg-stone-800 rounded w-10 h-10 flex items-center justify-center transition-colors"
                     aria-label="Change emoji"
                   >
                     {area.emoji}
@@ -217,6 +220,7 @@ export function PlanAreaCard({
                     onSelectTag={(tag) =>
                       addTag(tag, editedName, area.tags || [])
                     }
+                    onRemoveTag={handleRemoveTag}
                     onClose={() => setIsTagAutocompleteOpen(false)}
                     existingTags={area.tags || []}
                     maxSuggestions={5}
@@ -237,7 +241,7 @@ export function PlanAreaCard({
                           handleSaveName();
                         }}
                         autoFocus
-                        className="w-full px-2 py-1 text-sm font-mono font-medium bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
+                        className="w-full px-2 py-1 text-xl font-medium bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
                       />
                     }
                   />
@@ -245,7 +249,7 @@ export function PlanAreaCard({
                   <button
                     type="button"
                     onClick={() => setIsEditingName(true)}
-                    className="w-full text-left px-2 py-1 text-sm font-mono font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
+                    className="w-full text-left px-2 py-1 text-xl font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
                   >
                     {area.name}
                   </button>
@@ -302,8 +306,14 @@ export function PlanAreaCard({
                   textColors.primary
                 )}
               >
-                <span className="mr-2">{habit.emoji}</span>
-                <span>{habit.name}</span>
+                <span className={cn("mr-2", "text-lg")}>{habit.emoji}</span>
+                <span
+                  className={cn(
+                    "text-lg font-semibold line-clamp-1 flex-shrink-0"
+                  )}
+                >
+                  {habit.name}
+                </span>
               </div>
               {/* Tags under habit name */}
               {habit.tags && habit.tags.length > 0 && (
