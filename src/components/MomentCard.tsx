@@ -1,18 +1,17 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { Calendar, Clock } from "lucide-react";
-import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
+import { getAttitudeLabel } from "@/domain/value-objects/Attitude";
 import { useSelection } from "@/hooks/useSelection";
-import { phaseConfigs$ } from "@/infrastructure/state/store";
 import {
-  animation,
-  getTextColorsForBackground,
-  momentCard,
-  shadows,
-} from "@/lib/design-tokens";
+  metricLogs$,
+  moments$,
+  phaseConfigs$,
+} from "@/infrastructure/state/store";
+import { openMomentFormEdit } from "@/infrastructure/state/ui-store";
+import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
 interface MomentCardProps {
@@ -50,13 +49,14 @@ export function MomentCard({
   area,
   contextMomentIds,
 }: MomentCardProps) {
-  const { handleOpenEditModal } = useMomentManager();
   const {
     isSelected: isSelectedMoment,
     toggleSelection,
     selectRange,
   } = useSelection();
   const allPhaseConfigs = use$(phaseConfigs$);
+  const allMoments = use$(moments$);
+  const allMetricLogs = use$(metricLogs$);
 
   const isSelected = isSelectedMoment(moment.id);
 
@@ -77,7 +77,7 @@ export function MomentCard({
     }
     // Regular click → Open global edit modal
     else {
-      handleOpenEditModal(moment.id);
+      openMomentFormEdit(moment.id, moment);
     }
   };
 
@@ -128,15 +128,31 @@ export function MomentCard({
       aria-label={ariaLabel}
       tabIndex={0}
     >
-      <div className="flex items-center justify-between h-full gap-3">
+      <div className="flex flex-row items-baseline gap-2 h-full">
+        {/* Moment name */}
         <p
           className={cn(
-            "text-lg font-semibold font-mono line-clamp-1",
+            "text-lg font-semibold font-mono line-clamp-1 flex-shrink-0",
             textColors.primary
           )}
         >
           {moment.name}
         </p>
+        {moment.tags && (
+          <div className="flex flex-row justify-start text-ellipsis gap-1 overflow-hidden">
+            {moment.tags.map((tag) => (
+              <div
+                key={tag}
+                className={cn(
+                  "text-xs font-mono opacity-60",
+                  textColors.primary
+                )}
+              >
+                #{tag}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </button>
   );

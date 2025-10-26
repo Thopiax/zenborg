@@ -1,12 +1,14 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import { Clock } from "lucide-react";
 import { useMemo } from "react";
 import {
   type SelectorOption,
   SelectorPopover,
 } from "@/components/SelectorPopover";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
+import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { phaseConfigs$ } from "@/infrastructure/state/store";
 
 interface PhaseSelectorProps {
@@ -65,14 +67,14 @@ export function PhaseSelector({
       value: null,
       label: "No Phase",
       hotkey: "X",
-      icon: "--",
+      icon: <Clock className="w-5 h-5" strokeWidth={1.5} />,
       className: "font-mono text-stone-500 dark:text-stone-400",
     },
     ...phaseConfigsList.map((phaseConfig) => ({
       value: phaseConfig.phase,
       label: phaseConfig.label,
       hotkey: phaseHotkeys[phaseConfig.phase],
-      icon: phaseConfig.emoji,
+      icon: <PhaseIcon phase={phaseConfig.phase} className="w-5 h-5" />,
       className: "font-mono text-stone-700 dark:text-stone-300",
     })),
   ];

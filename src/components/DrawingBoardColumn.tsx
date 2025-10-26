@@ -30,7 +30,11 @@ interface DrawingBoardColumnProps {
   group: MomentGroup;
   groupBy: DrawingBoardGroupBy;
   isOnlyColumn?: boolean; // True when there's only one column (skip horizontal layout)
-  onCreateMoment?: (areaId?: string, horizon?: string, phase?: string) => void;
+  onCreateMoment?: (
+    areaId?: string,
+    horizon?: string,
+    phase?: string
+  ) => void;
   onEditArea?: (areaId: string) => void; // Open area management modal focused on this area
 }
 
@@ -65,11 +69,12 @@ export function DrawingBoardColumn({
     },
   });
 
-  // Allow drops for area and phase grouping (drag to change area or phase)
-  const canAcceptDrops = groupBy === "area" || groupBy === "phase";
+  // Allow drops for area and attitude grouping
+  const canAcceptDrops = groupBy === "area" || groupBy === "attitude" || groupBy === "phase";
 
-  // Only allow click-to-create for area, horizon, and phase grouping (not created)
-  const canCreateFromColumn = groupBy !== "created" && onCreateMoment;
+  // Only allow click-to-create for area, horizon, and attitude grouping (not created or tag)
+  const canCreateFromColumn =
+    groupBy !== "created" && groupBy !== "tag" && onCreateMoment;
 
   // Handle click on empty area
   const handleEmptyClick = () => {
@@ -82,6 +87,9 @@ export function DrawingBoardColumn({
       // Create with this horizon pre-selected
       const horizonValue = group.groupId.replace("horizon-", "");
       onCreateMoment(undefined, horizonValue === "unset" ? "" : horizonValue);
+    } else if (groupBy === "attitude") {
+      // Attitudes are now at Area/Habit level, so just create a basic moment
+      onCreateMoment();
     } else if (groupBy === "phase") {
       // Create with this phase pre-selected
       const phaseValue = group.groupId.replace("phase-", "");

@@ -36,8 +36,8 @@ import {
 import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import {
-  isDuplicateMode$,
   drawingBoardSortMode$,
+  isDuplicateMode$,
   openSortModeConflictDialog,
 } from "@/infrastructure/state/ui-store";
 import {
@@ -244,10 +244,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
         !overMoment.phase
       ) {
         console.log("[DnD] Reordering within drawing board");
-        handleDrawingBoardReorder(
-          active.id as string,
-          over.id as string
-        );
+        handleDrawingBoardReorder(active.id as string, over.id as string);
         return;
       }
 
@@ -602,13 +599,11 @@ export function DnDProvider({ children }: DnDProviderProps) {
       }
 
       // Update moment's phase
-      console.log(
-        `Setting moment ${momentId} phase to ${newPhase || "unset"}`
-      );
+      console.log(`Setting moment ${momentId} phase to ${newPhase || "unset"}`);
       moments$[momentId].phase.set(newPhase as Phase | null);
       moments$[momentId].updatedAt.set(new Date().toISOString());
     } else {
-      // Other grouping modes (created) are read-only
+      // Other grouping modes (created, tag) are read-only
       console.log("Ignoring drop - grouping mode is read-only:", groupBy);
     }
 
