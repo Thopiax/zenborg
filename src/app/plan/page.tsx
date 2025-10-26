@@ -1,12 +1,28 @@
 "use client";
 
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
 import { observer, use$ } from "@legendapp/state/react";
 import { useState } from "react";
 import { HabitService } from "@/application/services/HabitService";
 import { EmptyAreaCard } from "@/components/EmptyAreaCard";
 import { HabitFormDialog } from "@/components/HabitFormDialog";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
-import { PlanAreaCard } from "@/components/PlanAreaCard";
+import { SortableAreaCard } from "@/components/SortableAreaCard";
 import type { Area } from "@/domain/entities/Area";
 import { archiveArea, canDeleteArchivedArea, createArea, unarchiveArea, updateArea } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
@@ -34,6 +50,27 @@ const PlanPage = observer(() => {
   const areas = use$(activeAreas$);
   const habits = use$(activeHabits$);
   const archivedAreas = use$(archivedAreas$);
+
+  // Sort areas by order property (ascending)
+  const sortedAreas = [...areas].sort((a, b) => a.order - b.order);
+
+  // Configure sensors for drag interactions
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 4, // 4px drag threshold
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150, // 150ms hold for touch
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // UI state
   const [archivedSectionOpen, setArchivedSectionOpen] = useState(false);
@@ -217,6 +254,33 @@ const PlanPage = observer(() => {
     }
   };
 
+  // Handle area drag end
+  function handleAreaDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = sortedAreas.findIndex((a) => a.id === active.id);
+    const newIndex = sortedAreas.findIndex((a) => a.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Reorder the array
+    const reordered = arrayMove(sortedAreas, oldIndex, newIndex);
+
+    // Update order property for all areas
+    for (const [index, area] of reordered.entries()) {
+      if (area.order !== index) {
+        areas$[area.id].order.set(index);
+        areas$[area.id].updatedAt.set(new Date().toISOString());
+      }
+    }
+  }
+
   return (
     <>
       {/* Landscape Prompt - Shows on mobile portrait mode only */}
@@ -234,24 +298,35 @@ const PlanPage = observer(() => {
             </p>
           </div>
 
-          {/* Area Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {areas.map((area) => (
-              <PlanAreaCard
-                key={area.id}
-                area={area}
-                habits={habitsByArea[area.id] || []}
-                onEditHabit={handleEditHabit}
-                onArchiveHabit={handleArchiveHabit}
-                onUpdateArea={handleUpdateArea}
-                onArchiveArea={handleArchiveArea}
-                onQuickCreateHabit={handleQuickCreateHabit}
-              />
-            ))}
+          {/* Area Cards Grid - Sortable */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleAreaDragEnd}
+          >
+            <SortableContext
+              items={sortedAreas.map((a) => a.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sortedAreas.map((area) => (
+                  <SortableAreaCard
+                    key={area.id}
+                    area={area}
+                    habits={habitsByArea[area.id] || []}
+                    onEditHabit={handleEditHabit}
+                    onArchiveHabit={handleArchiveHabit}
+                    onUpdateArea={handleUpdateArea}
+                    onArchiveArea={handleArchiveArea}
+                    onQuickCreateHabit={handleQuickCreateHabit}
+                  />
+                ))}
 
-            {/* Empty card always at the end */}
-            <EmptyAreaCard onCreateArea={handleCreateArea} />
-          </div>
+                {/* Empty card always at the end */}
+                <EmptyAreaCard onCreateArea={handleCreateArea} />
+              </div>
+            </SortableContext>
+          </DndContext>
 
           {/* Archived Areas Section */}
           {archivedAreas.length > 0 && (
