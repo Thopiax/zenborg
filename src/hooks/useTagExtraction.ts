@@ -1,7 +1,5 @@
-import { use$ } from "@legendapp/state/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { normalizeTag } from "@/domain/entities/Moment";
-import { allTags$ } from "@/infrastructure/state/store";
 
 interface UseTagExtractionProps {
   inputRef: React.RefObject<HTMLInputElement | null>;
@@ -41,8 +39,6 @@ export function useTagExtraction({
 }: UseTagExtractionProps): UseTagExtractionResult {
   const [isTagAutocompleteOpen, setIsTagAutocompleteOpen] = useState(false);
   const [currentTagSearch, setCurrentTagSearch] = useState("");
-
-  const allExistingTags = use$(allTags$);
 
   // Helper: Extract current tag being typed (if any)
   const extractCurrentTag = useCallback(
@@ -173,29 +169,17 @@ export function useTagExtraction({
       const currentTag = extractCurrentTag(newValue, cursorPos);
 
       if (currentTag !== null && currentTag.length > 0) {
-        // User is typing a tag - set search value
+        // User is typing a tag - set search value and open autocomplete
         setCurrentTagSearch(currentTag);
-
-        console.log("allExistingTags", allExistingTags);
-
-        // Only open autocomplete if there are matching tags
-        const hasMatches = allExistingTags.some((tag) =>
-          tag.toLowerCase().includes(currentTag.toLowerCase())
-        );
-        setIsTagAutocompleteOpen(hasMatches);
+        // Always open - TagAutocompleteInline will show "Create new" if no matches
+        setIsTagAutocompleteOpen(true);
       } else {
         // Not typing a tag
         setIsTagAutocompleteOpen(false);
         setCurrentTagSearch("");
       }
     },
-    [
-      inputRef,
-      onNameChange,
-      extractCurrentTag,
-      checkForCompletedTag,
-      allExistingTags,
-    ]
+    [inputRef, onNameChange, extractCurrentTag, checkForCompletedTag]
   );
 
   // Handle blur - extract remaining tags
