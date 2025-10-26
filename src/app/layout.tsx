@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { StoreInitializer } from "./StoreInitializer";
+import { LayoutClient } from "@/components/LayoutClient";
 import { ThemeColorMeta } from "@/components/ThemeColorMeta";
 
 const geistSans = Geist({
@@ -68,7 +69,7 @@ export default function RootLayout({
         >
           <ThemeColorMeta />
           <StoreInitializer />
-          {children}
+          <LayoutClient>{children}</LayoutClient>
         </ThemeProvider>
       </body>
     </html>
