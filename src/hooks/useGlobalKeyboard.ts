@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { MomentCreationService } from "@/application/services/MomentCreationService";
+import { MomentUpdateService } from "@/application/services/MomentUpdateService";
 import type { Horizon, Moment } from "@/domain/entities/Moment";
-import { createMoment } from "@/domain/entities/Moment";
+import { createMoment, isMomentError } from "@/domain/entities/Moment";
+import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import {
-  allocateMomentWithHistory,
   createMomentWithHistory,
   deleteMomentWithHistory,
   moments$,
@@ -28,8 +30,7 @@ import { useSelection } from "./useSelection";
  *
  * CRUD (Linear-style, always active):
  * - N: Create new moment
- * - Shift+A: Change area for focused moment
- * - Mod+Shift+A: Open area management
+ * - Shift+E: Open area management
  * - Enter: Edit focused moment
  * - Delete: Delete focused moment
  * - Mod+Backspace: Delete all selected moments
@@ -80,6 +81,10 @@ export function useGlobalKeyboard() {
   const { deleteSelected, duplicateSelected } = useSelection();
   const { undo, redo, canUndo, canRedo } = useHistory();
 
+  // Application services for business logic
+  const momentCreationService = new MomentCreationService();
+  const momentUpdateService = new MomentUpdateService();
+
   // UI state for CRUD operations
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
   const [isAreaManagementOpen, setIsAreaManagementOpen] = useState(false);
@@ -108,9 +113,9 @@ export function useGlobalKeyboard() {
     { enabled: globalShortcutsEnabled, enableOnFormTags: false }
   );
 
-  // Mod+Shift+A - Open area management
+  // Shift+E - Open area management
   useHotkeys(
-    "shift+a",
+    "shift+e",
     (e) => {
       e.preventDefault();
       setIsAreaManagementOpen(true);
@@ -328,7 +333,10 @@ export function useGlobalKeyboard() {
     () => {
       if (!yankBuffer) return;
 
-      const result = createMoment(yankBuffer.name, yankBuffer.areaId);
+      const result = createMoment({
+        name: yankBuffer.name,
+        areaId: yankBuffer.areaId,
+      });
       if (!("error" in result)) {
         createMomentWithHistory(result);
         focusMoment(result.id);
@@ -361,41 +369,42 @@ export function useGlobalKeyboard() {
   const handleCreateMoment = (
     name: string,
     areaId: string,
-    horizon: import("@/domain/entities/Moment").Horizon | null,
-    phase: import("@/domain/value-objects/Phase").Phase | null,
-    createMore?: boolean
+    horizon: Horizon | null,
+    phase: Phase | null,
+    createMore?: boolean,
+    tags?: string[],
+    customMetric?: CustomMetric
   ) => {
-    // Create new moment
-    const result = createMoment(name, areaId);
-    if (!("error" in result)) {
-      // Create moment with history tracking
+    // Get prefilled allocation from UI state
+    const uiAllocation = momentFormState$.prefilledAllocation.peek();
+
+    // Convert UI allocation to service allocation (validate required fields)
+    const prefilledAllocation =
+      uiAllocation?.day && uiAllocation?.phase
+        ? { day: uiAllocation.day, phase: uiAllocation.phase as Phase }
+        : undefined;
+
+    // Call application service (pure business logic)
+    const result = momentCreationService.createMomentWithWorkflow({
+      name,
+      areaId,
+      horizon,
+      phase,
+      prefilledAllocation,
+      tags,
+      customMetric,
+    });
+
+    // Handle result
+    if (!isMomentError(result)) {
+      // Infrastructure operation: persist with history
       createMomentWithHistory(result);
 
-      // Set horizon if provided
-      if (horizon) {
-        moments$[result.id].horizon.set(horizon);
-      }
-
-      // Set phase if provided (for unallocated moments with phase grouping)
-      if (phase) {
-        moments$[result.id].phase.set(phase);
-      }
-
-      // If day/phase were prefilled from timeline click, allocate the moment
-      const prefilledAllocation = momentFormState$.prefilledAllocation.peek();
-      if (prefilledAllocation?.day && prefilledAllocation?.phase) {
-        allocateMomentWithHistory(
-          result.id,
-          prefilledAllocation.day,
-          prefilledAllocation.phase as any, // Type assertion needed
-          0 // Will be adjusted by DnD
-        );
-      }
-
+      // UI operation: focus the new moment
       focusMoment(result.id);
     }
 
-    // Only close modal if "create more" is not enabled
+    // UI operation: close form if not creating more
     if (!createMore) {
       closeMomentForm();
     }
@@ -406,7 +415,8 @@ export function useGlobalKeyboard() {
     day?: string,
     phase?: string,
     areaId?: string,
-    horizon?: string
+    horizon?: string,
+    attitude?: string
   ) => {
     openMomentFormCreate({
       day,
@@ -414,6 +424,7 @@ export function useGlobalKeyboard() {
       phase: phase as Phase | undefined,
       areaId,
       horizon: horizon as Horizon | undefined,
+      attitude: attitude ? (attitude.toUpperCase() as Attitude) : undefined,
     });
   };
 
@@ -421,17 +432,36 @@ export function useGlobalKeyboard() {
     name: string,
     areaId: string,
     horizon: Horizon | null,
-    phase: Phase | null
+    phase: Phase | null,
+    tags?: string[],
+    customMetric?: CustomMetric
   ) => {
     const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {
-      // Update existing moment with history tracking
-      updateMomentWithHistory(editingMomentId, {
+      // Get current moment
+      const currentMoment = moments$[editingMomentId].peek();
+      if (!currentMoment) {
+        console.error("[handleSaveEdit] Moment not found:", editingMomentId);
+        closeMomentForm();
+        return;
+      }
+
+      // Call application service for business logic
+      const result = momentUpdateService.updateMoment(currentMoment, {
         name,
         areaId,
         horizon,
-        // Note: phase is not directly updated here, it's part of allocation
+        tags,
+        customMetric,
+        phase,
       });
+
+      // Handle result
+      if (!isMomentError(result)) {
+        // Infrastructure operation: persist with history
+        // Use direct update to avoid double timestamp update
+        moments$[editingMomentId].set(result);
+      }
     }
     closeMomentForm();
   };
