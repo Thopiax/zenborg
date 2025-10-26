@@ -46,12 +46,17 @@ describe('Store', () => {
 
   describe('Moment Operations', () => {
     it('should add a moment to the store', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       moments$[moment.id].set(moment)
@@ -60,12 +65,17 @@ describe('Store', () => {
     })
 
     it('should update a moment name', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       moments$[moment.id].set(moment)
@@ -77,12 +87,17 @@ describe('Store', () => {
     })
 
     it('should delete a moment from the store', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       moments$[moment.id].set(moment)
@@ -95,12 +110,17 @@ describe('Store', () => {
     })
 
     it('should access moment by ID directly', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       const momentId = moment.id
@@ -119,13 +139,18 @@ describe('Store', () => {
     })
 
     it('should return all moments when none are allocated', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
 
       moments$[moment1.id].set(moment1)
@@ -136,13 +161,18 @@ describe('Store', () => {
     })
 
     it('should exclude allocated moments', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
 
       moments$[moment1.id].set(moment1)
@@ -160,12 +190,17 @@ describe('Store', () => {
 
   describe('Computed Observables - Allocated Moments', () => {
     it('should return empty array when no moments are allocated', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment = createMoment('Morning Run', area.id)
+      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
       if ('error' in moment) throw new Error(moment.error)
 
       moments$[moment.id].set(moment)
@@ -174,13 +209,18 @@ describe('Store', () => {
     })
 
     it('should return only allocated moments', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
 
       moments$[moment1.id].set(moment1)
@@ -230,14 +270,19 @@ describe('Store', () => {
 
   describe('Computed Observables - Moments by Day', () => {
     it('should group allocated moments by day', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
-      const moment3 = createMoment('Evening Walk', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
+      const moment3 = createMoment({ name: 'Evening Walk', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2 || 'error' in moment3) {
         throw new Error('Moment creation failed')
       }
@@ -266,13 +311,18 @@ describe('Store', () => {
 
   describe('Computed Observables - Moments by Day and Phase', () => {
     it('should group allocated moments by day and phase', () => {
-      const area = createArea('Wellness', '#10b981', '🟢', 0)
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
       if ('error' in area) throw new Error(area.error)
 
       areas$[area.id].set(area)
 
-      const moment1 = createMoment('Morning Run', area.id)
-      const moment2 = createMoment('Deep Work', area.id)
+      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
+      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
       if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
 
       moments$[moment1.id].set(moment1)

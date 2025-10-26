@@ -1,0 +1,315 @@
+"use client";
+
+import { Archive, Edit2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
+import { AttitudeChip } from "@/components/AttitudeChip";
+import { AttitudeSelector } from "@/components/AttitudeSelector";
+import { ColorPicker } from "@/components/ColorPicker";
+import { HabitQuickInput } from "@/components/HabitQuickInput";
+import { TagAutocompleteInline } from "@/components/TagAutocompleteInline";
+import { TagBadges } from "@/components/TagBadges";
+import {
+  EmojiPicker,
+  EmojiPickerContent,
+  EmojiPickerFooter,
+  EmojiPickerSearch,
+} from "@/components/ui/emoji-picker";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import type { Area } from "@/domain/entities/Area";
+import type { Habit } from "@/domain/entities/Habit";
+import type { Attitude } from "@/domain/value-objects/Attitude";
+import { useTagExtraction } from "@/hooks/useTagExtraction";
+
+interface PlanAreaCardProps {
+  area: Area;
+  habits: Habit[];
+  onEditHabit: (habitId: string) => void;
+  onArchiveHabit: (habitId: string) => void;
+  onUpdateArea: (areaId: string, updates: Partial<Area>) => void;
+  onArchiveArea: (areaId: string) => void;
+  onQuickCreateHabit: (name: string, areaId: string) => void;
+}
+
+/**
+ * PlanAreaCard - Container for habits within an area (Plan page)
+ *
+ * Features:
+ * - Editable area header (emoji, name, color)
+ * - List of habits
+ * - "+ New habit" button
+ * - Empty state with glassmorphism
+ */
+export function PlanAreaCard({
+  area,
+  habits,
+  onEditHabit,
+  onArchiveHabit,
+  onUpdateArea,
+  onArchiveArea,
+  onQuickCreateHabit,
+}: PlanAreaCardProps) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(area.name);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Tag extraction for area name
+  const {
+    isTagAutocompleteOpen,
+    currentTagSearch,
+    handleNameChange: handleNameChangeWithTags,
+    handleNameBlur: handleNameBlurWithTags,
+    addTag,
+    extractRemainingTags,
+    setIsTagAutocompleteOpen,
+  } = useTagExtraction({
+    inputRef: nameInputRef,
+    onTagsChange: (tags) => onUpdateArea(area.id, { tags }),
+    onNameChange: (name) => setEditedName(name),
+  });
+
+  const handleSaveName = () => {
+    // Extract any remaining tags before saving
+    extractRemainingTags(editedName, area.tags || []);
+
+    // Get clean name after tag extraction
+    const cleanName = editedName
+      .replace(/#([a-z0-9-]+)/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (cleanName && cleanName !== area.name) {
+      onUpdateArea(area.id, { name: cleanName });
+    } else {
+      setEditedName(area.name);
+    }
+    setIsEditingName(false);
+  };
+
+  // Enter to save name when editing
+  useHotkeys(
+    "enter",
+    () => {
+      handleSaveName();
+    },
+    { enableOnFormTags: true, enabled: isEditingName },
+    [editedName, area.tags]
+  );
+
+  // Escape to cancel name editing
+  useHotkeys(
+    "escape",
+    () => {
+      setEditedName(area.name);
+      setIsEditingName(false);
+    },
+    { enableOnFormTags: true, enabled: isEditingName },
+    [area.name]
+  );
+
+  const handleEmojiSelect = (selectedEmoji: string) => {
+    onUpdateArea(area.id, { emoji: selectedEmoji });
+    setEmojiPickerOpen(false);
+  };
+
+  const handleColorChange = (newColor: string) => {
+    onUpdateArea(area.id, { color: newColor });
+  };
+
+  const handleAttitudeChange = (attitude: Attitude | null) => {
+    onUpdateArea(area.id, { attitude });
+    setAttitudeSelectorOpen(false);
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    onUpdateArea(area.id, {
+      tags: (area.tags || []).filter((t) => t !== tagToRemove),
+    });
+  };
+
+  return (
+    <div
+      className="flex flex-col border border-stone-200 dark:border-stone-700 rounded-lg overflow-hidden"
+      style={{
+        backgroundColor: area.color + "08", // 5% opacity background
+      }}
+    >
+      {/* Area Header - Editable */}
+      <div
+        className="group px-4 py-3 border-b border-stone-200 dark:border-stone-700 backdrop-blur-sm"
+        style={{
+          borderLeftColor: area.color,
+          borderLeftWidth: "4px",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          {/* Emoji Picker */}
+          <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="text-lg flex-shrink-0 hover:bg-stone-100 dark:hover:bg-stone-800 rounded w-8 h-8 flex items-center justify-center transition-colors"
+                aria-label="Change emoji"
+              >
+                {area.emoji}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-fit p-0" align="start">
+              <EmojiPicker
+                className="h-[342px]"
+                onEmojiSelect={({ emoji }) => handleEmojiSelect(emoji)}
+              >
+                <EmojiPickerSearch />
+                <EmojiPickerContent />
+                <EmojiPickerFooter />
+              </EmojiPicker>
+            </PopoverContent>
+          </Popover>
+
+          {/* Area Name - Editable with tag extraction */}
+          {isEditingName ? (
+            <TagAutocompleteInline
+              open={isTagAutocompleteOpen}
+              searchValue={currentTagSearch}
+              onSelectTag={(tag) => addTag(tag, editedName, area.tags || [])}
+              onClose={() => setIsTagAutocompleteOpen(false)}
+              existingTags={area.tags || []}
+              maxSuggestions={5}
+              trigger={
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={editedName}
+                  onChange={(e) =>
+                    handleNameChangeWithTags(
+                      e.target.value,
+                      editedName,
+                      area.tags || []
+                    )
+                  }
+                  onBlur={() => {
+                    handleNameBlurWithTags(editedName, area.tags || []);
+                    handleSaveName();
+                  }}
+                  // biome-ignore lint/a11y/noAutofocus: <explanation>
+                  autoFocus
+                  className="flex-1 px-2 py-1 text-sm font-mono font-medium bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
+                />
+              }
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsEditingName(true)}
+              className="flex-1 text-left px-2 py-1 text-sm font-mono font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
+            >
+              {area.name}
+            </button>
+          )}
+
+          {/* Color Picker & Archive Button */}
+          <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <ColorPicker value={area.color} onChange={handleColorChange} />
+
+            {/* Archive Button - Only show for non-default areas */}
+            {!area.isDefault && (
+              <button
+                type="button"
+                onClick={() => onArchiveArea(area.id)}
+                className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
+                title="Archive area"
+              >
+                <Archive className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Metadata (attitude + tags) - Only show if there's content */}
+        {(area.attitude || (area.tags && area.tags.length > 0)) && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {/* Attitude Selector - Only show when attitude is set */}
+            {area.attitude && (
+              <AttitudeSelector
+                open={attitudeSelectorOpen}
+                selectedAttitude={area.attitude}
+                onSelectAttitude={handleAttitudeChange}
+                onClose={() => setAttitudeSelectorOpen(false)}
+                onOpen={() => setAttitudeSelectorOpen(true)}
+                trigger={
+                  <AttitudeChip
+                    attitude={area.attitude}
+                    onClick={() => setAttitudeSelectorOpen(true)}
+                  />
+                }
+              />
+            )}
+
+            {/* Tag Badges */}
+            {area.tags && area.tags.length > 0 && (
+              <TagBadges tags={area.tags} onRemoveTag={handleRemoveTag} />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Habits List */}
+      <div className="flex-1 p-4 space-y-2 min-h-[60px]">
+        {habits.map((habit) => (
+          <div
+            key={habit.id}
+            className="group flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-white/50 dark:bg-stone-950/50 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-stone-950/80 transition-colors border border-stone-200/50 dark:border-stone-700/50"
+          >
+            <button
+              type="button"
+              onClick={() => onEditHabit(habit.id)}
+              className="flex-1 text-left"
+            >
+              <div className="flex items-center text-sm font-mono text-stone-900 dark:text-stone-100">
+                <span className="mr-2">{habit.emoji}</span>
+                <span>{habit.name}</span>
+              </div>
+              {/* Tags under habit name */}
+              {habit.tags && habit.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {habit.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-block px-1.5 py-0.5 rounded-sm bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 text-xs font-mono"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onArchiveHabit(habit.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-stone-200/50 dark:hover:bg-stone-700/50 transition-opacity"
+              title="Archive habit"
+            >
+              <Archive className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Quick Habit Input */}
+      <HabitQuickInput
+        areaId={area.id}
+        areaColor={area.color}
+        onCreateHabit={onQuickCreateHabit}
+      />
+    </div>
+  );
+}

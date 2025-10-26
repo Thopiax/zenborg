@@ -2,12 +2,14 @@
 "use client";
 
 import { use$, useSelector } from "@legendapp/state/react";
-import { Calendar, Clock, Trash2 } from "lucide-react";
+import { Calendar, Clock, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
 import { HorizonSelector } from "@/components/HorizonSelector";
 import { PhaseSelector } from "@/components/PhaseSelector";
+import { TagAutocomplete } from "@/components/TagAutocomplete";
+import { TagBadges } from "@/components/TagBadges";
 import {
   Dialog,
   DialogContent,
@@ -15,10 +17,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { type Horizon, validateMomentName } from "@/domain/entities/Moment";
+import {
+  type Horizon,
+  normalizeTag,
+  validateMomentName,
+} from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import {
   activeAreas$,
+  allTags$,
   areas$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
@@ -35,7 +43,9 @@ interface MomentFormDialogProps {
     areaId: string,
     horizon: Horizon | null,
     phase: Phase | null,
-    createMore?: boolean
+    createMore?: boolean,
+    tags?: string[],
+    customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
   ) => void;
   /** For edit mode: called when user confirms deletion */
   onDelete?: () => void;
@@ -73,6 +83,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     phase,
     showCreateMore,
     isAllocated,
+    tags,
+    customMetric,
   } = formState;
 
   // Use activeAreas$ which filters out archived areas and sorts by order
@@ -86,6 +98,10 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   const [isPhaseSelectorOpen, setIsPhaseSelectorOpen] = useState(false);
   const [createMore, setCreateMore] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Tag autocomplete state
+  const [isTagAutocompleteOpen, setIsTagAutocompleteOpen] = useState(false);
+  const [currentTagSearch, setCurrentTagSearch] = useState("");
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -102,6 +118,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     setIsAreaSelectorOpen(false);
     setIsHorizonSelectorOpen(false);
     setIsPhaseSelectorOpen(false);
+    setIsTagAutocompleteOpen(false);
+    setCurrentTagSearch("");
   }, [open]);
 
   // Auto-focus and select input
@@ -116,7 +134,130 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
   // Disable form hotkeys when any selector is open to avoid conflicts
   const formHotkeysEnabled =
-    !isAreaSelectorOpen && !isHorizonSelectorOpen && !isPhaseSelectorOpen;
+    !isAreaSelectorOpen &&
+    !isHorizonSelectorOpen &&
+    !isPhaseSelectorOpen &&
+    !isTagAutocompleteOpen;
+
+  // Helper: Extract current tag being typed (if any)
+  const extractCurrentTag = (
+    text: string,
+    cursorPos: number
+  ): string | null => {
+    // Find the last # before cursor position
+    const beforeCursor = text.slice(0, cursorPos);
+    const lastHashIndex = beforeCursor.lastIndexOf("#");
+
+    if (lastHashIndex === -1) return null;
+
+    // Extract text after # until cursor
+    const afterHash = beforeCursor.slice(lastHashIndex + 1);
+
+    // Check if there's a space after # (which would end the tag)
+    if (afterHash.includes(" ")) return null;
+
+    return afterHash;
+  };
+
+  // Helper: Add tag from autocomplete or manual typing
+  const addTag = (tag: string) => {
+    const normalized = normalizeTag(tag);
+    if (!normalized || tags?.includes(normalized)) return;
+
+    // Add to tags array
+    momentFormState$.tags.set([...(tags || []), normalized]);
+
+    // Remove #tag from name input
+    const input = inputRef.current;
+    if (!input) return;
+
+    const cursorPos = input.selectionStart || 0;
+    const beforeCursor = name.slice(0, cursorPos);
+    const afterCursor = name.slice(cursorPos);
+
+    // Find and remove the #tag pattern
+    const lastHashIndex = beforeCursor.lastIndexOf("#");
+    if (lastHashIndex !== -1) {
+      const beforeTag = beforeCursor.slice(0, lastHashIndex);
+      const newValue = (beforeTag + afterCursor).replace(/\s+/g, " ").trim();
+      momentFormState$.name.set(newValue);
+
+      // Set cursor position after removal
+      setTimeout(() => {
+        input.setSelectionRange(beforeTag.length, beforeTag.length);
+        input.focus();
+      }, 0);
+    }
+
+    // Close autocomplete
+    setIsTagAutocompleteOpen(false);
+    setCurrentTagSearch("");
+  };
+
+  // Helper: Remove tag from tags array
+  const removeTag = (tagToRemove: string) => {
+    const updatedTags = (tags || []).filter((t) => t !== tagToRemove);
+    momentFormState$.tags.set(updatedTags);
+  };
+
+  // Helper: Check if user just finished typing a tag (space/comma after #tag)
+  const checkForCompletedTag = (text: string, cursorPos: number) => {
+    const beforeCursor = text.slice(0, cursorPos);
+
+    // Check if we just typed space or comma after a tag
+    const lastChar = beforeCursor[beforeCursor.length - 1];
+    if (lastChar !== " " && lastChar !== ",") return;
+
+    // Look for #tag pattern before the space/comma
+    const tagMatch = beforeCursor.match(/#([a-z0-9-]+)\s*$/);
+    if (tagMatch) {
+      const tag = tagMatch[1];
+      addTag(tag);
+    }
+  };
+
+  const handleNameBlur = () => {
+    // On blur, close tag autocomplete
+    setIsTagAutocompleteOpen(false);
+
+    // Check for any tags in the name to extract
+    extractRemainingTags();
+  };
+
+  // Handle name input change - detect tags for autocomplete and extraction
+  const handleNameChange = (newValue: string) => {
+    const prevValue = name;
+    momentFormState$.name.set(newValue);
+
+    const input = inputRef.current;
+    if (!input) return;
+
+    const cursorPos = input.selectionStart || 0;
+
+    // Check if user completed a tag (typed space/comma after #tag)
+    if (newValue.length > prevValue.length) {
+      checkForCompletedTag(newValue, cursorPos);
+    }
+
+    // Check for active tag being typed (for autocomplete)
+    const currentTag = extractCurrentTag(newValue, cursorPos);
+
+    if (currentTag !== null && currentTag.length > 0) {
+      // User is typing a tag - set search value
+      setCurrentTagSearch(currentTag);
+
+      // Only open autocomplete if there are matching tags
+      const allExistingTags = allTags$.peek();
+      const hasMatches = allExistingTags.some((tag) =>
+        tag.toLowerCase().includes(currentTag.toLowerCase())
+      );
+      setIsTagAutocompleteOpen(hasMatches);
+    } else {
+      // Not typing a tag
+      setIsTagAutocompleteOpen(false);
+      setCurrentTagSearch("");
+    }
+  };
 
   // A - open area selector
   useHotkeys(
@@ -233,8 +374,39 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     { enableOnFormTags: true, enabled: formHotkeysEnabled && open }
   );
 
+  // Helper: Extract any remaining #tags from name before saving
+  const extractRemainingTags = () => {
+    const tagRegex = /#([a-z0-9-]+)/g;
+    const extractedTags: string[] = [];
+
+    let match: RegExpExecArray | null = tagRegex.exec(name);
+    while (match !== null) {
+      const tag = normalizeTag(match[1]);
+      if (tag && !(tags || []).includes(tag) && !extractedTags.includes(tag)) {
+        extractedTags.push(tag);
+      }
+      match = tagRegex.exec(name);
+    }
+
+    // If we found tags, add them and clean the name
+    if (extractedTags.length > 0) {
+      momentFormState$.tags.set([...(tags || []), ...extractedTags]);
+      const cleanName = name.replace(tagRegex, "").replace(/\s+/g, " ").trim();
+      momentFormState$.name.set(cleanName);
+    }
+  };
+
   const handleSave = () => {
-    const validation = validateMomentName(name);
+    // Extract any remaining #tags from name before validation
+    extractRemainingTags();
+
+    // Get the clean name after tag extraction
+    const cleanName = name
+      .replace(/#([a-z0-9-]+)/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const validation = validateMomentName(cleanName);
     const selectedArea =
       areasList.find((area) => area.id === selectedAreaId) || areasList[0];
 
@@ -250,13 +422,22 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       // If "Create more" is enabled, pass it to parent
       const shouldCreateMore = mode === "create" && createMore;
 
-      // Call onSave with cycle, phase, and createMore flag
-      onSave(name.trim(), selectedArea.id, horizon, phase, shouldCreateMore);
+      // Call onSave with clean name and all tags
+      onSave(
+        cleanName,
+        selectedArea.id,
+        horizon,
+        phase,
+        shouldCreateMore,
+        tags || [],
+        customMetric
+      );
 
       // If "Create more" is enabled, reset form immediately
       // Parent will keep modal open, but preserve area and phase selection
       if (shouldCreateMore) {
         momentFormState$.name.set("");
+        momentFormState$.tags.set([]);
         setTimeout(() => {
           inputRef.current?.focus();
         }, 0);
@@ -279,6 +460,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     selectedAreaId ? areas$[selectedAreaId].get() : undefined
   );
 
+  // Validate name
   const validation = validateMomentName(name);
   const hasArea = selectedArea !== undefined;
   const canSave = validation.valid && hasArea;
@@ -331,30 +513,54 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         {/* Content */}
         <div className="px-6 py-6 flex-1 overflow-y-auto">
           {/* Name Input - Prominent */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={name}
-            onChange={(e) => momentFormState$.name.set(e.target.value)}
-            className="w-full text-4xl font-bold bg-transparent outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 mb-8"
-            placeholder="Moment name..."
-            aria-label="Moment name"
-            aria-invalid={!validation.valid}
-          />
+          <div className="relative mb-6 w-full">
+            <input
+              ref={inputRef}
+              type="text"
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              className="w-full text-4xl font-bold bg-transparent outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
+              placeholder="Moment name..."
+              aria-label="Moment name"
+              onBlur={handleNameBlur}
+              aria-invalid={!validation.valid}
+            />
 
-          {/* Validation */}
-          {!validation.valid && validation.error && name.trim().length > 0 && (
-            <p
-              className="text-sm text-red-500 dark:text-red-400 mb-6"
-              role="alert"
-            >
-              {validation.error}
-            </p>
-          )}
+            {/* Validation */}
+            {!validation.valid &&
+              validation.error &&
+              name.trim().length > 0 && (
+                <p
+                  className="text-sm text-red-500 dark:text-red-400 mb-6"
+                  role="alert"
+                >
+                  {validation.error}
+                </p>
+              )}
+
+            {/* Tag Autocomplete - Shows below entire input */}
+            {/* {isTagAutocompleteOpen && (
+              <TagAutocomplete
+                open={isTagAutocompleteOpen}
+                searchValue={currentTagSearch}
+                onSelectTag={addTag}
+                onClose={() => {
+                  setIsTagAutocompleteOpen(false);
+                  setCurrentTagSearch("");
+                }}
+                existingTags={tags || []}
+                collisionBoundary={dialogRef.current}
+                trigger={<div className="w-full" />}
+              />
+            )} */}
+
+            {/* Tag Badges */}
+            <TagBadges tags={tags || []} onRemoveTag={removeTag} className="mt-3" />
+          </div>
 
           {/* Selectors Row - Only show when area is selected */}
           {hasArea && selectedArea ? (
-            <div className="flex flex-col gap-3 mb-6">
+            <div className="flex flex-col gap-3">
               {/* Area Selector - Colored */}
               <AreaSelector
                 open={isAreaSelectorOpen}
@@ -388,56 +594,41 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 }
               />
 
-              {/* Phase & Cycle Selectors - Side by side (hide horizon for allocated moments) */}
-              <div
-                className={cn(
-                  "grid gap-3",
-                  isAllocated ? "grid-cols-1" : "grid-cols-2"
+              {/* Selected values shown as full-width buttons */}
+              <div className="flex flex-col gap-3">
+                {/* Phase Selector - Show as button if selected */}
+                {phase && (
+                  <PhaseSelector
+                    open={isPhaseSelectorOpen}
+                    selectedPhase={phase}
+                    onSelectPhase={(newPhase) => {
+                      momentFormState$.phase.set(newPhase);
+                    }}
+                    onClose={() => setIsPhaseSelectorOpen(false)}
+                    onOpen={() => setIsPhaseSelectorOpen(true)}
+                    collisionBoundary={dialogRef.current}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                      >
+                        <PhaseIcon
+                          phase={phase}
+                          className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
+                        />
+                        <span className="font-mono text-sm flex-1 text-left truncate">
+                          {selectedPhaseConfig?.label}
+                        </span>
+                        <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                          P
+                        </kbd>
+                      </button>
+                    }
+                  />
                 )}
-              >
-                {/* Phase Selector - Ghost with clock icon */}
-                <PhaseSelector
-                  open={isPhaseSelectorOpen}
-                  selectedPhase={phase}
-                  onSelectPhase={(newPhase) => {
-                    momentFormState$.phase.set(newPhase);
-                  }}
-                  onClose={() => setIsPhaseSelectorOpen(false)}
-                  onOpen={() => setIsPhaseSelectorOpen(true)}
-                  collisionBoundary={dialogRef.current}
-                  trigger={
-                    <button
-                      ref={phaseSelectorRef}
-                      type="button"
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
-                      )}
-                    >
-                      <Clock
-                        className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
-                        strokeWidth={1.5}
-                      />
-                      <span className="font-mono text-sm flex-1 text-left truncate">
-                        {phase ? (
-                          <>
-                            {selectedPhaseConfig?.emoji}{" "}
-                            {selectedPhaseConfig?.label}
-                          </>
-                        ) : (
-                          <span className="text-stone-400 dark:text-stone-500">
-                            no phase
-                          </span>
-                        )}
-                      </span>
-                      <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
-                        P
-                      </kbd>
-                    </button>
-                  }
-                />
 
-                {/* Cycle Selector - Ghost with calendar icon (hidden for allocated moments) */}
-                {!isAllocated && (
+                {/* Horizon Selector - Show as button if selected (hide for allocated moments) */}
+                {!isAllocated && horizon && (
                   <HorizonSelector
                     open={isHorizonSelectorOpen}
                     selectedHorizon={horizon}
@@ -468,6 +659,55 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                   />
                 )}
               </div>
+
+              {/* Subtle wrapped row for empty selectors */}
+              <div className="flex flex-wrap gap-3 items-center mt-8 mb-2">
+                {/* Phase - subtle label if not selected */}
+                {!phase && (
+                  <PhaseSelector
+                    open={isPhaseSelectorOpen}
+                    selectedPhase={phase}
+                    onSelectPhase={(newPhase) => {
+                      momentFormState$.phase.set(newPhase);
+                    }}
+                    onClose={() => setIsPhaseSelectorOpen(false)}
+                    onOpen={() => setIsPhaseSelectorOpen(true)}
+                    collisionBoundary={dialogRef.current}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                      >
+                        <Clock className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        <span className="text-xs font-mono">no phase</span>
+                      </button>
+                    }
+                  />
+                )}
+
+                {/* Horizon - subtle label if not selected (hide for allocated moments) */}
+                {!isAllocated && !horizon && (
+                  <HorizonSelector
+                    open={isHorizonSelectorOpen}
+                    selectedHorizon={horizon}
+                    onSelectHorizon={(newHorizon) => {
+                      momentFormState$.horizon.set(newHorizon);
+                    }}
+                    onClose={() => setIsHorizonSelectorOpen(false)}
+                    onOpen={() => setIsHorizonSelectorOpen(true)}
+                    collisionBoundary={dialogRef.current}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                      >
+                        <Calendar className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        <span className="text-xs font-mono">later</span>
+                      </button>
+                    }
+                  />
+                )}
+              </div>
             </div>
           ) : (
             <div className="mb-6">
@@ -486,7 +726,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                   <button
                     ref={areaSelectorRef}
                     type="button"
-                    className="w-full px-4 py-3 rounded-lg border-2 border-dashed border-stone-300 dark:border-stone-600 transition-all text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-400 dark:hover:border-stone-500 flex items-center justify-center gap-2"
+                    className="w-full px-4 py-3 rounded-lg border-2 border-stone-300 dark:border-stone-600 transition-all text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-400 dark:hover:border-stone-500 flex items-center justify-center gap-2"
                   >
                     <span className="font-medium">Add area</span>
                     <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800">
