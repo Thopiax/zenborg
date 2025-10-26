@@ -31,7 +31,7 @@ import {
  * - Area management modal
  * - Phase settings modal
  * - Archive area dialog
- * - Global keyboard shortcuts (Cmd+Shift+1/2/3)
+ * - Global keyboard shortcuts (Cmd+1/2/3)
  */
 export function LayoutClient({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -46,8 +46,8 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
 
   // Global keyboard shortcuts for tool navigation
   const handleKeyDown = (e: KeyboardEvent) => {
-    // Cmd+Shift+1/2/3 for tool navigation
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey) {
+    // Cmd+1/2/3 for tool navigation
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
       if (e.key === "1") {
         e.preventDefault();
         router.push("/plan");
