@@ -1,13 +1,14 @@
 /** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
 "use client";
 
-import { Archive, Edit2 } from "lucide-react";
+import { Archive } from "lucide-react";
 import { useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AttitudeChip } from "@/components/AttitudeChip";
 import { AttitudeSelector } from "@/components/AttitudeSelector";
 import { ColorPicker } from "@/components/ColorPicker";
 import { HabitQuickInput } from "@/components/HabitQuickInput";
+import { PlanHabitsList } from "@/components/PlanHabitsList";
 import { TagAutocompleteInline } from "@/components/TagAutocompleteInline";
 import { TagBadges } from "@/components/TagBadges";
 import {
@@ -25,7 +26,6 @@ import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
 import type { Attitude } from "@/domain/value-objects/Attitude";
 import { useTagExtraction } from "@/hooks/useTagExtraction";
-import { getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
 interface PlanAreaCardProps {
@@ -62,9 +62,6 @@ export function PlanAreaCard({
   const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
-
-  // Get accessible text colors for area color
-  const textColors = getTextColorsForBackground(area.color);
 
   // Tag extraction for area name
   const {
@@ -284,67 +281,14 @@ export function PlanAreaCard({
       </div>
 
       {/* Habits List */}
-      <div className="flex-1 p-4 space-y-2 overflow-y-auto shadow-inner mb-2">
-        {habits.map((habit) => (
-          <div
-            key={habit.id}
-            className="group flex items-center justify-between gap-2 px-3 py-2 rounded-md transition-all hover:ring-2 hover:ring-offset-2 ring-offset-transparent"
-            style={{
-              backgroundColor: area.color,
-              // @ts-expect-error - CSS custom property
-              "--tw-ring-color": `${area.color}99`, // 60% opacity for ring
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => onEditHabit(habit.id)}
-              className="flex-1 text-left"
-            >
-              <div
-                className={cn(
-                  "flex items-center text-sm font-mono",
-                  textColors.primary
-                )}
-              >
-                <span className={cn("mr-2", "text-lg")}>{habit.emoji}</span>
-                <span
-                  className={cn(
-                    "text-lg font-semibold line-clamp-1 flex-shrink-0"
-                  )}
-                >
-                  {habit.name}
-                </span>
-              </div>
-              {/* Tags under habit name */}
-              {habit.tags && habit.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1.5">
-                  {habit.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className={cn(
-                        "text-xs font-mono opacity-60",
-                        textColors.primary
-                      )}
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onArchiveHabit(habit.id);
-              }}
-              className="opacity-0 group-hover:opacity-100 md:opacity-100 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-opacity"
-              title="Archive habit"
-            >
-              <Archive className={cn("w-3.5 h-3.5", textColors.secondary)} />
-            </button>
-          </div>
-        ))}
+      <div className="flex-1 p-4 overflow-y-auto shadow-inner mb-2">
+        <PlanHabitsList
+          habits={habits}
+          areaId={area.id}
+          areaColor={area.color}
+          onEditHabit={onEditHabit}
+          onArchiveHabit={onArchiveHabit}
+        />
       </div>
 
       {/* Quick Habit Input */}
