@@ -8,13 +8,14 @@ import { HabitFormDialog } from "@/components/HabitFormDialog";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { PlanAreaCard } from "@/components/PlanAreaCard";
 import type { Area } from "@/domain/entities/Area";
-import { archiveArea, createArea, unarchiveArea, updateArea } from "@/domain/entities/Area";
+import { archiveArea, canDeleteArchivedArea, createArea, unarchiveArea, updateArea } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
 import {
   activeAreas$,
   activeHabits$,
   archivedAreas$,
   areas$,
+  moments$,
 } from "@/infrastructure/state/store";
 
 /**
@@ -36,6 +37,7 @@ const PlanPage = observer(() => {
 
   // UI state
   const [archivedSectionOpen, setArchivedSectionOpen] = useState(false);
+  const [deleteConfirmAreaId, setDeleteConfirmAreaId] = useState<string | null>(null);
 
   // Habit form state
   const [habitFormOpen, setHabitFormOpen] = useState(false);
@@ -114,6 +116,24 @@ const PlanPage = observer(() => {
 
     const unarchivedArea = unarchiveArea(area);
     areas$[areaId].set(unarchivedArea);
+  };
+
+  // Handle delete archived area (with confirmation)
+  const handleDeleteArea = (areaId: string) => {
+    const area = areas$.get()[areaId];
+    if (!area) return;
+
+    const allMoments = Object.values(moments$.get());
+
+    // Check if deletion is allowed
+    if (!canDeleteArchivedArea(area, allMoments)) {
+      alert("Cannot delete area: it has moments assigned to it or is not archived.");
+      return;
+    }
+
+    // Delete from store
+    areas$[areaId].delete();
+    setDeleteConfirmAreaId(null);
   };
 
   // Handle create habit
@@ -269,31 +289,65 @@ const PlanPage = observer(() => {
                             {area.name}
                           </span>
 
-                          {/* Unarchive Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleUnarchiveArea(area.id)}
-                            className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors opacity-0 group-hover:opacity-100"
-                            title="Unarchive area"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-stone-500 dark:text-stone-400"
+                          {/* Action Buttons - Always visible on touch devices */}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 md:opacity-100 transition-opacity">
+                            {/* Unarchive Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleUnarchiveArea(area.id)}
+                              className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
+                              title="Unarchive area"
                             >
-                              <path d="M3 3h18v5H3z" />
-                              <path d="M3 8h18v13H3z" />
-                              <path d="M12 12v5" />
-                              <path d="m9 15 3-3 3 3" />
-                            </svg>
-                          </button>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="text-stone-500 dark:text-stone-400"
+                              >
+                                <path d="M3 3h18v5H3z" />
+                                <path d="M3 8h18v13H3z" />
+                                <path d="M12 12v5" />
+                                <path d="m9 15 3-3 3 3" />
+                              </svg>
+                            </button>
+
+                            {/* Delete Button - Only if area has no moments */}
+                            {(() => {
+                              const allMoments = Object.values(moments$.get());
+                              const canDelete = canDeleteArchivedArea(area, allMoments);
+                              return canDelete ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmAreaId(area.id)}
+                                  className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors"
+                                  title="Delete area permanently"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="text-red-600 dark:text-red-400"
+                                  >
+                                    <path d="M3 6h18" />
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                  </svg>
+                                </button>
+                              ) : null;
+                            })()}
+                          </div>
                         </div>
                       </div>
 
@@ -323,6 +377,39 @@ const PlanPage = observer(() => {
           onSave={handleSaveHabit}
           onDelete={habitFormMode === "edit" ? handleDeleteHabit : undefined}
         />
+
+        {/* Delete Area Confirmation Dialog */}
+        {deleteConfirmAreaId && (() => {
+          const area = areas$.get()[deleteConfirmAreaId];
+          return area ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg max-w-md w-full mx-4 p-6">
+                <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-2">
+                  Delete Area?
+                </h3>
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-4">
+                  Are you sure you want to permanently delete "{area.name}"? This action cannot be undone.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmAreaId(null)}
+                    className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-200 hover:bg-stone-300 text-stone-900 dark:bg-stone-700 dark:hover:bg-stone-600 dark:text-stone-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteArea(deleteConfirmAreaId)}
+                    className="px-4 py-2 rounded-lg font-mono text-sm bg-red-600 hover:bg-red-700 text-white transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null;
+        })()}
       </div>
     </>
   );

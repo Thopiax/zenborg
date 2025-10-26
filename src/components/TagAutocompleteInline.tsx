@@ -1,9 +1,9 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import Fuse from "fuse.js";
 import { Hash } from "lucide-react";
 import { useMemo } from "react";
-import Fuse from "fuse.js";
 import {
   Popover,
   PopoverContent,
@@ -100,57 +100,55 @@ export function TagAutocompleteInline({
       modal={false}
     >
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      {shouldShowPopover && (
-        <PopoverContent
-          align="start"
-          className="w-full max-w-md p-1 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm"
-          collisionBoundary={collisionBoundary}
-          side="bottom"
-          sideOffset={4}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          {/* Header (only when searching) */}
-          {searchValue.trim() && (
-            <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
-              Matching tags
-            </div>
-          )}
-
-          {/* Suggestions */}
-          <div className="flex flex-col gap-0.5 max-h-48 overflow-auto">
-            {suggestions.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => onSelectTag(tag)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-md",
-                  "text-stone-600 dark:text-stone-400",
-                  "hover:bg-stone-100 dark:hover:bg-stone-800",
-                  "transition-colors cursor-pointer",
-                  "text-left"
-                )}
-              >
-                {/* Hash icon */}
-                <Hash
-                  className="w-3 h-3 text-stone-400 dark:text-stone-500 flex-shrink-0"
-                  strokeWidth={1.5}
-                />
-
-                {/* Tag name */}
-                <span className="text-xs font-mono flex-1 min-w-0 truncate">
-                  {tag}
-                </span>
-
-                {/* Usage count */}
-                <span className="text-xs text-stone-400 dark:text-stone-500 flex-shrink-0">
-                  {tagCounts[tag] || 0}
-                </span>
-              </button>
-            ))}
+      <PopoverContent
+        align="start"
+        className="w-full max-w-md p-1 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm"
+        collisionBoundary={collisionBoundary}
+        side="bottom"
+        sideOffset={4}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        {/* Header (only when searching) */}
+        {searchValue.trim() && (
+          <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
+            Matching tags
           </div>
-        </PopoverContent>
-      )}
+        )}
+
+        {/* Suggestions */}
+        <div className="flex flex-col gap-0.5 max-h-48 overflow-auto">
+          {suggestions.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => onSelectTag(tag)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-md",
+                "text-stone-600 dark:text-stone-400",
+                "hover:bg-stone-100 dark:hover:bg-stone-800",
+                "transition-colors cursor-pointer",
+                "text-left"
+              )}
+            >
+              {/* Hash icon */}
+              <Hash
+                className="w-3 h-3 text-stone-400 dark:text-stone-500 flex-shrink-0"
+                strokeWidth={1.5}
+              />
+
+              {/* Tag name */}
+              <span className="text-xs font-mono flex-1 min-w-0 truncate">
+                {tag}
+              </span>
+
+              {/* Usage count */}
+              <span className="text-xs text-stone-400 dark:text-stone-500 flex-shrink-0">
+                {tagCounts[tag] || 0}
+              </span>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
     </Popover>
   );
 }
