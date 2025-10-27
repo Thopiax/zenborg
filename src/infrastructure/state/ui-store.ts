@@ -176,6 +176,8 @@ export function openMomentFormCreate(params?: {
  * Helper function to open moment form in edit mode
  */
 export function openMomentFormEdit(momentId: string, moment: Moment) {
+  // Note: attitude is now inherited from habit or area, not stored on moment
+  // The form state keeps attitude for display/editing purposes
   momentFormState$.set({
     open: true,
     mode: "edit",
@@ -187,7 +189,7 @@ export function openMomentFormEdit(momentId: string, moment: Moment) {
     showCreateMore: false,
     editingMomentId: momentId,
     prefilledAllocation: null,
-    attitude: moment.attitude,
+    attitude: null, // Will be inherited from habit/area in the component
     tags: moment.tags || [],
     customMetric: moment.customMetric,
   });
