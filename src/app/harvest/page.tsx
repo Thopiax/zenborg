@@ -1,9 +1,16 @@
+"use client";
+
+import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
+
 /**
  * Zenborg - Harvest Tool (Placeholder)
  *
  * Future: Reflection on completed cycles, allocation patterns
  */
 export default function HarvestPage() {
+  // Enable global keyboard shortcuts (including Cmd+K for command palette)
+  useGlobalKeyboard();
+
   return (
     <div className="min-h-dvh h-dvh bg-background flex items-center justify-center">
       <div className="text-center space-y-4 max-w-md px-6">
