@@ -106,7 +106,6 @@ export function PlanHabitsList({
               habit={habit}
               areaColor={areaColor}
               onEdit={() => onEditHabit(habit.id)}
-              onArchive={() => onArchiveHabit(habit.id)}
             />
           ))}
         </div>

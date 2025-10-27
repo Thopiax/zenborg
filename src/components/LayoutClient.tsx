@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { archiveArea } from "@/domain/entities/Area";
+import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { areas$ } from "@/infrastructure/state/store";
 import {
   archiveAreaDialogState$,
@@ -38,6 +39,9 @@ import {
  */
 export function LayoutClient({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+
+  // Enable global keyboard shortcuts (Cmd+K, etc.) - registers once globally
+  useGlobalKeyboard();
 
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);

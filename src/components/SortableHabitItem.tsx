@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, GripVertical } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import type { Habit } from "@/domain/entities/Habit";
 import { getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
@@ -11,22 +11,20 @@ interface SortableHabitItemProps {
   habit: Habit;
   areaColor: string;
   onEdit: () => void;
-  onArchive: () => void;
 }
 
 /**
  * SortableHabitItem - Draggable wrapper for habit rows
  *
  * Features:
- * - Drag handle (grip dots) on left side
+ * - Drag handle (grip dots) on left side - always visible
  * - Smooth transform/transition animations
- * - Click to edit, hover to show archive
+ * - Click to edit
  */
 export function SortableHabitItem({
   habit,
   areaColor,
   onEdit,
-  onArchive,
 }: SortableHabitItemProps) {
   const {
     attributes,
@@ -58,14 +56,14 @@ export function SortableHabitItem({
       {/* Drag Handle - Left side */}
       <button
         type="button"
-        className="opacity-0 md:group-hover:opacity-100 touch:opacity-100 p-1 cursor-grab active:cursor-grabbing transition-opacity flex-shrink-0"
+        className="p-1 cursor-grab active:cursor-grabbing transition-opacity flex-shrink-0"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder habit"
       >
         <GripVertical
           className={cn("w-4 h-4", textColors.secondary)}
-          style={{ opacity: 0.4 }}
+          style={{ opacity: 0.6 }}
         />
       </button>
 
@@ -94,19 +92,6 @@ export function SortableHabitItem({
             ))}
           </div>
         )}
-      </button>
-
-      {/* Archive Button - Right side */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onArchive();
-        }}
-        className="opacity-0 group-hover:opacity-100 md:opacity-100 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-opacity flex-shrink-0"
-        title="Archive habit"
-      >
-        <Archive className={cn("w-3.5 h-3.5", textColors.secondary)} />
       </button>
     </div>
   );
