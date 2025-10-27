@@ -113,7 +113,8 @@ export interface MomentFormState {
     day?: string;
     phase?: string;
   } | null;
-  /** Tags & Custom Metrics (Phase 2 features) */
+  /** Attitudes & Tags (Phase 2 features) */
+  attitude: Attitude | null;
   tags?: string[];
   customMetric?: CustomMetric;
 }
@@ -129,6 +130,7 @@ export const momentFormState$ = observable<MomentFormState>({
   showCreateMore: false,
   editingMomentId: null,
   prefilledAllocation: null,
+  attitude: null,
   tags: [],
   customMetric: undefined,
 });
@@ -164,6 +166,7 @@ export function openMomentFormCreate(params?: {
       params?.day && params?.phaseStr
         ? { day: params.day, phase: params.phaseStr }
         : null,
+    attitude: params?.attitude ?? null,
     tags: [],
     customMetric: undefined,
   });
@@ -184,6 +187,7 @@ export function openMomentFormEdit(momentId: string, moment: Moment) {
     showCreateMore: false,
     editingMomentId: momentId,
     prefilledAllocation: null,
+    attitude: moment.attitude,
     tags: moment.tags || [],
     customMetric: moment.customMetric,
   });
@@ -204,6 +208,7 @@ export function closeMomentForm() {
     showCreateMore: false,
     editingMomentId: null,
     prefilledAllocation: null,
+    attitude: null,
     tags: [],
     customMetric: undefined,
   });
@@ -322,3 +327,9 @@ export function switchToManualSort() {
  * Could be persisted to localStorage if desired
  */
 // export const isDrawingBoardCollapsed$ = observable<boolean>(false);
+
+/**
+ * Command Palette visibility
+ * Ephemeral - not persisted
+ */
+export const isCommandPaletteOpen$ = observable<boolean>(false);

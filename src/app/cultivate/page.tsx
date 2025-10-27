@@ -1,6 +1,7 @@
 "use client";
 
-import { use$ } from "@legendapp/state/react";
+import { use$, useSelector } from "@legendapp/state/react";
+import { CommandPalette } from "@/components/CommandPalette";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
@@ -13,7 +14,7 @@ import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
 import { useSelection } from "@/hooks/useSelection";
 import { moments$ } from "@/infrastructure/state/store";
-import { momentFormState$ } from "@/infrastructure/state/ui-store";
+import { momentFormState$, isCommandPaletteOpen$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,17 +41,21 @@ export default function CultivatePage() {
     horizon: Horizon | null,
     phase: Phase | null,
     createMore?: boolean,
+    attitude?: import("@/domain/value-objects/Attitude").Attitude | null,
     tags?: string[],
     customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
   ) => {
     // The hook handlers will check the mode from the store
     const mode = momentFormState$.mode.peek();
     if (mode === "create") {
-      handleCreateMoment(name, areaId, horizon, phase, createMore, tags, customMetric);
+      handleCreateMoment(name, areaId, horizon, phase, createMore, attitude, tags, customMetric);
     } else {
-      handleSaveEdit(name, areaId, horizon, phase, tags, customMetric);
+      handleSaveEdit(name, areaId, horizon, phase, attitude, tags, customMetric);
     }
   };
+
+  // Command Palette state
+  const isCommandPaletteOpen = useSelector(() => isCommandPaletteOpen$.get());
 
   // Get all moments for selection
   const allMoments = use$(moments$);
@@ -112,6 +117,12 @@ export default function CultivatePage() {
 
         {/* Sort Mode Conflict Dialog */}
         <SortModeConflictDialog />
+
+        {/* Command Palette */}
+        <CommandPalette
+          open={isCommandPaletteOpen}
+          onClose={() => isCommandPaletteOpen$.set(false)}
+        />
       </div>
     </DnDProvider>
   );
