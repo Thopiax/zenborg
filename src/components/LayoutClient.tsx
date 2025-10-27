@@ -1,9 +1,10 @@
 "use client";
 
-import { use$ } from "@legendapp/state/react";
+import { use$, useSelector } from "@legendapp/state/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AreaManagementModal } from "@/components/AreaManagementModal";
+import { CommandPalette } from "@/components/CommandPalette";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
@@ -19,6 +20,7 @@ import { areas$ } from "@/infrastructure/state/store";
 import {
   archiveAreaDialogState$,
   closeArchiveAreaDialog,
+  isCommandPaletteOpen$,
 } from "@/infrastructure/state/ui-store";
 
 /**
@@ -31,6 +33,7 @@ import {
  * - Area management modal
  * - Phase settings modal
  * - Archive area dialog
+ * - Command palette (Cmd+K)
  * - Global keyboard shortcuts (Cmd+1/2/3)
  */
 export function LayoutClient({ children }: { children: React.ReactNode }) {
@@ -43,6 +46,9 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
   const [focusAreaId, setFocusAreaId] = useState<string | undefined>(undefined);
 
   const archiveAreaState = use$(archiveAreaDialogState$);
+
+  // Command Palette state
+  const isCommandPaletteOpen = useSelector(() => isCommandPaletteOpen$.get());
 
   // Global keyboard shortcuts for tool navigation
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -175,6 +181,12 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Command Palette - Global across all routes */}
+      <CommandPalette
+        open={isCommandPaletteOpen}
+        onClose={() => isCommandPaletteOpen$.set(false)}
+      />
     </>
   );
 }
