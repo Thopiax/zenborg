@@ -75,7 +75,7 @@ const DialogContent = React.forwardRef<
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-sm opacity-70 hover:opacity-100 transition-all duration-fast transition-smooth focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-500 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-2 right-2 rounded-sm opacity-70 hover:opacity-100 transition-all duration-fast transition-smooth focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-500 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
             <span className="sr-only">Close</span>
@@ -91,7 +91,10 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left px-6 py-4 border-b border-stone-200 dark:border-stone-700", className)}
+      className={cn(
+        "flex flex-col gap-2 text-center sm:text-left px-6 py-4 border-b border-stone-200 dark:border-stone-700",
+        className
+      )}
       {...props}
     />
   );
@@ -117,7 +120,10 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-sm leading-none font-medium text-stone-600 dark:text-stone-400", className)}
+      className={cn(
+        "text-sm leading-none font-medium text-stone-600 dark:text-stone-400",
+        className
+      )}
       {...props}
     />
   );

@@ -26,7 +26,6 @@ import { SortableAreaCard } from "@/components/SortableAreaCard";
 import type { Area } from "@/domain/entities/Area";
 import { archiveArea, canDeleteArchivedArea, createArea, unarchiveArea, updateArea } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
-import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import {
   activeAreas$,
   activeHabits$,
@@ -46,9 +45,6 @@ import {
  */
 const PlanPage = observer(() => {
   const habitService = new HabitService();
-
-  // Enable global keyboard shortcuts (including Cmd+K for command palette)
-  useGlobalKeyboard();
 
   // Get active areas and habits
   const areas = use$(activeAreas$);
