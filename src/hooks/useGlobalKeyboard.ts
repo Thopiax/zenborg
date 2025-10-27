@@ -153,7 +153,6 @@ export function useGlobalKeyboard() {
         name,
         areaId,
         horizon,
-        attitude,
         tags,
         customMetric,
         phase,

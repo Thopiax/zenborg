@@ -22,6 +22,7 @@ import {
   normalizeTag,
   validateMomentName,
 } from "@/domain/entities/Moment";
+import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import {
@@ -44,8 +45,9 @@ interface MomentFormDialogProps {
     horizon: Horizon | null,
     phase: Phase | null,
     createMore?: boolean,
+    attitude?: Attitude | null,
     tags?: string[],
-    customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
+    customMetric?: CustomMetric
   ) => void;
   /** For edit mode: called when user confirms deletion */
   onDelete?: () => void;
@@ -83,6 +85,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     phase,
     showCreateMore,
     isAllocated,
+    attitude,
     tags,
     customMetric,
   } = formState;
@@ -429,6 +432,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         horizon,
         phase,
         shouldCreateMore,
+        attitude,
         tags || [],
         customMetric
       );
@@ -555,7 +559,11 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
             )} */}
 
             {/* Tag Badges */}
-            <TagBadges tags={tags || []} onRemoveTag={removeTag} className="mt-3" />
+            <TagBadges
+              tags={tags || []}
+              onRemoveTag={removeTag}
+              className="mt-3"
+            />
           </div>
 
           {/* Selectors Row - Only show when area is selected */}

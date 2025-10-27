@@ -40,7 +40,6 @@ export function SortableHabitItem({
     transition,
     opacity: isDragging ? 0.5 : 1,
     backgroundColor: areaColor,
-    // @ts-expect-error - CSS custom property
     "--tw-ring-color": `${areaColor}99`, // 60% opacity for ring
   };
 
