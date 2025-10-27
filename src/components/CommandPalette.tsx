@@ -1,16 +1,17 @@
 "use client";
 
+import { DialogTitle } from "@radix-ui/react-dialog";
 import { useState } from "react";
+import { allCommands, type Command as CommandType } from "@/commands";
 import {
   Command,
-  CommandInput,
-  CommandList,
-  CommandGroup,
-  CommandItem,
   CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { allCommands, type Command as CommandType } from "@/commands";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -31,9 +32,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   // Filter commands by search
   const filteredCommands = search
-    ? allCommands.filter((cmd) =>
-        cmd.label.toLowerCase().includes(search.toLowerCase()) ||
-        cmd.keywords?.some((k) => k.toLowerCase().includes(search.toLowerCase()))
+    ? allCommands.filter(
+        (cmd) =>
+          cmd.label.toLowerCase().includes(search.toLowerCase()) ||
+          cmd.keywords?.some((k) =>
+            k.toLowerCase().includes(search.toLowerCase())
+          )
       )
     : allCommands;
 
@@ -55,6 +59,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="p-0 max-w-[640px]">
+        <DialogTitle className="sr-only">Command Palette</DialogTitle>
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search commands..."
