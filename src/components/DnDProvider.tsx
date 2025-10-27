@@ -26,6 +26,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { use$ } from "@legendapp/state/react";
 import { useState } from "react";
 import type { Horizon } from "@/domain/entities/Moment";
+import type { Attitude } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
 import {
@@ -584,6 +585,25 @@ export function DnDProvider({ children }: DnDProviderProps) {
         `Setting moment ${momentId} horizon to ${newHorizon || "unset"}`
       );
       moments$[momentId].horizon.set(newHorizon as Horizon | null);
+      moments$[momentId].updatedAt.set(new Date().toISOString());
+    } else if (groupBy === "attitude") {
+      // Extract attitude value from column ID (format: "attitude-beginning", "attitude-none", etc.)
+      const attitudeValue = columnId.replace("attitude-", "");
+      const newAttitude =
+        attitudeValue === "none"
+          ? null
+          : (attitudeValue.toUpperCase() as Attitude | null);
+
+      // Don't update if already has this attitude
+      if (moment.attitude === newAttitude) {
+        return;
+      }
+
+      // Update moment's attitude
+      console.log(
+        `Setting moment ${momentId} attitude to ${newAttitude || "none"}`
+      );
+      moments$[momentId].attitude.set(newAttitude);
       moments$[momentId].updatedAt.set(new Date().toISOString());
     } else if (groupBy === "phase") {
       // Extract phase value from column ID (format: "phase-MORNING", "phase-AFTERNOON", etc.)
