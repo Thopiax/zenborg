@@ -21,10 +21,6 @@ export const metadata: Metadata = {
   description:
     "An attention orchestration system for budgeting moments toward personal flourishing",
   manifest: "/manifest.json",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafaf9" },
-    { media: "(prefers-color-scheme: dark)", color: "#1c1917" },
-  ],
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -48,6 +44,10 @@ export const viewport = {
   userScalable: false,
   viewportFit: "cover", // Respect safe areas (notch, home bar)
   colorScheme: "light dark", // Enable iOS system theme detection
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafaf9" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1917" },
+  ],
 };
 
 export default function RootLayout({
