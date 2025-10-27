@@ -8,6 +8,7 @@ import { MomentFormDialog } from "@/components/MomentFormDialog";
 import { SortModeConflictDialog } from "@/components/SortModeConflictDialog";
 import { Timeline } from "@/components/Timeline";
 import type { Horizon } from "@/domain/entities/Moment";
+import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
@@ -27,11 +28,8 @@ import { cn } from "@/lib/utils";
  */
 export default function CultivatePage() {
   // Enable global keyboard shortcuts
-  const {
-    handleCreateMoment,
-    handleSaveEdit,
-    handleDeleteEdit,
-  } = useGlobalKeyboard();
+  const { handleCreateMoment, handleSaveEdit, handleDeleteEdit } =
+    useGlobalKeyboard();
 
   // Unified save handler that works for both create and edit modes
   const handleMomentFormSave = (
@@ -40,16 +38,33 @@ export default function CultivatePage() {
     horizon: Horizon | null,
     phase: Phase | null,
     createMore?: boolean,
-    attitude?: import("@/domain/value-objects/Attitude").Attitude | null,
+    attitude?: Attitude | null,
     tags?: string[],
-    customMetric?: import("@/domain/value-objects/Attitude").CustomMetric
+    customMetric?: CustomMetric
   ) => {
     // The hook handlers will check the mode from the store
     const mode = momentFormState$.mode.peek();
     if (mode === "create") {
-      handleCreateMoment(name, areaId, horizon, phase, createMore, attitude, tags, customMetric);
+      handleCreateMoment(
+        name,
+        areaId,
+        horizon,
+        phase,
+        createMore,
+        attitude,
+        tags,
+        customMetric
+      );
     } else {
-      handleSaveEdit(name, areaId, horizon, phase, attitude, tags, customMetric);
+      handleSaveEdit(
+        name,
+        areaId,
+        horizon,
+        phase,
+        attitude,
+        tags,
+        customMetric
+      );
     }
   };
 
