@@ -176,7 +176,7 @@ export class YjsGardenSync {
 		this.provider = new WebrtcProvider(this.config.roomName, this.ydoc, {
 			signaling: this.config.signalingServers,
 			password: this.config.password ?? undefined,
-			awareness: null, // We don't need cursor awareness
+			awareness: undefined, // We don't need cursor awareness
 			maxConns: this.config.maxConnections,
 		});
 
@@ -219,8 +219,8 @@ export class YjsGardenSync {
 	 * @param ymap - Yjs shared map
 	 * @param name - Entity name for logging
 	 */
-	private setupBidirectionalSync<T extends Record<string, unknown>>(
-		observable$: Observable<T>,
+	private setupBidirectionalSync(
+		observable$: Observable<Record<string, any>>,
 		ymap: Y.Map<unknown>,
 		name: string,
 	): void {
@@ -296,7 +296,8 @@ export class YjsGardenSync {
 
 				// Apply updates to Legend State
 				if (Object.keys(updates).length > 0) {
-					observable$.assign(updates as Partial<T>);
+					const currentState = observable$.get();
+					observable$.set({ ...currentState, ...updates });
 				}
 
 				// Apply deletions
@@ -328,13 +329,11 @@ export class YjsGardenSync {
 		if (!this.provider) return;
 
 		// Connection status
-		this.provider.on("status", ({ status }: { status: string }) => {
-			this.log("Provider status:", status);
+		this.provider.on("status", ({ connected }: { connected: boolean }) => {
+			this.log("Provider status:", connected);
 
-			if (status === "connected") {
+			if (connected) {
 				this.setStatus("connected");
-			} else if (status === "connecting") {
-				this.setStatus("connecting");
 			} else {
 				this.setStatus("disconnected");
 			}
@@ -344,13 +343,14 @@ export class YjsGardenSync {
 		this.provider.on("peers", ({ added, removed }: { added: string[], removed: string[] }) => {
 			this.log("Peers changed:", { added, removed });
 
-			// Update peer count
-			this.stats.connectedPeers = this.provider?.connected?.size ?? 0;
+			// Update peer count - count the peers array
+			const peersCount = (added?.length ?? 0) - (removed?.length ?? 0);
+			this.stats.connectedPeers = Math.max(0, this.stats.connectedPeers + peersCount);
 			this.notifyStatsChange();
 		});
 
 		// Sync events
-		this.provider.on("sync", (synced: boolean) => {
+		this.provider.on("synced", ({ synced }: { synced: boolean }) => {
 			this.log("Sync status:", synced);
 
 			if (synced) {
