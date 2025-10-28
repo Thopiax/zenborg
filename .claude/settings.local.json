@@ -76,7 +76,9 @@
       "Skill(superpowers:subagent-driven-development)",
       "Bash(git log:*)",
       "Bash(pnpm run type-check:*)",
-      "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_jClOP8/**)"
+      "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_jClOP8/**)",
+      "WebFetch(domain:crates.io)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
