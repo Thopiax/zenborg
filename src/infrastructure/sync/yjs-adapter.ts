@@ -25,7 +25,9 @@
 
 import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
+import { WebsocketProvider } from "y-websocket";
 import type { Observable } from "@legendapp/state";
+import { isTauri } from "@/lib/tauri-utils";
 import {
 	areas$,
 	crystallizedRoutines$,
@@ -42,6 +44,13 @@ import {
  * - portal: Secondary device (laptop/phone) that syncs from garden
  */
 export type DeviceRole = "garden" | "portal";
+
+/**
+ * Sync mode
+ * - webrtc: P2P WebRTC (for web-only, cross-network)
+ * - websocket: Local WebSocket server (for Tauri desktop)
+ */
+export type SyncMode = "webrtc" | "websocket";
 
 /**
  * Connection status for garden sync
@@ -86,13 +95,27 @@ export interface YjsGardenSyncConfig {
 	password?: string | null;
 
 	/**
-	 * Custom signaling servers (optional)
+	 * Sync mode (auto-detected if not specified)
+	 * - webrtc: P2P WebRTC (for web-only)
+	 * - websocket: Local server (for Tauri)
+	 * @default auto-detect based on environment
+	 */
+	mode?: SyncMode;
+
+	/**
+	 * WebSocket server URL (for websocket mode)
+	 * @default "ws://localhost:8765"
+	 */
+	websocketUrl?: string;
+
+	/**
+	 * Custom signaling servers (for webrtc mode)
 	 * Defaults to public Yjs signaling servers
 	 */
 	signalingServers?: string[];
 
 	/**
-	 * Maximum number of peer connections
+	 * Maximum number of peer connections (for webrtc mode)
 	 * @default 5
 	 */
 	maxConnections?: number;
@@ -117,10 +140,13 @@ export interface YjsGardenSyncConfig {
 export class YjsGardenSync {
 	// Yjs document and provider
 	private ydoc: Y.Doc;
-	private provider: WebrtcProvider | null = null;
+	private provider: WebrtcProvider | WebsocketProvider | null = null;
+
+	// Sync mode (webrtc or websocket)
+	private mode: SyncMode;
 
 	// Configuration
-	private config: Required<YjsGardenSyncConfig>;
+	private config: Required<Omit<YjsGardenSyncConfig, "mode">> & { mode: SyncMode };
 
 	// Status tracking
 	private status: GardenSyncStatus = "disconnected";
@@ -141,10 +167,15 @@ export class YjsGardenSync {
 	private onStatsChange?: (stats: GardenSyncStats) => void;
 
 	constructor(config: YjsGardenSyncConfig) {
+		// Auto-detect mode: Tauri = websocket, Web = webrtc
+		this.mode = config.mode ?? (isTauri() ? "websocket" : "webrtc");
+
 		this.config = {
 			role: config.role,
 			roomName: config.roomName,
 			password: config.password ?? null,
+			mode: this.mode,
+			websocketUrl: config.websocketUrl ?? "ws://localhost:8765",
 			signalingServers: config.signalingServers ?? [
 				"wss://signaling.yjs.dev",
 				"wss://y-webrtc-signaling-eu.fly.dev",
@@ -165,6 +196,7 @@ export class YjsGardenSync {
 	 */
 	private initialize(): void {
 		this.log("Initializing garden sync...", {
+			mode: this.mode,
 			role: this.config.role,
 			room: this.config.roomName,
 		});
@@ -172,13 +204,30 @@ export class YjsGardenSync {
 		// Update status
 		this.setStatus("connecting");
 
-		// Create WebRTC provider
-		this.provider = new WebrtcProvider(this.config.roomName, this.ydoc, {
-			signaling: this.config.signalingServers,
-			password: this.config.password ?? undefined,
-			awareness: undefined, // We don't need cursor awareness
-			maxConns: this.config.maxConnections,
-		});
+		// Create provider based on mode
+		if (this.mode === "websocket") {
+			// WebSocket mode (Tauri local server)
+			this.log("Using WebSocket mode:", this.config.websocketUrl);
+			this.provider = new WebsocketProvider(
+				this.config.websocketUrl,
+				this.config.roomName,
+				this.ydoc,
+				{
+					// WebSocket provider options
+					connect: true,
+					awareness: undefined,
+				},
+			);
+		} else {
+			// WebRTC mode (P2P)
+			this.log("Using WebRTC mode");
+			this.provider = new WebrtcProvider(this.config.roomName, this.ydoc, {
+				signaling: this.config.signalingServers,
+				password: this.config.password ?? undefined,
+				awareness: undefined, // We don't need cursor awareness
+				maxConns: this.config.maxConnections,
+			});
+		}
 
 		// Get Yjs shared types (maps for each entity collection)
 		const ymomentsMap = this.ydoc.getMap("moments");
@@ -328,37 +377,64 @@ export class YjsGardenSync {
 	private setupProviderListeners(): void {
 		if (!this.provider) return;
 
-		// Connection status
-		this.provider.on("status", ({ connected }: { connected: boolean }) => {
-			this.log("Provider status:", connected);
+		if (this.mode === "websocket") {
+			// WebSocket provider events
+			const wsProvider = this.provider as WebsocketProvider;
 
-			if (connected) {
-				this.setStatus("connected");
-			} else {
-				this.setStatus("disconnected");
-			}
-		});
+			wsProvider.on("status", ({ status }: { status: string }) => {
+				this.log("WebSocket status:", status);
 
-		// Peer connections
-		this.provider.on("peers", ({ added, removed }: { added: string[], removed: string[] }) => {
-			this.log("Peers changed:", { added, removed });
+				if (status === "connected") {
+					this.setStatus("connected");
+				} else if (status === "connecting") {
+					this.setStatus("connecting");
+				} else {
+					this.setStatus("disconnected");
+				}
+			});
 
-			// Update peer count - count the peers array
-			const peersCount = (added?.length ?? 0) - (removed?.length ?? 0);
-			this.stats.connectedPeers = Math.max(0, this.stats.connectedPeers + peersCount);
-			this.notifyStatsChange();
-		});
+			wsProvider.on("sync", (synced: boolean) => {
+				this.log("WebSocket synced:", synced);
+				if (synced) {
+					this.setStatus("connected");
+					// For WebSocket, we're always connected to 1 server (the garden)
+					this.stats.connectedPeers = 1;
+					this.notifyStatsChange();
+				}
+			});
+		} else {
+			// WebRTC provider events
+			const rtcProvider = this.provider as WebrtcProvider;
 
-		// Sync events
-		this.provider.on("synced", ({ synced }: { synced: boolean }) => {
-			this.log("Sync status:", synced);
+			rtcProvider.on("status", ({ connected }: { connected: boolean }) => {
+				this.log("WebRTC status:", connected);
 
-			if (synced) {
-				this.setStatus("connected");
-			} else {
-				this.setStatus("syncing");
-			}
-		});
+				if (connected) {
+					this.setStatus("connected");
+				} else {
+					this.setStatus("disconnected");
+				}
+			});
+
+			rtcProvider.on("peers", ({ added, removed }: { added: string[], removed: string[] }) => {
+				this.log("WebRTC peers changed:", { added, removed });
+
+				// Update peer count - count the peers array
+				const peersCount = (added?.length ?? 0) - (removed?.length ?? 0);
+				this.stats.connectedPeers = Math.max(0, this.stats.connectedPeers + peersCount);
+				this.notifyStatsChange();
+			});
+
+			rtcProvider.on("synced", ({ synced }: { synced: boolean }) => {
+				this.log("WebRTC synced:", synced);
+
+				if (synced) {
+					this.setStatus("connected");
+				} else {
+					this.setStatus("syncing");
+				}
+			});
+		}
 	}
 
 	/**
@@ -409,6 +485,13 @@ export class YjsGardenSync {
 	 */
 	getStats(): GardenSyncStats {
 		return { ...this.stats };
+	}
+
+	/**
+	 * Get sync mode (webrtc or websocket)
+	 */
+	getMode(): SyncMode {
+		return this.mode;
 	}
 
 	/**

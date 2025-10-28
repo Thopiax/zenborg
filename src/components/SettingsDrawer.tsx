@@ -403,8 +403,15 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                         Local-first sync
                       </strong>
                       : Connect devices on the same network. Your desktop acts as a "garden" and your
-                      laptop/phone as "portals" that sync via WebRTC P2P.
+                      laptop/phone as "portals" that sync together.
                     </p>
+                    {mounted && (
+                      <p className="mt-2 text-xs text-stone-500 dark:text-stone-500 font-mono">
+                        {typeof window !== "undefined" && "__TAURI__" in window
+                          ? "Mode: WebSocket (Tauri local server)"
+                          : "Mode: WebRTC P2P (Web browser)"}
+                      </p>
+                    )}
                   </div>
 
                   {/* Enable Toggle */}
