@@ -149,6 +149,8 @@ export const AreaManagementModal = observer(function AreaManagementModal({
     const draft: Area = {
       id: `draft-${Date.now()}`, // Temporary ID
       name: "",
+      attitude: null,
+      tags: [],
       color: "#10b981",
       emoji: "🔵",
       isDefault: false,
@@ -174,7 +176,12 @@ export const AreaManagementModal = observer(function AreaManagementModal({
       -1
     );
 
-    const result = createArea(name.trim(), color, emoji, maxOrder + 1);
+    const result = createArea({
+      name: name.trim(),
+      color,
+      emoji,
+      order: maxOrder + 1,
+    });
 
     if ("error" in result) {
       alert(result.error);

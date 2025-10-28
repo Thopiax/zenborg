@@ -53,7 +53,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-12 h-12 rounded-lg border-2 border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 transition-all shadow-sm"
+          className="w-8 h-8 rounded-lg border border-stone-200/50 hover:border-stone-300 dark:border-stone-700 dark:hover:border-stone-600 transition-all shadow-lg hover:cursor-pointer"
           style={{ backgroundColor: value }}
           aria-label="Pick a color"
         />

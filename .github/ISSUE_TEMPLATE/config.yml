@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/Thopiax/zenborg/discussions
+    about: Ask questions or discuss ideas
+  - name: Documentation
+    url: https://github.com/Thopiax/zenborg/blob/main/CLAUDE.md
+    about: Read the comprehensive project documentation

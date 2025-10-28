@@ -1,5 +1,6 @@
 import { observable } from "@legendapp/state";
-import type { Horizon } from "@/domain/entities/Moment";
+import type { Horizon, Moment } from "@/domain/entities/Moment";
+import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 
 /**
@@ -39,7 +40,14 @@ export const isDuplicateMode$ = observable<boolean>(false);
  * Determines how unallocated moments are organized
  * Persisted to localStorage
  */
-export type DrawingBoardGroupBy = "none" | "area" | "created" | "horizon" | "phase";
+export type DrawingBoardGroupBy =
+  | "none"
+  | "area"
+  | "created"
+  | "horizon"
+  | "attitude"
+  | "phase"
+  | "tag";
 
 export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("area");
 
@@ -105,6 +113,10 @@ export interface MomentFormState {
     day?: string;
     phase?: string;
   } | null;
+  /** Attitudes & Tags (Phase 2 features) */
+  attitude: Attitude | null;
+  tags?: string[];
+  customMetric?: CustomMetric;
 }
 
 export const momentFormState$ = observable<MomentFormState>({
@@ -118,6 +130,9 @@ export const momentFormState$ = observable<MomentFormState>({
   showCreateMore: false,
   editingMomentId: null,
   prefilledAllocation: null,
+  attitude: null,
+  tags: [],
+  customMetric: undefined,
 });
 
 /**
@@ -129,6 +144,7 @@ export function openMomentFormCreate(params?: {
   phase?: Phase | null;
   day?: string;
   phaseStr?: string;
+  attitude?: Attitude;
 }) {
   // Use provided areaId, or fall back to last used area
   const areaId = params?.areaId || lastUsedAreaId$.peek() || "";
@@ -150,22 +166,18 @@ export function openMomentFormCreate(params?: {
       params?.day && params?.phaseStr
         ? { day: params.day, phase: params.phaseStr }
         : null,
+    attitude: params?.attitude ?? null,
+    tags: [],
+    customMetric: undefined,
   });
 }
 
 /**
  * Helper function to open moment form in edit mode
  */
-export function openMomentFormEdit(
-  momentId: string,
-  moment: {
-    name: string;
-    areaId: string;
-    horizon: Horizon | null;
-    phase: Phase | null;
-    day: string | null;
-  }
-) {
+export function openMomentFormEdit(momentId: string, moment: Moment) {
+  // Note: attitude is now inherited from habit or area, not stored on moment
+  // The form state keeps attitude for display/editing purposes
   momentFormState$.set({
     open: true,
     mode: "edit",
@@ -177,6 +189,9 @@ export function openMomentFormEdit(
     showCreateMore: false,
     editingMomentId: momentId,
     prefilledAllocation: null,
+    attitude: null, // Will be inherited from habit/area in the component
+    tags: moment.tags || [],
+    customMetric: moment.customMetric,
   });
 }
 
@@ -195,6 +210,9 @@ export function closeMomentForm() {
     showCreateMore: false,
     editingMomentId: null,
     prefilledAllocation: null,
+    attitude: null,
+    tags: [],
+    customMetric: undefined,
   });
 }
 
@@ -254,15 +272,20 @@ export interface SortModeConflictDialogState {
   } | null;
 }
 
-export const sortModeConflictDialogState$ = observable<SortModeConflictDialogState>({
-  open: false,
-  pendingReorder: null,
-});
+export const sortModeConflictDialogState$ =
+  observable<SortModeConflictDialogState>({
+    open: false,
+    pendingReorder: null,
+  });
 
 /**
  * Helper function to open sort mode conflict dialog
  */
-export function openSortModeConflictDialog(activeId: string, overId: string, columnId?: string) {
+export function openSortModeConflictDialog(
+  activeId: string,
+  overId: string,
+  columnId?: string
+) {
   sortModeConflictDialogState$.set({
     open: true,
     pendingReorder: {
@@ -306,3 +329,9 @@ export function switchToManualSort() {
  * Could be persisted to localStorage if desired
  */
 // export const isDrawingBoardCollapsed$ = observable<boolean>(false);
+
+/**
+ * Command Palette visibility
+ * Ephemeral - not persisted
+ */
+export const isCommandPaletteOpen$ = observable<boolean>(false);

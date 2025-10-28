@@ -7,12 +7,13 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
-import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Horizon, Moment } from "@/domain/entities/Moment";
+import type { Phase } from "@/domain/value-objects/Phase";
 import {
   activeAreas$,
   areas$,
+  habits$,
   phaseConfigs$,
   unallocatedMoments$,
 } from "@/infrastructure/state/store";
@@ -21,8 +22,16 @@ import {
   drawingBoardGroupBy$,
   drawingBoardSortMode$,
   isDuplicateMode$,
+  openMomentFormCreate,
 } from "@/infrastructure/state/ui-store";
-import { groupByArea, groupByCreated, groupByHorizon, groupByPhase } from "@/lib/grouping";
+import {
+  groupByArea,
+  groupByAttitude,
+  groupByCreated,
+  groupByHorizon,
+  groupByPhase,
+  groupByTag,
+} from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
 import { DrawingBoardColumn } from "./DrawingBoardColumn";
@@ -51,11 +60,11 @@ export function DrawingBoard({
   const isExpanded = use$(drawingBoardExpanded$);
   const unallocated = use$(unallocatedMoments$);
   const allAreas = use$(areas$); // All areas including archived (for moment card display)
+  const allHabits = use$(habits$); // All habits (for attitude computation)
   const activeAreasArray = use$(activeAreas$); // Only active areas (for grouping columns)
   const phaseConfigsRecord = use$(phaseConfigs$); // Phase configurations
   const groupBy = use$(drawingBoardGroupBy$);
   const sortMode = use$(drawingBoardSortMode$);
-  const { handleOpenCreateModal } = useMomentManager();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Droppable configuration (only for flat "none" view)
@@ -90,9 +99,14 @@ export function DrawingBoard({
     switch (groupBy) {
       case "area":
         // Use activeAreasRecord so only active areas get columns
-        return groupByArea(unallocated, activeAreasRecord);
+        return groupByArea(unallocated, allHabits, activeAreasRecord);
       case "horizon":
         return groupByHorizon(unallocated);
+      case "attitude":
+        // areas$ and habits$ are already Records, pass them directly
+        return groupByAttitude(unallocated, allHabits, allAreas);
+      case "tag":
+        return groupByTag(unallocated);
       case "phase":
         // Convert phaseConfigs record to array for groupByPhase
         return groupByPhase(unallocated, Object.values(phaseConfigsRecord));
@@ -101,7 +115,14 @@ export function DrawingBoard({
       default:
         return null;
     }
-  }, [groupBy, unallocated, activeAreasRecord, phaseConfigsRecord]);
+  }, [
+    groupBy,
+    unallocated,
+    activeAreasRecord,
+    phaseConfigsRecord,
+    allHabits,
+    allAreas,
+  ]);
 
   // Sort unallocated moments for flat view
   const sortedUnallocated = useMemo(() => {
@@ -121,9 +142,17 @@ export function DrawingBoard({
     });
   }, [unallocated, sortMode]);
 
-  const handleCreateFromColumn = (areaId?: string, cycle?: string, phase?: string) => {
+  const handleCreateFromColumn = (
+    areaId?: string,
+    cycle?: string,
+    phase?: string
+  ) => {
     // Open create modal with pre-filled properties
-    handleOpenCreateModal(undefined, phase, areaId, cycle);
+    openMomentFormCreate({
+      areaId,
+      horizon: cycle as Horizon | undefined,
+      phase: phase as Phase | undefined,
+    });
   };
 
   const label = "Planning (P)";

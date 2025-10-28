@@ -9,6 +9,7 @@ import {
   updateArea,
 } from "../entities/Area";
 import { createMoment } from "../entities/Moment";
+import { Attitude } from "../value-objects/Attitude";
 
 describe("Area", () => {
   describe("getDefaultAreas", () => {
@@ -80,7 +81,12 @@ describe("Area", () => {
 
   describe("createArea", () => {
     it("should create a valid custom area", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 5);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 5,
+      });
 
       expect(isAreaError(result)).toBe(false);
       if (!isAreaError(result)) {
@@ -96,7 +102,12 @@ describe("Area", () => {
     });
 
     it("should reject empty name", () => {
-      const result = createArea("", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
 
       expect(isAreaError(result)).toBe(true);
       if (isAreaError(result)) {
@@ -105,7 +116,12 @@ describe("Area", () => {
     });
 
     it("should reject whitespace-only name", () => {
-      const result = createArea("   ", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "   ",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
 
       expect(isAreaError(result)).toBe(true);
       if (isAreaError(result)) {
@@ -114,7 +130,12 @@ describe("Area", () => {
     });
 
     it("should reject invalid hex color", () => {
-      const result = createArea("Learning", "purple", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "purple",
+        emoji: "📚",
+        order: 0,
+      });
 
       expect(isAreaError(result)).toBe(true);
       if (isAreaError(result)) {
@@ -123,7 +144,12 @@ describe("Area", () => {
     });
 
     it("should reject short hex color", () => {
-      const result = createArea("Learning", "#123", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#123",
+        emoji: "📚",
+        order: 0,
+      });
 
       expect(isAreaError(result)).toBe(true);
       if (isAreaError(result)) {
@@ -132,7 +158,12 @@ describe("Area", () => {
     });
 
     it("should accept uppercase hex color and normalize to lowercase", () => {
-      const result = createArea("Learning", "#9333EA", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333EA",
+        emoji: "📚",
+        order: 0,
+      });
 
       expect(isAreaError(result)).toBe(false);
       if (!isAreaError(result)) {
@@ -141,7 +172,12 @@ describe("Area", () => {
     });
 
     it("should reject empty emoji", () => {
-      const result = createArea("Learning", "#9333ea", "", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "",
+        order: 0,
+      });
 
       expect(isAreaError(result)).toBe(true);
       if (isAreaError(result)) {
@@ -150,7 +186,12 @@ describe("Area", () => {
     });
 
     it("should reject negative order", () => {
-      const result = createArea("Learning", "#9333ea", "📚", -1);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: -1,
+      });
 
       expect(isAreaError(result)).toBe(true);
       if (isAreaError(result)) {
@@ -159,7 +200,12 @@ describe("Area", () => {
     });
 
     it("should trim name", () => {
-      const result = createArea("  Learning  ", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "  Learning  ",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
 
       expect(isAreaError(result)).toBe(false);
       if (!isAreaError(result)) {
@@ -168,7 +214,12 @@ describe("Area", () => {
     });
 
     it("should trim emoji", () => {
-      const result = createArea("Learning", "#9333ea", "  📚  ", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "  📚  ",
+        order: 0,
+      });
 
       expect(isAreaError(result)).toBe(false);
       if (!isAreaError(result)) {
@@ -179,7 +230,12 @@ describe("Area", () => {
 
   describe("updateArea", () => {
     it("should update area name", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -197,7 +253,12 @@ describe("Area", () => {
     });
 
     it("should update area color", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -211,7 +272,12 @@ describe("Area", () => {
     });
 
     it("should update area emoji", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -225,7 +291,12 @@ describe("Area", () => {
     });
 
     it("should update area order", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -239,7 +310,12 @@ describe("Area", () => {
     });
 
     it("should update multiple fields at once", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -261,7 +337,12 @@ describe("Area", () => {
     });
 
     it("should reject empty name update", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -275,7 +356,12 @@ describe("Area", () => {
     });
 
     it("should reject invalid color update", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -289,7 +375,12 @@ describe("Area", () => {
     });
 
     it("should reject empty emoji update", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -303,7 +394,12 @@ describe("Area", () => {
     });
 
     it("should reject negative order update", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -319,7 +415,12 @@ describe("Area", () => {
 
   describe("archiveArea", () => {
     it("should archive an area (soft delete)", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -333,7 +434,12 @@ describe("Area", () => {
 
   describe("unarchiveArea", () => {
     it("should unarchive an archived area", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -347,7 +453,12 @@ describe("Area", () => {
 
   describe("canDeleteArchivedArea", () => {
     it("should allow deletion of archived area when no moments reference it", () => {
-      const result = createArea("Learning", "#9333ea", "📚", 0);
+      const result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(result)).toBe(false);
 
       if (!isAreaError(result)) {
@@ -357,12 +468,17 @@ describe("Area", () => {
     });
 
     it("should prevent deletion of archived area when moments reference it", () => {
-      const areaResult = createArea("Learning", "#9333ea", "📚", 0);
+      const areaResult = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
       expect(isAreaError(areaResult)).toBe(false);
 
       if (!isAreaError(areaResult)) {
         const archived = archiveArea(areaResult);
-        const moment = createMoment("Reading", areaResult.id);
+        const moment = createMoment({ name: "Reading", areaId: areaResult.id });
 
         if ("id" in moment) {
           expect(canDeleteArchivedArea(archived, [moment])).toBe(false);
@@ -371,19 +487,81 @@ describe("Area", () => {
     });
 
     it("should allow deletion when moments reference different areas", () => {
-      const area1Result = createArea("Learning", "#9333ea", "📚", 0);
-      const area2Result = createArea("Work", "#3b82f6", "💼", 1);
+      const area1Result = createArea({
+        name: "Learning",
+        color: "#9333ea",
+        emoji: "📚",
+        order: 0,
+      });
+      const area2Result = createArea({
+        name: "Work",
+        color: "#3b82f6",
+        emoji: "💼",
+        order: 1,
+      });
       expect(isAreaError(area1Result)).toBe(false);
       expect(isAreaError(area2Result)).toBe(false);
 
       if (!isAreaError(area1Result) && !isAreaError(area2Result)) {
         const archived = archiveArea(area1Result);
-        const moment = createMoment("Reading", area2Result.id);
+        const moment = createMoment({ name: "Reading", areaId: area2Result.id });
 
         if ("id" in moment) {
           expect(canDeleteArchivedArea(archived, [moment])).toBe(true);
         }
       }
+    });
+  });
+
+  describe("Area with Attitude and Tags", () => {
+    it("should create area with attitude and tags", () => {
+      const area = createArea({
+        name: "Fitness",
+        color: "#10b981",
+        emoji: "🏋️",
+        order: 0,
+      });
+      if ("error" in area) throw new Error(area.error);
+
+      const updated = updateArea(area, {
+        attitude: Attitude.BUILDING,
+        tags: ["wellness", "physical"],
+      });
+
+      if ("error" in updated) throw new Error(updated.error);
+
+      expect(updated.attitude).toBe(Attitude.BUILDING);
+      expect(updated.tags).toEqual(["wellness", "physical"]);
+    });
+
+    it("should allow null attitude (pure presence)", () => {
+      const area = createArea({
+        name: "Reading",
+        color: "#6b7280",
+        emoji: "📚",
+        order: 0,
+      });
+      if ("error" in area) throw new Error(area.error);
+
+      expect(area.attitude).toBeNull();
+    });
+
+    it("should normalize tags to lowercase", () => {
+      const area = createArea({
+        name: "Mindfulness",
+        color: "#10b981",
+        emoji: "🧘",
+        order: 0,
+      });
+      if ("error" in area) throw new Error(area.error);
+
+      const updated = updateArea(area, {
+        tags: ["Wellness", "MENTAL", "Self-Care"],
+      });
+
+      if ("error" in updated) throw new Error(updated.error);
+
+      expect(updated.tags).toEqual(["wellness", "mental", "self-care"]);
     });
   });
 });
