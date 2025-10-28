@@ -26,6 +26,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { use$ } from "@legendapp/state/react";
 import { useState } from "react";
 import type { Horizon } from "@/domain/entities/Moment";
+import type { Attitude } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
 import {
@@ -36,8 +37,8 @@ import {
 import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import {
-  isDuplicateMode$,
   drawingBoardSortMode$,
+  isDuplicateMode$,
   openSortModeConflictDialog,
 } from "@/infrastructure/state/ui-store";
 import {
@@ -244,10 +245,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
         !overMoment.phase
       ) {
         console.log("[DnD] Reordering within drawing board");
-        handleDrawingBoardReorder(
-          active.id as string,
-          over.id as string
-        );
+        handleDrawingBoardReorder(active.id as string, over.id as string);
         return;
       }
 
@@ -602,13 +600,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
       }
 
       // Update moment's phase
-      console.log(
-        `Setting moment ${momentId} phase to ${newPhase || "unset"}`
-      );
+      console.log(`Setting moment ${momentId} phase to ${newPhase || "unset"}`);
       moments$[momentId].phase.set(newPhase as Phase | null);
       moments$[momentId].updatedAt.set(new Date().toISOString());
     } else {
-      // Other grouping modes (created) are read-only
+      // Other grouping modes (attitude, created, tag) are read-only
+      // Note: attitude is read-only because it's inherited from habit/area
       console.log("Ignoring drop - grouping mode is read-only:", groupBy);
     }
 

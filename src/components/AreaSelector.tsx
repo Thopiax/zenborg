@@ -22,6 +22,7 @@ import { activeAreas$, areas$ } from "@/infrastructure/state/store";
 import { suggestEmojiForAreaName } from "@/lib/emoji-utils";
 
 interface AreaSelectorProps {
+  id?: string;
   open: boolean;
   selectedAreaId: string;
   onSelectArea: (areaId: string) => void;
@@ -68,6 +69,7 @@ function getRandomColor(): string {
  * - Clean, minimal UI
  */
 export function AreaSelector({
+  id,
   open,
   selectedAreaId,
   onSelectArea,
@@ -93,7 +95,12 @@ export function AreaSelector({
     const emoji = suggestEmojiForAreaName(trimmedName) || "🔵";
     const color = getRandomColor();
 
-    const result = createArea(trimmedName, color, emoji, maxOrder + 1);
+    const result = createArea({
+      name: trimmedName,
+      color,
+      emoji,
+      order: maxOrder + 1,
+    });
 
     if ("error" in result) {
       console.error("Failed to create area:", result.error);
@@ -134,7 +141,9 @@ export function AreaSelector({
         }
       }}
     >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverTrigger asChild id={id}>
+        {trigger}
+      </PopoverTrigger>
       <PopoverContent
         align="start"
         className="w-[300px] p-0"

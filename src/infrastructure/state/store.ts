@@ -1,6 +1,9 @@
 import { observable } from "@legendapp/state";
 import type { Area } from "@/domain/entities/Area";
+import type { CrystallizedRoutine } from "@/domain/entities/CrystallizedRoutine";
 import type { Cycle } from "@/domain/entities/Cycle";
+import type { Habit } from "@/domain/entities/Habit";
+import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
 
@@ -36,6 +39,12 @@ export const moments$ = observable<Record<string, Moment>>({});
 export const areas$ = observable<Record<string, Area>>({});
 
 /**
+ * Habits collection - keyed by habit ID
+ * Emergent patterns from repeated moments
+ */
+export const habits$ = observable<Record<string, Habit>>({});
+
+/**
  * Cycles collection - keyed by cycle ID
  */
 export const cycles$ = observable<Record<string, Cycle>>({});
@@ -44,6 +53,20 @@ export const cycles$ = observable<Record<string, Cycle>>({});
  * Phase configurations collection - keyed by config ID
  */
 export const phaseConfigs$ = observable<Record<string, PhaseConfig>>({});
+
+/**
+ * Crystallized routines collection - keyed by routine ID
+ * Moments that have graduated to "being" attitude
+ */
+export const crystallizedRoutines$ = observable<
+  Record<string, CrystallizedRoutine>
+>({});
+
+/**
+ * Metric logs collection - keyed by log ID
+ * Performance tracking entries for PUSHING attitude moments
+ */
+export const metricLogs$ = observable<Record<string, MetricLog>>({});
 
 // ============================================================================
 // History State
@@ -144,6 +167,40 @@ export const activeAreas$ = observable(() => {
 });
 
 /**
+ * All archived areas, sorted by updatedAt (most recently archived first)
+ * Computed from areas$ - automatically updates when areas change
+ */
+export const archivedAreas$ = observable(() => {
+  const allAreas = areas$.get();
+  return Object.values(allAreas)
+    .filter((area) => area.isArchived)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+});
+
+/**
+ * All active (non-archived) habits, sorted by order
+ * Computed from habits$ - automatically updates when habits change
+ * Archived habits are filtered out to keep the UI clean
+ */
+export const activeHabits$ = observable(() => {
+  const allHabits = habits$.get();
+  return Object.values(allHabits)
+    .filter((habit) => !habit.isArchived)
+    .sort((a, b) => a.order - b.order);
+});
+
+/**
+ * All archived habits, sorted by updatedAt (most recently archived first)
+ * Computed from habits$ - automatically updates when habits change
+ */
+export const archivedHabits$ = observable(() => {
+  const allHabits = habits$.get();
+  return Object.values(allHabits)
+    .filter((habit) => habit.isArchived)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+});
+
+/**
  * Moments grouped by day
  * Useful for timeline rendering
  */
@@ -181,13 +238,175 @@ export const momentsByDayAndPhase$ = observable(() => {
   }, {} as Record<string, Record<string, Moment[]>>);
 });
 
+/**
+ * All unique tags across all moments, sorted alphabetically
+ * Computed from moments$ - automatically updates when moments change
+ */
+export const allTags$ = observable(() => {
+  const moments = moments$.get();
+  const tagsSet = new Set<string>();
+
+  for (const moment of Object.values(moments)) {
+    if (!moment.tags) continue;
+
+    for (const tag of moment.tags) {
+      tagsSet.add(tag);
+    }
+  }
+
+  return Array.from(tagsSet).sort();
+});
+
+/**
+ * Tag usage count - how many moments have each tag
+ * Returns structure: { "running": 8, "creative": 5, ... }
+ */
+export const tagUsageCount$ = observable(() => {
+  const moments = moments$.get();
+  const counts: Record<string, number> = {};
+
+  for (const moment of Object.values(moments)) {
+    if (!moment.tags) continue;
+
+    for (const tag of moment.tags) {
+      counts[tag] = (counts[tag] || 0) + 1;
+    }
+  }
+
+  return counts;
+});
+
+/**
+ * Moments grouped by tag
+ * Returns structure: { "running": [...moments], "creative": [...moments] }
+ */
+export const momentsByTag$ = observable(() => {
+  const moments = moments$.get();
+  const byTag: Record<string, Moment[]> = {};
+
+  for (const moment of Object.values(moments)) {
+    if (!moment.tags) continue;
+    for (const tag of moment.tags) {
+      if (!byTag[tag]) {
+        byTag[tag] = [];
+      }
+      byTag[tag].push(moment);
+    }
+  }
+
+  return byTag;
+});
+
+// ============================================================================
+// Unified Tag Observables (Moments + Areas + Habits)
+// ============================================================================
+
+/**
+ * All unique tags across moments, areas, and habits, sorted alphabetically
+ * Computed from moments$, areas$, habits$ - automatically updates when any change
+ */
+export const allUnifiedTags$ = observable(() => {
+  const moments = moments$.get();
+  const areas = areas$.get();
+  const habits = habits$.get();
+  const tagsSet = new Set<string>();
+
+  // Collect tags from moments
+  for (const moment of Object.values(moments)) {
+    if (!moment.tags) continue;
+    for (const tag of moment.tags) {
+      tagsSet.add(tag);
+    }
+  }
+
+  // Collect tags from areas
+  for (const area of Object.values(areas)) {
+    if (!area.tags) continue;
+    for (const tag of area.tags) {
+      tagsSet.add(tag);
+    }
+  }
+
+  // Collect tags from habits
+  for (const habit of Object.values(habits)) {
+    if (!habit.tags) continue;
+    for (const tag of habit.tags) {
+      tagsSet.add(tag);
+    }
+  }
+
+  return Array.from(tagsSet).sort();
+});
+
+/**
+ * Unified tag usage count - how many entities (moments + areas + habits) have each tag
+ * Returns structure: { "running": 12, "creative": 8, ... }
+ */
+export const unifiedTagUsageCount$ = observable(() => {
+  const moments = moments$.get();
+  const areas = areas$.get();
+  const habits = habits$.get();
+  const counts: Record<string, number> = {};
+
+  // Count from moments
+  for (const moment of Object.values(moments)) {
+    if (!moment.tags) continue;
+    for (const tag of moment.tags) {
+      counts[tag] = (counts[tag] || 0) + 1;
+    }
+  }
+
+  // Count from areas
+  for (const area of Object.values(areas)) {
+    if (!area.tags) continue;
+    for (const tag of area.tags) {
+      counts[tag] = (counts[tag] || 0) + 1;
+    }
+  }
+
+  // Count from habits
+  for (const habit of Object.values(habits)) {
+    if (!habit.tags) continue;
+    for (const tag of habit.tags) {
+      counts[tag] = (counts[tag] || 0) + 1;
+    }
+  }
+
+  return counts;
+});
+
+/**
+ * Metric logs grouped by moment ID
+ * Returns structure: { "moment-id": [...logs], ... }
+ */
+export const metricLogsByMoment$ = observable(() => {
+  const logs = metricLogs$.get();
+  const byMoment: Record<string, MetricLog[]> = {};
+
+  for (const log of Object.values(logs)) {
+    if (!byMoment[log.momentId]) {
+      byMoment[log.momentId] = [];
+    }
+    byMoment[log.momentId].push(log);
+  }
+
+  // Sort logs by date (newest first) for each moment
+  for (const momentId in byMoment) {
+    byMoment[momentId].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }
+
+  return byMoment;
+});
+
 // ============================================================================
 // Database Management
 // ============================================================================
 
 /**
  * Reset all data to initial state
- * WARNING: This permanently deletes all moments, areas, cycles, and settings
+ * WARNING: This permanently deletes all moments, areas, habits, cycles, crystallized routines, metric logs, and settings
  */
 export function resetDatabase() {
   console.log("[resetDatabase] Resetting all data...");
@@ -195,8 +414,11 @@ export function resetDatabase() {
   // Clear all observables
   moments$.set({});
   areas$.set({});
+  habits$.set({});
   cycles$.set({});
   phaseConfigs$.set({});
+  crystallizedRoutines$.set({});
+  metricLogs$.set({});
 
   console.log("[resetDatabase] Database reset complete");
 

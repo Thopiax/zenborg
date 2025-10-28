@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { StoreInitializer } from "./StoreInitializer";
+import { LayoutClient } from "@/components/LayoutClient";
 import { ThemeColorMeta } from "@/components/ThemeColorMeta";
 
 const geistSans = Geist({
@@ -20,10 +21,6 @@ export const metadata: Metadata = {
   description:
     "An attention orchestration system for budgeting moments toward personal flourishing",
   manifest: "/manifest.json",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafaf9" },
-    { media: "(prefers-color-scheme: dark)", color: "#1c1917" },
-  ],
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -47,6 +44,10 @@ export const viewport = {
   userScalable: false,
   viewportFit: "cover", // Respect safe areas (notch, home bar)
   colorScheme: "light dark", // Enable iOS system theme detection
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafaf9" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1917" },
+  ],
 };
 
 export default function RootLayout({
@@ -68,7 +69,7 @@ export default function RootLayout({
         >
           <ThemeColorMeta />
           <StoreInitializer />
-          {children}
+          <LayoutClient>{children}</LayoutClient>
         </ThemeProvider>
       </body>
     </html>
