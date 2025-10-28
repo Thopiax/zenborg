@@ -1,3 +1,4 @@
+import type { Attitude } from "../value-objects/Attitude";
 import type { Moment } from "./Moment";
 
 /**
@@ -13,6 +14,8 @@ import type { Moment } from "./Moment";
 export interface Area {
   readonly id: string;
   name: string;
+  attitude: Attitude | null; // Default relationship mode
+  tags: string[]; // Meta-grouping tags
   color: string; // hex color
   emoji: string;
   isDefault: boolean; // true for the 5 seeded defaults
@@ -33,6 +36,8 @@ export type AreaResult = Area | { error: string };
 export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
   {
     name: "Wellness",
+    attitude: null,
+    tags: [],
     color: "#10b981",
     emoji: "🧘",
     isDefault: true,
@@ -41,6 +46,8 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
   },
   {
     name: "Craft",
+    attitude: null,
+    tags: [],
     color: "#3b82f6",
     emoji: "🎨",
     isDefault: true,
@@ -49,6 +56,8 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
   },
   {
     name: "Social",
+    attitude: null,
+    tags: [],
     color: "#f97316",
     emoji: "🤝",
     isDefault: true,
@@ -57,6 +66,8 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
   },
   {
     name: "Joyful",
+    attitude: null,
+    tags: [],
     color: "#eab308",
     emoji: "😄",
     isDefault: true,
@@ -65,6 +76,8 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
   },
   {
     name: "Introspective",
+    attitude: null,
+    tags: [],
     color: "#6b7280",
     emoji: "🤔",
     isDefault: true,
@@ -73,6 +86,8 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
   },
   {
     name: "Chore",
+    attitude: null,
+    tags: [],
     color: "#8b5cf6",
     emoji: "🧹",
     isDefault: true,
@@ -98,20 +113,32 @@ export function getDefaultAreas(): Area[] {
 }
 
 /**
+ * Normalizes tag to lowercase with hyphens
+ */
+function normalizeAreaTag(tag: string): string {
+  return tag.toLowerCase().trim().replace(/\s+/g, "-");
+}
+
+/**
+ * Props for creating an area
+ */
+export interface CreateAreaProps {
+  name: string;
+  color: string;
+  emoji: string;
+  order: number;
+  attitude?: Attitude | null;
+  tags?: string[];
+}
+
+/**
  * Creates a new custom area
  *
- * @param name - Area name
- * @param color - Hex color code
- * @param emoji - Single emoji character
- * @param order - Display order
- * @returns New area
+ * @param props - Area creation parameters
+ * @returns New area or error if validation fails
  */
-export function createArea(
-  name: string,
-  color: string,
-  emoji: string,
-  order: number
-): AreaResult {
+export function createArea(props: CreateAreaProps): AreaResult {
+  const { name, color, emoji, order, attitude = null, tags = [] } = props;
   const trimmedName = name.trim();
 
   if (!trimmedName) {
@@ -135,6 +162,8 @@ export function createArea(
   return {
     id: crypto.randomUUID(),
     name: trimmedName,
+    attitude,
+    tags: tags.map(normalizeAreaTag),
     color: color.toLowerCase(),
     emoji: emoji.trim(),
     isDefault: false,
@@ -154,7 +183,9 @@ export function createArea(
  */
 export function updateArea(
   area: Area,
-  updates: Partial<Pick<Area, "name" | "color" | "emoji" | "order">>
+  updates: Partial<
+    Pick<Area, "name" | "color" | "emoji" | "order" | "attitude" | "tags">
+  >
 ): AreaResult {
   if (updates.name !== undefined) {
     const trimmedName = updates.name.trim();
@@ -187,6 +218,7 @@ export function updateArea(
     name: updates.name ? updates.name.trim() : area.name,
     color: updates.color ? updates.color.toLowerCase() : area.color,
     emoji: updates.emoji ? updates.emoji.trim() : area.emoji,
+    tags: updates.tags ? updates.tags.map(normalizeAreaTag) : area.tags,
     updatedAt: new Date().toISOString(),
   };
 }
