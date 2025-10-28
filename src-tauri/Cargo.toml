@@ -23,3 +23,8 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.9.1", features = [] }
 tauri-plugin-log = "2"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.27"
+yrs = "0.21"
+futures-util = "0.3"
+mdns-sd = "0.11"
