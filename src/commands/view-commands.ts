@@ -1,5 +1,5 @@
 import { Command } from "./types";
-import { drawingBoardExpanded$, isCommandPaletteOpen$ } from "@/infrastructure/state/ui-store";
+import { drawingBoardExpanded$, isCommandPaletteOpen$, openGardenSettings } from "@/infrastructure/state/ui-store";
 
 export const viewCommands: Command[] = [
   {
@@ -44,6 +44,16 @@ export const viewCommands: Command[] = [
     action: () => {
       // Open settings dialog
       console.log("Open settings");
+    }
+  },
+  {
+    id: "view.garden",
+    label: "Garden Sync Settings",
+    shortcut: ":garden",
+    category: "Views",
+    keywords: ["sync", "webrtc", "p2p", "portal", "network", "devices"],
+    action: () => {
+      openGardenSettings();
     }
   }
 ];

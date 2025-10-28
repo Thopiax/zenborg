@@ -335,3 +335,140 @@ export function switchToManualSort() {
  * Ephemeral - not persisted
  */
 export const isCommandPaletteOpen$ = observable<boolean>(false);
+
+// ============================================================================
+// Garden Sync Settings (Yjs WebRTC P2P Sync)
+// ============================================================================
+
+/**
+ * Garden sync configuration
+ * Persisted to localStorage
+ *
+ * The "garden pattern" implements local-first sync where a primary device
+ * (desktop) acts as a "garden" and portals (laptop/phone) sync via WebRTC
+ * when on the same network.
+ */
+export interface GardenSyncSettings {
+	/**
+	 * Whether garden sync is enabled
+	 */
+	enabled: boolean;
+
+	/**
+	 * Device role: 'garden' (primary) or 'portal' (secondary)
+	 */
+	role: "garden" | "portal";
+
+	/**
+	 * Room name for P2P sync (e.g., 'ABC123')
+	 * All devices with same room name will sync together
+	 */
+	roomName: string;
+
+	/**
+	 * Optional encryption password for secure sync
+	 * If provided, only devices with same password can connect
+	 */
+	password: string | null;
+
+	/**
+	 * Enable debug logging for sync
+	 */
+	debug: boolean;
+}
+
+/**
+ * Garden sync settings observable
+ * Persisted to localStorage via persistence.ts
+ */
+export const gardenSyncSettings$ = observable<GardenSyncSettings>({
+	enabled: false,
+	role: "portal",
+	roomName: "",
+	password: null,
+	debug: false,
+});
+
+/**
+ * Garden sync connection status
+ * Ephemeral - not persisted
+ * Updated by YjsGardenSync adapter
+ */
+export type GardenSyncStatus =
+	| "disconnected"
+	| "connecting"
+	| "connected"
+	| "syncing"
+	| "error";
+
+export const gardenSyncStatus$ = observable<GardenSyncStatus>("disconnected");
+
+/**
+ * Number of connected peers in garden sync
+ * Ephemeral - not persisted
+ * Updated by YjsGardenSync adapter
+ */
+export const gardenSyncPeers$ = observable<number>(0);
+
+/**
+ * Settings drawer state
+ * Controls the main settings drawer visibility
+ * Ephemeral - not persisted
+ */
+export const isSettingsDrawerOpen$ = observable<boolean>(false);
+
+/**
+ * Active settings accordion section
+ * Used to auto-expand a specific section when settings opens
+ * Ephemeral - not persisted
+ */
+export const activeSettingsSection$ = observable<string | null>(null);
+
+/**
+ * Helper function to open settings drawer
+ */
+export function openSettingsDrawer(section?: string) {
+	isSettingsDrawerOpen$.set(true);
+	if (section) {
+		activeSettingsSection$.set(section);
+	}
+}
+
+/**
+ * Helper function to close settings drawer
+ */
+export function closeSettingsDrawer() {
+	isSettingsDrawerOpen$.set(false);
+	activeSettingsSection$.set(null);
+}
+
+/**
+ * Helper function to open garden settings
+ * Opens the main settings drawer and expands the garden sync section
+ */
+export function openGardenSettings() {
+	openSettingsDrawer("garden");
+}
+
+/**
+ * Helper function to generate a random room name (6 characters)
+ * Format: ABC123 (3 uppercase letters + 3 digits)
+ */
+export function generateRoomName(): string {
+	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	const digits = "0123456789";
+
+	let roomName = "";
+
+	// 3 random letters
+	for (let i = 0; i < 3; i++) {
+		roomName += letters.charAt(Math.floor(Math.random() * letters.length));
+	}
+
+	// 3 random digits
+	for (let i = 0; i < 3; i++) {
+		roomName += digits.charAt(Math.floor(Math.random() * digits.length));
+	}
+
+	return roomName;
+}

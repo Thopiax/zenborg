@@ -17,7 +17,7 @@ import {
   moments$,
   phaseConfigs$,
 } from "./store";
-import { drawingBoardGroupBy$, lastUsedAreaId$ } from "./ui-store";
+import { drawingBoardGroupBy$, gardenSyncSettings$, lastUsedAreaId$ } from "./ui-store";
 
 /**
  * Flag to ensure persistence is only configured once
@@ -158,6 +158,15 @@ export function configurePersistence(): void {
       persistLocalStorageOptions({
         persist: {
           name: "zenborg_drawingBoardGroupBy",
+        },
+      })
+    );
+
+    syncObservable(
+      gardenSyncSettings$,
+      persistLocalStorageOptions({
+        persist: {
+          name: "zenborg_gardenSyncSettings",
         },
       })
     );
