@@ -11,9 +11,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
-import { useMomentManager } from "@/contexts/MomentManagerContext";
 import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Moment, Horizon } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { selectionState$ } from "@/infrastructure/state/selection";
@@ -25,6 +24,7 @@ import {
 import {
   drawingBoardExpanded$,
   isDuplicateMode$,
+  openMomentFormCreate,
 } from "@/infrastructure/state/ui-store";
 import {
   ariaLabels,
@@ -79,7 +79,6 @@ export function TimelineCell({
   const allMoments = use$(moments$);
   const allAreas = use$(areas$);
   const unallocated = use$(unallocatedMoments$);
-  const { handleOpenCreateModal } = useMomentManager();
 
   // Get moments for this cell
   const cellMoments: Moment[] = Object.values(allMoments)
@@ -103,7 +102,12 @@ export function TimelineCell({
 
   // Handle empty cell click - opens Drawing Board or create modal
   const handleEmptyCellClick = () => {
-    handleOpenCreateModal(day, phase, undefined, "this-week");
+    openMomentFormCreate({
+      day,
+      phaseStr: phase,
+      phase: phase as Phase,
+      horizon: "this-week" as Horizon,
+    });
   };
 
   // Generate accessible label

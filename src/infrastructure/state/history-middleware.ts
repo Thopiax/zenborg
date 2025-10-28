@@ -68,20 +68,27 @@ export function updateMomentWithHistory(
     return;
   }
 
+  // Extract actual previous values for the fields being updated
+  const beforeValues: Partial<Moment> = {};
+  for (const key of Object.keys(updates) as Array<keyof Moment>) {
+    (beforeValues as any)[key] = before[key];
+  }
+
   // Apply: Update in store
-  moments$[momentId].set({
+  const updated = {
     ...before,
     ...updates,
     updatedAt: new Date().toISOString(),
-  });
+  };
+  moments$[momentId].set(updated);
 
-  // Record to history
+  // Record to history with CORRECT before/after values
   const operation: UpdateMomentOperation = {
     type: "UPDATE_MOMENT",
     timestamp: Date.now(),
     momentId,
-    before: updates, // Only store the fields that changed
-    after: updates,
+    before: beforeValues, // Actual previous values
+    after: updates, // New values
   };
   recordOperation(operation);
 
