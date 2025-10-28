@@ -175,7 +175,7 @@ export class YjsGardenSync {
 		// Create WebRTC provider
 		this.provider = new WebrtcProvider(this.config.roomName, this.ydoc, {
 			signaling: this.config.signalingServers,
-			password: this.config.password,
+			password: this.config.password ?? undefined,
 			awareness: null, // We don't need cursor awareness
 			maxConns: this.config.maxConnections,
 		});
