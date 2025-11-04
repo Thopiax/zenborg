@@ -258,8 +258,9 @@
   --color-focus-cell: var(--focus-cell);
 
   /* Fonts */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-space-grotesk);
+  --font-mono: var(--font-space-grotesk);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -564,4 +565,18 @@ button {
 @layer utilities {
   /* Use calc(var(--spacing) * N) for custom spacing */
   /* Example: padding: calc(var(--spacing) * 4) = 16px */
+}
+
+/* Font Family Utilities */
+@layer utilities {
+  .font-heading {
+    font-family: var(--font-heading), system-ui, sans-serif;
+  }
+
+  /* Apply Space Grotesk to headings and moment names */
+  h1, h2, h3, h4, h5, h6,
+  [data-moment-name],
+  [data-area-name] {
+    font-family: var(--font-heading), system-ui, sans-serif;
+  }
 }
