@@ -238,7 +238,7 @@ export function PlanAreaCard({
                           handleSaveName();
                         }}
                         autoFocus
-                        className="w-full px-2 py-1 text-xl font-medium bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
+                        className="w-full px-2 py-1 text-xl font-mono font-medium bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
                       />
                     }
                   />
@@ -246,7 +246,7 @@ export function PlanAreaCard({
                   <button
                     type="button"
                     onClick={() => setIsEditingName(true)}
-                    className="w-full text-left px-2 py-1 text-xl font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
+                    className="w-full text-left px-2 py-1 text-xl font-mono font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
                   >
                     {area.name}
                   </button>

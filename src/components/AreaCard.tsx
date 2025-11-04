@@ -221,7 +221,7 @@ export function AreaCard({
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
           autoFocus={isNew}
-          className="flex-1 px-2 py-1 bg-transparent hover:bg-stone-50 dark:hover:bg-stone-900 focus:bg-stone-50 dark:focus:bg-stone-900 rounded border-0 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 transition-all font-medium"
+          className="flex-1 px-2 py-1 bg-transparent hover:bg-stone-50 dark:hover:bg-stone-900 focus:bg-stone-50 dark:focus:bg-stone-900 rounded border-0 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 transition-all font-mono font-medium"
           placeholder="Area name..."
           disabled={isArchived}
         />
