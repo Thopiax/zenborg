@@ -2,17 +2,22 @@
 
 import { observer } from "@legendapp/state/react";
 import {
+  Check,
   ChevronRight,
+  Copy,
   Download,
   Info,
   Keyboard,
   Monitor,
   Moon,
+  RefreshCw,
   RotateCcw,
   Settings2,
   Smartphone,
   Sun,
   Upload,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -35,6 +40,12 @@ import {
   importGardenData,
 } from "@/infrastructure/state/export-import";
 import { resetStore } from "@/infrastructure/state/initialize";
+import {
+  gardenSyncSettings$,
+  gardenSyncStatus$,
+  gardenSyncPeers$,
+  generateRoomName,
+} from "@/infrastructure/state/ui-store";
 import { ConfirmableAction } from "./ConfirmableAction";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
@@ -359,6 +370,260 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                       </div>
                     )}
                   </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Garden Sync Section */}
+            <AccordionItem
+              value="garden"
+              className="border-stone-200 dark:border-stone-700"
+            >
+              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
+                <div className="flex items-center gap-2">
+                  {gardenSyncSettings$.enabled.get() && gardenSyncStatus$.get() === "connected" ? (
+                    <Wifi className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                  ) : (
+                    <WifiOff className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                  )}
+                  <span>Garden Sync</span>
+                  {gardenSyncSettings$.enabled.get() && gardenSyncStatus$.get() === "connected" && (
+                    <span className="text-xs text-stone-500 dark:text-stone-500">
+                      ({gardenSyncPeers$.get()} peers)
+                    </span>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4 px-2">
+                  {/* Description */}
+                  <div className="p-3 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
+                    <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+                      <strong className="text-stone-900 dark:text-stone-100">
+                        Local-first sync
+                      </strong>
+                      : Connect devices on the same network. Your desktop acts as a "garden" and your
+                      laptop/phone as "portals" that sync together.
+                    </p>
+                    {mounted && (
+                      <p className="mt-2 text-xs text-stone-500 dark:text-stone-500 font-mono">
+                        {typeof window !== "undefined" && "__TAURI__" in window
+                          ? "Mode: WebSocket (Tauri local server)"
+                          : "Mode: WebRTC P2P (Web browser)"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Enable Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                        Enable Garden Sync
+                      </div>
+                      <div className="text-xs text-stone-500 dark:text-stone-500">
+                        Sync with other devices
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        gardenSyncSettings$.enabled.set(!gardenSyncSettings$.enabled.get());
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        gardenSyncSettings$.enabled.get()
+                          ? "bg-stone-900 dark:bg-stone-100"
+                          : "bg-stone-300 dark:bg-stone-700"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-stone-900 transition-transform ${
+                          gardenSyncSettings$.enabled.get() ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {gardenSyncSettings$.enabled.get() && (
+                    <>
+                      {/* Device Role Selector */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-stone-900 dark:text-stone-100 block">
+                          Device Role
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => gardenSyncSettings$.role.set("garden")}
+                            className={`px-3 py-2.5 border rounded-lg transition-colors text-left ${
+                              gardenSyncSettings$.role.get() === "garden"
+                                ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
+                                : "border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800"
+                            }`}
+                          >
+                            <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                              Garden
+                            </div>
+                            <div className="text-xs text-stone-500 dark:text-stone-500">
+                              Primary device
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => gardenSyncSettings$.role.set("portal")}
+                            className={`px-3 py-2.5 border rounded-lg transition-colors text-left ${
+                              gardenSyncSettings$.role.get() === "portal"
+                                ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
+                                : "border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800"
+                            }`}
+                          >
+                            <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                              Portal
+                            </div>
+                            <div className="text-xs text-stone-500 dark:text-stone-500">
+                              Secondary device
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Room Name Input */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-stone-900 dark:text-stone-100 block">
+                          Room Name
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={gardenSyncSettings$.roomName.get()}
+                            onChange={(e) => gardenSyncSettings$.roomName.set(e.target.value.toUpperCase())}
+                            placeholder="ABC123"
+                            maxLength={6}
+                            className="flex-1 px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-sm font-mono uppercase placeholder:text-stone-400 dark:placeholder:text-stone-600 focus:outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => gardenSyncSettings$.roomName.set(generateRoomName())}
+                            className="px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                            title="Generate random room name"
+                          >
+                            <RefreshCw className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const roomName = gardenSyncSettings$.roomName.get();
+                              if (roomName) {
+                                await navigator.clipboard.writeText(roomName);
+                              }
+                            }}
+                            className="px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                            title="Copy room name"
+                            disabled={!gardenSyncSettings$.roomName.get()}
+                          >
+                            <Copy className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-stone-500 dark:text-stone-500">
+                          Share this code with other devices to sync
+                        </p>
+                      </div>
+
+                      {/* Password (Optional) */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-stone-900 dark:text-stone-100 block">
+                          Password (Optional)
+                        </label>
+                        <input
+                          type="password"
+                          value={gardenSyncSettings$.password.get() || ""}
+                          onChange={(e) => gardenSyncSettings$.password.set(e.target.value || null)}
+                          placeholder="Leave empty for no encryption"
+                          className="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-sm placeholder:text-stone-400 dark:placeholder:text-stone-600 focus:outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
+                        />
+                        <p className="text-xs text-stone-500 dark:text-stone-500">
+                          Encrypt sync data (all devices must use same password)
+                        </p>
+                      </div>
+
+                      {/* Connection Status */}
+                      <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {gardenSyncStatus$.get() === "connected" ? (
+                              <>
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                <span className="text-sm text-stone-900 dark:text-stone-100">
+                                  Connected
+                                </span>
+                              </>
+                            ) : gardenSyncStatus$.get() === "connecting" ? (
+                              <>
+                                <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                <span className="text-sm text-stone-900 dark:text-stone-100">
+                                  Connecting...
+                                </span>
+                              </>
+                            ) : gardenSyncStatus$.get() === "syncing" ? (
+                              <>
+                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                <span className="text-sm text-stone-900 dark:text-stone-100">
+                                  Syncing...
+                                </span>
+                              </>
+                            ) : gardenSyncStatus$.get() === "error" ? (
+                              <>
+                                <div className="w-2 h-2 rounded-full bg-red-500" />
+                                <span className="text-sm text-red-600 dark:text-red-400">
+                                  Connection Error
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-2 h-2 rounded-full bg-stone-400" />
+                                <span className="text-sm text-stone-500 dark:text-stone-500">
+                                  Disconnected
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {gardenSyncStatus$.get() === "connected" && (
+                            <span className="text-xs text-stone-500 dark:text-stone-500">
+                              {gardenSyncPeers$.get()} {gardenSyncPeers$.get() === 1 ? "peer" : "peers"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Debug Mode Toggle */}
+                      <div className="flex items-center justify-between pt-2">
+                        <div>
+                          <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                            Debug Mode
+                          </div>
+                          <div className="text-xs text-stone-500 dark:text-stone-500">
+                            Show sync logs in console
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            gardenSyncSettings$.debug.set(!gardenSyncSettings$.debug.get());
+                          }}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            gardenSyncSettings$.debug.get()
+                              ? "bg-stone-900 dark:bg-stone-100"
+                              : "bg-stone-300 dark:bg-stone-700"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-stone-900 transition-transform ${
+                              gardenSyncSettings$.debug.get() ? "translate-x-6" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>

@@ -60,7 +60,11 @@
     "react-dom": "19.1.0",
     "react-hotkeys-hook": "^5.2.1",
     "tailwind-merge": "^3.3.1",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "y-protocols": "^1.0.6",
+    "y-webrtc": "^10.3.0",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.27"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",

@@ -16,7 +16,7 @@ export type UnallocationCommand = {
 
 export type NavigationCommand = {
   type: "navigate";
-  destination: "area" | "settings" | "help";
+  destination: "area" | "settings" | "help" | "garden";
 };
 
 export type Command =
@@ -66,6 +66,7 @@ const PHASE_MAP: Record<string, Phase> = {
  * Navigation commands:
  * - :area → open area management
  * - :settings → open phase settings
+ * - :garden → open garden sync settings
  * - :help → show help
  *
  * @param input - Command string (without leading colon)
@@ -90,6 +91,10 @@ export function parseCommand(input: string): CommandResult {
 
   if (trimmed === "settings") {
     return { type: "navigate", destination: "settings" };
+  }
+
+  if (trimmed === "garden") {
+    return { type: "navigate", destination: "garden" };
   }
 
   if (trimmed === "help") {
