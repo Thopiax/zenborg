@@ -261,16 +261,16 @@ export function PlanAreaCard({
       {/* Actions Row - ColorPicker and Archive */}
       <div className="group px-4 py-2 flex items-center justify-between bg-stone-50 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-700">
         {/* Color Picker - Always visible on small screens, hover only on lg+ */}
-        <div className="flex items-center justify-center opacity-100 transition-opacity">
+        <div className="flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
           <ColorPicker value={area.color} onChange={handleColorChange} />
         </div>
 
-        {/* Archive Button - Only show for non-default areas */}
+        {/* Archive Button - Always visible on mobile, hover-only on desktop, only show for non-default areas */}
         {!area.isDefault ? (
           <button
             type="button"
             onClick={() => onArchiveArea(area.id)}
-            className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors opacity-100"
+            className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
             title="Archive area"
           >
             <Archive className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
