@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AreaManagementModal } from "@/components/AreaManagementModal";
 import { CommandPalette } from "@/components/CommandPalette";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
+import { ModeSelector } from "@/components/ModeSelector";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { ToolIndicator } from "@/components/ToolIndicator";
@@ -96,6 +97,9 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
+
+      {/* Mode Selector - Fixed top-center */}
+      <ModeSelector />
 
       {/* Tool Indicator - Fixed top-right */}
       <div
