@@ -54,29 +54,6 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
   // Command Palette state
   const isCommandPaletteOpen = useSelector(() => isCommandPaletteOpen$.get());
 
-  // Global keyboard shortcuts for tool navigation
-  const handleKeyDown = (e: KeyboardEvent) => {
-    // Cmd+1/2/3 for tool navigation
-    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
-      if (e.key === "1") {
-        e.preventDefault();
-        router.push("/plan");
-      } else if (e.key === "2") {
-        e.preventDefault();
-        router.push("/cultivate");
-      } else if (e.key === "3") {
-        e.preventDefault();
-        router.push("/harvest");
-      }
-    }
-  };
-
-  // Register global keyboard listener
-  if (typeof window !== "undefined") {
-    window.removeEventListener("keydown", handleKeyDown);
-    window.addEventListener("keydown", handleKeyDown);
-  }
-
   // Archive area handler
   const handleConfirmArchiveArea = () => {
     if (!archiveAreaState.areaId) return;
