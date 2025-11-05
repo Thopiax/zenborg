@@ -4,8 +4,8 @@
   "description": "An attention orchestration system for budgeting moments toward personal flourishing",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fafaf9",
-  "theme_color": "#fafaf9",
+  "background_color": "#292524",
+  "theme_color": "#292524",
   "orientation": "any",
   "prefer_related_applications": false,
   "icons": [
