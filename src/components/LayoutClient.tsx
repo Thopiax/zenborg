@@ -1,7 +1,6 @@
 "use client";
 
 import { use$, useSelector } from "@legendapp/state/react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AreaManagementModal } from "@/components/AreaManagementModal";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -38,8 +37,6 @@ import {
  * - Global keyboard shortcuts (Cmd+1/2/3)
  */
 export function LayoutClient({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
   // Enable global keyboard shortcuts (Cmd+K, etc.) - registers once globally
   useGlobalKeyboard();
 
