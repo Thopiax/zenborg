@@ -16,7 +16,7 @@ export function ModeSelector() {
   const router = useRouter();
 
   const modes = [
-    { name: "Plant", path: "/plan" },
+    { name: "Plant", path: "/plant" },
     { name: "Cultivate", path: "/cultivate" },
     { name: "Harvest", path: "/harvest" },
   ] as const;
