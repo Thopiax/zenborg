@@ -3,13 +3,12 @@
 import { usePathname, useRouter } from "next/navigation";
 
 /**
- * ModeSelector - Centered top bar for switching between Plant, Cultivate, Harvest
+ * ModeSelector - Minimal centered text navigation for Plant, Cultivate, Harvest
  *
  * Design:
- * - Calm, minimal design using stone tones
- * - Centered horizontally
- * - Active mode is indicated with darker background
- * - Clickable to switch modes
+ * - Ultra-minimal: just text, no backgrounds or borders
+ * - Inactive: grey text
+ * - Active: bold + underline
  * - Keyboard shortcuts: Cmd+1/2/3
  */
 export function ModeSelector() {
@@ -35,7 +34,7 @@ export function ModeSelector() {
         top: "max(1rem, env(safe-area-inset-top) + 0.5rem)",
       }}
     >
-      <div className="flex items-center gap-1 bg-stone-100/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-full px-2 py-1.5 shadow-sm border border-stone-200/50 dark:border-stone-800/50">
+      <div className="flex items-center gap-8">
         {modes.map((mode) => {
           const isActive = currentMode === mode.name;
           return (
@@ -43,11 +42,11 @@ export function ModeSelector() {
               key={mode.path}
               onClick={() => router.push(mode.path)}
               className={`
-                px-4 py-1.5 rounded-full text-sm font-mono transition-all duration-200
+                text-sm transition-colors duration-200
                 ${
                   isActive
-                    ? "bg-stone-800 dark:bg-stone-200 text-stone-50 dark:text-stone-900 shadow-sm"
-                    : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200/50 dark:hover:bg-stone-800/50"
+                    ? "font-bold underline underline-offset-4 text-stone-900 dark:text-stone-100"
+                    : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-400"
                 }
               `}
             >
