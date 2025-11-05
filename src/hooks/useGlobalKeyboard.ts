@@ -1,13 +1,13 @@
 "use client";
 
 import { useSelector } from "@legendapp/state/react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { MomentCreationService } from "@/application/services/MomentCreationService";
 import { MomentUpdateService } from "@/application/services/MomentUpdateService";
 import { allCommands } from "@/commands";
-import type { Horizon, Moment } from "@/domain/entities/Moment";
+import type { Horizon } from "@/domain/entities/Moment";
 import { isMomentError } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
