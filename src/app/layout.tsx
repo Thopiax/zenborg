@@ -59,6 +59,75 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Blocking script to immediately apply theme before any rendering */}
+        {/* Critical for iOS PWA to detect system theme on first-gen devices */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const storageKey = 'zenborg-theme';
+                  const stored = localStorage.getItem(storageKey);
+                  const theme = stored || 'system';
+
+                  let resolvedTheme = theme;
+                  if (theme === 'system') {
+                    resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+
+                  // Apply immediately to prevent flash
+                  if (resolvedTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+
+                  // Set theme-color immediately for PWA
+                  const color = resolvedTheme === 'dark' ? '#1c1917' : '#fafaf9';
+                  let meta = document.querySelector('meta[name="theme-color"]:not([media])');
+                  if (!meta) {
+                    meta = document.createElement('meta');
+                    meta.setAttribute('name', 'theme-color');
+                    document.head.appendChild(meta);
+                  }
+                  meta.setAttribute('content', color);
+
+                  // Listen for system theme changes in PWA mode
+                  if ('matchMedia' in window) {
+                    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+                    const handleChange = (e) => {
+                      if (localStorage.getItem(storageKey) === 'system' || !localStorage.getItem(storageKey)) {
+                        const newTheme = e.matches ? 'dark' : 'light';
+                        if (newTheme === 'dark') {
+                          document.documentElement.classList.add('dark');
+                        } else {
+                          document.documentElement.classList.remove('dark');
+                        }
+                        const newColor = newTheme === 'dark' ? '#1c1917' : '#fafaf9';
+                        const metaEl = document.querySelector('meta[name="theme-color"]:not([media])');
+                        if (metaEl) {
+                          metaEl.setAttribute('content', newColor);
+                        }
+                      }
+                    };
+
+                    // Modern API
+                    if (mediaQuery.addEventListener) {
+                      mediaQuery.addEventListener('change', handleChange);
+                    } else {
+                      // Fallback for older iOS
+                      mediaQuery.addListener(handleChange);
+                    }
+                  }
+                } catch (e) {
+                  console.error('Theme initialization error:', e);
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
       >
