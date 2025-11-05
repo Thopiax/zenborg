@@ -287,17 +287,7 @@ const PlanPage = observer(() => {
       <LandscapePrompt />
 
       <div className="min-h-dvh h-dvh md:h-auto bg-background transition-colors flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-6">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-xl font-mono font-medium text-stone-900 dark:text-stone-100">
-              Plan
-            </h1>
-            <p className="text-sm font-mono text-stone-500 dark:text-stone-400 mt-1">
-              Design your habit system
-            </p>
-          </div>
-
+        <main className="flex-1 overflow-y-auto p-6 pt-16">
           {/* Area Cards Grid - Sortable */}
           <DndContext
             sensors={sensors}

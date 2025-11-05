@@ -6,9 +6,9 @@ import { useState } from "react";
 import { AreaManagementModal } from "@/components/AreaManagementModal";
 import { CommandPalette } from "@/components/CommandPalette";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
+import { ModeSelector } from "@/components/ModeSelector";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
-import { ToolIndicator } from "@/components/ToolIndicator";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,7 @@ import {
  * LayoutClient - Client-side layout components
  *
  * Provides:
- * - Tool indicator (top-right)
+ * - Mode selector (top-center)
  * - Hamburger menu
  * - Settings drawer
  * - Area management modal
@@ -97,16 +97,8 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
     <>
       {children}
 
-      {/* Tool Indicator - Fixed top-right */}
-      <div
-        className="fixed z-40"
-        style={{
-          top: "max(1rem, env(safe-area-inset-top) + 0.5rem)",
-          right: "max(5rem, env(safe-area-inset-right) + 5rem)",
-        }}
-      >
-        <ToolIndicator />
-      </div>
+      {/* Mode Selector - Fixed top-center */}
+      <ModeSelector />
 
       {/* Hamburger Menu Button - Fixed top-right with safe area support */}
       <div

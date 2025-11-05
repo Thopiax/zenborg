@@ -5,16 +5,12 @@
  */
 export default function HarvestPage() {
   return (
-    <div className="min-h-dvh h-dvh bg-background flex items-center justify-center">
-      <div className="text-center space-y-4 max-w-md px-6">
-        <h1 className="text-2xl font-mono text-stone-900 dark:text-stone-100">
-          Coming Soon
-        </h1>
-        <p className="text-sm text-stone-600 dark:text-stone-400 font-mono">
-          The Harvest tool will provide reflection on completed cycles and
-          allocation patterns.
-        </p>
-      </div>
+    <div className="min-h-dvh h-dvh bg-background transition-colors flex flex-col overflow-hidden">
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="text-sm text-stone-400 dark:text-stone-500">
+          Coming soon
+        </div>
+      </main>
     </div>
   );
 }
