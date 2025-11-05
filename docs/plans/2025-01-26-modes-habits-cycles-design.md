@@ -1,12 +1,11 @@
 # Modes, Habits, and Cycles Design
 
-**Date:** January 26, 2025
 **Status:** Approved
 **Phase:** Design
 
 ## Overview
 
-Zenborg evolves from a single-mode timeline into a three-mode system: Mapping (design habits and budget cycles), Compass (navigate time horizons and allocate moments), and Review (retrospect on cycles). This design introduces habits as templates for moments, cycle planning as budget allocation, and horizon views as temporal perspectives.
+Zenborg evolves from a single-mode timeline into a three-mode system: Plant (design habits and budget cycles), Cultivate (navigate time horizons and allocate moments), and Harvest (retrospect on cycles). This design introduces habits as templates for moments, cycle planning as budget allocation, and horizon views as temporal perspectives.
 
 ## Goals
 
@@ -19,15 +18,15 @@ Zenborg evolves from a single-mode timeline into a three-mode system: Mapping (d
 
 ### The Three Modes
 
-**Mapping** - Design your system. Create habits organized by areas. Budget habit cards across cycles. Desktop/tablet only.
+**Plant** - Design your system. Create habits organized by areas. Budget habit cards across cycles. Desktop/tablet only.
 
-**Compass** - Execute daily. Navigate four time horizons (far/medium/near/current). Allocate moments to timeline slots. Available on all devices.
+**Cultivate** - Execute daily. Navigate four time horizons (far/medium/near/current). Allocate moments to timeline slots. Available on all devices.
 
-**Review** - Reflect on cycles. View allocation balance through visual density. Examine patterns by area and habit. Desktop/tablet only.
+**Harvest** - Reflect on cycles. View allocation balance through visual density. Examine patterns by area and habit. Desktop/tablet only.
 
 ### Habits as Templates
 
-Habits replace the direct creation of moments. Users design habits in Mapping mode, then spawn moments from those templates in Compass mode. This separation keeps the system focused: design work happens deliberately at the desktop, execution happens anywhere.
+Habits replace the direct creation of moments. Users design habits in Plant mode, then spawn moments from those templates in Cultivate mode. This separation keeps the system focused: design work happens deliberately at the desktop, execution happens anywhere.
 
 A habit belongs to an area, inherits its color, and carries optional custom emoji. When you create a moment from a habit, the moment links back to its source but lives independently. Changing a habit name does not affect existing moments spawned from it.
 

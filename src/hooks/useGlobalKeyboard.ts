@@ -1,21 +1,20 @@
 "use client";
 
+import { useSelector } from "@legendapp/state/react";
+import { useRouter } from "next/router";
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { useSelector } from "@legendapp/state/react";
-import { allCommands } from "@/commands";
-import { momentFormState$ } from "@/infrastructure/state/ui-store";
 import { MomentCreationService } from "@/application/services/MomentCreationService";
 import { MomentUpdateService } from "@/application/services/MomentUpdateService";
+import { allCommands } from "@/commands";
 import type { Horizon, Moment } from "@/domain/entities/Moment";
 import { isMomentError } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
-import {
-  moments$,
-} from "@/infrastructure/state/store";
+import { moments$ } from "@/infrastructure/state/store";
 import {
   closeMomentForm,
+  momentFormState$,
 } from "@/infrastructure/state/ui-store";
 import { useFocusManager } from "./useFocusManager";
 
@@ -26,6 +25,7 @@ import { useFocusManager } from "./useFocusManager";
  * This ensures single source of truth for commands and shortcuts.
  */
 export function useGlobalKeyboard() {
+  const router = useRouter();
   const { focusMoment } = useFocusManager();
 
   // Application services for business logic
@@ -38,24 +38,67 @@ export function useGlobalKeyboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const globalShortcutsEnabled = useSelector(
-    () => !momentFormState$.open.get() && !isAreaSelectorOpen && !isAreaManagementOpen && !isSettingsOpen
+    () =>
+      !momentFormState$.open.get() &&
+      !isAreaSelectorOpen &&
+      !isAreaManagementOpen &&
+      !isSettingsOpen
   );
 
   // Register all commands from registry
-  for (const command of allCommands) {
-    useHotkeys(
-      command.shortcut,
-      (e) => {
-        e.preventDefault();
+  useHotkeys(
+    allCommands.map((cmd) => cmd.shortcut),
+    (e, handler) => {
+      e.preventDefault();
+      const command = allCommands.find(
+        (cmd) => cmd.shortcut === handler.keys?.join("+")
+      );
+      if (command) {
         command.action();
-      },
-      {
-        enabled: globalShortcutsEnabled,
-        enableOnFormTags: false,
-      },
-      [command.action]
-    );
-  }
+      }
+    },
+    {
+      enabled: globalShortcutsEnabled,
+      enableOnFormTags: false,
+    },
+    [allCommands]
+  );
+
+  useHotkeys(
+    "meta+1, ctrl+1",
+    (e) => {
+      e.preventDefault();
+      router.push("/plant");
+    },
+    {
+      enabled: globalShortcutsEnabled,
+      enableOnFormTags: false,
+    }
+  );
+
+  useHotkeys(
+    "meta+2, ctrl+2",
+    (e) => {
+      e.preventDefault();
+      window.location.href = "/cultivate";
+    },
+    {
+      enabled: globalShortcutsEnabled,
+      enableOnFormTags: false,
+    }
+  );
+
+  useHotkeys(
+    "meta+3, ctrl+3",
+    (e) => {
+      e.preventDefault();
+      router.push("/harvest");
+    },
+    {
+      enabled: globalShortcutsEnabled,
+      enableOnFormTags: false,
+    }
+  );
 
   // ==================== HELPER FUNCTIONS ====================
 
@@ -98,7 +141,9 @@ export function useGlobalKeyboard() {
     // Handle result
     if (!isMomentError(result)) {
       // Infrastructure operation: persist with history
-      const { createMomentWithHistory } = require("@/infrastructure/state/store");
+      const {
+        createMomentWithHistory,
+      } = require("@/infrastructure/state/store");
       createMomentWithHistory(result);
 
       // UI operation: focus the new moment
@@ -172,7 +217,9 @@ export function useGlobalKeyboard() {
     const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {
       // Delete the moment with history tracking
-      const { deleteMomentWithHistory } = require("@/infrastructure/state/store");
+      const {
+        deleteMomentWithHistory,
+      } = require("@/infrastructure/state/store");
       deleteMomentWithHistory(editingMomentId);
       closeMomentForm();
     }

@@ -543,7 +543,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
               )}
 
             {/* Tag Autocomplete - Shows below entire input */}
-            {/* {isTagAutocompleteOpen && (
+            {isTagAutocompleteOpen && (
               <TagAutocomplete
                 open={isTagAutocompleteOpen}
                 searchValue={currentTagSearch}
@@ -556,7 +556,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 collisionBoundary={dialogRef.current}
                 trigger={<div className="w-full" />}
               />
-            )} */}
+            )}
 
             {/* Tag Badges */}
             <TagBadges
