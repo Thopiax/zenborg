@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 /**
  * ModeSelector - Minimal centered text navigation for Plant, Cultivate, Harvest
@@ -40,15 +41,14 @@ export function ModeSelector() {
           return (
             <button
               key={mode.path}
+              type="button"
               onClick={() => router.push(mode.path)}
-              className={`
-                text-sm transition-colors duration-200
-                ${
-                  isActive
-                    ? "font-bold underline underline-offset-4 text-stone-900 dark:text-stone-100"
-                    : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-400"
-                }
-              `}
+              className={cn(
+                "text-sm transition-colors duration-200",
+                isActive
+                  ? "font-bold underline underline-offset-4 text-stone-900 dark:text-stone-100"
+                  : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-400"
+              )}
             >
               {mode.name}
             </button>
