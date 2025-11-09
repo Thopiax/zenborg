@@ -59,25 +59,15 @@ Create `latest.json` in your release with this structure:
   "notes": "Bug fixes and improvements",
   "pub_date": "2025-11-09T12:00:00Z",
   "platforms": {
-    "darwin-x86_64": {
-      "signature": "SIGNATURE_FROM_.sig_FILE",
-      "url": "https://github.com/Thopiax/zenborg/releases/download/v0.3.1/zenborg_0.3.1_x64.app.tar.gz"
-    },
     "darwin-aarch64": {
       "signature": "SIGNATURE_FROM_.sig_FILE",
       "url": "https://github.com/Thopiax/zenborg/releases/download/v0.3.1/zenborg_0.3.1_aarch64.app.tar.gz"
-    },
-    "linux-x86_64": {
-      "signature": "SIGNATURE_FROM_.sig_FILE",
-      "url": "https://github.com/Thopiax/zenborg/releases/download/v0.3.1/zenborg_0.3.1_amd64.AppImage.tar.gz"
-    },
-    "windows-x86_64": {
-      "signature": "SIGNATURE_FROM_.sig_FILE",
-      "url": "https://github.com/Thopiax/zenborg/releases/download/v0.3.1/zenborg_0.3.1_x64-setup.nsis.zip"
     }
   }
 }
 ```
+
+**Note:** Currently only targeting macOS Apple Silicon (aarch64).
 
 The signatures can be read from the `.sig` files generated during build:
 ```bash
@@ -174,11 +164,7 @@ on:
 
 jobs:
   release:
-    strategy:
-      matrix:
-        platform: [macos-latest, ubuntu-latest, windows-latest]
-
-    runs-on: ${{ matrix.platform }}
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -188,10 +174,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup pnpm
+      - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 8
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
 
       - name: Install dependencies
         run: pnpm install
@@ -199,14 +190,16 @@ jobs:
       - name: Build app
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: pnpm build:tauri
+        run: pnpm tauri build --target aarch64-apple-darwin
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform }}-artifacts
-          path: src-tauri/target/release/bundle/**/*
+          name: macos-aarch64-artifacts
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/**/*
 ```
+
+**Note:** The actual workflow at `.github/workflows/release.yml` uses the official `tauri-apps/tauri-action` which handles this more elegantly.
 
 ## Manual Update Trigger
 
