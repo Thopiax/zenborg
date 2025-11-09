@@ -1,14 +1,14 @@
+use futures_util::{SinkExt, StreamExt};
+use mdns_sd::{ServiceDaemon, ServiceInfo};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use futures_util::{SinkExt, StreamExt};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::{mpsc, RwLock};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
-use yrs::{Doc, StateVector, Transact, Update, ReadTxn};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use mdns_sd::{ServiceDaemon, ServiceInfo};
+use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
 type ClientSender = mpsc::UnboundedSender<Vec<u8>>;
 
@@ -83,7 +83,11 @@ impl Room {
     }
 
     /// Apply an update to the document and broadcast to other clients
-    async fn apply_update(&mut self, sender_addr: &SocketAddr, update: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+    async fn apply_update(
+        &mut self,
+        sender_addr: &SocketAddr,
+        update: Vec<u8>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let update_obj = Update::decode_v1(&update)?;
 
         {
@@ -205,24 +209,33 @@ async fn handle_connection(
 
     // Get or create room
     let mut rooms_lock = rooms.write().await;
-    let room = rooms_lock.entry(room_name.clone()).or_insert_with(Room::new);
+    let room = rooms_lock
+        .entry(room_name.clone())
+        .or_insert_with(Room::new);
 
     // Send initial sync state
     let sync_message = room.get_sync_step1_response();
     tx.send(sync_message)?;
 
     // Add client to room
-    room.add_client(addr, Client {
-        sender: tx.clone(),
-        room: room_name.clone(),
-    });
+    room.add_client(
+        addr,
+        Client {
+            sender: tx.clone(),
+            room: room_name.clone(),
+        },
+    );
 
     drop(rooms_lock);
 
     // Task to send outgoing messages
     let send_task = tokio::spawn(async move {
         while let Some(message) = rx.recv().await {
-            if ws_sender.send(Message::Binary(message.into())).await.is_err() {
+            if ws_sender
+                .send(Message::Binary(message.into()))
+                .await
+                .is_err()
+            {
                 break;
             }
         }
