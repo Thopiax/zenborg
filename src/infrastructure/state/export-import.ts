@@ -7,12 +7,21 @@ import {
   type ImportStrategy,
   type ZenborgExportData,
 } from "@/application/use-cases/export-import";
-import { moments$, areas$, cycles$, phaseConfigs$ } from "./store";
+import {
+  moments$,
+  areas$,
+  habits$,
+  cycles$,
+  phaseConfigs$,
+  crystallizedRoutines$,
+  metricLogs$
+} from "./store";
 
 /**
  * Export all garden data to JSON file
  *
- * Downloads a JSON file containing all moments, areas, cycles, and phase configs.
+ * Downloads a JSON file containing all moments, areas, habits, cycles, phase configs,
+ * crystallized routines, and metric logs.
  * File is named "zenborg-export-{date}.json" by default.
  *
  * @param filename - Optional custom filename
@@ -20,10 +29,21 @@ import { moments$, areas$, cycles$, phaseConfigs$ } from "./store";
 export function exportGardenData(filename?: string): void {
   const moments = moments$.get();
   const areas = areas$.get();
+  const habits = habits$.get();
   const cycles = cycles$.get();
   const phaseConfigs = phaseConfigs$.get();
+  const crystallizedRoutines = crystallizedRoutines$.get();
+  const metricLogs = metricLogs$.get();
 
-  const exportedData = exportData(moments, areas, cycles, phaseConfigs);
+  const exportedData = exportData(
+    moments,
+    areas,
+    habits,
+    cycles,
+    phaseConfigs,
+    crystallizedRoutines,
+    metricLogs
+  );
 
   downloadExportFile(exportedData, filename);
 
@@ -33,10 +53,16 @@ export function exportGardenData(filename?: string): void {
     "moments,",
     exportedData.metadata.totalAreas,
     "areas,",
+    exportedData.metadata.totalHabits,
+    "habits,",
     exportedData.metadata.totalCycles,
     "cycles,",
     exportedData.metadata.totalPhaseConfigs,
-    "phase configs"
+    "phase configs,",
+    exportedData.metadata.totalCrystallizedRoutines,
+    "crystallized routines,",
+    exportedData.metadata.totalMetricLogs,
+    "metric logs"
   );
 }
 
@@ -82,19 +108,33 @@ export async function importGardenData(
   const currentData = {
     moments: moments$.get(),
     areas: areas$.get(),
+    habits: habits$.get(),
     cycles: cycles$.get(),
     phaseConfigs: phaseConfigs$.get(),
+    crystallizedRoutines: crystallizedRoutines$.get(),
+    metricLogs: metricLogs$.get(),
   };
 
   // Import with strategy
-  const { moments, areas, cycles, phaseConfigs, result } =
-    importDataWithStrategy(fileData, strategy, currentData);
+  const {
+    moments,
+    areas,
+    habits,
+    cycles,
+    phaseConfigs,
+    crystallizedRoutines,
+    metricLogs,
+    result
+  } = importDataWithStrategy(fileData, strategy, currentData);
 
   // Update state
   moments$.set(moments);
   areas$.set(areas);
+  habits$.set(habits);
   cycles$.set(cycles);
   phaseConfigs$.set(phaseConfigs);
+  crystallizedRoutines$.set(crystallizedRoutines);
+  metricLogs$.set(metricLogs);
 
   console.log("[importGardenData] Import complete:", result);
 
