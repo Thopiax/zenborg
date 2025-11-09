@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Area } from "@/domain/entities/Area";
+import type { CrystallizedRoutine } from "@/domain/entities/CrystallizedRoutine";
 import type { Cycle } from "@/domain/entities/Cycle";
+import type { Habit } from "@/domain/entities/Habit";
+import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase, PhaseConfig } from "@/domain/value-objects/Phase";
 import {
@@ -18,10 +21,12 @@ describe("Export/Import System", () => {
       id: "moment-1",
       name: "Morning Run",
       areaId: "area-1",
+      habitId: null,
       phase: "MORNING" as Phase,
       day: "2025-01-15",
       order: 0,
       horizon: null,
+      tags: null,
       createdAt: "2025-01-15T08:00:00.000Z",
       updatedAt: "2025-01-15T08:00:00.000Z",
     },
@@ -29,10 +34,12 @@ describe("Export/Import System", () => {
       id: "moment-2",
       name: "Deep Work",
       areaId: "area-2",
+      habitId: null,
       phase: null,
       day: null,
       order: 0,
-      horizon: "now",
+      horizon: "this-week",
+      tags: null,
       createdAt: "2025-01-15T09:00:00.000Z",
       updatedAt: "2025-01-15T09:00:00.000Z",
     },
@@ -42,9 +49,12 @@ describe("Export/Import System", () => {
     "area-1": {
       id: "area-1",
       name: "Wellness",
+      attitude: null,
+      tags: [],
       color: "#10b981",
       emoji: "🧘",
       isDefault: true,
+      isArchived: false,
       order: 0,
       createdAt: "2025-01-15T08:00:00.000Z",
       updatedAt: "2025-01-15T08:00:00.000Z",
@@ -52,9 +62,12 @@ describe("Export/Import System", () => {
     "area-2": {
       id: "area-2",
       name: "Craft",
+      attitude: null,
+      tags: [],
       color: "#3b82f6",
       emoji: "🎨",
       isDefault: true,
+      isArchived: false,
       order: 1,
       createdAt: "2025-01-15T08:00:00.000Z",
       updatedAt: "2025-01-15T08:00:00.000Z",
@@ -89,13 +102,20 @@ describe("Export/Import System", () => {
     },
   };
 
+  const sampleHabits: Record<string, Habit> = {};
+  const sampleCrystallizedRoutines: Record<string, CrystallizedRoutine> = {};
+  const sampleMetricLogs: Record<string, MetricLog> = {};
+
   describe("exportData", () => {
     it("should create a valid export structure", () => {
       const exported = exportData(
         sampleMoments,
         sampleAreas,
+        sampleHabits,
         sampleCycles,
-        samplePhaseConfigs
+        samplePhaseConfigs,
+        sampleCrystallizedRoutines,
+        sampleMetricLogs
       );
 
       expect(exported.version).toBe(EXPORT_SCHEMA_VERSION);
@@ -109,37 +129,52 @@ describe("Export/Import System", () => {
       const exported = exportData(
         sampleMoments,
         sampleAreas,
+        sampleHabits,
         sampleCycles,
-        samplePhaseConfigs
+        samplePhaseConfigs,
+        sampleCrystallizedRoutines,
+        sampleMetricLogs
       );
 
       expect(exported.data.moments).toEqual(sampleMoments);
       expect(exported.data.areas).toEqual(sampleAreas);
+      expect(exported.data.habits).toEqual(sampleHabits);
       expect(exported.data.cycles).toEqual(sampleCycles);
       expect(exported.data.phaseConfigs).toEqual(samplePhaseConfigs);
+      expect(exported.data.crystallizedRoutines).toEqual(sampleCrystallizedRoutines);
+      expect(exported.data.metricLogs).toEqual(sampleMetricLogs);
     });
 
     it("should include correct metadata counts", () => {
       const exported = exportData(
         sampleMoments,
         sampleAreas,
+        sampleHabits,
         sampleCycles,
-        samplePhaseConfigs
+        samplePhaseConfigs,
+        sampleCrystallizedRoutines,
+        sampleMetricLogs
       );
 
       expect(exported.metadata.totalMoments).toBe(2);
       expect(exported.metadata.totalAreas).toBe(2);
+      expect(exported.metadata.totalHabits).toBe(0);
       expect(exported.metadata.totalCycles).toBe(1);
       expect(exported.metadata.totalPhaseConfigs).toBe(1);
+      expect(exported.metadata.totalCrystallizedRoutines).toBe(0);
+      expect(exported.metadata.totalMetricLogs).toBe(0);
     });
 
     it("should handle empty data", () => {
-      const exported = exportData({}, {}, {}, {});
+      const exported = exportData({}, {}, {}, {}, {}, {}, {});
 
       expect(exported.metadata.totalMoments).toBe(0);
       expect(exported.metadata.totalAreas).toBe(0);
+      expect(exported.metadata.totalHabits).toBe(0);
       expect(exported.metadata.totalCycles).toBe(0);
       expect(exported.metadata.totalPhaseConfigs).toBe(0);
+      expect(exported.metadata.totalCrystallizedRoutines).toBe(0);
+      expect(exported.metadata.totalMetricLogs).toBe(0);
     });
   });
 
@@ -148,8 +183,11 @@ describe("Export/Import System", () => {
       const validData = exportData(
         sampleMoments,
         sampleAreas,
+        sampleHabits,
         sampleCycles,
-        samplePhaseConfigs
+        samplePhaseConfigs,
+        sampleCrystallizedRoutines,
+        sampleMetricLogs
       );
 
       const validation = validateImportData(validData);
@@ -173,8 +211,11 @@ describe("Export/Import System", () => {
         data: {
           moments: {},
           areas: {},
+          habits: {},
           cycles: {},
           phaseConfigs: {},
+          crystallizedRoutines: {},
+          metricLogs: {},
         },
       };
 
@@ -190,8 +231,11 @@ describe("Export/Import System", () => {
         data: {
           moments: {},
           areas: {},
+          habits: {},
           cycles: {},
           phaseConfigs: {},
+          crystallizedRoutines: {},
+          metricLogs: {},
         },
       };
 
@@ -254,8 +298,11 @@ describe("Export/Import System", () => {
         data: {
           moments: {},
           areas: {},
+          habits: {},
           cycles: {},
           phaseConfigs: {},
+          crystallizedRoutines: {},
+          metricLogs: {},
         },
       };
 
@@ -279,14 +326,20 @@ describe("Export/Import System", () => {
             },
           },
           areas: sampleAreas,
+          habits: {},
           cycles: {},
           phaseConfigs: {},
+          crystallizedRoutines: {},
+          metricLogs: {},
         },
         metadata: {
           totalMoments: 1,
           totalAreas: 2,
+          totalHabits: 0,
           totalCycles: 0,
           totalPhaseConfigs: 0,
+          totalCrystallizedRoutines: 0,
+          totalMetricLogs: 0,
         },
       };
 
@@ -310,14 +363,20 @@ describe("Export/Import System", () => {
             },
           },
           areas: sampleAreas,
+          habits: {},
           cycles: {},
           phaseConfigs: {},
+          crystallizedRoutines: {},
+          metricLogs: {},
         },
         metadata: {
           totalMoments: 1,
           totalAreas: 2,
+          totalHabits: 0,
           totalCycles: 0,
           totalPhaseConfigs: 0,
+          totalCrystallizedRoutines: 0,
+          totalMetricLogs: 0,
         },
       };
 
@@ -349,6 +408,8 @@ describe("Export/Import System", () => {
             day: null,
             order: 0,
             horizon: null,
+              habitId: null,
+              tags: null,
             createdAt: "2025-01-01T00:00:00.000Z",
             updatedAt: "2025-01-01T00:00:00.000Z",
           },
@@ -380,8 +441,11 @@ describe("Export/Import System", () => {
       const existingData = {
         moments: {},
         areas: {},
+        habits: {},
         cycles: {},
         phaseConfigs: {},
+        crystallizedRoutines: {},
+        metricLogs: {},
       };
 
       const { result } = importDataWithStrategy(
@@ -403,10 +467,12 @@ describe("Export/Import System", () => {
         id: "moment-3",
         name: "Evening Walk",
         areaId: "area-1",
+        habitId: null,
         phase: "EVENING" as Phase,
         day: "2025-01-15",
         order: 0,
         horizon: null,
+        tags: null,
         createdAt: "2025-01-15T18:00:00.000Z",
         updatedAt: "2025-01-15T18:00:00.000Z",
       };
@@ -473,7 +539,7 @@ describe("Export/Import System", () => {
     });
 
     it("should preserve existing data when merging", () => {
-      const exportedData = exportData({}, {}, {}, {});
+      const exportedData = exportData({}, {}, {}, {}, {}, {}, {});
 
       const existingData = {
         moments: sampleMoments,
@@ -545,14 +611,20 @@ describe("Export/Import System", () => {
         data: {
           moments: { "moment-bad": momentWithBadArea },
           areas: sampleAreas,
+          habits: {},
           cycles: {},
           phaseConfigs: {},
+          crystallizedRoutines: {},
+          metricLogs: {},
         },
         metadata: {
           totalMoments: 1,
           totalAreas: 2,
+          totalHabits: 0,
           totalCycles: 0,
           totalPhaseConfigs: 0,
+          totalCrystallizedRoutines: 0,
+          totalMetricLogs: 0,
         },
       };
 
