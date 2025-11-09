@@ -1,28 +1,50 @@
+/**
+ * Export/Import Use Case
+ *
+ * IMPORTANT: When adding a new domain model:
+ * 1. Add it to src/domain/registry.ts (DomainModelRegistry interface)
+ * 2. TypeScript will automatically require you to update this file:
+ *    - Add import statement above
+ *    - Update exportData() parameters
+ *    - Update validateImportData() validation checks
+ *    - Update metadata field in ZenborgExportData
+ *    - Update merge logic in importDataWithStrategy()
+ * 3. Update infrastructure/state/export-import.ts to include the new observable
+ * 4. Update infrastructure/state/store.ts to export the new observable
+ *
+ * The DomainModelRegistry type acts as the source of truth for all exportable models.
+ */
+
 import type { Area } from "@/domain/entities/Area";
+import type { CrystallizedRoutine } from "@/domain/entities/CrystallizedRoutine";
 import type { Cycle } from "@/domain/entities/Cycle";
+import type { Habit } from "@/domain/entities/Habit";
+import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
+import type { DomainModelRegistry } from "@/domain/registry";
 
 /**
  * Export/Import Data Format
  *
  * A complete snapshot of the user's garden data.
  * Includes all entities with timestamps for data integrity.
+ *
+ * Uses DomainModelRegistry to ensure all models are included.
+ * TypeScript will enforce that all collections in the registry are present.
  */
 export interface ZenborgExportData {
   version: string; // Schema version for future migrations
   exportedAt: string; // ISO timestamp
-  data: {
-    moments: Record<string, Moment>;
-    areas: Record<string, Area>;
-    cycles: Record<string, Cycle>;
-    phaseConfigs: Record<string, PhaseConfig>;
-  };
+  data: DomainModelRegistry; // All collections from the registry
   metadata: {
     totalMoments: number;
     totalAreas: number;
+    totalHabits: number;
     totalCycles: number;
     totalPhaseConfigs: number;
+    totalCrystallizedRoutines: number;
+    totalMetricLogs: number;
   };
 }
 
@@ -37,15 +59,21 @@ export const EXPORT_SCHEMA_VERSION = "1.0.0";
  *
  * @param moments - All moments
  * @param areas - All areas
+ * @param habits - All habits
  * @param cycles - All cycles
  * @param phaseConfigs - All phase configurations
+ * @param crystallizedRoutines - All crystallized routines
+ * @param metricLogs - All metric logs
  * @returns Exportable data structure
  */
 export function exportData(
   moments: Record<string, Moment>,
   areas: Record<string, Area>,
+  habits: Record<string, Habit>,
   cycles: Record<string, Cycle>,
-  phaseConfigs: Record<string, PhaseConfig>
+  phaseConfigs: Record<string, PhaseConfig>,
+  crystallizedRoutines: Record<string, CrystallizedRoutine>,
+  metricLogs: Record<string, MetricLog>
 ): ZenborgExportData {
   return {
     version: EXPORT_SCHEMA_VERSION,
@@ -53,14 +81,20 @@ export function exportData(
     data: {
       moments,
       areas,
+      habits,
       cycles,
       phaseConfigs,
+      crystallizedRoutines,
+      metricLogs,
     },
     metadata: {
       totalMoments: Object.keys(moments).length,
       totalAreas: Object.keys(areas).length,
+      totalHabits: Object.keys(habits).length,
       totalCycles: Object.keys(cycles).length,
       totalPhaseConfigs: Object.keys(phaseConfigs).length,
+      totalCrystallizedRoutines: Object.keys(crystallizedRoutines).length,
+      totalMetricLogs: Object.keys(metricLogs).length,
     },
   };
 }
@@ -107,7 +141,7 @@ export function validateImportData(data: unknown): ImportValidationResult {
   }
 
   // Check data structure
-  const { moments, areas, cycles, phaseConfigs } = exportData.data;
+  const { moments, areas, habits, cycles, phaseConfigs, crystallizedRoutines, metricLogs } = exportData.data;
 
   if (!moments || typeof moments !== "object") {
     errors.push("Invalid or missing moments data");
@@ -117,12 +151,24 @@ export function validateImportData(data: unknown): ImportValidationResult {
     errors.push("Invalid or missing areas data");
   }
 
+  if (!habits || typeof habits !== "object") {
+    errors.push("Invalid or missing habits data");
+  }
+
   if (!cycles || typeof cycles !== "object") {
     errors.push("Invalid or missing cycles data");
   }
 
   if (!phaseConfigs || typeof phaseConfigs !== "object") {
     errors.push("Invalid or missing phaseConfigs data");
+  }
+
+  if (!crystallizedRoutines || typeof crystallizedRoutines !== "object") {
+    errors.push("Invalid or missing crystallizedRoutines data");
+  }
+
+  if (!metricLogs || typeof metricLogs !== "object") {
+    errors.push("Invalid or missing metricLogs data");
   }
 
   // Check version compatibility
@@ -167,14 +213,20 @@ export interface ImportResult {
   imported: {
     moments: number;
     areas: number;
+    habits: number;
     cycles: number;
     phaseConfigs: number;
+    crystallizedRoutines: number;
+    metricLogs: number;
   };
   conflicts?: {
     moments: string[];
     areas: string[];
+    habits: string[];
     cycles: string[];
     phaseConfigs: string[];
+    crystallizedRoutines: string[];
+    metricLogs: string[];
   };
 }
 
@@ -189,17 +241,8 @@ export interface ImportResult {
 export function importDataWithStrategy(
   importData: ZenborgExportData,
   strategy: ImportStrategy,
-  currentData: {
-    moments: Record<string, Moment>;
-    areas: Record<string, Area>;
-    cycles: Record<string, Cycle>;
-    phaseConfigs: Record<string, PhaseConfig>;
-  }
-): {
-  moments: Record<string, Moment>;
-  areas: Record<string, Area>;
-  cycles: Record<string, Cycle>;
-  phaseConfigs: Record<string, PhaseConfig>;
+  currentData: DomainModelRegistry
+): DomainModelRegistry & {
   result: ImportResult;
 } {
   if (strategy === "replace") {
@@ -212,8 +255,11 @@ export function importDataWithStrategy(
         imported: {
           moments: Object.keys(importData.data.moments).length,
           areas: Object.keys(importData.data.areas).length,
+          habits: Object.keys(importData.data.habits).length,
           cycles: Object.keys(importData.data.cycles).length,
           phaseConfigs: Object.keys(importData.data.phaseConfigs).length,
+          crystallizedRoutines: Object.keys(importData.data.crystallizedRoutines).length,
+          metricLogs: Object.keys(importData.data.metricLogs).length,
         },
       },
     };
@@ -223,8 +269,11 @@ export function importDataWithStrategy(
   const conflicts = {
     moments: [] as string[],
     areas: [] as string[],
+    habits: [] as string[],
     cycles: [] as string[],
     phaseConfigs: [] as string[],
+    crystallizedRoutines: [] as string[],
+    metricLogs: [] as string[],
   };
 
   // Merge moments (imported overwrites existing on ID conflict)
@@ -245,6 +294,15 @@ export function importDataWithStrategy(
     mergedAreas[id] = area;
   }
 
+  // Merge habits
+  const mergedHabits = { ...currentData.habits };
+  for (const [id, habit] of Object.entries(importData.data.habits)) {
+    if (mergedHabits[id]) {
+      conflicts.habits.push(id);
+    }
+    mergedHabits[id] = habit;
+  }
+
   // Merge cycles
   const mergedCycles = { ...currentData.cycles };
   for (const [id, cycle] of Object.entries(importData.data.cycles)) {
@@ -263,17 +321,41 @@ export function importDataWithStrategy(
     mergedPhaseConfigs[id] = config;
   }
 
+  // Merge crystallized routines
+  const mergedCrystallizedRoutines = { ...currentData.crystallizedRoutines };
+  for (const [id, routine] of Object.entries(importData.data.crystallizedRoutines)) {
+    if (mergedCrystallizedRoutines[id]) {
+      conflicts.crystallizedRoutines.push(id);
+    }
+    mergedCrystallizedRoutines[id] = routine;
+  }
+
+  // Merge metric logs
+  const mergedMetricLogs = { ...currentData.metricLogs };
+  for (const [id, log] of Object.entries(importData.data.metricLogs)) {
+    if (mergedMetricLogs[id]) {
+      conflicts.metricLogs.push(id);
+    }
+    mergedMetricLogs[id] = log;
+  }
+
   const totalConflicts =
     conflicts.moments.length +
     conflicts.areas.length +
+    conflicts.habits.length +
     conflicts.cycles.length +
-    conflicts.phaseConfigs.length;
+    conflicts.phaseConfigs.length +
+    conflicts.crystallizedRoutines.length +
+    conflicts.metricLogs.length;
 
   return {
     moments: mergedMoments,
     areas: mergedAreas,
+    habits: mergedHabits,
     cycles: mergedCycles,
     phaseConfigs: mergedPhaseConfigs,
+    crystallizedRoutines: mergedCrystallizedRoutines,
+    metricLogs: mergedMetricLogs,
     result: {
       success: true,
       message:
@@ -283,8 +365,11 @@ export function importDataWithStrategy(
       imported: {
         moments: Object.keys(importData.data.moments).length,
         areas: Object.keys(importData.data.areas).length,
+        habits: Object.keys(importData.data.habits).length,
         cycles: Object.keys(importData.data.cycles).length,
         phaseConfigs: Object.keys(importData.data.phaseConfigs).length,
+        crystallizedRoutines: Object.keys(importData.data.crystallizedRoutines).length,
+        metricLogs: Object.keys(importData.data.metricLogs).length,
       },
       conflicts: totalConflicts > 0 ? conflicts : undefined,
     },
