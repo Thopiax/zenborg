@@ -28,3 +28,7 @@ tokio-tungstenite = "0.27"
 yrs = "0.21"
 futures-util = "0.3"
 mdns-sd = "0.11"
+tauri-plugin-process = "2"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"

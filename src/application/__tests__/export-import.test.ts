@@ -394,8 +394,11 @@ describe("Export/Import System", () => {
       const exportedData = exportData(
         sampleMoments,
         sampleAreas,
+        sampleHabits,
         sampleCycles,
-        samplePhaseConfigs
+        samplePhaseConfigs,
+        sampleCrystallizedRoutines,
+        sampleMetricLogs
       );
 
       const existingData = {
@@ -434,8 +437,11 @@ describe("Export/Import System", () => {
       const exportedData = exportData(
         sampleMoments,
         sampleAreas,
+        sampleHabits,
         sampleCycles,
-        samplePhaseConfigs
+        samplePhaseConfigs,
+        sampleCrystallizedRoutines,
+        sampleMetricLogs
       );
 
       const existingData = {
@@ -481,14 +487,20 @@ describe("Export/Import System", () => {
         { "moment-3": newMoment },
         {},
         {},
+        {},
+        {},
+        {},
         {}
       );
 
       const existingData = {
         moments: sampleMoments,
         areas: sampleAreas,
+        habits: sampleHabits,
         cycles: sampleCycles,
         phaseConfigs: samplePhaseConfigs,
+        crystallizedRoutines: sampleCrystallizedRoutines,
+        metricLogs: sampleMetricLogs,
       };
 
       const { moments, result } = importDataWithStrategy(
@@ -515,14 +527,20 @@ describe("Export/Import System", () => {
         { "moment-1": updatedMoment },
         {},
         {},
+        {},
+        {},
+        {},
         {}
       );
 
       const existingData = {
         moments: sampleMoments,
         areas: sampleAreas,
+        habits: sampleHabits,
         cycles: sampleCycles,
         phaseConfigs: samplePhaseConfigs,
+        crystallizedRoutines: sampleCrystallizedRoutines,
+        metricLogs: sampleMetricLogs,
       };
 
       const { moments, result } = importDataWithStrategy(
@@ -544,8 +562,11 @@ describe("Export/Import System", () => {
       const existingData = {
         moments: sampleMoments,
         areas: sampleAreas,
+        habits: sampleHabits,
         cycles: sampleCycles,
         phaseConfigs: samplePhaseConfigs,
+        crystallizedRoutines: sampleCrystallizedRoutines,
+        metricLogs: sampleMetricLogs,
       };
 
       const { moments, areas, cycles, phaseConfigs } = importDataWithStrategy(
@@ -564,15 +585,21 @@ describe("Export/Import System", () => {
       const exportedData = exportData(
         sampleMoments,
         sampleAreas,
+        sampleHabits,
         sampleCycles,
-        samplePhaseConfigs
+        samplePhaseConfigs,
+        sampleCrystallizedRoutines,
+        sampleMetricLogs
       );
 
       const existingData = {
         moments: sampleMoments,
         areas: sampleAreas,
+        habits: sampleHabits,
         cycles: sampleCycles,
         phaseConfigs: samplePhaseConfigs,
+        crystallizedRoutines: sampleCrystallizedRoutines,
+        metricLogs: sampleMetricLogs,
       };
 
       const { result } = importDataWithStrategy(
@@ -643,8 +670,11 @@ describe("Export/Import System", () => {
       const exportedData = exportData(
         sampleMoments,
         sampleAreas,
-        {},
-        {}
+        sampleHabits,
+        sampleCycles,
+        samplePhaseConfigs,
+        sampleCrystallizedRoutines,
+        sampleMetricLogs
       );
 
       const validation = validateImportData(exportedData);
@@ -653,6 +683,101 @@ describe("Export/Import System", () => {
       expect(
         validation.warnings.some((w) => w.includes("non-existent area"))
       ).toBe(false);
+    });
+  });
+
+  describe("incomplete imports (backward compatibility)", () => {
+    it("should accept imports missing optional collections", () => {
+      // Simulate an old export file that doesn't have habits, crystallizedRoutines, or metricLogs
+      const incompleteData = {
+        version: EXPORT_SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+        data: {
+          moments: sampleMoments,
+          areas: sampleAreas,
+          cycles: sampleCycles,
+          phaseConfigs: samplePhaseConfigs,
+          // Missing: habits, crystallizedRoutines, metricLogs
+        },
+        metadata: {
+          totalMoments: 2,
+          totalAreas: 2,
+          totalHabits: 0,
+          totalCycles: 1,
+          totalPhaseConfigs: 1,
+          totalCrystallizedRoutines: 0,
+          totalMetricLogs: 0,
+        },
+      };
+
+      const validation = validateImportData(incompleteData);
+
+      // Should be valid with warnings
+      expect(validation.valid).toBe(true);
+      expect(validation.errors).toHaveLength(0);
+      expect(validation.warnings).toContain("Missing habits data - will import as empty");
+      expect(validation.warnings).toContain("Missing crystallizedRoutines data - will import as empty");
+      expect(validation.warnings).toContain("Missing metricLogs data - will import as empty");
+    });
+
+    it("should import incomplete data with empty defaults", () => {
+      // Simulate an old export file
+      const incompleteData: ZenborgExportData = {
+        version: EXPORT_SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+        data: {
+          moments: sampleMoments,
+          areas: sampleAreas,
+          cycles: sampleCycles,
+          phaseConfigs: samplePhaseConfigs,
+          // These will be undefined in the actual import
+        } as any,
+        metadata: {
+          totalMoments: 2,
+          totalAreas: 2,
+          totalHabits: 0,
+          totalCycles: 1,
+          totalPhaseConfigs: 1,
+          totalCrystallizedRoutines: 0,
+          totalMetricLogs: 0,
+        },
+      };
+
+      const existingData = {
+        moments: {},
+        areas: {},
+        habits: {},
+        cycles: {},
+        phaseConfigs: {},
+        crystallizedRoutines: {},
+        metricLogs: {},
+      };
+
+      const { moments, areas, habits, cycles, phaseConfigs, crystallizedRoutines, metricLogs, result } =
+        importDataWithStrategy(incompleteData, "replace", existingData);
+
+      // Should succeed
+      expect(result.success).toBe(true);
+
+      // Core data should be imported
+      expect(moments).toEqual(sampleMoments);
+      expect(areas).toEqual(sampleAreas);
+      expect(cycles).toEqual(sampleCycles);
+      expect(phaseConfigs).toEqual(samplePhaseConfigs);
+
+      // Optional collections should be empty objects (not undefined)
+      expect(habits).toEqual({});
+      expect(crystallizedRoutines).toEqual({});
+      expect(metricLogs).toEqual({});
+
+      // Counts should reflect the import
+      expect(result.imported.moments).toBe(2);
+      expect(result.imported.areas).toBe(2);
+      expect(result.imported.habits).toBe(0);
+      expect(result.imported.cycles).toBe(1);
+      expect(result.imported.phaseConfigs).toBe(1);
+      expect(result.imported.crystallizedRoutines).toBe(0);
+      expect(result.imported.metricLogs).toBe(0);
     });
   });
 });

@@ -143,16 +143,13 @@ export function validateImportData(data: unknown): ImportValidationResult {
   // Check data structure
   const { moments, areas, habits, cycles, phaseConfigs, crystallizedRoutines, metricLogs } = exportData.data;
 
+  // Core collections (required)
   if (!moments || typeof moments !== "object") {
     errors.push("Invalid or missing moments data");
   }
 
   if (!areas || typeof areas !== "object") {
     errors.push("Invalid or missing areas data");
-  }
-
-  if (!habits || typeof habits !== "object") {
-    errors.push("Invalid or missing habits data");
   }
 
   if (!cycles || typeof cycles !== "object") {
@@ -163,12 +160,17 @@ export function validateImportData(data: unknown): ImportValidationResult {
     errors.push("Invalid or missing phaseConfigs data");
   }
 
+  // Optional collections (newer features - warn but don't fail)
+  if (!habits || typeof habits !== "object") {
+    warnings.push("Missing habits data - will import as empty");
+  }
+
   if (!crystallizedRoutines || typeof crystallizedRoutines !== "object") {
-    errors.push("Invalid or missing crystallizedRoutines data");
+    warnings.push("Missing crystallizedRoutines data - will import as empty");
   }
 
   if (!metricLogs || typeof metricLogs !== "object") {
-    errors.push("Invalid or missing metricLogs data");
+    warnings.push("Missing metricLogs data - will import as empty");
   }
 
   // Check version compatibility
@@ -245,21 +247,32 @@ export function importDataWithStrategy(
 ): DomainModelRegistry & {
   result: ImportResult;
 } {
+  // Ensure all collections exist with defaults for optional ones
+  const safeImportData = {
+    moments: importData.data.moments || {},
+    areas: importData.data.areas || {},
+    habits: importData.data.habits || {},
+    cycles: importData.data.cycles || {},
+    phaseConfigs: importData.data.phaseConfigs || {},
+    crystallizedRoutines: importData.data.crystallizedRoutines || {},
+    metricLogs: importData.data.metricLogs || {},
+  };
+
   if (strategy === "replace") {
-    // Replace strategy: use imported data as-is
+    // Replace strategy: use imported data as-is (with defaults)
     return {
-      ...importData.data,
+      ...safeImportData,
       result: {
         success: true,
         message: "All data replaced successfully",
         imported: {
-          moments: Object.keys(importData.data.moments).length,
-          areas: Object.keys(importData.data.areas).length,
-          habits: Object.keys(importData.data.habits).length,
-          cycles: Object.keys(importData.data.cycles).length,
-          phaseConfigs: Object.keys(importData.data.phaseConfigs).length,
-          crystallizedRoutines: Object.keys(importData.data.crystallizedRoutines).length,
-          metricLogs: Object.keys(importData.data.metricLogs).length,
+          moments: Object.keys(safeImportData.moments).length,
+          areas: Object.keys(safeImportData.areas).length,
+          habits: Object.keys(safeImportData.habits).length,
+          cycles: Object.keys(safeImportData.cycles).length,
+          phaseConfigs: Object.keys(safeImportData.phaseConfigs).length,
+          crystallizedRoutines: Object.keys(safeImportData.crystallizedRoutines).length,
+          metricLogs: Object.keys(safeImportData.metricLogs).length,
         },
       },
     };
@@ -278,7 +291,7 @@ export function importDataWithStrategy(
 
   // Merge moments (imported overwrites existing on ID conflict)
   const mergedMoments = { ...currentData.moments };
-  for (const [id, moment] of Object.entries(importData.data.moments)) {
+  for (const [id, moment] of Object.entries(safeImportData.moments)) {
     if (mergedMoments[id]) {
       conflicts.moments.push(id);
     }
@@ -287,7 +300,7 @@ export function importDataWithStrategy(
 
   // Merge areas
   const mergedAreas = { ...currentData.areas };
-  for (const [id, area] of Object.entries(importData.data.areas)) {
+  for (const [id, area] of Object.entries(safeImportData.areas)) {
     if (mergedAreas[id]) {
       conflicts.areas.push(id);
     }
@@ -296,7 +309,7 @@ export function importDataWithStrategy(
 
   // Merge habits
   const mergedHabits = { ...currentData.habits };
-  for (const [id, habit] of Object.entries(importData.data.habits)) {
+  for (const [id, habit] of Object.entries(safeImportData.habits)) {
     if (mergedHabits[id]) {
       conflicts.habits.push(id);
     }
@@ -305,7 +318,7 @@ export function importDataWithStrategy(
 
   // Merge cycles
   const mergedCycles = { ...currentData.cycles };
-  for (const [id, cycle] of Object.entries(importData.data.cycles)) {
+  for (const [id, cycle] of Object.entries(safeImportData.cycles)) {
     if (mergedCycles[id]) {
       conflicts.cycles.push(id);
     }
@@ -314,7 +327,7 @@ export function importDataWithStrategy(
 
   // Merge phase configs
   const mergedPhaseConfigs = { ...currentData.phaseConfigs };
-  for (const [id, config] of Object.entries(importData.data.phaseConfigs)) {
+  for (const [id, config] of Object.entries(safeImportData.phaseConfigs)) {
     if (mergedPhaseConfigs[id]) {
       conflicts.phaseConfigs.push(id);
     }
@@ -323,7 +336,7 @@ export function importDataWithStrategy(
 
   // Merge crystallized routines
   const mergedCrystallizedRoutines = { ...currentData.crystallizedRoutines };
-  for (const [id, routine] of Object.entries(importData.data.crystallizedRoutines)) {
+  for (const [id, routine] of Object.entries(safeImportData.crystallizedRoutines)) {
     if (mergedCrystallizedRoutines[id]) {
       conflicts.crystallizedRoutines.push(id);
     }
@@ -332,7 +345,7 @@ export function importDataWithStrategy(
 
   // Merge metric logs
   const mergedMetricLogs = { ...currentData.metricLogs };
-  for (const [id, log] of Object.entries(importData.data.metricLogs)) {
+  for (const [id, log] of Object.entries(safeImportData.metricLogs)) {
     if (mergedMetricLogs[id]) {
       conflicts.metricLogs.push(id);
     }
@@ -363,13 +376,13 @@ export function importDataWithStrategy(
           ? `Data merged successfully with ${totalConflicts} conflicts (imported data took precedence)`
           : "Data merged successfully with no conflicts",
       imported: {
-        moments: Object.keys(importData.data.moments).length,
-        areas: Object.keys(importData.data.areas).length,
-        habits: Object.keys(importData.data.habits).length,
-        cycles: Object.keys(importData.data.cycles).length,
-        phaseConfigs: Object.keys(importData.data.phaseConfigs).length,
-        crystallizedRoutines: Object.keys(importData.data.crystallizedRoutines).length,
-        metricLogs: Object.keys(importData.data.metricLogs).length,
+        moments: Object.keys(safeImportData.moments).length,
+        areas: Object.keys(safeImportData.areas).length,
+        habits: Object.keys(safeImportData.habits).length,
+        cycles: Object.keys(safeImportData.cycles).length,
+        phaseConfigs: Object.keys(safeImportData.phaseConfigs).length,
+        crystallizedRoutines: Object.keys(safeImportData.crystallizedRoutines).length,
+        metricLogs: Object.keys(safeImportData.metricLogs).length,
       },
       conflicts: totalConflicts > 0 ? conflicts : undefined,
     },

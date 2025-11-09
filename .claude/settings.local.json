@@ -78,7 +78,14 @@
       "Bash(pnpm run type-check:*)",
       "Read(//var/folders/g_/1thcrhm960dghwn1z3wbrkdh0000gn/T/TemporaryItems/NSIRD_screencaptureui_jClOP8/**)",
       "WebFetch(domain:crates.io)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(pnpm build:tauri:*)",
+      "Bash(pnpm build:*)",
+      "WebFetch(domain:v2.tauri.app)",
+      "Bash(pnpm tauri signer generate --help:*)",
+      "Bash(pnpm tauri signer generate:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm exec tsc:*)"
     ],
     "deny": [],
     "ask": []
