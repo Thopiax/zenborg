@@ -8,6 +8,7 @@ import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
 import { ModeSelector } from "@/components/ModeSelector";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
+import { UpdateNotification } from "@/components/UpdateNotification";
 import {
   Dialog,
   DialogContent,
@@ -70,6 +71,9 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
+
+      {/* Update Notification - Auto-checks on mount */}
+      <UpdateNotification />
 
       {/* Mode Selector - Fixed top-center */}
       <ModeSelector />

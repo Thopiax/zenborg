@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "zenborg",
-  "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "version": "0.3.0",
+  "identifier": "org.rafaba.zenborg",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
@@ -26,6 +26,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -33,5 +34,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMzMjA2MTIzMUY0NTVBMjEKUldRaFdrVWZJMkVnTTk1a1dMbnhxR050V1JGN0pHankwS3hqQVpqc3d2aTZ2K1NzZk5KckgyTXAK",
+      "endpoints": [
+        "https://github.com/Thopiax/zenborg/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
