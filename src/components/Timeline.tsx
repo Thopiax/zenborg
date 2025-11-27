@@ -3,7 +3,7 @@
 import { use$ } from "@legendapp/state/react";
 import { useEffect, useRef, useState } from "react";
 import { visiblePhases$ } from "@/infrastructure/state/store";
-import { getDateLabel, getExtendedTimelineDays } from "@/lib/dates";
+import { fromISODate, getDateLabel, getExtendedTimelineDays } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { TimelineCell } from "./TimelineCell";
 
@@ -24,32 +24,46 @@ import { TimelineCell } from "./TimelineCell";
  */
 export function Timeline() {
   const visiblePhases = use$(visiblePhases$);
-  const timelineDays = getExtendedTimelineDays(4, 1); // Just Today and Tomorrow
+  const timelineDays = getExtendedTimelineDays(1, 1); // Yesterday, Today, Tomorrow
   const containerRef = useRef<HTMLDivElement>(null);
-  const todayRef = useRef<HTMLDivElement>(null);
+  const activeDayRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
 
-  // Ensure Today is scrolled into view on mount
-  useEffect(() => {
-    if (todayRef.current) {
+  // Scroll to active day
+  const scrollToActiveDay = () => {
+    if (activeDayRef.current) {
       // Use requestAnimationFrame to ensure DOM is ready
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          todayRef.current?.scrollIntoView({
-            behavior: "instant",
-            inline: "start",
-            block: "nearest",
-          });
-          // Fade in after scroll completes
-          setIsReady(true);
+      requestAnimationFrame(() => {
+        activeDayRef.current?.scrollIntoView({
+          behavior: "instant",
+          inline: "center",
+          block: "nearest",
         });
-      }, 200);
+        // Fade in after scroll completes
+        setIsReady(true);
+      });
     }
+  };
+
+  // Ensure active day is scrolled into view on mount
+  useEffect(() => {
+    const timeout = setTimeout(scrollToActiveDay, 200);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  // Re-scroll to active day when window regains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      scrollToActiveDay();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   // Helper to format date as "Mon 12/25"
   const formatDateShort = (dateStr: string) => {
-    const date = new Date(dateStr);
+    const date = fromISODate(dateStr);
     const dayOfWeek = date.toLocaleDateString("en-US", { weekday: "short" });
     const monthDay = date.toLocaleDateString("en-US", {
       month: "numeric",
@@ -58,13 +72,13 @@ export function Timeline() {
     return { dayOfWeek, monthDay };
   };
 
-  const renderDayRow = (day: string, isToday: boolean, isPastDay: boolean) => {
+  const renderDayRow = (day: string, isToday: boolean, isActiveDay: boolean, isPastDay: boolean) => {
     const { dayOfWeek, monthDay } = formatDateShort(day);
     const label = getDateLabel(day);
 
     return (
       <div
-        ref={isToday ? todayRef : null}
+        ref={isActiveDay ? activeDayRef : null}
         className={cn(
           "flex flex-col h-full",
           // Minimal padding
@@ -72,7 +86,7 @@ export function Timeline() {
           "gap-1.5 px-2 py-2 md:px-4 md:py-4",
           // Smooth opacity transitions for past days
           "transition-opacity duration-medium transition-smooth",
-          isToday
+          isActiveDay
             ? "snap-start snap-always border border-slate-400/30 dark:ring-slate-300 rounded-md shadow-sm"
             : "snap-start",
           isPastDay && "opacity-70"
@@ -83,7 +97,7 @@ export function Timeline() {
           <h2
             className={cn(
               "font-mono font-bold text-2xl md:text-3xl",
-              isToday
+              isActiveDay
                 ? "text-stone-900 dark:text-stone-100"
                 : "text-stone-700 dark:text-stone-300"
             )}
@@ -113,7 +127,7 @@ export function Timeline() {
                   <TimelineCell
                     day={day}
                     phase={phaseConfig.phase}
-                    isHighlighted={isToday}
+                    isHighlighted={isActiveDay}
                     phaseIndex={index}
                   />
                 </div>
@@ -125,8 +139,8 @@ export function Timeline() {
     );
   };
 
-  // Find today's index to determine which days are past
-  const todayIndex = timelineDays.findIndex((d) => d.isToday);
+  // Find active day's index to determine which days are past
+  const activeDayIndex = timelineDays.findIndex((d) => d.isActiveDay);
 
   return (
     <div
@@ -146,9 +160,9 @@ export function Timeline() {
         paddingRight: "max(1rem, env(safe-area-inset-right))",
       }}
     >
-      {timelineDays.map(({ date, isToday }, index) => (
+      {timelineDays.map(({ date, isToday, isActiveDay }, index) => (
         <div className="flex-shrink-0" key={date}>
-          {renderDayRow(date, isToday, index < todayIndex)}
+          {renderDayRow(date, isToday, isActiveDay, index < activeDayIndex)}
         </div>
       ))}
       <div className="w-16 flex-shrink-0" />
