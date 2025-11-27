@@ -58,33 +58,44 @@ export function getTimelineDays(): {
  * Get extended timeline days (multiple days before and after today)
  * @param daysBefore - Number of days before today to include (default: 2)
  * @param daysAfter - Number of days after today to include (default: 3)
+ * @param centerDate - Optional date to center around (defaults to today)
  */
 export function getExtendedTimelineDays(
   daysBefore = 2,
-  daysAfter = 3
-): Array<{ date: string; isToday: boolean }> {
+  daysAfter = 3,
+  centerDate?: string
+): Array<{ date: string; isToday: boolean; isActiveDay: boolean }> {
   const today = new Date();
-  const days: Array<{ date: string; isToday: boolean }> = [];
+  const todayISO = toISODate(today);
+  const center = centerDate ? new Date(centerDate) : today;
+  const activeDay = getActiveDay();
+  const days: Array<{ date: string; isToday: boolean; isActiveDay: boolean }> = [];
 
-  // Add days before today
+  // Add days before center
   for (let i = daysBefore; i > 0; i--) {
+    const date = toISODate(subDays(center, i));
     days.push({
-      date: toISODate(subDays(today, i)),
-      isToday: false,
+      date,
+      isToday: date === todayISO,
+      isActiveDay: date === activeDay,
     });
   }
 
-  // Add today
+  // Add center day
+  const centerISO = toISODate(center);
   days.push({
-    date: toISODate(today),
-    isToday: true,
+    date: centerISO,
+    isToday: centerISO === todayISO,
+    isActiveDay: centerISO === activeDay,
   });
 
-  // Add days after today
+  // Add days after center
   for (let i = 1; i <= daysAfter; i++) {
+    const date = toISODate(addDays(center, i));
     days.push({
-      date: toISODate(addDays(today, i)),
-      isToday: false,
+      date,
+      isToday: date === todayISO,
+      isActiveDay: date === activeDay,
     });
   }
 
@@ -95,7 +106,7 @@ export function getExtendedTimelineDays(
  * Get display label for a date (e.g., "Yesterday", "Today", "Tomorrow", or formatted date)
  */
 export function getDateLabel(date: Date | string): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date;
+  const dateObj = typeof date === "string" ? fromISODate(date) : date;
 
   if (isYesterday(dateObj)) return "Yesterday";
   if (isToday(dateObj)) return "Today";
@@ -105,10 +116,13 @@ export function getDateLabel(date: Date | string): string {
 }
 
 /**
- * Parse ISO date string to Date object
+ * Parse ISO date string to Date object in local timezone
+ * @param isoDate - ISO date string (YYYY-MM-DD)
+ * @returns Date object at midnight in local timezone
  */
 export function fromISODate(isoDate: string): Date {
-  return new Date(isoDate);
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed
 }
 
 /**
@@ -116,4 +130,25 @@ export function fromISODate(isoDate: string): Date {
  */
 export function getCurrentHour(): number {
   return new Date().getHours();
+}
+
+/**
+ * Get the active day ISO string, accounting for phase schedule
+ *
+ * The "active day" shifts only when morning starts (default: 6 AM).
+ * If it's 2 AM (NIGHT phase), the active day is still yesterday.
+ *
+ * @param morningStartHour - Hour when morning starts (default: 6)
+ * @returns ISO date string for the active day
+ */
+export function getActiveDay(morningStartHour = 6): string {
+  const now = new Date();
+  const currentHour = now.getHours();
+
+  // If current hour is before morning starts, the active day is yesterday
+  if (currentHour < morningStartHour) {
+    return toISODate(subDays(now, 1));
+  }
+
+  return toISODate(now);
 }
