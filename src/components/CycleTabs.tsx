@@ -1,9 +1,11 @@
 "use client";
 
+import { formatDate } from "date-fns/format";
 import { Pencil } from "lucide-react";
 import { CycleService } from "@/application/services/CycleService";
-import { cn } from "@/lib/utils";
 import type { Cycle } from "@/domain/entities/Cycle";
+import { fromISODate } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 
 /**
  * CycleTabs - Horizontal cycle selector
@@ -21,55 +23,38 @@ interface CycleTabsProps {
   onEditCycle?: (cycle: Cycle) => void;
 }
 
-/**
- * Calculate days until/since a date
- * Returns positive for future dates, negative for past dates
- */
-function getDaysUntil(dateStr: string): number {
-  const targetDate = new Date(dateStr);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  targetDate.setHours(0, 0, 0, 0);
+const isSameMonth = (date1: Date, date2: Date) =>
+  date1.getMonth() === date2.getMonth() &&
+  date1.getFullYear() === date2.getFullYear();
 
-  const diffMs = targetDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-  return diffDays;
-}
-
-/**
- * Format date to readable string (e.g., "15 Jan")
- */
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const day = date.getDate();
-  const month = date.toLocaleDateString("en-GB", { month: "short" });
-  return `${day} ${month}`;
-}
+const isSameYear = (date1: Date, date2: Date) =>
+  date1.getFullYear() === date2.getFullYear();
 
 /**
  * Get date range label for a cycle
  */
 function getDateRangeLabel(cycle: Cycle): string {
-  const startDate = formatDate(cycle.startDate);
+  const startDate = fromISODate(cycle.startDate);
+  const endDate = cycle.endDate ? fromISODate(cycle.endDate) : null;
 
-  if (!cycle.endDate) {
-    // Check if cycle is currently active
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const cycleStart = new Date(cycle.startDate);
-    cycleStart.setHours(0, 0, 0, 0);
-
-    // If today is >= start date, it's ongoing
-    if (today >= cycleStart) {
-      return `${startDate} - ongoing`;
-    }
-    // If it's a future cycle, just show start date
-    return `${startDate}`;
+  if (!endDate) {
+    return `${formatDate(startDate, "MMM dd")} - ongoing`;
   }
 
-  const endDate = formatDate(cycle.endDate);
-  return `${startDate} - ${endDate}`;
+  if (isSameMonth(startDate, endDate)) {
+    const startDay = formatDate(startDate, "d");
+    const endDay = formatDate(endDate, "d");
+    const month = formatDate(startDate, "MMM");
+    return `${month} ${startDay} - ${endDay}`;
+  } else if (isSameYear(startDate, endDate)) {
+    const startStr = formatDate(startDate, "MMM dd");
+    const endStr = formatDate(endDate, "MMM dd");
+    return `${startStr} - ${endStr}`;
+  } else {
+    const startStr = formatDate(startDate, "MMM dd yyyy");
+    const endStr = formatDate(endDate, "MMM dd yyyy");
+    return `${startStr} - ${endStr}`;
+  }
 }
 
 export function CycleTabs({
@@ -87,6 +72,8 @@ export function CycleTabs({
     <div className="flex items-center gap-2 overflow-x-auto pb-2">
       {/* Active & Future Cycle Tabs */}
       {activeCycles.map((cycle) => (
+        // biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
+        // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
         <div
           key={cycle.id}
           className={cn(

@@ -4,6 +4,7 @@ import {
   isToday,
   isTomorrow,
   isYesterday,
+  parseISO,
   subDays,
 } from "date-fns";
 
@@ -69,7 +70,8 @@ export function getExtendedTimelineDays(
   const todayISO = toISODate(today);
   const center = centerDate ? new Date(centerDate) : today;
   const activeDay = getActiveDay();
-  const days: Array<{ date: string; isToday: boolean; isActiveDay: boolean }> = [];
+  const days: Array<{ date: string; isToday: boolean; isActiveDay: boolean }> =
+    [];
 
   // Add days before center
   for (let i = daysBefore; i > 0; i--) {
@@ -121,8 +123,7 @@ export function getDateLabel(date: Date | string): string {
  * @returns Date object at midnight in local timezone
  */
 export function fromISODate(isoDate: string): Date {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  return new Date(year, month - 1, day); // month is 0-indexed
+  return parseISO(isoDate);
 }
 
 /**

@@ -34,8 +34,10 @@ import {
   activeAreas$,
   activeHabits$,
   areas$,
-  habits$,
 } from "@/infrastructure/state/store";
+
+const CYCLE_PANEL_MIN_SIZE = 5; // Minimum size percentage when collapsed
+const CYCLE_PANEL_DEFAULT_SIZE = 40; // Default size percentage when expanded
 
 /**
  * Plant Page - Habit Design & Cycle Planning
@@ -65,7 +67,9 @@ const PlantPage = observer(() => {
   const handleCyclePaneCollapse = (isCollapsed: boolean) => {
     if (cyclePanelRef.current) {
       // When collapsed, resize to minimum (15%), when expanded, resize to default (40%)
-      cyclePanelRef.current.resize(isCollapsed ? 15 : 40);
+      cyclePanelRef.current.resize(
+        isCollapsed ? CYCLE_PANEL_MIN_SIZE : CYCLE_PANEL_DEFAULT_SIZE
+      );
     }
   };
 
@@ -284,7 +288,7 @@ const PlantPage = observer(() => {
             </PanelResizeHandle>
 
             {/* Bottom Panel: Cycles - Resizable */}
-            <Panel ref={cyclePanelRef} defaultSize={40} minSize={15}>
+            <Panel ref={cyclePanelRef} defaultSize={40} minSize={5}>
               <div className="h-full overflow-y-auto bg-stone-50 dark:bg-stone-900">
                 <CyclePane onCollapsedChange={handleCyclePaneCollapse} />
               </div>
