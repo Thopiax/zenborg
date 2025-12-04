@@ -2,13 +2,11 @@
 "use client";
 
 import { use$, useSelector } from "@legendapp/state/react";
-import { Calendar, Clock, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Clock, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
 import { PhaseSelector } from "@/components/PhaseSelector";
-import { TagAutocomplete } from "@/components/TagAutocomplete";
-import { TagBadges } from "@/components/TagBadges";
 import {
   Dialog,
   DialogContent,
@@ -27,13 +25,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { normalizeTag, validateMomentName } from "@/domain/entities/Moment";
-import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
+import { validateMomentName } from "@/domain/entities/Moment";
+import type { CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
+import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import {
   activeAreas$,
-  allTags$,
   areas$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
@@ -47,6 +45,7 @@ import {
   suggestEmojiForAreaName,
 } from "@/lib/emoji-utils";
 import { cn } from "@/lib/utils";
+import { TaggedNameInput } from "./TaggedNameInput";
 
 interface MomentFormDialogProps {
   onSave: (
@@ -90,12 +89,12 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     areaId: selectedAreaId,
     phase,
     showCreateMore,
-    isAllocated,
     emoji,
-    attitude,
-    tags,
+    tags: formTags,
     customMetric,
   } = formState;
+
+  const tags = useMemo(() => formTags || [], [formTags]);
 
   // Use activeAreas$ which filters out archived areas and sorts by order
   const areasList = useSelector(() => activeAreas$.get());
@@ -111,15 +110,21 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
 
   // Tag autocomplete state
-  const [isTagAutocompleteOpen, setIsTagAutocompleteOpen] = useState(false);
-  const [currentTagSearch, setCurrentTagSearch] = useState("");
-
   const lastProcessedName = useRef<string>("");
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const areaSelectorRef = useRef<HTMLButtonElement>(null);
   const phaseSelectorRef = useRef<HTMLButtonElement>(null);
+
+  // Tagged name field
+  const taggedField = useTaggedNameField(name, tags);
+
+  // Sync tagged field back to form state
+  useEffect(() => {
+    momentFormState$.name.set(taggedField.name);
+    momentFormState$.tags.set(taggedField.tags);
+  }, [taggedField.name, taggedField.tags]);
 
   // Reset local UI state when dialog opens
   useEffect(() => {
@@ -129,8 +134,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     setShowDeleteConfirm(false);
     setIsAreaSelectorOpen(false);
     setIsPhaseSelectorOpen(false);
-    setIsTagAutocompleteOpen(false);
-    setCurrentTagSearch("");
   }, [open]);
 
   // Auto-focus and select input
@@ -171,128 +174,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   const formHotkeysEnabled =
     !isAreaSelectorOpen &&
     !isPhaseSelectorOpen &&
-    !isTagAutocompleteOpen &&
+    !taggedField.isAutocompleteOpen &&
     !emojiPickerOpen;
-
-  // Helper: Extract current tag being typed (if any)
-  const extractCurrentTag = (
-    text: string,
-    cursorPos: number
-  ): string | null => {
-    // Find the last # before cursor position
-    const beforeCursor = text.slice(0, cursorPos);
-    const lastHashIndex = beforeCursor.lastIndexOf("#");
-
-    if (lastHashIndex === -1) return null;
-
-    // Extract text after # until cursor
-    const afterHash = beforeCursor.slice(lastHashIndex + 1);
-
-    // Check if there's a space after # (which would end the tag)
-    if (afterHash.includes(" ")) return null;
-
-    return afterHash;
-  };
-
-  // Helper: Add tag from autocomplete or manual typing
-  const addTag = (tag: string) => {
-    const normalized = normalizeTag(tag);
-    if (!normalized || tags?.includes(normalized)) return;
-
-    // Add to tags array
-    momentFormState$.tags.set([...(tags || []), normalized]);
-
-    // Remove #tag from name input
-    const input = inputRef.current;
-    if (!input) return;
-
-    const cursorPos = input.selectionStart || 0;
-    const beforeCursor = name.slice(0, cursorPos);
-    const afterCursor = name.slice(cursorPos);
-
-    // Find and remove the #tag pattern
-    const lastHashIndex = beforeCursor.lastIndexOf("#");
-    if (lastHashIndex !== -1) {
-      const beforeTag = beforeCursor.slice(0, lastHashIndex);
-      const newValue = (beforeTag + afterCursor).replace(/\s+/g, " ").trim();
-      momentFormState$.name.set(newValue);
-
-      // Set cursor position after removal
-      setTimeout(() => {
-        input.setSelectionRange(beforeTag.length, beforeTag.length);
-        input.focus();
-      }, 0);
-    }
-
-    // Close autocomplete
-    setIsTagAutocompleteOpen(false);
-    setCurrentTagSearch("");
-  };
-
-  // Helper: Remove tag from tags array
-  const removeTag = (tagToRemove: string) => {
-    const updatedTags = (tags || []).filter((t) => t !== tagToRemove);
-    momentFormState$.tags.set(updatedTags);
-  };
-
-  // Helper: Check if user just finished typing a tag (space/comma after #tag)
-  const checkForCompletedTag = (text: string, cursorPos: number) => {
-    const beforeCursor = text.slice(0, cursorPos);
-
-    // Check if we just typed space or comma after a tag
-    const lastChar = beforeCursor[beforeCursor.length - 1];
-    if (lastChar !== " " && lastChar !== ",") return;
-
-    // Look for #tag pattern before the space/comma
-    const tagMatch = beforeCursor.match(/#([a-z0-9-]+)\s*$/);
-    if (tagMatch) {
-      const tag = tagMatch[1];
-      addTag(tag);
-    }
-  };
-
-  const handleNameBlur = () => {
-    // On blur, close tag autocomplete
-    setIsTagAutocompleteOpen(false);
-
-    // Check for any tags in the name to extract
-    extractRemainingTags();
-  };
-
-  // Handle name input change - detect tags for autocomplete and extraction
-  const handleNameChange = (newValue: string) => {
-    const prevValue = name;
-    momentFormState$.name.set(newValue);
-
-    const input = inputRef.current;
-    if (!input) return;
-
-    const cursorPos = input.selectionStart || 0;
-
-    // Check if user completed a tag (typed space/comma after #tag)
-    if (newValue.length > prevValue.length) {
-      checkForCompletedTag(newValue, cursorPos);
-    }
-
-    // Check for active tag being typed (for autocomplete)
-    const currentTag = extractCurrentTag(newValue, cursorPos);
-
-    if (currentTag !== null && currentTag.length > 0) {
-      // User is typing a tag - set search value
-      setCurrentTagSearch(currentTag);
-
-      // Only open autocomplete if there are matching tags
-      const allExistingTags = allTags$.peek();
-      const hasMatches = allExistingTags.some((tag) =>
-        tag.toLowerCase().includes(currentTag.toLowerCase())
-      );
-      setIsTagAutocompleteOpen(hasMatches);
-    } else {
-      // Not typing a tag
-      setIsTagAutocompleteOpen(false);
-      setCurrentTagSearch("");
-    }
-  };
 
   // A - open area selector
   useHotkeys(
@@ -395,37 +278,13 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     { enableOnFormTags: true, enabled: formHotkeysEnabled && open }
   );
 
-  // Helper: Extract any remaining #tags from name before saving
-  const extractRemainingTags = () => {
-    const tagRegex = /#([a-z0-9-]+)/g;
-    const extractedTags: string[] = [];
-
-    let match: RegExpExecArray | null = tagRegex.exec(name);
-    while (match !== null) {
-      const tag = normalizeTag(match[1]);
-      if (tag && !(tags || []).includes(tag) && !extractedTags.includes(tag)) {
-        extractedTags.push(tag);
-      }
-      match = tagRegex.exec(name);
-    }
-
-    // If we found tags, add them and clean the name
-    if (extractedTags.length > 0) {
-      momentFormState$.tags.set([...(tags || []), ...extractedTags]);
-      const cleanName = name.replace(tagRegex, "").replace(/\s+/g, " ").trim();
-      momentFormState$.name.set(cleanName);
-    }
-  };
-
   const handleSave = () => {
-    // Extract any remaining #tags from name before validation
-    extractRemainingTags();
+    // Extract any remaining tags
+    taggedField.extractRemainingTags();
 
-    // Get the clean name after tag extraction
-    const cleanName = name
-      .replace(/#([a-z0-9-]+)/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    // Get the clean name and tags from field (reactive values updated by extractRemainingTags)
+    const cleanName = taggedField.name;
+    const finalTags = taggedField.tags;
 
     const validation = validateMomentName(cleanName);
     const selectedArea =
@@ -450,15 +309,14 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         phase,
         shouldCreateMore,
         emoji,
-        tags || [],
+        finalTags,
         customMetric
       );
 
       // If "Create more" is enabled, reset form immediately
       // Parent will keep modal open, but preserve area and phase selection
       if (shouldCreateMore) {
-        momentFormState$.name.set("");
-        momentFormState$.tags.set([]);
+        taggedField.reset();
         setTimeout(() => {
           inputRef.current?.focus();
         }, 0);
@@ -481,8 +339,12 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     selectedAreaId ? areas$[selectedAreaId].get() : undefined
   );
 
-  // Validate name
-  const validation = validateMomentName(name);
+  // Validate name (remove tags for validation)
+  const cleanNameForValidation = taggedField.displayValue
+    .replace(/#([a-z0-9-]+)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const validation = validateMomentName(cleanNameForValidation);
   const hasArea = selectedArea !== undefined;
   const canSave = validation.valid && hasArea;
 
@@ -551,54 +413,29 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 </PopoverContent>
               </Popover>
 
-              {/* Name Input */}
-              <input
-                ref={inputRef}
-                type="text"
-                value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                className="flex-1 text-4xl font-bold bg-transparent outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
-                placeholder="Moment name..."
-                aria-label="Moment name"
-                onBlur={handleNameBlur}
-                aria-invalid={!validation.valid}
+              {/* Name Input with Tags */}
+              <TaggedNameInput
+                field={taggedField}
+                placeholder="Moment..."
+                autoFocus={true}
+                className="flex-1 text-4xl font-bold"
+                collisionBoundary={dialogRef.current}
+                maxSuggestions={5}
+                showTags={true}
               />
             </div>
 
             {/* Validation */}
             {!validation.valid &&
               validation.error &&
-              name.trim().length > 0 && (
+              taggedField.displayValue.trim().length > 0 && (
                 <p
-                  className="text-sm text-red-500 dark:text-red-400 mb-6"
+                  className="text-sm text-red-500 dark:text-red-400 mt-2"
                   role="alert"
                 >
                   {validation.error}
                 </p>
               )}
-
-            {/* Tag Autocomplete - Shows below entire input */}
-            {isTagAutocompleteOpen && (
-              <TagAutocomplete
-                open={isTagAutocompleteOpen}
-                searchValue={currentTagSearch}
-                onSelectTag={addTag}
-                onClose={() => {
-                  setIsTagAutocompleteOpen(false);
-                  setCurrentTagSearch("");
-                }}
-                existingTags={tags || []}
-                collisionBoundary={dialogRef.current}
-                trigger={<div className="w-full" />}
-              />
-            )}
-
-            {/* Tag Badges */}
-            <TagBadges
-              tags={tags || []}
-              onRemoveTag={removeTag}
-              className="mt-3"
-            />
           </div>
 
           {/* Selectors Row - Only show when area is selected */}
@@ -779,7 +616,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 : undefined
             }
           >
-            {mode === "create" ? "Create moment" : "Save changes"}
+            {mode === "create" ? "Create" : "Save"}
           </button>
         </DialogFooter>
       </DialogContent>

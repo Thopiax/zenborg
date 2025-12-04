@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
  * Daily practice interface:
  * - Extended timeline (horizontal scroll, 5 days)
  * - Drawing Board for unallocated moments
- * - Vim-inspired keyboard shortcuts
  * - Landscape-only mode (shows prompt in portrait)
  */
 export default function CultivatePage() {
