@@ -28,6 +28,7 @@ export interface TaggedNameField {
   removeTag: (tag: string) => void;
   extractRemainingTags: () => void;
   reset: () => void;
+  reinitialize: (name: string, tags: string[]) => void;
 }
 
 /**
@@ -208,6 +209,15 @@ export function useTaggedNameField(
       state$.autocomplete.searchValue.set("");
       state$.autocomplete.cursorPosition.set(0);
     },
+
+    reinitialize: (newName: string, newTags: string[]) => {
+      state$.name.set(newName);
+      state$.tags.set(newTags);
+      state$.displayValue.set(newName);
+      state$.autocomplete.isOpen.set(false);
+      state$.autocomplete.searchValue.set("");
+      state$.autocomplete.cursorPosition.set(newName.length);
+    },
   };
 
   return {
@@ -221,5 +231,6 @@ export function useTaggedNameField(
     removeTag: actions.removeTag,
     extractRemainingTags: actions.extractRemainingTags,
     reset: actions.reset,
+    reinitialize: actions.reinitialize,
   };
 }
