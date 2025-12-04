@@ -1,19 +1,26 @@
 "use client";
 
 import { observer, use$ } from "@legendapp/state/react";
-import { useState } from "react";
 import { AreaService } from "@/application/services/AreaService";
 import { HabitService } from "@/application/services/HabitService";
 import { EmptyAreaCard } from "@/components/EmptyAreaCard";
 import { HabitFormDialog } from "@/components/HabitFormDialog";
 import { PlanAreaCard } from "@/components/PlanAreaCard";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Area, UpdateAreaProps } from "@/domain/entities/Area";
+import type {
+  CreateHabitProps,
+  UpdateHabitProps,
+} from "@/domain/entities/Habit";
 import {
   activeAreas$,
   activeHabits$,
   archivedAreas$,
 } from "@/infrastructure/state/store";
+import {
+  habitFormState$,
+  openHabitFormCreate,
+  openHabitFormEdit,
+} from "@/infrastructure/state/ui-store";
 
 /**
  * AreaGallery - Grid of area cards with habits
@@ -37,21 +44,14 @@ export const AreaGallery = observer(() => {
   // Sort areas by order property (ascending)
   const sortedAreas = [...areas].sort((a, b) => a.order - b.order);
 
-  // Local state for habit form dialog
-  const [habitFormOpen, setHabitFormOpen] = useState(false);
-  const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
-
   // Group habits by area
-  const habitsByArea = habits.reduce(
-    (acc, habit) => {
-      if (!acc[habit.areaId]) {
-        acc[habit.areaId] = [];
-      }
-      acc[habit.areaId].push(habit);
-      return acc;
-    },
-    {} as Record<string, typeof habits>
-  );
+  const habitsByArea = habits.reduce((acc, habit) => {
+    if (!acc[habit.areaId]) {
+      acc[habit.areaId] = [];
+    }
+    acc[habit.areaId].push(habit);
+    return acc;
+  }, {} as Record<string, typeof habits>);
 
   // Handle create area
   const handleCreateArea = (name: string, emoji: string, color: string) => {
@@ -68,10 +68,7 @@ export const AreaGallery = observer(() => {
   };
 
   // Handle update area
-  const handleUpdateArea = (
-    areaId: string,
-    updates: Partial<Pick<Area, "name" | "color" | "emoji" | "order" | "attitude" | "tags">>
-  ) => {
+  const handleUpdateArea = (areaId: string, updates: UpdateAreaProps) => {
     const result = areaService.updateArea(areaId, updates);
 
     if ("error" in result) {
@@ -106,80 +103,58 @@ export const AreaGallery = observer(() => {
     }
   };
 
-  // Handle create habit
-  const handleCreateHabit = (
-    name: string,
-    areaId: string,
-    emoji: string,
-    tags: string[]
-  ) => {
-    const areaHabits = habitsByArea[areaId] || [];
-    const result = habitService.createHabit({
-      name,
-      areaId,
-      emoji,
-      tags,
-      order: areaHabits.length,
-    });
-
-    if ("error" in result) {
-      alert(`Failed to create habit: ${result.error}`);
-      return;
-    }
-
-    setHabitFormOpen(false);
+  // Handle open create habit form
+  const handleOpenCreateHabit = (areaId: string) => {
+    openHabitFormCreate({ areaId });
   };
 
-  // Handle edit habit (receives habitId, not Habit object)
+  // Handle open edit habit form
   const handleEditHabit = (habitId: string) => {
     const habit = habits.find((h) => h.id === habitId);
     if (habit) {
-      setHabitToEdit(habit);
-      setHabitFormOpen(true);
+      openHabitFormEdit(habitId, habit);
     }
   };
 
-  // Handle create habit (for area card)
-  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  // Handle save habit (create or update based on form mode)
+  const handleSaveHabit = (props: CreateHabitProps | UpdateHabitProps) => {
+    const formState = habitFormState$.peek();
 
-  const handleOpenCreateHabit = (areaId: string) => {
-    setSelectedAreaId(areaId);
-    setHabitToEdit(null);
-    setHabitFormOpen(true);
-  };
+    if (formState.mode === "edit" && formState.editingHabitId) {
+      // Update existing habit
+      const result = habitService.updateHabit(formState.editingHabitId, props);
 
-  // Handle update habit
-  const handleUpdateHabit = (
-    habitId: string,
-    updates: {
-      name?: string;
-      areaId?: string;
-      emoji?: string;
-      tags?: string[];
+      if ("error" in result) {
+        alert(`Failed to update habit: ${result.error}`);
+        return;
+      }
+    } else {
+      // Create new habit
+      const areaHabits = habitsByArea[props.areaId!] || [];
+      const result = habitService.createHabit({
+        ...props,
+        order: areaHabits.length,
+      } as CreateHabitProps);
+
+      if ("error" in result) {
+        alert(`Failed to create habit: ${result.error}`);
+        return;
+      }
     }
-  ) => {
-    const result = habitService.updateHabit(habitId, updates);
-
-    if ("error" in result) {
-      alert(`Failed to update habit: ${result.error}`);
-      return;
-    }
-
-    setHabitFormOpen(false);
-    setHabitToEdit(null);
   };
 
   // Handle delete habit (archive)
-  const handleDeleteHabit = (habitId: string) => {
-    const result = habitService.archiveHabit(habitId);
+  const handleDeleteHabit = () => {
+    const formState = habitFormState$.peek();
+
+    if (!formState.editingHabitId) return;
+
+    const result = habitService.archiveHabit(formState.editingHabitId);
 
     if ("error" in result) {
       alert(`Failed to archive habit: ${result.error}`);
       return;
     }
-
-    setHabitFormOpen(false);
-    setHabitToEdit(null);
   };
 
   // Handle archive habit
@@ -223,34 +198,7 @@ export const AreaGallery = observer(() => {
       </div>
 
       {/* Habit Form Dialog */}
-      <HabitFormDialog
-        open={habitFormOpen}
-        mode={habitToEdit ? "edit" : "create"}
-        habitId={habitToEdit?.id}
-        initialName={habitToEdit?.name || ""}
-        initialAreaId={habitToEdit?.areaId || selectedAreaId || ""}
-        initialEmoji={habitToEdit?.emoji || "⭐"}
-        initialTags={habitToEdit?.tags || []}
-        onClose={() => {
-          setHabitFormOpen(false);
-          setHabitToEdit(null);
-          setSelectedAreaId(null);
-        }}
-        onSave={(name, areaId, emoji, tags) => {
-          if (habitToEdit) {
-            handleUpdateHabit(habitToEdit.id, { name, areaId, emoji, tags });
-          } else {
-            handleCreateHabit(name, areaId, emoji, tags);
-          }
-        }}
-        onDelete={
-          habitToEdit
-            ? () => {
-                handleDeleteHabit(habitToEdit.id);
-              }
-            : undefined
-        }
-      />
+      <HabitFormDialog onSave={handleSaveHabit} onDelete={handleDeleteHabit} />
     </>
   );
 });

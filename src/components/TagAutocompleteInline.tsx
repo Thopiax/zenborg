@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { normalizeTag } from "@/domain/entities/Moment";
+import { normalizeTag } from "@/domain/services/TagService";
 import {
   allUnifiedTags$,
   unifiedTagUsageCount$,
@@ -128,9 +128,7 @@ export function TagAutocompleteInline({
     // Check if we should show "Create new" option
     const normalized = normalizeTag(trimmedSearch);
     const shouldShowCreateNew =
-      normalized &&
-      !availableTags.includes(normalized) &&
-      matches.length < 3;
+      normalized && !availableTags.includes(normalized) && matches.length < 3;
 
     return {
       suggestions: matches,
@@ -142,15 +140,21 @@ export function TagAutocompleteInline({
   const shouldShowPopover = open && hasSuggestions;
 
   // Total items includes suggestions + optional createNewTag
-  const totalItems = suggestions.length + (createNewTag ? 1 : 0);
+  const totalItems = useMemo(
+    () => suggestions.length + (createNewTag ? 1 : 0),
+    [suggestions, createNewTag]
+  );
 
   // Keyboard navigation state
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Reset selected index when suggestions change
   useEffect(() => {
+    if (totalItems === 0) {
+      return;
+    }
     setSelectedIndex(0);
-  }, [suggestions]);
+  }, [totalItems]);
 
   // Handle keyboard navigation
   useEffect(() => {

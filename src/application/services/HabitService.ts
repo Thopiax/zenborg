@@ -1,14 +1,13 @@
 import {
-  createHabit,
-  updateHabit,
   archiveHabit,
-  unarchiveHabit,
+  type CreateHabitProps,
+  createHabit,
   type Habit,
   type HabitResult,
-  type CreateHabitProps,
+  unarchiveHabit,
+  updateHabit,
 } from "@/domain/entities/Habit";
 import { habits$ } from "@/infrastructure/state/store";
-import type { Attitude } from "@/domain/value-objects/Attitude";
 
 /**
  * Application Service for Habit Management

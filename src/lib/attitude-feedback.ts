@@ -11,7 +11,7 @@ import type { Habit } from "@/domain/entities/Habit";
 import type { Moment } from "@/domain/entities/Moment";
 import type { MetricLog } from "@/domain/entities/MetricLog";
 import { Attitude } from "@/domain/value-objects/Attitude";
-import { getMomentAttitude } from "./moment-attitude";
+import { attitudeService } from "@/domain/services/AttitudeService";
 
 /**
  * BEGINNING attitude feedback
@@ -156,7 +156,7 @@ export function getAttitudeFeedback(
   habits: Record<string, Habit>,
   areas: Record<string, Area>
 ): string | null {
-  const attitude = getMomentAttitude(moment, habits, areas);
+  const attitude = attitudeService.getMomentAttitude(moment, habits, areas);
 
   if (!attitude) {
     return null; // Pure presence - no feedback
@@ -197,7 +197,7 @@ export function shouldShowAttitudeFeedback(
   habits: Record<string, Habit>,
   areas: Record<string, Area>
 ): boolean {
-  const attitude = getMomentAttitude(moment, habits, areas);
+  const attitude = attitudeService.getMomentAttitude(moment, habits, areas);
   return attitude !== null;
 }
 

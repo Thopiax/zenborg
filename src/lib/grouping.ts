@@ -15,7 +15,7 @@ import type { Moment } from "@/domain/entities/Moment";
 import { ATTITUDE_METADATA, Attitude } from "@/domain/value-objects/Attitude";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
 import { PHASE_ICONS } from "@/domain/value-objects/phaseStyles";
-import { getMomentAttitude } from "./moment-attitude";
+import { attitudeService } from "@/domain/services/AttitudeService";
 
 /**
  * Sort moments by order (primary) and createdAt (secondary)
@@ -194,7 +194,7 @@ export function groupByAttitude(
   }
 
   for (const moment of moments) {
-    const attitude = getMomentAttitude(moment, habits, areas);
+    const attitude = attitudeService.getMomentAttitude(moment, habits, areas);
 
     switch (attitude) {
       case Attitude.BEGINNING:

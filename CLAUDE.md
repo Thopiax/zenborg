@@ -143,6 +143,157 @@ src/
 
 ---
 
+## Form Handling Architecture
+
+**Standardized pattern for entity forms (Habits, Moments):**
+
+### Layer Separation
+
+```
+┌─────────────────────────────────────────────────┐
+│ Presenters (Form Dialogs)                      │
+│ - Read UI state from uiStore                    │
+│ - Call onSave/onDelete callbacks for persistence│
+│ - Minimal local state (popovers, focus)         │
+├─────────────────────────────────────────────────┤
+│ Infrastructure/State                             │
+│ - uiStore: Ephemeral form state (NOT persisted) │
+│ - store: Domain entities (persisted)            │
+├─────────────────────────────────────────────────┤
+│ Application/Services                             │
+│ - HabitService, MomentService, AreaService      │
+│ - Orchestrate domain operations                 │
+├─────────────────────────────────────────────────┤
+│ Domain/Entities                                  │
+│ - Habit, Moment, Area (pure business logic)     │
+└─────────────────────────────────────────────────┘
+```
+
+### Pattern Components
+
+**1. UI Store State (`infrastructure/state/ui-store.ts`)**:
+- Form field values (name, areaId, emoji, etc.)
+- Dialog open/close state
+- Mode (create/edit)
+- Editing entity ID (for edit mode)
+- Convenience defaults (lastUsedAreaId)
+
+**2. Helper Functions**:
+- `openHabitFormCreate()` / `openMomentFormCreate()` - Initialize form for create mode
+- `openHabitFormEdit()` / `openMomentFormEdit()` - Initialize form for edit mode
+- `closeHabitForm()` / `closeMomentForm()` - Close form and reset state
+
+**3. Form Dialog Component**:
+- Props: Only `onSave` and `onDelete` callbacks
+- Reads all form state from `habitFormState$` or `momentFormState$`
+- Updates store directly (e.g., `habitFormState$.name.set(value)`)
+- Local state ONLY for UI (popover open states, validation errors)
+
+**4. Parent Component**:
+- Calls helper functions to open forms
+- Provides persistence callbacks that call application services
+- No form state management (delegated to uiStore)
+
+### Example Usage
+
+```typescript
+// 1. UI Store (infrastructure/state/ui-store.ts)
+export interface HabitFormState {
+  open: boolean;
+  mode: "create" | "edit";
+  name: string;
+  areaId: string;
+  emoji: string | null;
+  attitude: Attitude | null;
+  phase: Phase | null;
+  tags: string[];
+  editingHabitId: string | null;
+}
+
+export const habitFormState$ = observable<HabitFormState>({...});
+
+export function openHabitFormCreate(params?: { areaId?: string }) {
+  habitFormState$.set({
+    open: true,
+    mode: "create",
+    name: "",
+    areaId: params?.areaId || lastUsedAreaId$.peek() || "",
+    // ... rest of fields
+  });
+}
+
+// 2. Form Dialog (components/HabitFormDialog.tsx)
+interface HabitFormDialogProps {
+  onSave: (props: CreateHabitProps | UpdateHabitProps) => void;
+  onDelete?: () => void;
+}
+
+export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
+  // Read from store
+  const formState = use$(habitFormState$);
+  const { open, mode, name, areaId, emoji } = formState;
+
+  // Update store directly
+  const handleSave = () => {
+    onSave({ name, areaId, emoji, ... });
+    closeHabitForm();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closeHabitForm()}>
+      <input
+        value={name}
+        onChange={(e) => habitFormState$.name.set(e.target.value)}
+      />
+    </Dialog>
+  );
+}
+
+// 3. Parent Component (components/AreaGallery.tsx)
+function AreaGallery() {
+  const handleSaveHabit = (props: CreateHabitProps | UpdateHabitProps) => {
+    const formState = habitFormState$.peek();
+
+    if (formState.mode === "edit") {
+      habitService.update(formState.editingHabitId, props);
+    } else {
+      habitService.create(props);
+    }
+  };
+
+  return (
+    <>
+      <button onClick={() => openHabitFormCreate({ areaId: area.id })}>
+        New Habit
+      </button>
+      <HabitFormDialog onSave={handleSaveHabit} onDelete={handleDeleteHabit} />
+    </>
+  );
+}
+```
+
+### Benefits
+
+| Principle | How It Helps |
+|-----------|-------------|
+| **Separation of Concerns** | UI state (uiStore) separated from domain state (store) |
+| **Single Source of Truth** | Form state lives in one place, not duplicated in props |
+| **Type Safety** | Store provides typed state, prevents prop drilling |
+| **Testability** | Can test form logic by manipulating store directly |
+| **Reusability** | Helper functions make opening forms trivial |
+| **Clear Boundaries** | Callbacks define persistence boundary (Presenter → Application) |
+| **Convenience** | Preserve defaults (lastUsedAreaId) across sessions |
+
+### Area Forms (Exception)
+
+**Areas use inline editing (not dialogs)** per design constraint "No modals, flat UI":
+- Simple properties (name, emoji, color)
+- Contextual to specific card
+- Local state in card component (EmptyAreaCard, PlanAreaCard)
+- No need for dialog or global state
+
+---
+
 ### Key Bindings Reference
 
 | Normal Mode | Action                             |

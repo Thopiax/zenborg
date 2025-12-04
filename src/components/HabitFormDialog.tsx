@@ -7,8 +7,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
 import { AttitudeSelector } from "@/components/AttitudeSelector";
 import { PhaseSelector } from "@/components/PhaseSelector";
-import { TagAutocompleteInline } from "@/components/TagAutocompleteInline";
-import { TagBadges } from "@/components/TagBadges";
+import { TaggedNameInput } from "@/components/TaggedNameInput";
 import {
   Dialog,
   DialogContent,
@@ -27,35 +26,29 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import type {
+  CreateHabitProps,
+  UpdateHabitProps,
+} from "@/domain/entities/Habit";
 import type { Attitude } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
-import { useTagExtraction } from "@/hooks/useTagExtraction";
+import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import { areas$, phaseConfigs$ } from "@/infrastructure/state/store";
+import {
+  closeHabitForm,
+  habitFormState$,
+  lastUsedAreaId$,
+} from "@/infrastructure/state/ui-store";
 import {
   extractLeadingEmoji,
   suggestEmojiForAreaName,
 } from "@/lib/emoji-utils";
 
 interface HabitFormDialogProps {
-  open: boolean;
-  mode: "create" | "edit";
-  habitId?: string;
-  initialName?: string;
-  initialAreaId?: string;
-  initialEmoji?: string;
-  initialAttitude?: Attitude | null;
-  initialPhase?: Phase | null;
-  initialTags?: string[];
-  onClose: () => void;
-  onSave: (
-    name: string,
-    areaId: string,
-    emoji: string,
-    attitude: Attitude | null,
-    phase: Phase | null,
-    tags: string[]
-  ) => void;
+  /** Called when user saves the habit (create or update) */
+  onSave: (props: CreateHabitProps | UpdateHabitProps) => void;
+  /** For edit mode: called when user confirms deletion */
   onDelete?: () => void;
 }
 
@@ -70,91 +63,59 @@ interface HabitFormDialogProps {
  * - Enter to save, Escape to cancel
  */
 export function HabitFormDialog({
-  open,
-  mode,
-  habitId,
-  initialName = "",
-  initialAreaId = "",
-  initialEmoji = "⭐",
-  initialAttitude = null,
-  initialPhase = null,
-  initialTags = [],
-  onClose,
   onSave,
   onDelete,
 }: HabitFormDialogProps) {
-  const [name, setName] = useState(initialName);
-  const [areaId, setAreaId] = useState(initialAreaId);
-  const [emoji, setEmoji] = useState(initialEmoji);
-  const [attitude, setAttitude] = useState<Attitude | null>(initialAttitude);
-  const [phase, setPhase] = useState<Phase | null>(initialPhase);
-  const [tags, setTags] = useState<string[]>(initialTags);
+  // Read state from UI store - single source of truth
+  const formState = use$(habitFormState$);
+  const { open, mode, name, areaId, emoji, attitude, phase, tags } = formState;
+
+  // Local UI state only (not form data)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [areaSelectorOpen, setAreaSelectorOpen] = useState(false);
   const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
   const [phaseSelectorOpen, setPhaseSelectorOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const areaSelectorRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastProcessedName = useRef<string>("");
-  const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
 
   const allAreas = use$(areas$);
   const allPhaseConfigs = use$(phaseConfigs$);
   const selectedArea = areaId ? allAreas[areaId] : null;
 
-  // Tag extraction hook
-  const {
-    isTagAutocompleteOpen,
-    currentTagSearch,
-    handleNameChange: handleNameChangeWithTags,
-    handleNameBlur: handleNameBlurWithTags,
-    addTag,
-    extractRemainingTags,
-    setIsTagAutocompleteOpen,
-    setCurrentTagSearch,
-  } = useTagExtraction({
-    inputRef: nameInputRef,
-    onTagsChange: setTags,
-    onNameChange: setName,
-  });
+  // Tagged name field
+  const taggedField = useTaggedNameField(name, tags);
+
+  // Sync field values back to form state
+  useEffect(() => {
+    habitFormState$.name.set(taggedField.name);
+    habitFormState$.tags.set(taggedField.tags);
+  }, [taggedField.name, taggedField.tags]);
 
   // Disable form hotkeys when area selector or emoji picker is open
   const formHotkeysEnabled =
     !areaSelectorOpen &&
     !emojiPickerOpen &&
-    !isTagAutocompleteOpen &&
+    !taggedField.isAutocompleteOpen &&
     !attitudeSelectorOpen &&
     !phaseSelectorOpen;
 
-  // Reset form when dialog opens/closes
+  // Reset local UI state when dialog opens
   useEffect(() => {
     if (open) {
-      setName(initialName);
-      setAreaId(initialAreaId);
-      setEmoji(initialEmoji);
-      setAttitude(initialAttitude);
-      setPhase(initialPhase);
-      setTags(initialTags);
       setValidationError(null);
       setManualEmojiOverride(false);
-      setIsTagAutocompleteOpen(false);
-      setCurrentTagSearch("");
       lastProcessedName.current = "";
+      setAreaSelectorOpen(false);
+      setEmojiPickerOpen(false);
+      setAttitudeSelectorOpen(false);
+      setPhaseSelectorOpen(false);
     }
-  }, [
-    open,
-    initialName,
-    initialAreaId,
-    initialEmoji,
-    initialAttitude,
-    initialPhase,
-    initialTags,
-    setIsTagAutocompleteOpen,
-    setCurrentTagSearch,
-  ]);
+  }, [open]);
 
   // Auto-focus name input when dialog opens
   useEffect(() => {
@@ -173,8 +134,8 @@ export function HabitFormDialog({
     const { emoji: leadingEmoji, remainingText } = extractLeadingEmoji(name);
 
     if (leadingEmoji && remainingText.length > 0) {
-      setEmoji(leadingEmoji);
-      setName(remainingText);
+      habitFormState$.emoji.set(leadingEmoji);
+      habitFormState$.name.set(remainingText);
       return;
     }
 
@@ -182,7 +143,7 @@ export function HabitFormDialog({
     if (mode === "create" && !leadingEmoji && name.trim().length >= 2) {
       const suggested = suggestEmojiForAreaName(name);
       if (suggested) {
-        setEmoji(suggested);
+        habitFormState$.emoji.set(suggested);
       }
     }
   }, [name, mode, manualEmojiOverride]);
@@ -190,13 +151,11 @@ export function HabitFormDialog({
   // Handlers
   const handleSave = () => {
     // Extract any remaining #tags before validation
-    extractRemainingTags(name, tags);
+    taggedField.extractRemainingTags();
 
-    // Get clean name after tag extraction
-    const cleanName = name
-      .replace(/#([a-z0-9-]+)/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    // Get clean name and tags from field (reactive values updated by extractRemainingTags)
+    const cleanName = taggedField.name;
+    const finalTags = taggedField.tags;
 
     if (!cleanName) {
       setValidationError("Habit name cannot be empty");
@@ -208,28 +167,30 @@ export function HabitFormDialog({
       return;
     }
 
-    onSave(cleanName, areaId, emoji, attitude, phase, tags);
-    handleClose();
-  };
+    // Persist the selected area ID for future use
+    lastUsedAreaId$.set(areaId);
 
-  const handleClose = () => {
-    setIsTagAutocompleteOpen(false);
-    setCurrentTagSearch("");
-    onClose();
+    onSave({
+      name: cleanName,
+      areaId,
+      emoji: emoji || "⭐",
+      attitude,
+      phase,
+      tags: finalTags,
+    });
+
+    closeHabitForm();
   };
 
   const handleEmojiSelect = (selectedEmoji: string) => {
-    setEmoji(selectedEmoji);
+    habitFormState$.emoji.set(selectedEmoji);
     setEmojiPickerOpen(false);
     setManualEmojiOverride(true);
   };
 
   const handleSelectArea = (selectedAreaId: string) => {
-    setAreaId(selectedAreaId);
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
+    habitFormState$.areaId.set(selectedAreaId);
+    lastUsedAreaId$.set(selectedAreaId);
   };
 
   // Keyboard shortcuts
@@ -246,7 +207,7 @@ export function HabitFormDialog({
     "escape",
     (e) => {
       e.preventDefault();
-      handleClose();
+      closeHabitForm();
     },
     { enableOnFormTags: true, enabled: formHotkeysEnabled && open }
   );
@@ -261,7 +222,7 @@ export function HabitFormDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closeHabitForm()}>
       <DialogContent ref={dialogRef} className="p-0 gap-0 max-w-2xl">
         {/* Header */}
         <DialogHeader className="border-b border-stone-200 dark:border-stone-700">
@@ -298,31 +259,15 @@ export function HabitFormDialog({
                 </PopoverContent>
               </Popover>
 
-              {/* Name Input with Tag Autocomplete */}
-              <TagAutocompleteInline
-                open={isTagAutocompleteOpen}
-                searchValue={currentTagSearch}
-                onSelectTag={(tag) => addTag(tag, name, tags)}
-                onRemoveTag={handleRemoveTag}
-                onClose={() => setIsTagAutocompleteOpen(false)}
-                existingTags={tags}
-                maxSuggestions={5}
+              {/* Name Input with Tags */}
+              <TaggedNameInput
+                field={taggedField}
+                placeholder="Habit name..."
+                autoFocus={true}
+                className="flex-1 text-4xl font-bold"
                 collisionBoundary={dialogRef.current}
-                trigger={
-                  <input
-                    ref={nameInputRef}
-                    type="text"
-                    value={name}
-                    onChange={(e) =>
-                      handleNameChangeWithTags(e.target.value, name, tags)
-                    }
-                    onBlur={() => handleNameBlurWithTags(name, tags)}
-                    autoFocus
-                    className="flex-1 text-4xl font-bold bg-transparent outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
-                    placeholder="Habit name..."
-                    aria-label="Habit name"
-                  />
-                }
+                maxSuggestions={5}
+                showTags={true}
               />
             </div>
 
@@ -335,11 +280,6 @@ export function HabitFormDialog({
                 {validationError}
               </p>
             )}
-
-            {/* Tag Badges */}
-            <div className="mt-3">
-              <TagBadges tags={tags} onRemoveTag={handleRemoveTag} />
-            </div>
           </div>
 
           {/* Area Selector */}
@@ -395,7 +335,7 @@ export function HabitFormDialog({
               <AttitudeSelector
                 open={attitudeSelectorOpen}
                 selectedAttitude={attitude}
-                onSelectAttitude={setAttitude}
+                onSelectAttitude={(newAttitude) => habitFormState$.attitude.set(newAttitude)}
                 onClose={() => setAttitudeSelectorOpen(false)}
                 onOpen={() => setAttitudeSelectorOpen(true)}
                 collisionBoundary={dialogRef.current}
@@ -428,7 +368,7 @@ export function HabitFormDialog({
               <PhaseSelector
                 open={phaseSelectorOpen}
                 selectedPhase={phase}
-                onSelectPhase={setPhase}
+                onSelectPhase={(newPhase) => habitFormState$.phase.set(newPhase)}
                 onClose={() => setPhaseSelectorOpen(false)}
                 onOpen={() => setPhaseSelectorOpen(true)}
                 collisionBoundary={dialogRef.current}
@@ -482,7 +422,7 @@ export function HabitFormDialog({
               {/* Cancel Button */}
               <button
                 type="button"
-                onClick={handleClose}
+                onClick={closeHabitForm}
                 className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-200 hover:bg-stone-300 text-stone-900 dark:bg-stone-700 dark:hover:bg-stone-600 dark:text-stone-100 transition-colors"
               >
                 Cancel

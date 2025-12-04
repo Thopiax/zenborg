@@ -85,6 +85,7 @@ const testHabit: Habit = {
   emoji: "🏃",
   tags: [],
   attitude: null,
+  phase: null,
   isArchived: false,
   order: 0,
   createdAt: new Date().toISOString(),

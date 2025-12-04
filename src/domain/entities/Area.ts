@@ -1,3 +1,4 @@
+import { normalizeTags } from "../services/TagService";
 import type { Attitude } from "../value-objects/Attitude";
 import type { Moment } from "./Moment";
 
@@ -113,23 +114,15 @@ export function getDefaultAreas(): Area[] {
 }
 
 /**
- * Normalizes tag to lowercase with hyphens
- */
-function normalizeAreaTag(tag: string): string {
-  return tag.toLowerCase().trim().replace(/\s+/g, "-");
-}
-
-/**
  * Props for creating an area
  */
-export interface CreateAreaProps {
-  name: string;
-  color: string;
-  emoji: string;
-  order: number;
+export type CreateAreaProps = Pick<
+  Area,
+  "name" | "color" | "emoji" | "order"
+> & {
   attitude?: Attitude | null;
   tags?: string[];
-}
+};
 
 /**
  * Creates a new custom area
@@ -163,9 +156,9 @@ export function createArea(props: CreateAreaProps): AreaResult {
     id: crypto.randomUUID(),
     name: trimmedName,
     attitude,
-    tags: tags.map(normalizeAreaTag),
+    tags: normalizeTags(tags),
     color: color.toLowerCase(),
-    emoji: emoji.trim(),
+    emoji: emoji?.trim(),
     isDefault: false,
     isArchived: false,
     order,
@@ -174,6 +167,10 @@ export function createArea(props: CreateAreaProps): AreaResult {
   };
 }
 
+export type UpdateAreaProps = Partial<
+  Omit<Area, "id" | "isDefault" | "isArchived" | "createdAt" | "updatedAt">
+>;
+
 /**
  * Updates an area's properties
  *
@@ -181,12 +178,7 @@ export function createArea(props: CreateAreaProps): AreaResult {
  * @param updates - Partial area properties to update
  * @returns Updated area or error
  */
-export function updateArea(
-  area: Area,
-  updates: Partial<
-    Pick<Area, "name" | "color" | "emoji" | "order" | "attitude" | "tags">
-  >
-): AreaResult {
+export function updateArea(area: Area, updates: UpdateAreaProps): AreaResult {
   if (updates.name !== undefined) {
     const trimmedName = updates.name.trim();
     if (!trimmedName) {
@@ -218,7 +210,7 @@ export function updateArea(
     name: updates.name ? updates.name.trim() : area.name,
     color: updates.color ? updates.color.toLowerCase() : area.color,
     emoji: updates.emoji ? updates.emoji.trim() : area.emoji,
-    tags: updates.tags ? updates.tags.map(normalizeAreaTag) : area.tags,
+    tags: updates.tags ? normalizeTags(updates.tags) : area.tags,
     updatedAt: new Date().toISOString(),
   };
 }
