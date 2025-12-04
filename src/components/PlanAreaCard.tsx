@@ -70,14 +70,22 @@ export function PlanAreaCard({
   const taggedField = useTaggedNameField(area.name, area.tags || []);
 
   // Sync area changes to tagged field (when tags are updated externally)
+  // Only sync when NOT actively editing to avoid interfering with user input
   useEffect(() => {
+    if (isEditingName) return;
+
     const areaName = area.name;
     const areaTags = area.tags || [];
 
-    if (areaName !== taggedField.name || areaTags.length !== taggedField.tags.length) {
+    // Compare actual tag contents, not just length
+    const tagsChanged =
+      areaTags.length !== taggedField.tags.length ||
+      areaTags.some((tag, i) => tag !== taggedField.tags[i]);
+
+    if (areaName !== taggedField.name || tagsChanged) {
       taggedField.reinitialize(areaName, areaTags);
     }
-  }, [area.name, area.tags, taggedField]);
+  }, [area.name, area.tags, taggedField, isEditingName]);
 
   const handleSaveName = () => {
     // Extract any remaining tags before saving
@@ -247,10 +255,8 @@ export function PlanAreaCard({
                   <TagBadges
                     tags={area.tags}
                     onRemoveTag={(tag) => {
-                      taggedField.removeTag(tag);
-                      onUpdateArea(area.id, {
-                        tags: taggedField.tags.filter((t) => t !== tag),
-                      });
+                      const updatedTags = (area.tags || []).filter((t) => t !== tag);
+                      onUpdateArea(area.id, { tags: updatedTags });
                     }}
                   />
                 )}
