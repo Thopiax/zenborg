@@ -1,4 +1,4 @@
-import { normalizeTag } from "../services/TagService";
+import { normalizeTag } from "@/domain/services/TagService";
 import type { Attitude } from "../value-objects/Attitude";
 import type { Phase } from "../value-objects/Phase";
 
@@ -40,6 +40,13 @@ export interface CreateHabitProps {
   tags?: string[];
   emoji?: string | null;
 }
+
+/**
+ * Props for updating a habit
+ */
+export type UpdateHabitProps = Partial<
+  Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">
+>;
 
 /**
  * Validates habit name (1-3 words)
@@ -96,13 +103,16 @@ export function createHabit(props: CreateHabitProps): HabitResult {
 
   const now = new Date().toISOString();
 
+  const normalizedTags = (tags?.map(normalizeTag).filter(Boolean) ??
+    []) as string[];
+
   return {
     id: crypto.randomUUID(),
     name: name.trim(),
     areaId: areaId.trim(),
     attitude,
     phase,
-    tags: tags.map(normalizeTag).filter((t): t is string => t !== null),
+    tags: normalizedTags,
     emoji: emoji ? emoji.trim() : null,
     isArchived: false,
     order,
@@ -129,19 +139,18 @@ export function updateHabit(
     return { error: "Order must be non-negative" };
   }
 
+  const emoji = updates.emoji?.trim() ?? habit.emoji;
+
+  const normalizedTags = (updates.tags?.map(normalizeTag).filter(Boolean) ??
+    habit.tags ??
+    []) as string[];
+
   return {
     ...habit,
     ...updates,
     name: updates.name ? updates.name.trim() : habit.name,
-    tags: updates.tags
-      ? updates.tags.map(normalizeTag).filter((t): t is string => t !== null)
-      : habit.tags,
-    emoji:
-      updates.emoji !== undefined
-        ? updates.emoji
-          ? updates.emoji.trim()
-          : null
-        : habit.emoji,
+    tags: normalizedTags,
+    emoji,
     updatedAt: new Date().toISOString(),
   };
 }

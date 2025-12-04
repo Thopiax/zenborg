@@ -1,12 +1,12 @@
 import {
+  type Area,
+  type AreaResult,
   archiveArea,
+  type CreateAreaProps,
   canDeleteArchivedArea,
   createArea,
   unarchiveArea,
   updateArea,
-  type Area,
-  type AreaResult,
-  type CreateAreaProps,
 } from "@/domain/entities/Area";
 import { areas$, habits$, moments$ } from "@/infrastructure/state/store";
 
@@ -135,7 +135,8 @@ export class AreaService {
 
     if (!canDelete) {
       return {
-        error: "Cannot delete area: it is not archived or has associated moments",
+        error:
+          "Cannot delete area: it is not archived or has associated moments",
       };
     }
 

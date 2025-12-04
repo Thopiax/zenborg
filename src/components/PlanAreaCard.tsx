@@ -8,7 +8,6 @@ import { AttitudeChip } from "@/components/AttitudeChip";
 import { AttitudeSelector } from "@/components/AttitudeSelector";
 import { ColorPicker } from "@/components/ColorPicker";
 import { PlanHabitsList } from "@/components/PlanHabitsList";
-import { TagAutocompleteInline } from "@/components/TagAutocompleteInline";
 import { TagBadges } from "@/components/TagBadges";
 import {
   DropdownMenu,
@@ -30,8 +29,9 @@ import {
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
 import type { Attitude } from "@/domain/value-objects/Attitude";
-import { useTagExtraction } from "@/hooks/useTagExtraction";
+import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import { cn } from "@/lib/utils";
+import { TaggedNameInput } from "./TaggedNameInput";
 
 interface PlanAreaCardProps {
   area: Area;
@@ -62,40 +62,23 @@ export function PlanAreaCard({
   onCreateHabit,
 }: PlanAreaCardProps) {
   const [isEditingName, setIsEditingName] = useState(false);
-  const [editedName, setEditedName] = useState(area.name);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Tag extraction for area name
-  const {
-    isTagAutocompleteOpen,
-    currentTagSearch,
-    handleNameChange: handleNameChangeWithTags,
-    handleNameBlur: handleNameBlurWithTags,
-    addTag,
-    extractRemainingTags,
-    setIsTagAutocompleteOpen,
-  } = useTagExtraction({
-    inputRef: nameInputRef,
-    onTagsChange: (tags) => onUpdateArea(area.id, { tags }),
-    onNameChange: (name) => setEditedName(name),
-  });
+  // Tagged name field for area name editing
+  const taggedField = useTaggedNameField(area.name, area.tags || []);
 
   const handleSaveName = () => {
     // Extract any remaining tags before saving
-    extractRemainingTags(editedName, area.tags || []);
+    taggedField.extractRemainingTags();
 
-    // Get clean name after tag extraction
-    const cleanName = editedName
-      .replace(/#([a-z0-9-]+)/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    // Get clean name and tags (reactive values updated by extractRemainingTags)
+    const cleanName = taggedField.name;
+    const finalTags = taggedField.tags;
 
     if (cleanName && cleanName !== area.name) {
-      onUpdateArea(area.id, { name: cleanName });
-    } else {
-      setEditedName(area.name);
+      onUpdateArea(area.id, { name: cleanName, tags: finalTags });
     }
     setIsEditingName(false);
   };
@@ -108,20 +91,20 @@ export function PlanAreaCard({
     },
     {
       enableOnFormTags: true,
-      enabled: isEditingName && !isTagAutocompleteOpen,
+      enabled: isEditingName && !taggedField.isAutocompleteOpen,
     },
-    [editedName, area.tags, isTagAutocompleteOpen]
+    [taggedField.displayValue, taggedField.tags, taggedField.isAutocompleteOpen]
   );
 
   // Escape to cancel name editing
   useHotkeys(
     "escape",
     () => {
-      setEditedName(area.name);
+      taggedField.reset();
       setIsEditingName(false);
     },
     { enableOnFormTags: true, enabled: isEditingName },
-    [area.name]
+    [area.name, taggedField]
   );
 
   const handleEmojiSelect = (selectedEmoji: string) => {
@@ -136,12 +119,6 @@ export function PlanAreaCard({
   const handleAttitudeChange = (attitude: Attitude | null) => {
     onUpdateArea(area.id, { attitude });
     setAttitudeSelectorOpen(false);
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    onUpdateArea(area.id, {
-      tags: (area.tags || []).filter((t) => t !== tagToRemove),
-    });
   };
 
   return (
@@ -185,36 +162,13 @@ export function PlanAreaCard({
               {/* Area Name - Editable with tag extraction */}
               <div className="flex-1 min-w-0">
                 {isEditingName ? (
-                  <TagAutocompleteInline
-                    open={isTagAutocompleteOpen}
-                    searchValue={currentTagSearch}
-                    onSelectTag={(tag) =>
-                      addTag(tag, editedName, area.tags || [])
-                    }
-                    onRemoveTag={handleRemoveTag}
-                    onClose={() => setIsTagAutocompleteOpen(false)}
-                    existingTags={area.tags || []}
+                  <TaggedNameInput
+                    field={taggedField}
+                    placeholder="Area name..."
+                    autoFocus={true}
+                    className="w-full px-2 py-1 text-lg font-mono font-semibold bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
                     maxSuggestions={5}
-                    trigger={
-                      <input
-                        ref={nameInputRef}
-                        type="text"
-                        value={editedName}
-                        onChange={(e) =>
-                          handleNameChangeWithTags(
-                            e.target.value,
-                            editedName,
-                            area.tags || []
-                          )
-                        }
-                        onBlur={() => {
-                          handleNameBlurWithTags(editedName, area.tags || []);
-                          handleSaveName();
-                        }}
-                        autoFocus
-                        className="w-full px-2 py-1 text-lg font-mono font-semibold bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
-                      />
-                    }
+                    showTags={false}
                   />
                 ) : (
                   <button
@@ -280,7 +234,15 @@ export function PlanAreaCard({
 
                 {/* Tag Badges */}
                 {area.tags && area.tags.length > 0 && (
-                  <TagBadges tags={area.tags} onRemoveTag={handleRemoveTag} />
+                  <TagBadges
+                    tags={area.tags}
+                    onRemoveTag={(tag) => {
+                      taggedField.removeTag(tag);
+                      onUpdateArea(area.id, {
+                        tags: taggedField.tags.filter((t) => t !== tag),
+                      });
+                    }}
+                  />
                 )}
               </div>
             )}
