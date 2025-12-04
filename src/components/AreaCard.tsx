@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
 "use client";
 
-import { Archive, GripVertical, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   EmojiPicker,
@@ -32,7 +32,6 @@ interface AreaCardProps {
   onArchive?: () => void; // Archive action for active areas
   onUnarchive?: () => void; // Unarchive action for archived areas
   onSaveNew?: (name: string, color: string, emoji: string) => void; // Called on blur for new areas
-  dragHandleProps?: any; // Props for drag handle
 }
 
 /**
@@ -43,7 +42,6 @@ interface AreaCardProps {
  * - Inline name editing
  * - Inline color picker (always visible)
  * - Inline action icons (archive/restore/delete)
- * - Drag and drop support
  */
 export function AreaCard({
   area,
@@ -55,7 +53,6 @@ export function AreaCard({
   onArchive,
   onUnarchive,
   onSaveNew,
-  dragHandleProps,
 }: AreaCardProps) {
   // Local state for optimistic updates
   const [name, setName] = useState(area.name);
@@ -179,18 +176,6 @@ export function AreaCard({
       )}
     >
       <div className="flex items-center gap-3">
-        {/* Drag Handle */}
-        {!isArchived && !isNew && (
-          <button
-            type="button"
-            {...dragHandleProps}
-            className="cursor-grab active:cursor-grabbing p-1 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors flex-shrink-0"
-            aria-label="Drag to reorder"
-          >
-            <GripVertical className="w-4 h-4 text-stone-400 dark:text-stone-500" />
-          </button>
-        )}
-
         {/* Emoji Picker */}
         <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
           <PopoverTrigger asChild>

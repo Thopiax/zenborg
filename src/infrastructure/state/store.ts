@@ -2,6 +2,7 @@ import { observable } from "@legendapp/state";
 import type { Area } from "@/domain/entities/Area";
 import type { CrystallizedRoutine } from "@/domain/entities/CrystallizedRoutine";
 import type { Cycle } from "@/domain/entities/Cycle";
+import type { CyclePlan } from "@/domain/entities/CyclePlan";
 import type { Habit } from "@/domain/entities/Habit";
 import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
@@ -48,6 +49,12 @@ export const habits$ = observable<Record<string, Habit>>({});
  * Cycles collection - keyed by cycle ID
  */
 export const cycles$ = observable<Record<string, Cycle>>({});
+
+/**
+ * Cycle plans collection - keyed by cycle plan ID
+ * Links habits to cycles with budget counts
+ */
+export const cyclePlans$ = observable<Record<string, CyclePlan>>({});
 
 /**
  * Phase configurations collection - keyed by config ID
@@ -174,7 +181,10 @@ export const archivedAreas$ = observable(() => {
   const allAreas = areas$.get();
   return Object.values(allAreas)
     .filter((area) => area.isArchived)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
 });
 
 /**
@@ -197,7 +207,10 @@ export const archivedHabits$ = observable(() => {
   const allHabits = habits$.get();
   return Object.values(allHabits)
     .filter((habit) => habit.isArchived)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
 });
 
 /**
@@ -401,6 +414,104 @@ export const metricLogsByMoment$ = observable(() => {
 });
 
 // ============================================================================
+// Cycle-Specific Computed Observables
+// ============================================================================
+
+/**
+ * Moments in the cycle deck (unallocated but budgeted)
+ * These are moments created from cycle plans that haven't been allocated yet
+ */
+export const deckMoments$ = observable(() => {
+  const moments = moments$.get();
+  const activeCycle = activeCycle$.get();
+
+  if (!activeCycle) return [];
+
+  return Object.values(moments).filter(
+    (m) =>
+      m.cycleId === activeCycle.id &&
+      m.cyclePlanId !== null &&
+      m.day === null &&
+      m.phase === null
+  );
+});
+
+/**
+ * Allocated moments in the active cycle
+ */
+export const allocatedMomentsInCycle$ = observable(() => {
+  const moments = moments$.get();
+  const activeCycle = activeCycle$.get();
+
+  if (!activeCycle) return [];
+
+  return Object.values(moments).filter(
+    (m) => m.cycleId === activeCycle.id && m.day !== null && m.phase !== null
+  );
+});
+
+/**
+ * Spontaneous moments in the active cycle (not from budget)
+ */
+export const spontaneousMomentsInCycle$ = observable(() => {
+  const moments = moments$.get();
+  const activeCycle = activeCycle$.get();
+
+  if (!activeCycle) return [];
+
+  return Object.values(moments).filter(
+    (m) =>
+      m.cycleId === activeCycle.id &&
+      m.cyclePlanId === null &&
+      m.day !== null &&
+      m.phase !== null
+  );
+});
+
+/**
+ * Cycle plans for the active cycle
+ */
+export const activeCyclePlans$ = observable(() => {
+  const plans = cyclePlans$.get();
+  const activeCycle = activeCycle$.get();
+
+  if (!activeCycle) return [];
+
+  return Object.values(plans).filter((p) => p.cycleId === activeCycle.id);
+});
+
+/**
+ * Deck moments grouped by area, then by habit
+ * Returns structure: { "area-id": { "habit-id": [...moments] } }
+ * Used for rendering the cycle deck with stacks
+ * Moments are sorted by creation time to maintain stable order
+ */
+export const deckMomentsByAreaAndHabit$ = observable(() => {
+  const deckMoments = deckMoments$.get();
+  const byArea: Record<string, Record<string, Moment[]>> = {};
+
+  // Sort moments by creation time first to ensure stable order
+  const sortedMoments = deckMoments.sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
+  for (const moment of sortedMoments) {
+    if (!byArea[moment.areaId]) {
+      byArea[moment.areaId] = {};
+    }
+
+    const habitId = moment.habitId || "standalone";
+    if (!byArea[moment.areaId][habitId]) {
+      byArea[moment.areaId][habitId] = [];
+    }
+
+    byArea[moment.areaId][habitId].push(moment);
+  }
+
+  return byArea;
+});
+
+// ============================================================================
 // Database Management
 // ============================================================================
 
@@ -416,6 +527,7 @@ export function resetDatabase() {
   areas$.set({});
   habits$.set({});
   cycles$.set({});
+  cyclePlans$.set({});
   phaseConfigs$.set({});
   crystallizedRoutines$.set({});
   metricLogs$.set({});
