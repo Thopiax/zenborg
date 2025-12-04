@@ -209,9 +209,7 @@ export function isCycleError(result: CycleResult): result is { error: string } {
  * @param cycles - Record of all cycles
  * @returns Active cycle or null if none is active
  */
-export function getActiveCycle(
-  cycles: Record<string, Cycle>
-): Cycle | null {
+export function getActiveCycle(cycles: Record<string, Cycle>): Cycle | null {
   return Object.values(cycles).find((c) => c.isActive) ?? null;
 }
 

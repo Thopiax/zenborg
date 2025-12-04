@@ -62,10 +62,7 @@ interface HabitFormDialogProps {
  * - Emoji picker with auto-suggestion
  * - Enter to save, Escape to cancel
  */
-export function HabitFormDialog({
-  onSave,
-  onDelete,
-}: HabitFormDialogProps) {
+export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   // Read state from UI store - single source of truth
   const formState = use$(habitFormState$);
   const { open, mode, name, areaId, emoji, attitude, phase, tags } = formState;
@@ -89,6 +86,21 @@ export function HabitFormDialog({
 
   // Tagged name field
   const taggedField = useTaggedNameField(name, tags);
+
+  // Sync form state TO tagged field when dialog opens (especially for edit mode)
+  useEffect(() => {
+    if (open) {
+      // The taggedField hook only initializes once, so we need to manually
+      // update it when opening in edit mode with pre-filled values
+      if (
+        name !== taggedField.name ||
+        tags.length !== taggedField.tags.length
+      ) {
+        // Reinitialize the field with new values (preserves both name and tags)
+        taggedField.reinitialize(name, tags);
+      }
+    }
+  }, [open, name, tags, taggedField]);
 
   // Sync field values back to form state
   useEffect(() => {
@@ -335,7 +347,9 @@ export function HabitFormDialog({
               <AttitudeSelector
                 open={attitudeSelectorOpen}
                 selectedAttitude={attitude}
-                onSelectAttitude={(newAttitude) => habitFormState$.attitude.set(newAttitude)}
+                onSelectAttitude={(newAttitude) =>
+                  habitFormState$.attitude.set(newAttitude)
+                }
                 onClose={() => setAttitudeSelectorOpen(false)}
                 onOpen={() => setAttitudeSelectorOpen(true)}
                 collisionBoundary={dialogRef.current}
@@ -368,7 +382,9 @@ export function HabitFormDialog({
               <PhaseSelector
                 open={phaseSelectorOpen}
                 selectedPhase={phase}
-                onSelectPhase={(newPhase) => habitFormState$.phase.set(newPhase)}
+                onSelectPhase={(newPhase) =>
+                  habitFormState$.phase.set(newPhase)
+                }
                 onClose={() => setPhaseSelectorOpen(false)}
                 onOpen={() => setPhaseSelectorOpen(true)}
                 collisionBoundary={dialogRef.current}

@@ -456,7 +456,9 @@ export class CycleService {
       })
       .sort((a, b) => {
         // Sort chronologically: oldest first
-        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+        return (
+          new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+        );
       });
   }
 
