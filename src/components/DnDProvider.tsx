@@ -25,8 +25,6 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { use$ } from "@legendapp/state/react";
 import { useState } from "react";
-import type { Horizon } from "@/domain/entities/Moment";
-import type { Attitude } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
 import {
@@ -566,25 +564,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       // Update moment's area
       console.log(`Moving moment ${momentId} to area ${newAreaId}`);
       moments$[momentId].areaId.set(newAreaId);
-      moments$[momentId].updatedAt.set(new Date().toISOString());
-    } else if (groupBy === "horizon") {
-      // Extract horizon value from column ID (format: "horizon-now", "horizon-soon", etc.)
-      const horizonValue = columnId.replace("horizon-", "");
-      const newHorizon = horizonValue === "unset" ? null : horizonValue;
-
-      // Don't update if already has this horizon
-      if (moment.horizon === newHorizon) {
-        if (shouldUnallocate) {
-          endBatch("Unallocated moment to drawing board");
-        }
-        return;
-      }
-
-      // Update moment's cycle
-      console.log(
-        `Setting moment ${momentId} horizon to ${newHorizon || "unset"}`
-      );
-      moments$[momentId].horizon.set(newHorizon as Horizon | null);
       moments$[momentId].updatedAt.set(new Date().toISOString());
     } else if (groupBy === "phase") {
       // Extract phase value from column ID (format: "phase-MORNING", "phase-AFTERNOON", etc.)

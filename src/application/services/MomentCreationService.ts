@@ -1,4 +1,4 @@
-import type { Horizon, MomentResult } from "@/domain/entities/Moment";
+import type { MomentResult } from "@/domain/entities/Moment";
 import {
   allocateMoment,
   createMoment,
@@ -13,13 +13,12 @@ import type { Phase } from "@/domain/value-objects/Phase";
 export interface CreateMomentWithWorkflowParams {
   name: string;
   areaId: string;
-  horizon?: Horizon | null;
   phase?: Phase | null;
+  emoji?: string | null;
   prefilledAllocation?: {
     day: string;
     phase: Phase;
   };
-  // REMOVED: attitude (now on Habit/Area)
   tags?: string[];
   customMetric?: CustomMetric; // For habit-inherited PUSHING support
 }
@@ -34,7 +33,7 @@ export interface CreateMomentWithWorkflowParams {
  * Business Rules:
  * 1. Validate moment name (1-3 words)
  * 2. If prefilled allocation exists, allocate immediately
- * 3. Otherwise, create unallocated moment with optional horizon/phase grouping
+ * 3. Otherwise, create unallocated moment
  */
 export class MomentCreationService {
   /**
@@ -54,8 +53,8 @@ export class MomentCreationService {
     const {
       name,
       areaId,
-      horizon = null,
       phase = null,
+      emoji = null,
       prefilledAllocation,
       tags = [],
       customMetric, // For habit-inherited PUSHING support
@@ -65,8 +64,8 @@ export class MomentCreationService {
     const result = createMoment({
       name,
       areaId,
-      horizon,
       phase,
+      emoji,
       tags,
       customMetric,
     });
@@ -88,7 +87,6 @@ export class MomentCreationService {
     }
 
     // Step 4: Return unallocated moment
-    // horizon and phase are used for drawing board grouping
     return result;
   }
 }

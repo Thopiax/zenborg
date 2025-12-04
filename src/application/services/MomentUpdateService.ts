@@ -1,4 +1,4 @@
-import type { Horizon, Moment, MomentResult } from "@/domain/entities/Moment";
+import type { Moment, MomentResult } from "@/domain/entities/Moment";
 import { isMomentError, updateMomentName } from "@/domain/entities/Moment";
 import type { CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
@@ -9,8 +9,7 @@ import type { Phase } from "@/domain/value-objects/Phase";
 export interface UpdateMomentParams {
   name?: string;
   areaId?: string;
-  horizon?: Horizon | null;
-  // REMOVED: attitude (now on Habit/Area)
+  emoji?: string | null;
   phase?: Phase | null;
   tags?: string[];
   customMetric?: CustomMetric; // For habit-inherited PUSHING support
@@ -63,8 +62,8 @@ export class MomentUpdateService {
     if ("areaId" in updates) {
       updated.areaId = updates.areaId!;
     }
-    if ("horizon" in updates) {
-      updated.horizon = updates.horizon!;
+    if ("emoji" in updates) {
+      updated.emoji = updates.emoji!;
     }
     // REMOVED: attitude handling (now on Habit/Area)
     if ("tags" in updates) {

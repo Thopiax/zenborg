@@ -11,7 +11,7 @@ import {
 } from "date-fns";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
-import type { Horizon, Moment } from "@/domain/entities/Moment";
+import type { Moment } from "@/domain/entities/Moment";
 import { ATTITUDE_METADATA, Attitude } from "@/domain/value-objects/Attitude";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
 import { PHASE_ICONS } from "@/domain/value-objects/phaseStyles";
@@ -166,65 +166,6 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
   }
 
   return result;
-}
-
-/**
- * Group moments by horizon (time perspective)
- * Categories: This Week, Next Week, This Month, Later, Unset
- * Shows all horizon levels, including empty ones
- * Monochrome design - no color coding
- */
-export function groupByHorizon(moments: Moment[]): MomentGroup[] {
-  const groups: Record<string, Moment[]> = {
-    thisWeek: [],
-    nextWeek: [],
-    thisMonth: [],
-    later: [],
-    unset: [],
-  };
-
-  for (const moment of moments) {
-    switch (moment.horizon) {
-      case "this-week":
-        groups.thisWeek.push(moment);
-        break;
-      case "next-week":
-        groups.nextWeek.push(moment);
-        break;
-      case "this-month":
-        groups.thisMonth.push(moment);
-        break;
-      case "later":
-      default:
-        groups.later.push(moment);
-        break;
-    }
-  }
-
-  // Return all horizon levels in order (This Week > Next Week > This Month > Later > Unset)
-  // No colors - monochrome design
-  return [
-    {
-      groupId: "horizon-this-week",
-      groupLabel: "This Week",
-      moments: sortMoments(groups.thisWeek),
-    },
-    {
-      groupId: "horizon-next-week",
-      groupLabel: "Next Week",
-      moments: sortMoments(groups.nextWeek),
-    },
-    {
-      groupId: "horizon-this-month",
-      groupLabel: "This Month",
-      moments: sortMoments(groups.thisMonth),
-    },
-    {
-      groupId: "horizon-later",
-      groupLabel: "Later",
-      moments: sortMoments(groups.later),
-    },
-  ];
 }
 
 /**
@@ -456,7 +397,7 @@ export function groupByPhase(
  * grouping separately by calling groupByPhase directly.
  */
 export function getGroupingFunction(
-  groupBy: "none" | "area" | "created" | "horizon" | "attitude" | "tag"
+  groupBy: "none" | "area" | "created" | "attitude" | "tag"
 ):
   | ((
       moments: Moment[],
@@ -469,8 +410,6 @@ export function getGroupingFunction(
       return groupByArea;
     case "created":
       return (moments: Moment[]) => groupByCreated(moments);
-    case "horizon":
-      return (moments: Moment[]) => groupByHorizon(moments);
     case "attitude":
       return groupByAttitude;
     case "tag":

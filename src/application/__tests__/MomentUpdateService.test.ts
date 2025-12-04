@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MomentUpdateService } from "../services/MomentUpdateService";
 import { createMoment, isMomentError } from "@/domain/entities/Moment";
+import { MomentUpdateService } from "../services/MomentUpdateService";
 
 describe("MomentUpdateService", () => {
   const service = new MomentUpdateService();
@@ -99,47 +99,6 @@ describe("MomentUpdateService", () => {
       });
     });
 
-    describe("Horizon Updates", () => {
-      it("should update moment horizon", () => {
-        const moment = createMoment({
-          name: "Task",
-          areaId: "area-123",
-          horizon: "this-week",
-        });
-        if (isMomentError(moment)) throw new Error(moment.error);
-
-        const result = service.updateMoment(moment, {
-          horizon: "later",
-        });
-
-        expect(isMomentError(result)).toBe(false);
-        if (!isMomentError(result)) {
-          expect(result.horizon).toBe("later");
-        }
-      });
-
-      it("should clear horizon (set to null)", () => {
-        const moment = createMoment({
-          name: "Task",
-          areaId: "area-123",
-          horizon: "this-week",
-        });
-        if (isMomentError(moment)) throw new Error(moment.error);
-
-        const result = service.updateMoment(moment, {
-          horizon: null,
-        });
-
-        expect(isMomentError(result)).toBe(false);
-        if (!isMomentError(result)) {
-          expect(result.horizon).toBeNull();
-        }
-      });
-    });
-
-    // REMOVED: Attitude Updates section
-    // Attitude now lives at Habit/Area level, not on Moment instances
-
     describe("Tag Updates", () => {
       it("should update moment tags", () => {
         const moment = createMoment({
@@ -235,14 +194,12 @@ describe("MomentUpdateService", () => {
         const moment = createMoment({
           name: "Task",
           areaId: "area-123",
-          horizon: "this-week",
         });
         if (isMomentError(moment)) throw new Error(moment.error);
 
         const result = service.updateMoment(moment, {
           name: "New Task",
           areaId: "area-456",
-          horizon: "later",
           tags: ["important"],
         });
 
@@ -250,7 +207,6 @@ describe("MomentUpdateService", () => {
         if (!isMomentError(result)) {
           expect(result.name).toBe("New Task");
           expect(result.areaId).toBe("area-456");
-          expect(result.horizon).toBe("later");
           expect(result.tags).toEqual(["important"]);
         }
       });
@@ -259,7 +215,6 @@ describe("MomentUpdateService", () => {
         const moment = createMoment({
           name: "Task",
           areaId: "area-123",
-          horizon: "this-week",
           tags: ["tag1", "tag2"],
         });
         if (isMomentError(moment)) throw new Error(moment.error);
@@ -274,7 +229,6 @@ describe("MomentUpdateService", () => {
           expect(result.name).toBe("Updated Task");
           // Other fields unchanged
           expect(result.areaId).toBe("area-123");
-          expect(result.horizon).toBe("this-week");
           expect(result.tags).toEqual(["tag1", "tag2"]);
         }
       });
@@ -343,7 +297,6 @@ describe("MomentUpdateService", () => {
         const moment = createMoment({
           name: "Task",
           areaId: "area-123",
-          horizon: "this-week",
           tags: ["tag1"],
         });
         if (isMomentError(moment)) throw new Error(moment.error);
@@ -356,7 +309,6 @@ describe("MomentUpdateService", () => {
         if (!isMomentError(result)) {
           expect(result.id).toBe(moment.id);
           expect(result.areaId).toBe(moment.areaId);
-          expect(result.horizon).toBe(moment.horizon);
           expect(result.tags).toBe(moment.tags);
           expect(result.day).toBe(moment.day);
           expect(result.phase).toBe(moment.phase);

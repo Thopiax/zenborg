@@ -1,4 +1,6 @@
-import { Attitude } from "../value-objects/Attitude";
+import { normalizeTag } from "../services/TagService";
+import type { Attitude } from "../value-objects/Attitude";
+import type { Phase } from "../value-objects/Phase";
 
 /**
  * Habit - Recurring moment template
@@ -12,6 +14,7 @@ export interface Habit {
   name: string; // 1-3 words
   areaId: string; // FK to Area (required parent)
   attitude: Attitude | null; // Override Area's attitude if set
+  phase: Phase | null; // Default phase preference for this habit
   tags: string[]; // Attributes for filtering (e.g., "cardio", "outdoor")
   emoji: string | null; // Optional override of Area emoji
   isArchived: boolean; // Soft delete
@@ -33,6 +36,7 @@ export interface CreateHabitProps {
   areaId: string;
   order: number;
   attitude?: Attitude | null;
+  phase?: Phase | null;
   tags?: string[];
   emoji?: string | null;
 }
@@ -64,13 +68,6 @@ function validateHabitName(name: string): { valid: boolean; error?: string } {
 }
 
 /**
- * Normalizes tag to lowercase with hyphens
- */
-function normalizeHabitTag(tag: string): string {
-  return tag.toLowerCase().trim().replace(/\s+/g, "-");
-}
-
-/**
  * Creates a new habit
  */
 export function createHabit(props: CreateHabitProps): HabitResult {
@@ -79,6 +76,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     areaId,
     order,
     attitude = null,
+    phase = null,
     tags = [],
     emoji = null,
   } = props;
@@ -103,7 +101,8 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     name: name.trim(),
     areaId: areaId.trim(),
     attitude,
-    tags: tags.map(normalizeHabitTag),
+    phase,
+    tags: tags.map(normalizeTag).filter((t): t is string => t !== null),
     emoji: emoji ? emoji.trim() : null,
     isArchived: false,
     order,
@@ -117,9 +116,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
  */
 export function updateHabit(
   habit: Habit,
-  updates: Partial<
-    Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">
-  >
+  updates: Partial<Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">>
 ): HabitResult {
   if (updates.name !== undefined) {
     const validation = validateHabitName(updates.name);
@@ -136,8 +133,15 @@ export function updateHabit(
     ...habit,
     ...updates,
     name: updates.name ? updates.name.trim() : habit.name,
-    tags: updates.tags ? updates.tags.map(normalizeHabitTag) : habit.tags,
-    emoji: updates.emoji !== undefined ? (updates.emoji ? updates.emoji.trim() : null) : habit.emoji,
+    tags: updates.tags
+      ? updates.tags.map(normalizeTag).filter((t): t is string => t !== null)
+      : habit.tags,
+    emoji:
+      updates.emoji !== undefined
+        ? updates.emoji
+          ? updates.emoji.trim()
+          : null
+        : habit.emoji,
     updatedAt: new Date().toISOString(),
   };
 }

@@ -7,7 +7,6 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { MomentCreationService } from "@/application/services/MomentCreationService";
 import { MomentUpdateService } from "@/application/services/MomentUpdateService";
 import { allCommands } from "@/commands";
-import type { Horizon } from "@/domain/entities/Moment";
 import { isMomentError } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
@@ -111,10 +110,9 @@ export function useGlobalKeyboard() {
   const handleCreateMoment = (
     name: string,
     areaId: string,
-    horizon: Horizon | null,
     phase: Phase | null,
     createMore?: boolean,
-    attitude?: Attitude | null,
+    emoji?: string | null,
     tags?: string[],
     customMetric?: CustomMetric
   ) => {
@@ -131,8 +129,8 @@ export function useGlobalKeyboard() {
     const result = momentCreationService.createMomentWithWorkflow({
       name,
       areaId,
-      horizon,
       phase,
+      emoji: emoji || null,
       prefilledAllocation,
       tags,
       customMetric,
@@ -160,7 +158,6 @@ export function useGlobalKeyboard() {
     day?: string,
     phase?: string,
     areaId?: string,
-    horizon?: string,
     attitude?: string
   ) => {
     const { openMomentFormCreate } = require("@/infrastructure/state/ui-store");
@@ -169,7 +166,6 @@ export function useGlobalKeyboard() {
       phaseStr: phase,
       phase: phase as Phase | undefined,
       areaId,
-      horizon: horizon as Horizon | undefined,
       attitude: attitude ? (attitude.toUpperCase() as Attitude) : undefined,
     });
   };
@@ -177,9 +173,8 @@ export function useGlobalKeyboard() {
   const handleSaveEdit = (
     name: string,
     areaId: string,
-    horizon: Horizon | null,
     phase: Phase | null,
-    attitude?: Attitude | null,
+    emoji?: string | null,
     tags?: string[],
     customMetric?: CustomMetric
   ) => {
@@ -197,7 +192,7 @@ export function useGlobalKeyboard() {
       const result = momentUpdateService.updateMoment(currentMoment, {
         name,
         areaId,
-        horizon,
+        emoji: emoji || null,
         tags,
         customMetric,
         phase,

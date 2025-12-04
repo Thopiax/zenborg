@@ -28,7 +28,6 @@ describe("Export/Import System", () => {
       phase: "MORNING" as Phase,
       day: "2025-01-15",
       order: 0,
-      horizon: null,
       tags: null,
       createdAt: "2025-01-15T08:00:00.000Z",
       updatedAt: "2025-01-15T08:00:00.000Z",
@@ -43,7 +42,6 @@ describe("Export/Import System", () => {
       phase: null,
       day: null,
       order: 0,
-      horizon: "this-week",
       tags: null,
       createdAt: "2025-01-15T09:00:00.000Z",
       updatedAt: "2025-01-15T09:00:00.000Z",
@@ -149,7 +147,9 @@ describe("Export/Import System", () => {
       expect(exported.data.habits).toEqual(sampleHabits);
       expect(exported.data.cycles).toEqual(sampleCycles);
       expect(exported.data.phaseConfigs).toEqual(samplePhaseConfigs);
-      expect(exported.data.crystallizedRoutines).toEqual(sampleCrystallizedRoutines);
+      expect(exported.data.crystallizedRoutines).toEqual(
+        sampleCrystallizedRoutines
+      );
       expect(exported.data.metricLogs).toEqual(sampleMetricLogs);
     });
 
@@ -433,8 +433,8 @@ describe("Export/Import System", () => {
             phase: null,
             day: null,
             order: 0,
-            horizon: null,
             tags: null,
+            emoji: null,
             createdAt: "2025-01-01T00:00:00.000Z",
             updatedAt: "2025-01-01T00:00:00.000Z",
           },
@@ -507,7 +507,6 @@ describe("Export/Import System", () => {
         phase: "EVENING" as Phase,
         day: "2025-01-15",
         order: 0,
-        horizon: null,
         tags: null,
         createdAt: "2025-01-15T18:00:00.000Z",
         updatedAt: "2025-01-15T18:00:00.000Z",
@@ -667,7 +666,6 @@ describe("Export/Import System", () => {
         phase: null,
         day: null,
         order: 0,
-        horizon: null,
         tags: null,
         createdAt: "2025-01-15T08:00:00.000Z",
         updatedAt: "2025-01-15T08:00:00.000Z",
@@ -760,9 +758,15 @@ describe("Export/Import System", () => {
       // Should be valid with warnings
       expect(validation.valid).toBe(true);
       expect(validation.errors).toHaveLength(0);
-      expect(validation.warnings).toContain("Missing habits data - will import as empty");
-      expect(validation.warnings).toContain("Missing crystallizedRoutines data - will import as empty");
-      expect(validation.warnings).toContain("Missing metricLogs data - will import as empty");
+      expect(validation.warnings).toContain(
+        "Missing habits data - will import as empty"
+      );
+      expect(validation.warnings).toContain(
+        "Missing crystallizedRoutines data - will import as empty"
+      );
+      expect(validation.warnings).toContain(
+        "Missing metricLogs data - will import as empty"
+      );
     });
 
     it("should import incomplete data with empty defaults", () => {
@@ -800,8 +804,16 @@ describe("Export/Import System", () => {
         metricLogs: {},
       };
 
-      const { moments, areas, habits, cycles, phaseConfigs, crystallizedRoutines, metricLogs, result } =
-        importDataWithStrategy(incompleteData, "replace", existingData);
+      const {
+        moments,
+        areas,
+        habits,
+        cycles,
+        phaseConfigs,
+        crystallizedRoutines,
+        metricLogs,
+        result,
+      } = importDataWithStrategy(incompleteData, "replace", existingData);
 
       // Should succeed
       expect(result.success).toBe(true);

@@ -28,6 +28,11 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
     const { dayOfWeek, monthDay } = formatDateShort(day);
     const label = getDateLabel(day);
 
+    useEffect(() => {
+      console.log(`Rendering DayRow for ${day} (${label})`);
+      console.debug("visiblePhases:", visiblePhases);
+    }, [day, label, visiblePhases]);
+
     return (
       <div
         ref={ref}
@@ -163,13 +168,6 @@ export function Timeline() {
 
   // Find active day's index to determine which days are past
   const activeDayIndex = timelineDays.findIndex((d) => d.isActiveDay);
-
-  useEffect(() => {
-    console.log("Timeline rendered with days:", timelineDays);
-    console.log(
-      `Active day ${timelineDays[activeDayIndex]?.date}: index ${activeDayIndex}`
-    );
-  }, [timelineDays, activeDayIndex]);
 
   return (
     <div

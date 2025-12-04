@@ -21,18 +21,6 @@ export const formCommands: Command[] = [
     }
   },
   {
-    id: "form.openHorizonSelector",
-    label: "Open Horizon Selector (in form)",
-    shortcut: "h",
-    category: "Form",
-    keywords: ["horizon", "timeline", "select"],
-    action: () => {
-      // Opens horizon selector when form is active
-      // Implementation delegated to MomentFormDialog component
-      console.log("[Command] Open horizon selector");
-    }
-  },
-  {
     id: "form.openPhaseSelector",
     label: "Open Phase Selector (in form)",
     shortcut: "p",

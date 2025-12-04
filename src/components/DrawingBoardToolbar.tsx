@@ -30,8 +30,6 @@ export function DrawingBoardToolbar({
   const groupOptions: { value: DrawingBoardGroupBy; label: string }[] = [
     { value: "none", label: "None" },
     { value: "area", label: "Area" },
-    // { value: "created", label: "Created" },
-    { value: "horizon", label: "Horizon" },
     { value: "attitude", label: "Attitude" },
     { value: "tag", label: "Tag" },
     { value: "phase", label: "Phase" },

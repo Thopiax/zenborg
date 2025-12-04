@@ -30,11 +30,7 @@ interface DrawingBoardColumnProps {
   group: MomentGroup;
   groupBy: DrawingBoardGroupBy;
   isOnlyColumn?: boolean; // True when there's only one column (skip horizontal layout)
-  onCreateMoment?: (
-    areaId?: string,
-    horizon?: string,
-    phase?: string
-  ) => void;
+  onCreateMoment?: (areaId?: string, phase?: string) => void;
   onEditArea?: (areaId: string) => void; // Open area management modal focused on this area
 }
 
@@ -47,7 +43,7 @@ interface DrawingBoardColumnProps {
  * - Supports drag-and-drop between columns (for area grouping)
  * - Minimal design with colored left border instead of background
  * - Click empty area to create moment with column properties
- * - Read-only grouping (created/horizon) prevents cross-column dragging
+ * - Read-only grouping (created) prevents cross-column dragging
  */
 export function DrawingBoardColumn({
   group,
@@ -70,9 +66,10 @@ export function DrawingBoardColumn({
   });
 
   // Allow drops for area and attitude grouping
-  const canAcceptDrops = groupBy === "area" || groupBy === "attitude" || groupBy === "phase";
+  const canAcceptDrops =
+    groupBy === "area" || groupBy === "attitude" || groupBy === "phase";
 
-  // Only allow click-to-create for area, horizon, and attitude grouping (not created or tag)
+  // Only allow click-to-create for area and attitude grouping (not created or tag)
   const canCreateFromColumn =
     groupBy !== "created" && groupBy !== "tag" && onCreateMoment;
 
@@ -83,17 +80,16 @@ export function DrawingBoardColumn({
     if (groupBy === "area") {
       // Create with this area pre-selected
       onCreateMoment(group.groupId);
-    } else if (groupBy === "horizon") {
-      // Create with this horizon pre-selected
-      const horizonValue = group.groupId.replace("horizon-", "");
-      onCreateMoment(undefined, horizonValue === "unset" ? "" : horizonValue);
     } else if (groupBy === "attitude") {
       // Attitudes are now at Area/Habit level, so just create a basic moment
       onCreateMoment();
     } else if (groupBy === "phase") {
       // Create with this phase pre-selected
       const phaseValue = group.groupId.replace("phase-", "");
-      onCreateMoment(undefined, undefined, phaseValue === "unset" ? undefined : phaseValue);
+      onCreateMoment(
+        undefined,
+        phaseValue === "unset" ? undefined : phaseValue
+      );
     }
   };
 
@@ -192,28 +188,28 @@ export function DrawingBoardColumn({
         <div className="flex flex-col gap-3 p-4 min-h-[300px] pb-48">
           {/* Empty state for area and phase grouping when no moments */}
           {(groupBy === "area" || groupBy === "phase") &&
-           group.moments.length === 0 &&
-           group.showEmptyState !== false && (
-            <div className="flex flex-col items-center justify-center min-h-[240px] gap-3 py-8">
-              <div className="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
-                {group.icon ? (
-                  <group.icon className="h-6 w-6 text-stone-600 dark:text-stone-400" />
-                ) : (
-                  <span className="text-2xl" aria-hidden="true">
-                    {group.emoji || "📝"}
-                  </span>
-                )}
+            group.moments.length === 0 &&
+            group.showEmptyState !== false && (
+              <div className="flex flex-col items-center justify-center min-h-[240px] gap-3 py-8">
+                <div className="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
+                  {group.icon ? (
+                    <group.icon className="h-6 w-6 text-stone-600 dark:text-stone-400" />
+                  ) : (
+                    <span className="text-2xl" aria-hidden="true">
+                      {group.emoji || "📝"}
+                    </span>
+                  )}
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-medium text-stone-600 dark:text-stone-400">
+                    No {group.groupLabel} moments yet
+                  </p>
+                  <p className="text-xs text-stone-500 dark:text-stone-500">
+                    Click below to add your first
+                  </p>
+                </div>
               </div>
-              <div className="text-center space-y-1">
-                <p className="text-sm font-medium text-stone-600 dark:text-stone-400">
-                  No {group.groupLabel} moments yet
-                </p>
-                <p className="text-xs text-stone-500 dark:text-stone-500">
-                  Click below to add your first
-                </p>
-              </div>
-            </div>
-          )}
+            )}
 
           {/* Existing moments */}
           {group.moments.map((moment) => {

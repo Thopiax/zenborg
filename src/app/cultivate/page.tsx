@@ -8,8 +8,7 @@ import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { MomentFormDialog } from "@/components/MomentFormDialog";
 import { SortModeConflictDialog } from "@/components/SortModeConflictDialog";
 import { Timeline } from "@/components/Timeline";
-import type { Horizon } from "@/domain/entities/Moment";
-import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
+import type { CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
@@ -36,10 +35,9 @@ export default function CultivatePage() {
   const handleMomentFormSave = (
     name: string,
     areaId: string,
-    horizon: Horizon | null,
     phase: Phase | null,
     createMore?: boolean,
-    attitude?: Attitude | null,
+    emoji?: string | null,
     tags?: string[],
     customMetric?: CustomMetric
   ) => {
@@ -49,23 +47,14 @@ export default function CultivatePage() {
       handleCreateMoment(
         name,
         areaId,
-        horizon,
         phase,
         createMore,
-        attitude,
+        emoji,
         tags,
         customMetric
       );
     } else {
-      handleSaveEdit(
-        name,
-        areaId,
-        horizon,
-        phase,
-        attitude,
-        tags,
-        customMetric
-      );
+      handleSaveEdit(name, areaId, phase, emoji, tags, customMetric);
     }
   };
 
