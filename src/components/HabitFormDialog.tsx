@@ -1,10 +1,12 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { Trash2 } from "lucide-react";
+import { Clock, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
+import { AttitudeSelector } from "@/components/AttitudeSelector";
+import { PhaseSelector } from "@/components/PhaseSelector";
 import { TagAutocompleteInline } from "@/components/TagAutocompleteInline";
 import { TagBadges } from "@/components/TagBadges";
 import {
@@ -25,8 +27,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import type { Attitude } from "@/domain/value-objects/Attitude";
+import type { Phase } from "@/domain/value-objects/Phase";
+import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { useTagExtraction } from "@/hooks/useTagExtraction";
-import { areas$ } from "@/infrastructure/state/store";
+import { areas$, phaseConfigs$ } from "@/infrastructure/state/store";
 import {
   extractLeadingEmoji,
   suggestEmojiForAreaName,
@@ -39,9 +44,18 @@ interface HabitFormDialogProps {
   initialName?: string;
   initialAreaId?: string;
   initialEmoji?: string;
+  initialAttitude?: Attitude | null;
+  initialPhase?: Phase | null;
   initialTags?: string[];
   onClose: () => void;
-  onSave: (name: string, areaId: string, emoji: string, tags: string[]) => void;
+  onSave: (
+    name: string,
+    areaId: string,
+    emoji: string,
+    attitude: Attitude | null,
+    phase: Phase | null,
+    tags: string[]
+  ) => void;
   onDelete?: () => void;
 }
 
@@ -62,6 +76,8 @@ export function HabitFormDialog({
   initialName = "",
   initialAreaId = "",
   initialEmoji = "⭐",
+  initialAttitude = null,
+  initialPhase = null,
   initialTags = [],
   onClose,
   onSave,
@@ -70,9 +86,13 @@ export function HabitFormDialog({
   const [name, setName] = useState(initialName);
   const [areaId, setAreaId] = useState(initialAreaId);
   const [emoji, setEmoji] = useState(initialEmoji);
+  const [attitude, setAttitude] = useState<Attitude | null>(initialAttitude);
+  const [phase, setPhase] = useState<Phase | null>(initialPhase);
   const [tags, setTags] = useState<string[]>(initialTags);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [areaSelectorOpen, setAreaSelectorOpen] = useState(false);
+  const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
+  const [phaseSelectorOpen, setPhaseSelectorOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -82,6 +102,7 @@ export function HabitFormDialog({
   const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
 
   const allAreas = use$(areas$);
+  const allPhaseConfigs = use$(phaseConfigs$);
   const selectedArea = areaId ? allAreas[areaId] : null;
 
   // Tag extraction hook
@@ -102,7 +123,11 @@ export function HabitFormDialog({
 
   // Disable form hotkeys when area selector or emoji picker is open
   const formHotkeysEnabled =
-    !areaSelectorOpen && !emojiPickerOpen && !isTagAutocompleteOpen;
+    !areaSelectorOpen &&
+    !emojiPickerOpen &&
+    !isTagAutocompleteOpen &&
+    !attitudeSelectorOpen &&
+    !phaseSelectorOpen;
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -110,6 +135,8 @@ export function HabitFormDialog({
       setName(initialName);
       setAreaId(initialAreaId);
       setEmoji(initialEmoji);
+      setAttitude(initialAttitude);
+      setPhase(initialPhase);
       setTags(initialTags);
       setValidationError(null);
       setManualEmojiOverride(false);
@@ -122,6 +149,8 @@ export function HabitFormDialog({
     initialName,
     initialAreaId,
     initialEmoji,
+    initialAttitude,
+    initialPhase,
     initialTags,
     setIsTagAutocompleteOpen,
     setCurrentTagSearch,
@@ -179,7 +208,7 @@ export function HabitFormDialog({
       return;
     }
 
-    onSave(cleanName, areaId, emoji, tags);
+    onSave(cleanName, areaId, emoji, attitude, phase, tags);
     handleClose();
   };
 
@@ -352,6 +381,86 @@ export function HabitFormDialog({
               />
             </div>
           )}
+
+          {/* Attitude & Phase Selectors */}
+          <div className="flex flex-col gap-3 mb-6">
+            {/* Attitude Selector */}
+            <div>
+              <label
+                htmlFor="attitude-selector-trigger"
+                className="block text-xs font-mono text-stone-500 dark:text-stone-400 mb-2"
+              >
+                Attitude
+              </label>
+              <AttitudeSelector
+                open={attitudeSelectorOpen}
+                selectedAttitude={attitude}
+                onSelectAttitude={setAttitude}
+                onClose={() => setAttitudeSelectorOpen(false)}
+                onOpen={() => setAttitudeSelectorOpen(true)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    id="attitude-selector-trigger"
+                    type="button"
+                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                  >
+                    <Clock className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                    <span className="font-mono text-sm flex-1 text-left truncate">
+                      {attitude ? `${attitude}` : "No attitude"}
+                    </span>
+                    <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                      T
+                    </kbd>
+                  </button>
+                }
+              />
+            </div>
+
+            {/* Phase Selector */}
+            <div>
+              <label
+                htmlFor="phase-selector-trigger"
+                className="block text-xs font-mono text-stone-500 dark:text-stone-400 mb-2"
+              >
+                Default Phase
+              </label>
+              <PhaseSelector
+                open={phaseSelectorOpen}
+                selectedPhase={phase}
+                onSelectPhase={setPhase}
+                onClose={() => setPhaseSelectorOpen(false)}
+                onOpen={() => setPhaseSelectorOpen(true)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    id="phase-selector-trigger"
+                    type="button"
+                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                  >
+                    {phase ? (
+                      <PhaseIcon
+                        phase={phase}
+                        className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
+                      />
+                    ) : (
+                      <Clock className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                    )}
+                    <span className="font-mono text-sm flex-1 text-left truncate">
+                      {phase
+                        ? Object.values(allPhaseConfigs).find(
+                            (pc) => pc.phase === phase
+                          )?.label
+                        : "No phase"}
+                    </span>
+                    <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                      P
+                    </kbd>
+                  </button>
+                }
+              />
+            </div>
+          </div>
         </div>
 
         {/* Footer */}

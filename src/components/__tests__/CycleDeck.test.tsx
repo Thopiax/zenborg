@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi, beforeEach } from "vitest";
+
 import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import type { Moment } from "@/domain/entities/Moment";
 import type { Area } from "@/domain/entities/Area";
+import type { Moment } from "@/domain/entities/Moment";
 
 // Mock dependencies
 vi.mock("@legendapp/state/react", () => ({
@@ -25,9 +26,9 @@ vi.mock("@/infrastructure/state/store", () => ({
   activeCycle$: {},
 }));
 
+import { use$ } from "@legendapp/state/react";
 // Import after mocks
 import { CycleDeck } from "../CycleDeck";
-import { use$ } from "@legendapp/state/react";
 
 const mockUse$ = use$ as unknown as ReturnType<typeof vi.fn>;
 
@@ -42,7 +43,6 @@ const createTestMoment = (overrides: Partial<Moment> = {}): Moment => ({
   phase: null,
   day: null,
   order: 0,
-  horizon: null,
   tags: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),

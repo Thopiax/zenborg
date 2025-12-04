@@ -1,5 +1,5 @@
 import { observable } from "@legendapp/state";
-import type { Horizon, Moment } from "@/domain/entities/Moment";
+import type { Moment } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 
@@ -44,7 +44,6 @@ export type DrawingBoardGroupBy =
   | "none"
   | "area"
   | "created"
-  | "horizon"
   | "attitude"
   | "phase"
   | "tag";
@@ -102,7 +101,6 @@ export interface MomentFormState {
   /** Form field values - directly editable via the store */
   name: string;
   areaId: string;
-  horizon: Horizon | null;
   phase: Phase | null;
   isAllocated: boolean;
   showCreateMore: boolean;
@@ -114,6 +112,7 @@ export interface MomentFormState {
     phase?: string;
   } | null;
   /** Attitudes & Tags (Phase 2 features) */
+  emoji: string | null;
   attitude: Attitude | null;
   tags?: string[];
   customMetric?: CustomMetric;
@@ -124,12 +123,12 @@ export const momentFormState$ = observable<MomentFormState>({
   mode: "create",
   name: "",
   areaId: "",
-  horizon: null,
   phase: null,
   isAllocated: false,
   showCreateMore: false,
   editingMomentId: null,
   prefilledAllocation: null,
+  emoji: null,
   attitude: null,
   tags: [],
   customMetric: undefined,
@@ -140,7 +139,6 @@ export const momentFormState$ = observable<MomentFormState>({
  */
 export function openMomentFormCreate(params?: {
   areaId?: string;
-  horizon?: Horizon | null;
   phase?: Phase | null;
   day?: string;
   phaseStr?: string;
@@ -157,7 +155,6 @@ export function openMomentFormCreate(params?: {
     mode: "create",
     name: "",
     areaId,
-    horizon: params?.horizon ?? null,
     phase: params?.phase ?? null,
     isAllocated,
     showCreateMore: true,
@@ -166,6 +163,7 @@ export function openMomentFormCreate(params?: {
       params?.day && params?.phaseStr
         ? { day: params.day, phase: params.phaseStr }
         : null,
+    emoji: null,
     attitude: params?.attitude ?? null,
     tags: [],
     customMetric: undefined,
@@ -183,12 +181,12 @@ export function openMomentFormEdit(momentId: string, moment: Moment) {
     mode: "edit",
     name: moment.name,
     areaId: moment.areaId,
-    horizon: moment.horizon,
     phase: moment.phase,
     isAllocated: !!(moment.day && moment.phase),
     showCreateMore: false,
     editingMomentId: momentId,
     prefilledAllocation: null,
+    emoji: moment.emoji || null,
     attitude: null, // Will be inherited from habit/area in the component
     tags: moment.tags || [],
     customMetric: moment.customMetric,
@@ -204,12 +202,12 @@ export function closeMomentForm() {
     mode: "create",
     name: "",
     areaId: "",
-    horizon: null,
     phase: null,
     isAllocated: false,
     showCreateMore: false,
     editingMomentId: null,
     prefilledAllocation: null,
+    emoji: null,
     attitude: null,
     tags: [],
     customMetric: undefined,

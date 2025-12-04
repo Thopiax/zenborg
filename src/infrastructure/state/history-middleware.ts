@@ -10,7 +10,6 @@
  * - Supports undo/redo by applying inverse operations
  */
 
-import type { Moment } from "@/domain/entities/Moment";
 import type {
   AllocateMomentOperation,
   BulkDeleteMomentsOperation,
@@ -27,10 +26,11 @@ import type {
   UnallocateMomentOperation,
   UpdateMomentOperation,
 } from "@/domain/entities/HistoryEntry";
+import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
-import { moments$ } from "./store";
-import { selectionState$ } from "./selection";
 import { recordOperation } from "./history";
+import { selectionState$ } from "./selection";
+import { moments$ } from "./store";
 
 // ============================================================================
 // Moment CRUD Operations
@@ -128,9 +128,7 @@ export function deleteMomentWithHistory(momentId: string) {
  */
 export function bulkDeleteMomentsWithHistory(momentIds: string[]) {
   const allMoments = moments$.peek();
-  const momentsToDelete = momentIds
-    .map((id) => allMoments[id])
-    .filter(Boolean);
+  const momentsToDelete = momentIds.map((id) => allMoments[id]).filter(Boolean);
 
   if (momentsToDelete.length === 0) {
     console.error("[History] No moments to delete");
@@ -295,7 +293,16 @@ export function moveMomentWithHistory(
   };
   recordOperation(operation);
 
-  console.log("[History] Moved moment:", momentId, "from", fromDay, fromPhase, "to", toDay, toPhase);
+  console.log(
+    "[History] Moved moment:",
+    momentId,
+    "from",
+    fromDay,
+    fromPhase,
+    "to",
+    toDay,
+    toPhase
+  );
 }
 
 /**
@@ -310,7 +317,10 @@ export function duplicateMomentWithHistory(
   const originalMoment = moments$[originalMomentId].peek();
 
   if (!originalMoment) {
-    console.error("[History] Cannot duplicate moment - not found:", originalMomentId);
+    console.error(
+      "[History] Cannot duplicate moment - not found:",
+      originalMomentId
+    );
     return "";
   }
 
@@ -388,7 +398,11 @@ export function bulkDuplicateMomentsWithHistory(momentIds: string[]): string[] {
     recordOperation(operation);
   }
 
-  console.log("[History] Bulk duplicated", momentsToDuplicate.length, "moments");
+  console.log(
+    "[History] Bulk duplicated",
+    momentsToDuplicate.length,
+    "moments"
+  );
 
   return newIds;
 }
@@ -454,7 +468,9 @@ export function selectMomentsWithHistory(momentIds: string[]) {
  */
 export function deselectMomentsWithHistory(momentIds: string[]) {
   const previousSelection = selectionState$.selectedMomentIds.peek();
-  const newSelection = previousSelection.filter((id) => !momentIds.includes(id));
+  const newSelection = previousSelection.filter(
+    (id) => !momentIds.includes(id)
+  );
 
   // Apply: Update selection in store
   selectionState$.selectedMomentIds.set(newSelection);
@@ -614,7 +630,9 @@ export function applyOperation(operation: HistoryOperation) {
           if (operation.reorders) {
             for (const reorder of operation.reorders) {
               moments$[reorder.momentId].order.set(reorder.toOrder);
-              moments$[reorder.momentId].updatedAt.set(new Date().toISOString());
+              moments$[reorder.momentId].updatedAt.set(
+                new Date().toISOString()
+              );
             }
           }
         }
@@ -665,7 +683,10 @@ export function applyOperation(operation: HistoryOperation) {
       break;
 
     default:
-      console.warn("[History] Unknown operation type:", (operation as any).type);
+      console.warn(
+        "[History] Unknown operation type:",
+        (operation as any).type
+      );
   }
 }
 
@@ -761,7 +782,9 @@ export function applyInverseOperation(operation: HistoryOperation) {
           if (operation.reorders) {
             for (const reorder of operation.reorders) {
               moments$[reorder.momentId].order.set(reorder.fromOrder);
-              moments$[reorder.momentId].updatedAt.set(new Date().toISOString());
+              moments$[reorder.momentId].updatedAt.set(
+                new Date().toISOString()
+              );
             }
           }
         }

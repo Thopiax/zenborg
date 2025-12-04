@@ -6,7 +6,6 @@ import { Calendar, Clock, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
-import { HorizonSelector } from "@/components/HorizonSelector";
 import { PhaseSelector } from "@/components/PhaseSelector";
 import { TagAutocomplete } from "@/components/TagAutocomplete";
 import { TagBadges } from "@/components/TagBadges";
@@ -18,10 +17,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  type Horizon,
-  normalizeTag,
-  validateMomentName,
-} from "@/domain/entities/Moment";
+  EmojiPicker,
+  EmojiPickerContent,
+  EmojiPickerFooter,
+  EmojiPickerSearch,
+} from "@/components/ui/emoji-picker";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { normalizeTag, validateMomentName } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
@@ -36,16 +42,19 @@ import {
   lastUsedAreaId$,
   momentFormState$,
 } from "@/infrastructure/state/ui-store";
+import {
+  extractLeadingEmoji,
+  suggestEmojiForAreaName,
+} from "@/lib/emoji-utils";
 import { cn } from "@/lib/utils";
 
 interface MomentFormDialogProps {
   onSave: (
     name: string,
     areaId: string,
-    horizon: Horizon | null,
     phase: Phase | null,
     createMore?: boolean,
-    attitude?: Attitude | null,
+    emoji?: string | null,
     tags?: string[],
     customMetric?: CustomMetric
   ) => void;
@@ -60,17 +69,15 @@ interface MomentFormDialogProps {
  * - Name input with validation (1-3 words)
  * - Area selection: A (opens selector)
  * - Phase selection: P (opens selector)
- * - Horizon selection: H (opens selector, hidden for allocated moments)
  * - Enter to save, Escape to cancel
  * - Optional "Create more" toggle for batch creation
  *
  * Keyboard Navigation:
- * - Tab: Cycle forward through fields (input → area → phase → horizon)
+ * - Tab: Cycle forward through fields (input → area → phase)
  * - Shift+Tab: Cycle backward through fields
  * - Up/Down arrows: Navigate between fields
  * - A: Open area selector
  * - P: Open phase selector
- * - H: Open horizon selector
  * - Enter: Save moment
  */
 export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
@@ -81,10 +88,10 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     mode,
     name,
     areaId: selectedAreaId,
-    horizon,
     phase,
     showCreateMore,
     isAllocated,
+    emoji,
     attitude,
     tags,
     customMetric,
@@ -97,20 +104,22 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
   // Local UI state (not form data)
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
-  const [isHorizonSelectorOpen, setIsHorizonSelectorOpen] = useState(false);
   const [isPhaseSelectorOpen, setIsPhaseSelectorOpen] = useState(false);
   const [createMore, setCreateMore] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
 
   // Tag autocomplete state
   const [isTagAutocompleteOpen, setIsTagAutocompleteOpen] = useState(false);
   const [currentTagSearch, setCurrentTagSearch] = useState("");
 
+  const lastProcessedName = useRef<string>("");
+
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const areaSelectorRef = useRef<HTMLButtonElement>(null);
   const phaseSelectorRef = useRef<HTMLButtonElement>(null);
-  const horizonSelectorRef = useRef<HTMLButtonElement>(null);
 
   // Reset local UI state when dialog opens
   useEffect(() => {
@@ -119,7 +128,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     setCreateMore(false);
     setShowDeleteConfirm(false);
     setIsAreaSelectorOpen(false);
-    setIsHorizonSelectorOpen(false);
     setIsPhaseSelectorOpen(false);
     setIsTagAutocompleteOpen(false);
     setCurrentTagSearch("");
@@ -135,12 +143,36 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     }
   }, [mode, open]);
 
+  // Extract leading emoji from name
+  useEffect(() => {
+    if (manualEmojiOverride) return;
+    if (name === lastProcessedName.current) return;
+
+    lastProcessedName.current = name;
+
+    const { emoji: leadingEmoji, remainingText } = extractLeadingEmoji(name);
+
+    if (leadingEmoji && remainingText.length > 0) {
+      momentFormState$.emoji.set(leadingEmoji);
+      momentFormState$.name.set(remainingText);
+      return;
+    }
+
+    // Auto-suggest emoji for new moments
+    if (mode === "create" && !leadingEmoji && name.trim().length >= 2) {
+      const suggested = suggestEmojiForAreaName(name);
+      if (suggested) {
+        momentFormState$.emoji.set(suggested);
+      }
+    }
+  }, [name, mode, manualEmojiOverride]);
+
   // Disable form hotkeys when any selector is open to avoid conflicts
   const formHotkeysEnabled =
     !isAreaSelectorOpen &&
-    !isHorizonSelectorOpen &&
     !isPhaseSelectorOpen &&
-    !isTagAutocompleteOpen;
+    !isTagAutocompleteOpen &&
+    !emojiPickerOpen;
 
   // Helper: Extract current tag being typed (if any)
   const extractCurrentTag = (
@@ -272,16 +304,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     { enabled: formHotkeysEnabled && open }
   );
 
-  // H - open horizon selector (disabled for allocated moments)
-  useHotkeys(
-    "h",
-    (e) => {
-      e.preventDefault();
-      setIsHorizonSelectorOpen(true);
-    },
-    { enabled: formHotkeysEnabled && open && !isAllocated }
-  );
-
   // P - open phase selector
   useHotkeys(
     "p",
@@ -298,14 +320,10 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     if (inputRef.current) elements.push(inputRef.current);
     if (areaSelectorRef.current) elements.push(areaSelectorRef.current);
     if (phaseSelectorRef.current) elements.push(phaseSelectorRef.current);
-    // Only include horizon selector if moment is not allocated
-    if (horizonSelectorRef.current && !isAllocated) {
-      elements.push(horizonSelectorRef.current);
-    }
     return elements;
   };
 
-  // Tab to cycle through form fields (input → area → phase → horizon)
+  // Tab to cycle through form fields (input → area → phase)
   useHotkeys(
     "tab",
     (e) => {
@@ -429,10 +447,9 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       onSave(
         cleanName,
         selectedArea.id,
-        horizon,
         phase,
         shouldCreateMore,
-        attitude,
+        emoji,
         tags || [],
         customMetric
       );
@@ -474,18 +491,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     ? Object.values(allPhaseConfigs).find((pc) => pc.phase === phase)
     : null;
 
-  // Format horizon label for display
-  const formatHorizonLabel = (c: Horizon | null): string => {
-    if (!c) return "later";
-    const labels: Record<Horizon, string> = {
-      "this-week": "this week",
-      "next-week": "next week",
-      "this-month": "this month",
-      later: "later",
-    };
-    return labels[c];
-  };
-
   const preventCloseOnEscape = (e: KeyboardEvent) => {
     // Check if the target was an input/textarea
     const target = e.target as HTMLElement;
@@ -516,19 +521,49 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
         {/* Content */}
         <div className="px-6 py-6 flex-1 overflow-y-auto">
-          {/* Name Input - Prominent */}
+          {/* Name Input with Emoji - Prominent */}
           <div className="relative mb-6 w-full">
-            <input
-              ref={inputRef}
-              type="text"
-              value={name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              className="w-full text-4xl font-bold bg-transparent outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
-              placeholder="Moment name..."
-              aria-label="Moment name"
-              onBlur={handleNameBlur}
-              aria-invalid={!validation.valid}
-            />
+            <div className="flex items-baseline gap-3">
+              {/* Emoji Picker */}
+              <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-4xl flex-shrink-0 hover:bg-stone-100 dark:hover:bg-stone-800 rounded w-14 h-14 flex items-center justify-center transition-colors mt-1"
+                    aria-label="Change emoji"
+                  >
+                    {emoji || "⭐"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-fit p-0" align="start">
+                  <EmojiPicker
+                    className="h-[342px]"
+                    onEmojiSelect={({ emoji: selectedEmoji }) => {
+                      momentFormState$.emoji.set(selectedEmoji);
+                      setEmojiPickerOpen(false);
+                      setManualEmojiOverride(true);
+                    }}
+                  >
+                    <EmojiPickerSearch />
+                    <EmojiPickerContent />
+                    <EmojiPickerFooter />
+                  </EmojiPicker>
+                </PopoverContent>
+              </Popover>
+
+              {/* Name Input */}
+              <input
+                ref={inputRef}
+                type="text"
+                value={name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                className="flex-1 text-4xl font-bold bg-transparent outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
+                placeholder="Moment name..."
+                aria-label="Moment name"
+                onBlur={handleNameBlur}
+                aria-invalid={!validation.valid}
+              />
+            </div>
 
             {/* Validation */}
             {!validation.valid &&
@@ -634,38 +669,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                     }
                   />
                 )}
-
-                {/* Horizon Selector - Show as button if selected (hide for allocated moments) */}
-                {!isAllocated && horizon && (
-                  <HorizonSelector
-                    open={isHorizonSelectorOpen}
-                    selectedHorizon={horizon}
-                    onSelectHorizon={(newHorizon) => {
-                      momentFormState$.horizon.set(newHorizon);
-                    }}
-                    onClose={() => setIsHorizonSelectorOpen(false)}
-                    onOpen={() => setIsHorizonSelectorOpen(true)}
-                    collisionBoundary={dialogRef.current}
-                    trigger={
-                      <button
-                        ref={horizonSelectorRef}
-                        type="button"
-                        className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
-                      >
-                        <Calendar
-                          className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
-                          strokeWidth={1.5}
-                        />
-                        <span className="font-mono text-sm flex-1 text-left truncate">
-                          {formatHorizonLabel(horizon)}
-                        </span>
-                        <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
-                          H
-                        </kbd>
-                      </button>
-                    }
-                  />
-                )}
               </div>
 
               {/* Subtle wrapped row for empty selectors */}
@@ -688,29 +691,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                       >
                         <Clock className="w-3.5 h-3.5" strokeWidth={1.5} />
                         <span className="text-xs font-mono">no phase</span>
-                      </button>
-                    }
-                  />
-                )}
-
-                {/* Horizon - subtle label if not selected (hide for allocated moments) */}
-                {!isAllocated && !horizon && (
-                  <HorizonSelector
-                    open={isHorizonSelectorOpen}
-                    selectedHorizon={horizon}
-                    onSelectHorizon={(newHorizon) => {
-                      momentFormState$.horizon.set(newHorizon);
-                    }}
-                    onClose={() => setIsHorizonSelectorOpen(false)}
-                    onOpen={() => setIsHorizonSelectorOpen(true)}
-                    collisionBoundary={dialogRef.current}
-                    trigger={
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-                      >
-                        <Calendar className="w-3.5 h-3.5" strokeWidth={1.5} />
-                        <span className="text-xs font-mono">later</span>
                       </button>
                     }
                   />

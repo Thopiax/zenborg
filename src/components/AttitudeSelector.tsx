@@ -73,6 +73,7 @@ export function AttitudeSelector({
       onClose={onClose}
       onOpen={onOpen}
       trigger={trigger}
+      enableHotkeys
       collisionBoundary={collisionBoundary}
     />
   );
