@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from "vitest";
+
 import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import { MomentStack } from "../MomentStack";
-import type { Moment } from "@/domain/entities/Moment";
 import type { Area } from "@/domain/entities/Area";
+import type { Moment } from "@/domain/entities/Moment";
+import { MomentStack } from "../MomentStack";
 
 // Mock MomentCard to avoid complex dependencies
 vi.mock("../MomentCard", () => ({
@@ -27,7 +28,6 @@ const createTestMoment = (overrides: Partial<Moment> = {}): Moment => ({
   phase: null,
   day: null,
   order: 0,
-  horizon: null,
   tags: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -128,7 +128,7 @@ describe("MomentStack", () => {
 
   describe("edge cases", () => {
     it("should handle empty moments array gracefully", () => {
-      const { container} = render(
+      const { container } = render(
         <MomentStack moments={[]} area={testArea} />
       );
 

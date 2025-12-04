@@ -12,18 +12,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
 import type { Area } from "@/domain/entities/Area";
-import type { Horizon, Moment } from "@/domain/entities/Moment";
+import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { selectionState$ } from "@/infrastructure/state/selection";
+import { areas$, moments$ } from "@/infrastructure/state/store";
 import {
-  activeCycle$,
-  areas$,
-  moments$,
-  unallocatedMoments$,
-} from "@/infrastructure/state/store";
-import {
-  drawingBoardExpanded$,
   isDuplicateMode$,
   openMomentFormCreate,
 } from "@/infrastructure/state/ui-store";
@@ -106,7 +100,6 @@ export function TimelineCell({
       day,
       phaseStr: phase,
       phase: phase as Phase,
-      horizon: "this-week" as Horizon,
     });
   };
 

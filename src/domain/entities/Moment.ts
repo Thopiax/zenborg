@@ -1,13 +1,9 @@
+import { normalizeTag, validateTag } from "../services/TagService";
 import type { CustomMetric } from "../value-objects/Attitude";
 import type { Phase } from "../value-objects/Phase";
 
-/**
- * Horizon - Time perspective for moments
- *
- * Horizons organize unallocated moments in the drawing board.
- * All allocated moments go to "this week" in the timeline.
- */
-export type Horizon = "this-week" | "next-week" | "this-month" | "later";
+// Re-export for convenience
+export { normalizeTag };
 
 /**
  * Moment - A named intention (1-3 words maximum)
@@ -39,10 +35,8 @@ export interface Moment {
   phase: Phase | null;
   day: string | null; // ISO date: "2025-01-15"
   order: number; // 0-2 (max 3 per phase)
-  horizon: Horizon | null; // Temporal scope for drawing board organization
 
-  // Attitudes & Tags (Phase 2 features)
-  // REMOVED: attitude field (now on Habit/Area)
+  emoji?: string | null; // Optional emoji override (inherits from habit or area)
   customMetric?: CustomMetric; // Keep for PUSHING habit support
   tags: string[] | null; // Flexible organization labels
 
@@ -136,8 +130,8 @@ export interface CreateMomentProps {
   habitId?: string | null; // Optional link to habit
   cycleId?: string | null; // Optional link to cycle
   cyclePlanId?: string | null; // Optional link to cycle plan
-  horizon?: Horizon | null;
   phase?: Phase | null;
+  emoji?: string | null; // Optional emoji override
   // REMOVED: attitude (now on Habit/Area)
   tags?: string[];
   customMetric?: CustomMetric; // Keep for habit-inherited PUSHING support
@@ -156,8 +150,8 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     habitId = null, // Default to null (orphaned)
     cycleId = null, // Default to null (no cycle)
     cyclePlanId = null, // Default to null (spontaneous)
-    horizon = null,
     phase = null,
+    emoji = null, // Default to null (inherits from habit/area)
     tags = [],
     customMetric, // Keep for habit-inherited PUSHING support
   } = props;
@@ -184,7 +178,7 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     phase,
     day: null,
     order: 0,
-    horizon,
+    emoji: emoji ? emoji.trim() : null, // Trim or null
     // REMOVED: attitude
     customMetric,
     tags: tags.filter(validateTag), // Filter out invalid tags
@@ -204,7 +198,6 @@ export interface AllocateMomentProps {
 
 /**
  * Allocates a moment to a specific day and phase
- * Horizon is cleared when allocating (only relevant for unallocated moments)
  *
  * @param moment - The moment to allocate
  * @param props - Allocation parameters
@@ -225,7 +218,6 @@ export function allocateMoment(
     day,
     phase,
     order,
-    horizon: null, // Clear horizon when allocating
     updatedAt: new Date().toISOString(),
   };
 }
@@ -274,32 +266,6 @@ export function updateMomentName(
   return {
     ...moment,
     name: name.trim(),
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-/**
- * Parameters for updating a moment's horizon
- */
-export interface UpdateMomentHorizonProps {
-  horizon: Horizon | null;
-}
-
-/**
- * Updates the horizon of a moment
- *
- * @param moment - The moment to update
- * @param props - Update parameters
- * @returns Updated moment
- */
-export function updateMomentHorizon(
-  moment: Moment,
-  props: UpdateMomentHorizonProps
-): Moment {
-  const { horizon } = props;
-  return {
-    ...moment,
-    horizon,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -425,38 +391,7 @@ export function isSpontaneous(moment: Moment): boolean {
 // ============================================================================
 // Tag Management
 // ============================================================================
-
-/**
- * Validates a tag format
- * Rules: lowercase, no spaces, alphanumeric + hyphen, 1-20 characters
- *
- * @param tag - Tag to validate
- * @returns True if valid
- */
-export function validateTag(tag: string): boolean {
-  if (!tag || typeof tag !== "string") return false;
-  return /^[a-z0-9-]{1,20}$/.test(tag);
-}
-
-/**
- * Normalizes a tag to the correct format
- * Converts to lowercase, replaces spaces with hyphens
- *
- * @param tag - Tag to normalize
- * @returns Normalized tag or null if invalid
- */
-export function normalizeTag(tag: string): string | null {
-  if (!tag || typeof tag !== "string") return null;
-
-  const normalized = tag
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-") // Replace spaces with hyphens
-    .replace(/[^a-z0-9-]/g, "") // Remove invalid characters
-    .substring(0, 20); // Limit to 20 characters
-
-  return validateTag(normalized) ? normalized : null;
-}
+// Tag validation/normalization now in TagService (domain/services/TagService.ts)
 
 /**
  * Parameters for adding a tag to a moment
