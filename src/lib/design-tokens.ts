@@ -387,6 +387,12 @@ export function formatWordCount(wordCount: number): string {
  * @returns "white" or "dark" text color class
  */
 export function getTextColorForBackground(hexColor: string): "white" | "dark" {
+  // Safety check for undefined/null
+  if (!hexColor) {
+    console.warn("getTextColorForBackground called with undefined color - using white text as fallback");
+    return "white";
+  }
+
   // Remove # if present
   const hex = hexColor.replace("#", "");
 

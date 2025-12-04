@@ -1,7 +1,7 @@
 {
-  "name": "Zenborg - Intention Compass",
-  "short_name": "Zenborg",
-  "description": "An attention orchestration system for budgeting moments toward personal flourishing",
+  "name": "zenborg - habit cultivation",
+  "short_name": "zenborg",
+  "description": "A habit cultivation app focused on mindfulness and personal growth.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#292524",

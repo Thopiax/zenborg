@@ -11,6 +11,7 @@ import { configureSynced, syncObservable } from "@legendapp/state/sync";
 import {
   areas$,
   crystallizedRoutines$,
+  cyclePlans$,
   cycles$,
   habits$,
   metricLogs$,
@@ -52,12 +53,13 @@ export function configurePersistence(): void {
       persist: {
         plugin: observablePersistIndexedDB({
           databaseName: "zenborg",
-          version: 3, // Incremented for habits table
+          version: 4, // Incremented for cyclePlans table
           tableNames: [
             "moments",
             "areas",
             "habits",
             "cycles",
+            "cyclePlans",
             "phaseConfigs",
             "crystallizedRoutines",
             "metricLogs",
@@ -110,6 +112,15 @@ export function configurePersistence(): void {
       persistIndexedDBOptions({
         persist: {
           name: "cycles",
+        },
+      })
+    );
+
+    syncObservable(
+      cyclePlans$,
+      persistIndexedDBOptions({
+        persist: {
+          name: "cyclePlans",
         },
       })
     );

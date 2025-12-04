@@ -15,6 +15,7 @@
 import type { Area } from "./entities/Area";
 import type { CrystallizedRoutine } from "./entities/CrystallizedRoutine";
 import type { Cycle } from "./entities/Cycle";
+import type { CyclePlan } from "./entities/CyclePlan";
 import type { Habit } from "./entities/Habit";
 import type { MetricLog } from "./entities/MetricLog";
 import type { Moment } from "./entities/Moment";
@@ -35,6 +36,7 @@ export interface DomainModelRegistry {
   areas: Record<string, Area>;
   habits: Record<string, Habit>;
   cycles: Record<string, Cycle>;
+  cyclePlans: Record<string, CyclePlan>;
   phaseConfigs: Record<string, PhaseConfig>;
   crystallizedRoutines: Record<string, CrystallizedRoutine>;
   metricLogs: Record<string, MetricLog>;
@@ -49,6 +51,7 @@ export const EXPORTABLE_MODELS = [
   "areas",
   "habits",
   "cycles",
+  "cyclePlans",
   "phaseConfigs",
   "crystallizedRoutines",
   "metricLogs",
@@ -97,6 +100,11 @@ export const COLLECTION_METADATA: Record<
     displayName: "Cycles",
     singularName: "Cycle",
     description: "Time containers for moments",
+  },
+  cyclePlans: {
+    displayName: "Cycle Plans",
+    singularName: "Cycle Plan",
+    description: "Budget allocations linking habits to cycles",
   },
   phaseConfigs: {
     displayName: "Phase Configurations",

@@ -85,7 +85,16 @@
       "Bash(pnpm tauri signer generate --help:*)",
       "Bash(pnpm tauri signer generate:*)",
       "Bash(cat:*)",
-      "Bash(pnpm exec tsc:*)"
+      "Bash(pnpm exec tsc:*)",
+      "Bash(mkdir:*)",
+      "Skill(superpowers:systematic-debugging)",
+      "Skill(superpowers:test-driven-development)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm remove:*)",
+      "Skill(superpowers:requesting-code-review)",
+      "Bash(npx shadcn@latest add:*)",
+      "Skill(ddd)",
+      "Bash(git rev-parse:*)"
     ],
     "deny": [],
     "ask": []
