@@ -16,6 +16,12 @@ export type Horizon = "this-week" | "next-week" | "this-month" | "later";
  * Moments can be unallocated (in the drawing board) or allocated to a
  * specific day and phase.
  *
+ * Cycle Integration:
+ * - cycleId: Links moment to a time period (for Review mode)
+ * - cyclePlanId: Links to budget plan (null = spontaneous, non-null = budgeted)
+ * - Budgeted moments: cyclePlanId !== null (pre-created from cycle plans)
+ * - Spontaneous moments: cyclePlanId === null (ad-hoc creation)
+ *
  * Tags & Metrics (optional):
  * - customMetric: For PUSHING habit support - user-defined performance tracking
  * - tags: Flexible labels for organization (lowercase, no spaces, alphanumeric + hyphen)
@@ -28,6 +34,8 @@ export interface Moment {
   name: string;
   areaId: string;
   habitId: string | null; // Optional link to Habit (emergent structure)
+  cycleId: string | null; // Which cycle TIME PERIOD this belongs to
+  cyclePlanId: string | null; // Which budget plan (null = spontaneous)
   phase: Phase | null;
   day: string | null; // ISO date: "2025-01-15"
   order: number; // 0-2 (max 3 per phase)
@@ -126,6 +134,8 @@ export interface CreateMomentProps {
   name: string;
   areaId: string;
   habitId?: string | null; // Optional link to habit
+  cycleId?: string | null; // Optional link to cycle
+  cyclePlanId?: string | null; // Optional link to cycle plan
   horizon?: Horizon | null;
   phase?: Phase | null;
   // REMOVED: attitude (now on Habit/Area)
@@ -144,6 +154,8 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     name,
     areaId,
     habitId = null, // Default to null (orphaned)
+    cycleId = null, // Default to null (no cycle)
+    cyclePlanId = null, // Default to null (spontaneous)
     horizon = null,
     phase = null,
     tags = [],
@@ -167,6 +179,8 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     name: name.trim(),
     areaId: areaId.trim(),
     habitId: habitId ? habitId.trim() : null, // Trim or null
+    cycleId: cycleId ? cycleId.trim() : null, // Trim or null
+    cyclePlanId: cyclePlanId ? cyclePlanId.trim() : null, // Trim or null
     phase,
     day: null,
     order: 0,
@@ -362,6 +376,50 @@ export function isMomentError(
   result: MomentResult
 ): result is { error: string } {
   return "error" in result;
+}
+
+// ============================================================================
+// Cycle Integration Helpers
+// ============================================================================
+
+/**
+ * Checks if a moment is allocated to a day and phase
+ *
+ * @param moment - The moment to check
+ * @returns True if moment has both day and phase set
+ */
+export function isAllocated(moment: Moment): boolean {
+  return moment.day !== null && moment.phase !== null;
+}
+
+/**
+ * Checks if a moment is in the cycle deck (unallocated but budgeted)
+ *
+ * @param moment - The moment to check
+ * @returns True if moment is budgeted but not yet allocated
+ */
+export function isInDeck(moment: Moment): boolean {
+  return !isAllocated(moment) && moment.cyclePlanId !== null;
+}
+
+/**
+ * Checks if a moment is budgeted (created from a cycle plan)
+ *
+ * @param moment - The moment to check
+ * @returns True if moment was created from a cycle plan
+ */
+export function isBudgeted(moment: Moment): boolean {
+  return moment.cyclePlanId !== null;
+}
+
+/**
+ * Checks if a moment is spontaneous (created ad-hoc, not from plan)
+ *
+ * @param moment - The moment to check
+ * @returns True if moment was created ad-hoc (not from a cycle plan)
+ */
+export function isSpontaneous(moment: Moment): boolean {
+  return moment.cyclePlanId === null;
 }
 
 // ============================================================================
