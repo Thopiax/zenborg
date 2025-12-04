@@ -2,7 +2,7 @@
 "use client";
 
 import { Archive, MoreVertical, Plus } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AttitudeChip } from "@/components/AttitudeChip";
 import { AttitudeSelector } from "@/components/AttitudeSelector";
@@ -68,6 +68,16 @@ export function PlanAreaCard({
 
   // Tagged name field for area name editing
   const taggedField = useTaggedNameField(area.name, area.tags || []);
+
+  // Sync area changes to tagged field (when tags are updated externally)
+  useEffect(() => {
+    const areaName = area.name;
+    const areaTags = area.tags || [];
+
+    if (areaName !== taggedField.name || areaTags.length !== taggedField.tags.length) {
+      taggedField.reinitialize(areaName, areaTags);
+    }
+  }, [area.name, area.tags, taggedField]);
 
   const handleSaveName = () => {
     // Extract any remaining tags before saving
