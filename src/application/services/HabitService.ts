@@ -46,13 +46,13 @@ export class HabitService {
    * Updates an existing habit and syncs to store
    *
    * @param habitId - ID of habit to update
-   * @param updates - Fields to update
+   * @param updates - Fields to update (excluding immutable fields)
    * @returns Updated habit or error if validation fails
    */
   updateHabit(
     habitId: string,
     updates: Partial<
-      Pick<Habit, "name" | "attitude" | "tags" | "emoji" | "order">
+      Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">
     >
   ): HabitResult {
     const existing = habits$[habitId].get();

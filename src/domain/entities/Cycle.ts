@@ -198,3 +198,40 @@ export function isDateInCycle(cycle: Cycle, date: string): boolean {
 export function isCycleError(result: CycleResult): result is { error: string } {
   return "error" in result;
 }
+
+// ============================================================================
+// Cycle Helpers
+// ============================================================================
+
+/**
+ * Gets the currently active cycle from a collection
+ *
+ * @param cycles - Record of all cycles
+ * @returns Active cycle or null if none is active
+ */
+export function getActiveCycle(
+  cycles: Record<string, Cycle>
+): Cycle | null {
+  return Object.values(cycles).find((c) => c.isActive) ?? null;
+}
+
+/**
+ * Calculates the total bandwidth (available moment slots) for a cycle
+ * Bandwidth = days × 3 phases × moments per day
+ *
+ * @param cycle - The cycle to calculate bandwidth for
+ * @param momentsPerDay - User preference for moments per day (1-3)
+ * @returns Total number of moment slots available
+ */
+export function calculateCycleBandwidth(
+  cycle: Cycle,
+  momentsPerDay: 1 | 2 | 3
+): number {
+  const startDate = new Date(cycle.startDate);
+  const endDate = cycle.endDate ? new Date(cycle.endDate) : new Date();
+  const days =
+    Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
+  return days * 3 * momentsPerDay; // 3 phases per day
+}

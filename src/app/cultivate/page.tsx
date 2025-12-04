@@ -1,6 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import { CycleDeck } from "@/components/CycleDeck";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
@@ -13,7 +14,7 @@ import type { Phase } from "@/domain/value-objects/Phase";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
 import { useSelection } from "@/hooks/useSelection";
-import { moments$ } from "@/infrastructure/state/store";
+import { activeCycle$, moments$ } from "@/infrastructure/state/store";
 import { momentFormState$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 
@@ -72,6 +73,9 @@ export default function CultivatePage() {
   const allMoments = use$(moments$);
   useGlobalSelection(Object.keys(allMoments));
 
+  // Check for active cycle
+  const activeCycle = use$(activeCycle$);
+
   // Selection management
   const { clearSelection, hasAnySelected } = useSelection();
 
@@ -114,9 +118,9 @@ export default function CultivatePage() {
             <Timeline />
           </div>
 
-          {/* Drawing Board - Full-width, no safe area cropping */}
+          {/* Cycle Deck (active cycle) or Drawing Board (no cycle) */}
           <div className="flex-shrink-0">
-            <DrawingBoard />
+            {activeCycle ? <CycleDeck /> : <DrawingBoard />}
           </div>
         </main>
 

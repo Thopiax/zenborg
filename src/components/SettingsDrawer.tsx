@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Download,
   Info,
-  Keyboard,
   Monitor,
   Moon,
   RotateCcw,
@@ -35,9 +34,8 @@ import {
   importGardenData,
 } from "@/infrastructure/state/export-import";
 import { resetStore } from "@/infrastructure/state/initialize";
-import { ConfirmableAction } from "./ConfirmableAction";
-import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
+import { ConfirmableAction } from "./ConfirmableAction";
 
 interface SettingsDrawerProps {
   open: boolean;
@@ -397,67 +395,65 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                       </div>
                     ) : (
                       // Not installed - show instructions
-                      <>
-                        <div className="space-y-3">
-                          <div>
-                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-2">
-                              Why install Zenborg?
-                            </h4>
-                            <ul className="space-y-1.5 text-sm text-stone-600 dark:text-stone-400">
-                              <li className="flex items-start gap-2">
-                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
-                                  ✓
-                                </span>
-                                <span>Full-screen without browser chrome</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
-                                  ✓
-                                </span>
-                                <span>Faster access from home screen</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
-                                  ✓
-                                </span>
-                                <span>Works offline with local data</span>
-                              </li>
-                            </ul>
-                          </div>
-
-                          <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
-                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
-                              How to install:
-                            </h4>
-                            <ol className="space-y-2.5">
-                              {pwaInstructions.instructions.map(
-                                (instruction, index) => (
-                                  <li
-                                    key={index}
-                                    className="flex items-start gap-3 text-sm text-stone-700 dark:text-stone-300"
-                                  >
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-50 dark:text-stone-900 flex items-center justify-center text-xs font-bold">
-                                      {index + 1}
-                                    </span>
-                                    <span className="pt-0.5">{instruction}</span>
-                                  </li>
-                                )
-                              )}
-                            </ol>
-                          </div>
-
-                          {pwaInstructions.platform === "ios" && (
-                            <div className="p-3 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
-                              <p className="text-xs text-stone-600 dark:text-stone-400">
-                                <strong className="text-stone-900 dark:text-stone-100">
-                                  Note:
-                                </strong>{" "}
-                                On iOS, you must use Safari to install the app.
-                              </p>
-                            </div>
-                          )}
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-2">
+                            Why install Zenborg?
+                          </h4>
+                          <ul className="space-y-1.5 text-sm text-stone-600 dark:text-stone-400">
+                            <li className="flex items-start gap-2">
+                              <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
+                                ✓
+                              </span>
+                              <span>Full-screen without browser chrome</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
+                                ✓
+                              </span>
+                              <span>Faster access from home screen</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
+                                ✓
+                              </span>
+                              <span>Works offline with local data</span>
+                            </li>
+                          </ul>
                         </div>
-                      </>
+
+                        <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
+                          <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
+                            How to install:
+                          </h4>
+                          <ol className="space-y-2.5">
+                            {pwaInstructions.instructions.map(
+                              (instruction, index) => (
+                                <li
+                                  key={`pwa-instruction-${index + 1}`}
+                                  className="flex items-start gap-3 text-sm text-stone-700 dark:text-stone-300"
+                                >
+                                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-50 dark:text-stone-900 flex items-center justify-center text-xs font-bold">
+                                    {index + 1}
+                                  </span>
+                                  <span className="pt-0.5">{instruction}</span>
+                                </li>
+                              )
+                            )}
+                          </ol>
+                        </div>
+
+                        {pwaInstructions.platform === "ios" && (
+                          <div className="p-3 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
+                            <p className="text-xs text-stone-600 dark:text-stone-400">
+                              <strong className="text-stone-900 dark:text-stone-100">
+                                Note:
+                              </strong>{" "}
+                              On iOS, you must use Safari to install the app.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     )
                   ) : (
                     <div className="text-center py-6 text-sm text-stone-500 dark:text-stone-500">
@@ -575,24 +571,6 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                       Loading...
                     </div>
                   )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Keyboard Shortcuts Section */}
-            <AccordionItem
-              value="shortcuts"
-              className="border-stone-200 dark:border-stone-700"
-            >
-              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
-                <div className="flex items-center gap-2">
-                  <Keyboard className="w-4 h-4" />
-                  <span>Keyboard Shortcuts</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="px-2">
-                  <KeyboardShortcutsHelp />
                 </div>
               </AccordionContent>
             </AccordionItem>

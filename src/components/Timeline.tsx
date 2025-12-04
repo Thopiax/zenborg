@@ -1,84 +1,36 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import type { Phase } from "@/domain/value-objects/Phase";
 import { visiblePhases$ } from "@/infrastructure/state/store";
-import { fromISODate, getDateLabel, getExtendedTimelineDays } from "@/lib/dates";
+import {
+  fromISODate,
+  getDateLabel,
+  getExtendedTimelineDays,
+} from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { TimelineCell } from "./TimelineCell";
 
 /**
- * Timeline - DayRow-based timeline layout with extended days
- *
- * Layout:
- * - Each day is a horizontal row
- * - Vertical scroll with snap behavior (Today has stronger snap)
- * - Days before viewport have reduced opacity with transition
- * - Today is always front and center on load
- *
- * Design:
- * - Day titles are large and prominent
- * - Phase labels removed (icons only with darker colors)
- * - Progressive slate gradient backgrounds
- * - Smooth scroll snapping to days (Today has magnetic pull)
+ * DayRow - A single day row in the timeline
  */
-export function Timeline() {
-  const visiblePhases = use$(visiblePhases$);
-  const timelineDays = getExtendedTimelineDays(1, 1); // Yesterday, Today, Tomorrow
-  const containerRef = useRef<HTMLDivElement>(null);
-  const activeDayRef = useRef<HTMLDivElement>(null);
-  const [isReady, setIsReady] = useState(false);
+interface DayRowProps {
+  day: string;
+  isToday: boolean;
+  isActiveDay: boolean;
+  isPastDay: boolean;
+  visiblePhases: Array<{ phase: Phase }>;
+}
 
-  // Scroll to active day
-  const scrollToActiveDay = () => {
-    if (activeDayRef.current) {
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        activeDayRef.current?.scrollIntoView({
-          behavior: "instant",
-          inline: "center",
-          block: "nearest",
-        });
-        // Fade in after scroll completes
-        setIsReady(true);
-      });
-    }
-  };
-
-  // Ensure active day is scrolled into view on mount
-  useEffect(() => {
-    const timeout = setTimeout(scrollToActiveDay, 200);
-    return () => clearTimeout(timeout);
-  }, []);
-
-  // Re-scroll to active day when window regains focus
-  useEffect(() => {
-    const handleFocus = () => {
-      scrollToActiveDay();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, []);
-
-  // Helper to format date as "Mon 12/25"
-  const formatDateShort = (dateStr: string) => {
-    const date = fromISODate(dateStr);
-    const dayOfWeek = date.toLocaleDateString("en-US", { weekday: "short" });
-    const monthDay = date.toLocaleDateString("en-US", {
-      month: "numeric",
-      day: "numeric",
-    });
-    return { dayOfWeek, monthDay };
-  };
-
-  const renderDayRow = (day: string, isToday: boolean, isActiveDay: boolean, isPastDay: boolean) => {
+const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
+  ({ day, isActiveDay, isPastDay, visiblePhases }, ref) => {
     const { dayOfWeek, monthDay } = formatDateShort(day);
     const label = getDateLabel(day);
 
     return (
       <div
-        ref={isActiveDay ? activeDayRef : null}
+        ref={ref}
         className={cn(
           "flex flex-col h-full",
           // Minimal padding
@@ -137,10 +89,87 @@ export function Timeline() {
         </div>
       </div>
     );
-  };
+  }
+);
+
+DayRow.displayName = "DayRow";
+
+// Helper to format date as "Mon 12/25"
+const formatDateShort = (dateStr: string) => {
+  const date = fromISODate(dateStr);
+  const dayOfWeek = date.toLocaleDateString("en-US", { weekday: "short" });
+  const monthDay = date.toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+  });
+  return { dayOfWeek, monthDay };
+};
+
+/**
+ * Timeline - DayRow-based timeline layout with extended days
+ *
+ * Layout:
+ * - Each day is a horizontal row
+ * - Vertical scroll with snap behavior (Today has stronger snap)
+ * - Days before viewport have reduced opacity with transition
+ * - Today is always front and center on load
+ *
+ * Design:
+ * - Day titles are large and prominent
+ * - Phase labels removed (icons only with darker colors)
+ * - Progressive slate gradient backgrounds
+ * - Smooth scroll snapping to days (Today has magnetic pull)
+ */
+export function Timeline() {
+  const visiblePhases = use$(visiblePhases$);
+  const timelineDays = getExtendedTimelineDays(1, 1); // Yesterday, Today, Tomorrow
+  const containerRef = useRef<HTMLDivElement>(null);
+  const activeDayRef = useRef<HTMLDivElement>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  // Scroll to active day
+  const scrollToActiveDay = useCallback(() => {
+    if (activeDayRef.current) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        activeDayRef.current?.scrollIntoView({
+          behavior: "instant",
+          inline: "start",
+          block: "nearest",
+        });
+
+        // Fade in after scroll completes
+        setIsReady(true);
+      });
+    }
+  }, []);
+
+  // Ensure active day is scrolled into view on mount
+  useEffect(() => {
+    const timeout = setTimeout(scrollToActiveDay, 200);
+    return () => clearTimeout(timeout);
+  }, [scrollToActiveDay]);
+
+  // Re-scroll to active day when window regains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log("Window focused - re-scrolling to active day");
+      scrollToActiveDay();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [scrollToActiveDay]);
 
   // Find active day's index to determine which days are past
   const activeDayIndex = timelineDays.findIndex((d) => d.isActiveDay);
+
+  useEffect(() => {
+    console.log("Timeline rendered with days:", timelineDays);
+    console.log(
+      `Active day ${timelineDays[activeDayIndex]?.date}: index ${activeDayIndex}`
+    );
+  }, [timelineDays, activeDayIndex]);
 
   return (
     <div
@@ -161,9 +190,15 @@ export function Timeline() {
       }}
     >
       {timelineDays.map(({ date, isToday, isActiveDay }, index) => (
-        <div className="flex-shrink-0" key={date}>
-          {renderDayRow(date, isToday, isActiveDay, index < activeDayIndex)}
-        </div>
+        <DayRow
+          key={date}
+          ref={isActiveDay ? activeDayRef : null}
+          day={date}
+          isToday={isToday}
+          isActiveDay={isActiveDay}
+          isPastDay={index < activeDayIndex}
+          visiblePhases={visiblePhases}
+        />
       ))}
       <div className="w-16 flex-shrink-0" />
     </div>

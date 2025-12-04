@@ -1,58 +1,99 @@
 "use client";
 
 import {
+  closestCenter,
   DndContext,
   type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   TouchSensor,
-  closestCenter,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { observer, use$ } from "@legendapp/state/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import {
+  type ImperativePanelHandle,
+  Panel,
+  PanelGroup,
+  PanelResizeHandle,
+} from "react-resizable-panels";
+import { AreaService } from "@/application/services/AreaService";
+import { CycleService } from "@/application/services/CycleService";
 import { HabitService } from "@/application/services/HabitService";
-import { EmptyAreaCard } from "@/components/EmptyAreaCard";
-import { HabitFormDialog } from "@/components/HabitFormDialog";
+import { AreaGallery } from "@/components/AreaGallery";
+import { CyclePane } from "@/components/CyclePane";
+import { DraggableHabitItem } from "@/components/DraggableHabitItem";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
-import { SortableAreaCard } from "@/components/SortableAreaCard";
-import type { Area } from "@/domain/entities/Area";
-import { archiveArea, canDeleteArchivedArea, createArea, unarchiveArea, updateArea } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
 import {
   activeAreas$,
   activeHabits$,
-  archivedAreas$,
   areas$,
-  moments$,
+  habits$,
 } from "@/infrastructure/state/store";
 
 /**
- * Plan Tool - Habit Design Interface
+ * Plant Page - Habit Design & Cycle Planning
+ *
+ * Layout:
+ * - Top: Area gallery (areas with habits)
+ * - Bottom: Cycle planning (cycle tabs + habits library + cycle deck)
  *
  * Features:
- * - Grid of area cards with habits
- * - Editable area properties (emoji, name, color)
- * - Create/edit/archive habits
- * - Habits grouped by area
+ * - Drag habits from area gallery to cycle deck to budget them
+ * - Reorder areas within the gallery
  */
-const PlanPage = observer(() => {
+const PlantPage = observer(() => {
+  const areaService = new AreaService();
+  const cycleService = new CycleService();
   const habitService = new HabitService();
-
-  // Get active areas and habits
   const areas = use$(activeAreas$);
   const habits = use$(activeHabits$);
-  const archivedAreas = use$(archivedAreas$);
 
-  // Sort areas by order property (ascending)
-  const sortedAreas = [...areas].sort((a, b) => a.order - b.order);
+  // Track active drag item for overlay
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Cycle panel ref for programmatic resizing
+  const cyclePanelRef = useRef<ImperativePanelHandle>(null);
+
+  // Handle cycle pane collapse/expand
+  const handleCyclePaneCollapse = (isCollapsed: boolean) => {
+    if (cyclePanelRef.current) {
+      // When collapsed, resize to minimum (15%), when expanded, resize to default (40%)
+      cyclePanelRef.current.resize(isCollapsed ? 15 : 40);
+    }
+  };
+
+  // Custom collision detection - prioritize area drops over habit reordering
+  const customCollisionDetection = (args: any) => {
+    const { active } = args;
+    const activeData = active?.data?.current;
+
+    // If dragging a habit (not an area)
+    if (activeData?.type === "habit") {
+      // Check if pointer is within an area card (for cross-area drops)
+      const pointerCollisions = pointerWithin(args);
+      const areaCollisions = pointerCollisions.filter((collision: any) =>
+        collision.id.toString().startsWith("area-")
+      );
+
+      // If hovering over an area, use that
+      if (areaCollisions.length > 0) {
+        return areaCollisions;
+      }
+
+      // Otherwise, use rect intersection for habit reordering
+      return rectIntersection(args);
+    }
+
+    // For area reordering or cycle drops, use closest center
+    return closestCenter(args);
+  };
 
   // Configure sensors for drag interactions
   const sensors = useSensors(
@@ -72,412 +113,216 @@ const PlanPage = observer(() => {
     })
   );
 
-  // UI state
-  const [archivedSectionOpen, setArchivedSectionOpen] = useState(false);
-  const [deleteConfirmAreaId, setDeleteConfirmAreaId] = useState<string | null>(null);
-
-  // Habit form state
-  const [habitFormOpen, setHabitFormOpen] = useState(false);
-  const [habitFormMode, setHabitFormMode] = useState<"create" | "edit">(
-    "create"
-  );
-  const [editingHabitId, setEditingHabitId] = useState<string | undefined>();
-  const [selectedAreaId, setSelectedAreaId] = useState<string>("");
-
-  // Get editing habit data
-  const editingHabit = editingHabitId
-    ? habits.find((h) => h.id === editingHabitId)
-    : undefined;
-
-  // Group habits by area
-  const habitsByArea = habits.reduce((acc, habit) => {
-    if (!acc[habit.areaId]) {
-      acc[habit.areaId] = [];
-    }
-    acc[habit.areaId].push(habit);
-    return acc;
-  }, {} as Record<string, Habit[]>);
-
-  // Handle create area
-  const handleCreateArea = (name: string, emoji: string, color: string) => {
-    // Calculate next order (max order + 1)
-    const maxOrder = areas.length > 0
-      ? Math.max(...areas.map((a) => a.order))
-      : -1;
-    const order = maxOrder + 1;
-
-    const result = createArea({
-      name,
-      emoji,
-      color,
-      tags: [],
-      attitude: null,
-      order,
-    });
-
-    if ("error" in result) {
-      console.error("Failed to create area:", result.error);
-      return;
-    }
-
-    areas$[result.id].set(result);
+  // Handle drag start - track active item for overlay
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
   };
 
-  // Handle update area
-  const handleUpdateArea = (areaId: string, updates: Partial<Area>) => {
-    const area = areas$.get()[areaId];
-    if (!area) return;
-
-    const result = updateArea(area, updates);
-    if ("error" in result) {
-      console.error("Failed to update area:", result.error);
-      return;
-    }
-
-    areas$[areaId].set(result);
-  };
-
-  // Handle archive area
-  const handleArchiveArea = (areaId: string) => {
-    const area = areas$.get()[areaId];
-    if (!area) return;
-
-    const archivedArea = archiveArea(area);
-    areas$[areaId].set(archivedArea);
-  };
-
-  // Handle unarchive area
-  const handleUnarchiveArea = (areaId: string) => {
-    const area = areas$.get()[areaId];
-    if (!area) return;
-
-    const unarchivedArea = unarchiveArea(area);
-    areas$[areaId].set(unarchivedArea);
-  };
-
-  // Handle delete archived area (with confirmation)
-  const handleDeleteArea = (areaId: string) => {
-    const area = areas$.get()[areaId];
-    if (!area) return;
-
-    const allMoments = Object.values(moments$.get());
-
-    // Check if deletion is allowed
-    if (!canDeleteArchivedArea(area, allMoments)) {
-      alert("Cannot delete area: it has moments assigned to it or is not archived.");
-      return;
-    }
-
-    // Delete from store
-    areas$[areaId].delete();
-    setDeleteConfirmAreaId(null);
-  };
-
-  // Handle create habit
-  const handleCreateHabit = (areaId: string) => {
-    setSelectedAreaId(areaId);
-    setHabitFormMode("create");
-    setEditingHabitId(undefined);
-    setHabitFormOpen(true);
-  };
-
-  // Handle edit habit
-  const handleEditHabit = (habitId: string) => {
-    const habit = habits.find((h) => h.id === habitId);
-    if (habit) {
-      setSelectedAreaId(habit.areaId);
-      setHabitFormMode("edit");
-      setEditingHabitId(habitId);
-      setHabitFormOpen(true);
-    }
-  };
-
-  // Handle archive habit
-  const handleArchiveHabit = (habitId: string) => {
-    habitService.archiveHabit(habitId);
-  };
-
-  // Handle save habit (create or update)
-  const handleSaveHabit = (
-    name: string,
-    areaId: string,
-    emoji: string,
-    tags: string[]
-  ) => {
-    if (habitFormMode === "create") {
-      habitService.createHabit({
-        name,
-        areaId,
-        emoji,
-        tags,
-        attitude: null,
-        order: 0,
-      });
-    } else if (editingHabitId) {
-      habitService.updateHabit(editingHabitId, {
-        name,
-        emoji,
-        tags,
-      });
-    }
-    setHabitFormOpen(false);
-  };
-
-  // Handle quick habit creation (inline input)
-  const handleQuickCreateHabit = (name: string, areaId: string) => {
-    // Get area to use its emoji
-    const area = areas.find((a) => a.id === areaId);
-    const emoji = area?.emoji || "⭐";
-
-    // Calculate next order (max order + 1 for habits in this area)
-    const areaHabits = habitsByArea[areaId] || [];
-    const maxOrder = areaHabits.length > 0
-      ? Math.max(...areaHabits.map((h) => h.order))
-      : -1;
-    const order = maxOrder + 1;
-
-    habitService.createHabit({
-      name,
-      areaId,
-      emoji,
-      tags: [],
-      attitude: null,
-      order,
-    });
-  };
-
-  // Handle delete habit (from edit form)
-  const handleDeleteHabit = () => {
-    if (editingHabitId) {
-      habitService.archiveHabit(editingHabitId);
-      setHabitFormOpen(false);
-    }
-  };
-
-  // Handle area drag end
-  function handleAreaDragEnd(event: DragEndEvent) {
+  // Handle drag end - supports:
+  // 1. Habit reordering within same area
+  // 2. Habit dragging to different area (changes habit's areaId)
+  // 3. Habit dragging to cycle deck (budgets to cycle)
+  // 4. Area reordering (via SortableContext in AreaGallery)
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
     const { active, over } = event;
 
-    if (!over || active.id === over.id) {
+    if (!over) return;
+
+    const dragData = active.data.current as {
+      habitId?: string;
+      sourceAreaId?: string;
+      type?: string;
+    };
+    const dropData = over.data.current as {
+      habitId?: string;
+      sourceAreaId?: string;
+      cycleId?: string;
+      targetType?: string;
+      targetAreaId?: string;
+      type?: string;
+    };
+
+    // Case 1: Reordering habits within same area
+    if (
+      dragData?.type === "habit" &&
+      dropData?.type === "habit" &&
+      dragData.sourceAreaId === dropData.sourceAreaId &&
+      active.id !== over.id
+    ) {
+      const areaId = dragData.sourceAreaId;
+      if (!areaId) return;
+
+      // Get habits in this area, sorted by order
+      const areaHabits = habits
+        .filter((h) => h.areaId === areaId)
+        .sort((a, b) => a.order - b.order);
+
+      const oldIndex = areaHabits.findIndex((h) => h.id === active.id);
+      const newIndex = areaHabits.findIndex((h) => h.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      // Reorder habits
+      const reordered = arrayMove(areaHabits, oldIndex, newIndex);
+
+      // Update order property for all habits in this area
+      reordered.forEach((habit, index) => {
+        const result = habitService.updateHabit(habit.id, { order: index });
+        if ("error" in result) {
+          console.error(`Failed to update habit order: ${result.error}`);
+        }
+      });
       return;
     }
 
-    const oldIndex = sortedAreas.findIndex((a) => a.id === active.id);
-    const newIndex = sortedAreas.findIndex((a) => a.id === over.id);
+    // Case 2: Dragging habit to different area
+    if (dragData?.type === "habit" && dropData?.targetType === "area") {
+      const habitId = dragData.habitId;
+      const sourceAreaId = dragData.sourceAreaId;
+      const targetAreaId = dropData.targetAreaId;
 
-    if (oldIndex === -1 || newIndex === -1) {
-      return;
-    }
+      // Don't do anything if dropping on same area
+      if (habitId && targetAreaId && sourceAreaId !== targetAreaId) {
+        const result = habitService.updateHabit(habitId, {
+          areaId: targetAreaId,
+        });
 
-    // Reorder the array
-    const reordered = arrayMove(sortedAreas, oldIndex, newIndex);
-
-    // Update order property for all areas
-    for (const [index, area] of reordered.entries()) {
-      if (area.order !== index) {
-        areas$[area.id].order.set(index);
-        areas$[area.id].updatedAt.set(new Date().toISOString());
+        if ("error" in result) {
+          alert(`Failed to move habit: ${result.error}`);
+        }
       }
+      return;
     }
-  }
+
+    // Case 3: Dragging habit to cycle deck
+    if (dragData?.habitId && dropData?.targetType === "cycle-deck") {
+      const habitId = dragData.habitId;
+      const cycleId = dropData.cycleId;
+
+      if (!cycleId) return;
+
+      // Get current cycle plans to find existing budget count
+      const allCyclePlans = cycleService.getAllCyclePlans();
+      const existingPlan = allCyclePlans.find(
+        (plan) => plan.cycleId === cycleId && plan.habitId === habitId
+      );
+
+      const newCount = existingPlan
+        ? (existingPlan as { budgetedCount: number }).budgetedCount + 1
+        : 1;
+
+      // Budget habit to cycle (this will materialize moments)
+      const result = cycleService.budgetHabitToCycle(
+        cycleId,
+        habitId,
+        newCount
+      );
+
+      if ("error" in result) {
+        alert(`Failed to budget habit: ${result.error}`);
+      }
+      return;
+    }
+
+    // Case 4: Area reordering (no type discrimination, just check if both are areas)
+    if (!dragData?.type && !dropData?.targetType) {
+      // This is likely an area reordering operation
+      const sortedAreas = [...areas].sort((a, b) => a.order - b.order);
+      const oldIndex = sortedAreas.findIndex((area) => area.id === active.id);
+      const newIndex = sortedAreas.findIndex((area) => area.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+      // Reorder areas
+      const reordered = arrayMove(sortedAreas, oldIndex, newIndex);
+
+      // Update order property for all areas
+      reordered.forEach((area, index) => {
+        const updated = areaService.updateArea(area.id, { order: index });
+        if ("error" in updated) return;
+        areas$[area.id].set(updated);
+      });
+      return;
+    }
+  };
 
   return (
     <>
       {/* Landscape Prompt - Shows on mobile portrait mode only */}
       <LandscapePrompt />
 
-      <div className="min-h-dvh h-dvh md:h-auto bg-background transition-colors flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-6 pt-16">
-          {/* Area Cards Grid - Sortable */}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleAreaDragEnd}
-          >
-            <SortableContext
-              items={sortedAreas.map((a) => a.id)}
-              strategy={rectSortingStrategy}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedAreas.map((area) => (
-                  <SortableAreaCard
-                    key={area.id}
-                    area={area}
-                    habits={habitsByArea[area.id] || []}
-                    onEditHabit={handleEditHabit}
-                    onArchiveHabit={handleArchiveHabit}
-                    onUpdateArea={handleUpdateArea}
-                    onArchiveArea={handleArchiveArea}
-                    onQuickCreateHabit={handleQuickCreateHabit}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={customCollisionDetection}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="h-dvh bg-background transition-colors">
+          <PanelGroup direction="vertical" autoSaveId="plant-layout">
+            {/* Top Panel: Area Gallery - Resizable */}
+            <Panel defaultSize={60} minSize={30}>
+              <div className="h-full overflow-y-auto p-6 pt-16 pb-6">
+                <div className="mb-8">
+                  <h1 className="text-2xl font-mono font-bold text-stone-900 dark:text-stone-100 mb-2">
+                    Areas
+                  </h1>
+                  <p className="text-sm text-stone-500 dark:text-stone-400 font-mono">
+                    Map out the areas of your life
+                  </p>
+                </div>
+
+                <AreaGallery />
+              </div>
+            </Panel>
+
+            {/* Resize Handle - Draggable divider */}
+            <PanelResizeHandle className="h-1 bg-stone-300 dark:bg-stone-600 hover:bg-stone-400 dark:hover:bg-stone-500 transition-colors relative group">
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-4 flex items-center justify-center">
+                <div className="w-12 h-1 rounded-full bg-stone-400 dark:bg-stone-500 group-hover:bg-stone-500 dark:group-hover:bg-stone-400 transition-colors" />
+              </div>
+            </PanelResizeHandle>
+
+            {/* Bottom Panel: Cycles - Resizable */}
+            <Panel ref={cyclePanelRef} defaultSize={40} minSize={15}>
+              <div className="h-full overflow-y-auto bg-stone-50 dark:bg-stone-900">
+                <CyclePane onCollapsedChange={handleCyclePaneCollapse} />
+              </div>
+            </Panel>
+          </PanelGroup>
+        </div>
+
+        {/* Drag Overlay - renders dragged item outside overflow containers */}
+        <DragOverlay>
+          {activeId
+            ? (() => {
+                // Only render overlay for habits (not areas)
+                const activeHabit = habits.find((h) => h.id === activeId);
+                if (!activeHabit) return null;
+
+                const area = areas.find((a) => a.id === activeHabit.areaId);
+                if (!area) {
+                  console.error("Habit area not found:", activeHabit.areaId);
+                  return null;
+                }
+                if (!area.color) {
+                  console.error("Area missing color property:", area);
+                  return null;
+                }
+
+                return (
+                  <DraggableHabitItem
+                    habit={activeHabit}
+                    areaColor={area.color}
+                    onEdit={() => {}}
                   />
-                ))}
-
-                {/* Empty card always at the end */}
-                <EmptyAreaCard onCreateArea={handleCreateArea} />
-              </div>
-            </SortableContext>
-          </DndContext>
-
-          {/* Archived Areas Section */}
-          {archivedAreas.length > 0 && (
-            <div className="mt-12">
-              <button
-                type="button"
-                onClick={() => setArchivedSectionOpen(!archivedSectionOpen)}
-                className="flex items-center gap-2 text-sm font-mono text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-colors mb-4"
-              >
-                <span>{archivedSectionOpen ? "▼" : "▶"}</span>
-                <span>Archived Areas ({archivedAreas.length})</span>
-              </button>
-
-              {archivedSectionOpen && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {archivedAreas.map((area) => (
-                    <div
-                      key={area.id}
-                      className="flex flex-col border border-stone-200 dark:border-stone-700 rounded-lg overflow-hidden opacity-60"
-                      style={{
-                        backgroundColor: area.color + "08",
-                      }}
-                    >
-                      {/* Area Header */}
-                      <div
-                        className="group px-4 py-3 border-b border-stone-200 dark:border-stone-700"
-                        style={{
-                          borderLeftColor: area.color,
-                          borderLeftWidth: "4px",
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{area.emoji}</span>
-                          <span className="flex-1 text-sm font-mono font-medium text-stone-900 dark:text-stone-100">
-                            {area.name}
-                          </span>
-
-                          {/* Action Buttons - Always visible on touch devices */}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 md:opacity-100 transition-opacity">
-                            {/* Unarchive Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleUnarchiveArea(area.id)}
-                              className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
-                              title="Unarchive area"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="text-stone-500 dark:text-stone-400"
-                              >
-                                <path d="M3 3h18v5H3z" />
-                                <path d="M3 8h18v13H3z" />
-                                <path d="M12 12v5" />
-                                <path d="m9 15 3-3 3 3" />
-                              </svg>
-                            </button>
-
-                            {/* Delete Button - Only if area has no moments */}
-                            {(() => {
-                              const allMoments = Object.values(moments$.get());
-                              const canDelete = canDeleteArchivedArea(area, allMoments);
-                              return canDelete ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteConfirmAreaId(area.id)}
-                                  className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors"
-                                  title="Delete area permanently"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="14"
-                                    height="14"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="text-red-600 dark:text-red-400"
-                                  >
-                                    <path d="M3 6h18" />
-                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                  </svg>
-                                </button>
-                              ) : null;
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Habits Count */}
-                      <div className="p-4 text-xs text-stone-500 dark:text-stone-400 font-mono">
-                        {(habitsByArea[area.id] || []).length} habit
-                        {(habitsByArea[area.id] || []).length !== 1 ? "s" : ""}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </main>
-
-        {/* Habit Form Dialog */}
-        <HabitFormDialog
-          open={habitFormOpen}
-          mode={habitFormMode}
-          habitId={editingHabitId}
-          initialName={editingHabit?.name || ""}
-          initialAreaId={selectedAreaId}
-          initialEmoji={editingHabit?.emoji || "⭐"}
-          initialTags={editingHabit?.tags || []}
-          onClose={() => setHabitFormOpen(false)}
-          onSave={handleSaveHabit}
-          onDelete={habitFormMode === "edit" ? handleDeleteHabit : undefined}
-        />
-
-        {/* Delete Area Confirmation Dialog */}
-        {deleteConfirmAreaId && (() => {
-          const area = areas$.get()[deleteConfirmAreaId];
-          return area ? (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg max-w-md w-full mx-4 p-6">
-                <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mb-2">
-                  Delete Area?
-                </h3>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-4">
-                  Are you sure you want to permanently delete "{area.name}"? This action cannot be undone.
-                </p>
-                <div className="flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmAreaId(null)}
-                    className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-200 hover:bg-stone-300 text-stone-900 dark:bg-stone-700 dark:hover:bg-stone-600 dark:text-stone-100 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteArea(deleteConfirmAreaId)}
-                    className="px-4 py-2 rounded-lg font-mono text-sm bg-red-600 hover:bg-red-700 text-white transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null;
-        })()}
-      </div>
+                );
+              })()
+            : null}
+        </DragOverlay>
+      </DndContext>
     </>
   );
 });
 
-export default PlanPage;
+export default PlantPage;

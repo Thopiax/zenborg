@@ -1,23 +1,8 @@
 "use client";
 
-import {
-  DndContext,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { Habit } from "@/domain/entities/Habit";
-import { habits$ } from "@/infrastructure/state/store";
-import { SortableHabitItem } from "./SortableHabitItem";
+import { DraggableHabitItem } from "./DraggableHabitItem";
 
 interface PlanHabitsListProps {
   habits: Habit[];
@@ -28,13 +13,12 @@ interface PlanHabitsListProps {
 }
 
 /**
- * PlanHabitsList - Sortable list of habits within an area
+ * PlanHabitsList - List of draggable habits within an area
  *
  * Features:
- * - Drag-and-drop reordering with @dnd-kit
- * - Touch support (150ms delay for mobile)
- * - Updates habit order in observable store
- * - Scoped to single area (habits cannot drag between areas)
+ * - Habits can be dragged to different areas (changes areaId)
+ * - Habits can be dragged to cycle deck (budgets to cycle)
+ * - Drag logic handled by parent DndContext
  */
 export function PlanHabitsList({
   habits,
@@ -46,70 +30,26 @@ export function PlanHabitsList({
   // Sort habits by order property (ascending)
   const sortedHabits = [...habits].sort((a, b) => a.order - b.order);
 
-  // Configure sensors for drag interactions
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 4, // 4px drag threshold
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-
-    if (!over || active.id === over.id) {
-      return;
-    }
-
-    const oldIndex = sortedHabits.findIndex((h) => h.id === active.id);
-    const newIndex = sortedHabits.findIndex((h) => h.id === over.id);
-
-    if (oldIndex === -1 || newIndex === -1) {
-      return;
-    }
-
-    // Reorder the array
-    const reordered = arrayMove(sortedHabits, oldIndex, newIndex);
-
-    // Update order property for all habits in this area
-    for (const [index, habit] of reordered.entries()) {
-      if (habit.order !== index) {
-        habits$[habit.id].order.set(index);
-        habits$[habit.id].updatedAt.set(new Date().toISOString());
-      }
-    }
-  }
-
-  // Empty state - no DndContext needed
+  // Empty state
   if (sortedHabits.length === 0) {
     return null;
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
+    <SortableContext
+      items={sortedHabits.map((h) => h.id)}
+      strategy={verticalListSortingStrategy}
     >
-      <SortableContext
-        items={sortedHabits.map((h) => h.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="space-y-2">
-          {sortedHabits.map((habit) => (
-            <SortableHabitItem
-              key={habit.id}
-              habit={habit}
-              areaColor={areaColor}
-              onEdit={() => onEditHabit(habit.id)}
-            />
-          ))}
-        </div>
-      </SortableContext>
-    </DndContext>
+      <div className="space-y-2">
+        {sortedHabits.map((habit) => (
+          <DraggableHabitItem
+            key={habit.id}
+            habit={habit}
+            areaColor={areaColor}
+            onEdit={() => onEditHabit(habit.id)}
+          />
+        ))}
+      </div>
+    </SortableContext>
   );
 }

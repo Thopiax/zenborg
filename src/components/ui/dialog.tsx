@@ -75,7 +75,7 @@ const DialogContent = React.forwardRef<
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-2 right-2 rounded-sm opacity-70 hover:opacity-100 transition-all duration-fast transition-smooth focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-500 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-4 right-4 rounded-sm hover:cursor-pointer opacity-70 hover:opacity-100 transition-all duration-fast transition-smooth focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-500 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-stone-200 dark:hover:bg-stone-800 p-1"
           >
             <XIcon />
             <span className="sr-only">Close</span>

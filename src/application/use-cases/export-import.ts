@@ -18,11 +18,12 @@
 import type { Area } from "@/domain/entities/Area";
 import type { CrystallizedRoutine } from "@/domain/entities/CrystallizedRoutine";
 import type { Cycle } from "@/domain/entities/Cycle";
+import type { CyclePlan } from "@/domain/entities/CyclePlan";
 import type { Habit } from "@/domain/entities/Habit";
 import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
-import type { PhaseConfig } from "@/domain/value-objects/Phase";
 import type { DomainModelRegistry } from "@/domain/registry";
+import type { PhaseConfig } from "@/domain/value-objects/Phase";
 
 /**
  * Export/Import Data Format
@@ -42,6 +43,7 @@ export interface ZenborgExportData {
     totalAreas: number;
     totalHabits: number;
     totalCycles: number;
+    totalCyclePlans: number;
     totalPhaseConfigs: number;
     totalCrystallizedRoutines: number;
     totalMetricLogs: number;
@@ -61,6 +63,7 @@ export const EXPORT_SCHEMA_VERSION = "1.0.0";
  * @param areas - All areas
  * @param habits - All habits
  * @param cycles - All cycles
+ * @param cyclePlans - All cycle plans
  * @param phaseConfigs - All phase configurations
  * @param crystallizedRoutines - All crystallized routines
  * @param metricLogs - All metric logs
@@ -71,6 +74,7 @@ export function exportData(
   areas: Record<string, Area>,
   habits: Record<string, Habit>,
   cycles: Record<string, Cycle>,
+  cyclePlans: Record<string, CyclePlan>,
   phaseConfigs: Record<string, PhaseConfig>,
   crystallizedRoutines: Record<string, CrystallizedRoutine>,
   metricLogs: Record<string, MetricLog>
@@ -83,6 +87,7 @@ export function exportData(
       areas,
       habits,
       cycles,
+      cyclePlans,
       phaseConfigs,
       crystallizedRoutines,
       metricLogs,
@@ -92,6 +97,7 @@ export function exportData(
       totalAreas: Object.keys(areas).length,
       totalHabits: Object.keys(habits).length,
       totalCycles: Object.keys(cycles).length,
+      totalCyclePlans: Object.keys(cyclePlans).length,
       totalPhaseConfigs: Object.keys(phaseConfigs).length,
       totalCrystallizedRoutines: Object.keys(crystallizedRoutines).length,
       totalMetricLogs: Object.keys(metricLogs).length,
@@ -141,7 +147,16 @@ export function validateImportData(data: unknown): ImportValidationResult {
   }
 
   // Check data structure
-  const { moments, areas, habits, cycles, phaseConfigs, crystallizedRoutines, metricLogs } = exportData.data;
+  const {
+    moments,
+    areas,
+    habits,
+    cycles,
+    cyclePlans,
+    phaseConfigs,
+    crystallizedRoutines,
+    metricLogs,
+  } = exportData.data;
 
   // Core collections (required)
   if (!moments || typeof moments !== "object") {
@@ -163,6 +178,10 @@ export function validateImportData(data: unknown): ImportValidationResult {
   // Optional collections (newer features - warn but don't fail)
   if (!habits || typeof habits !== "object") {
     warnings.push("Missing habits data - will import as empty");
+  }
+
+  if (!cyclePlans || typeof cyclePlans !== "object") {
+    warnings.push("Missing cyclePlans data - will import as empty");
   }
 
   if (!crystallizedRoutines || typeof crystallizedRoutines !== "object") {
@@ -217,6 +236,7 @@ export interface ImportResult {
     areas: number;
     habits: number;
     cycles: number;
+    cyclePlans: number;
     phaseConfigs: number;
     crystallizedRoutines: number;
     metricLogs: number;
@@ -226,6 +246,7 @@ export interface ImportResult {
     areas: string[];
     habits: string[];
     cycles: string[];
+    cyclePlans: string[];
     phaseConfigs: string[];
     crystallizedRoutines: string[];
     metricLogs: string[];
@@ -253,6 +274,7 @@ export function importDataWithStrategy(
     areas: importData.data.areas || {},
     habits: importData.data.habits || {},
     cycles: importData.data.cycles || {},
+    cyclePlans: importData.data.cyclePlans || {},
     phaseConfigs: importData.data.phaseConfigs || {},
     crystallizedRoutines: importData.data.crystallizedRoutines || {},
     metricLogs: importData.data.metricLogs || {},
@@ -270,8 +292,10 @@ export function importDataWithStrategy(
           areas: Object.keys(safeImportData.areas).length,
           habits: Object.keys(safeImportData.habits).length,
           cycles: Object.keys(safeImportData.cycles).length,
+          cyclePlans: Object.keys(safeImportData.cyclePlans).length,
           phaseConfigs: Object.keys(safeImportData.phaseConfigs).length,
-          crystallizedRoutines: Object.keys(safeImportData.crystallizedRoutines).length,
+          crystallizedRoutines: Object.keys(safeImportData.crystallizedRoutines)
+            .length,
           metricLogs: Object.keys(safeImportData.metricLogs).length,
         },
       },
@@ -284,6 +308,7 @@ export function importDataWithStrategy(
     areas: [] as string[],
     habits: [] as string[],
     cycles: [] as string[],
+    cyclePlans: [] as string[],
     phaseConfigs: [] as string[],
     crystallizedRoutines: [] as string[],
     metricLogs: [] as string[],
@@ -325,6 +350,15 @@ export function importDataWithStrategy(
     mergedCycles[id] = cycle;
   }
 
+  // Merge cycle plans
+  const mergedCyclePlans = { ...currentData.cyclePlans };
+  for (const [id, cyclePlan] of Object.entries(safeImportData.cyclePlans)) {
+    if (mergedCyclePlans[id]) {
+      conflicts.cyclePlans.push(id);
+    }
+    mergedCyclePlans[id] = cyclePlan;
+  }
+
   // Merge phase configs
   const mergedPhaseConfigs = { ...currentData.phaseConfigs };
   for (const [id, config] of Object.entries(safeImportData.phaseConfigs)) {
@@ -336,7 +370,9 @@ export function importDataWithStrategy(
 
   // Merge crystallized routines
   const mergedCrystallizedRoutines = { ...currentData.crystallizedRoutines };
-  for (const [id, routine] of Object.entries(safeImportData.crystallizedRoutines)) {
+  for (const [id, routine] of Object.entries(
+    safeImportData.crystallizedRoutines
+  )) {
     if (mergedCrystallizedRoutines[id]) {
       conflicts.crystallizedRoutines.push(id);
     }
@@ -357,6 +393,7 @@ export function importDataWithStrategy(
     conflicts.areas.length +
     conflicts.habits.length +
     conflicts.cycles.length +
+    conflicts.cyclePlans.length +
     conflicts.phaseConfigs.length +
     conflicts.crystallizedRoutines.length +
     conflicts.metricLogs.length;
@@ -366,6 +403,7 @@ export function importDataWithStrategy(
     areas: mergedAreas,
     habits: mergedHabits,
     cycles: mergedCycles,
+    cyclePlans: mergedCyclePlans,
     phaseConfigs: mergedPhaseConfigs,
     crystallizedRoutines: mergedCrystallizedRoutines,
     metricLogs: mergedMetricLogs,
@@ -380,8 +418,10 @@ export function importDataWithStrategy(
         areas: Object.keys(safeImportData.areas).length,
         habits: Object.keys(safeImportData.habits).length,
         cycles: Object.keys(safeImportData.cycles).length,
+        cyclePlans: Object.keys(safeImportData.cyclePlans).length,
         phaseConfigs: Object.keys(safeImportData.phaseConfigs).length,
-        crystallizedRoutines: Object.keys(safeImportData.crystallizedRoutines).length,
+        crystallizedRoutines: Object.keys(safeImportData.crystallizedRoutines)
+          .length,
         metricLogs: Object.keys(safeImportData.metricLogs).length,
       },
       conflicts: totalConflicts > 0 ? conflicts : undefined,

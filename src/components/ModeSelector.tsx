@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,7 +31,10 @@ export function ModeSelector() {
 
   return (
     <div
-      className="fixed top-0 left-1/2 -translate-x-1/2 z-30"
+      className={cn(
+        "fixed top-0 left-1/2 -translate-x-1/2 z-30",
+        "backdrop-blur-sm rounded-md px-8 py-4"
+      )}
       style={{
         top: "max(1rem, env(safe-area-inset-top) + 0.5rem)",
       }}
@@ -46,7 +50,7 @@ export function ModeSelector() {
               className={cn(
                 "text-sm transition-colors duration-200",
                 isActive
-                  ? "font-bold underline underline-offset-4 text-stone-900 dark:text-stone-100"
+                  ? "font-bold underline underline-offset-4 text-stone-900 dark  :text-stone-100"
                   : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-400"
               )}
             >

@@ -12,11 +12,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
 import type { Area } from "@/domain/entities/Area";
-import type { Moment, Horizon } from "@/domain/entities/Moment";
+import type { Horizon, Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import {
+  activeCycle$,
   areas$,
   moments$,
   unallocatedMoments$,
@@ -78,7 +79,6 @@ export function TimelineCell({
 }: TimelineCellProps) {
   const allMoments = use$(moments$);
   const allAreas = use$(areas$);
-  const unallocated = use$(unallocatedMoments$);
 
   // Get moments for this cell
   const cellMoments: Moment[] = Object.values(allMoments)
@@ -100,7 +100,7 @@ export function TimelineCell({
   // Check if current drop would be valid
   const wouldAcceptDrop = !isFull; // Simple check for now, validation happens in DnDProvider
 
-  // Handle empty cell click - opens Drawing Board or create modal
+  // Handle empty cell click - always opens modal
   const handleEmptyCellClick = () => {
     openMomentFormCreate({
       day,
@@ -179,7 +179,7 @@ export function TimelineCell({
             </div>
           </SortableContext>
         ) : (
-          /* Empty state - clickable to open Drawing Board */
+          /* Empty state - click to open modal */
           <button
             type="button"
             onClick={handleEmptyCellClick}

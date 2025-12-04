@@ -83,7 +83,6 @@ function SortableAreaCard({
         onUpdate={onUpdate}
         onDelete={onArchive}
         onArchive={onArchive}
-        dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
   );

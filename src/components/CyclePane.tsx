@@ -1,0 +1,362 @@
+"use client";
+
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { observer } from "@legendapp/state/react";
+import { useState } from "react";
+import type { TemplateDuration } from "@/application/services/CycleService";
+import { CycleService } from "@/application/services/CycleService";
+import { CycleDeckBuilder } from "@/components/CycleDeckBuilder";
+import { CycleFormDialog } from "@/components/CycleFormDialog";
+import { CycleTabs } from "@/components/CycleTabs";
+import type { Cycle } from "@/domain/entities/Cycle";
+import { cn } from "@/lib/utils";
+
+/**
+ * CyclePane - Bottom pane for cycle planning
+ *
+ * Features:
+ * - Cycle selector tabs (Current, Next, +)
+ * - Cycle deck builder (drop target for habits from area gallery)
+ * - Budget management
+ * - Smart default start dates (tomorrow or after latest cycle)
+ */
+
+interface CyclePaneProps {
+  onCollapsedChange?: (isCollapsed: boolean) => void;
+}
+
+export const CyclePane = observer(({ onCollapsedChange }: CyclePaneProps = {}) => {
+  const cycleService = new CycleService();
+
+  // UI state
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [cycleToEdit, setCycleToEdit] = useState<Cycle | null>(null);
+  const [defaultStartDate, setDefaultStartDate] = useState<string>("");
+  const [groupBy, setGroupBy] = useState<"area" | "attitude">("area");
+
+  // Get active cycle as default selection
+  const activeCycle = cycleService.getActiveCycle();
+  const effectiveSelectedCycleId = selectedCycleId || activeCycle?.id || null;
+
+  // Calculate default start date for new cycles
+  const calculateDefaultStartDate = (): string => {
+    const allCycles = cycleService.getAllCycles();
+    const cycleArray = Object.values(allCycles);
+
+    if (cycleArray.length === 0) {
+      // No cycles - default to tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return tomorrow.toISOString().split("T")[0];
+    }
+
+    // Find the cycle with the latest end date
+    const latestCycle = cycleArray
+      .filter((c) => c.endDate)
+      .sort((a, b) => {
+        const dateA = new Date(a.endDate!);
+        const dateB = new Date(b.endDate!);
+        return dateB.getTime() - dateA.getTime();
+      })[0];
+
+    if (latestCycle?.endDate) {
+      // Start the day after the latest cycle ends
+      const dayAfter = new Date(latestCycle.endDate);
+      dayAfter.setDate(dayAfter.getDate() + 1);
+      return dayAfter.toISOString().split("T")[0];
+    }
+
+    // Fallback to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split("T")[0];
+  };
+
+  // Open create dialog
+  const openCreateDialog = () => {
+    setDialogMode("create");
+    setCycleToEdit(null);
+    // Calculate smart default start date
+    const defaultDate = calculateDefaultStartDate();
+    setDefaultStartDate(defaultDate);
+    setDialogOpen(true);
+  };
+
+  // Open edit dialog
+  const openEditDialog = (cycle: Cycle) => {
+    setDialogMode("edit");
+    setCycleToEdit(cycle);
+    setDialogOpen(true);
+  };
+
+  // Close dialog
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setCycleToEdit(null);
+  };
+
+  // Handle save (create mode)
+  const handleSave = (
+    name: string,
+    templateDuration?: TemplateDuration,
+    startDate?: string,
+    endDate?: string | null
+  ) => {
+    const result = cycleService.planCycle(
+      name,
+      templateDuration,
+      startDate,
+      endDate ?? undefined
+    );
+
+    if ("error" in result) {
+      alert(`Failed to create cycle: ${result.error}`);
+      return;
+    }
+
+    setSelectedCycleId(result.id);
+  };
+
+  // Handle update (edit mode)
+  const handleUpdate = (
+    cycleId: string,
+    updates: { name?: string; startDate?: string; endDate?: string | null }
+  ) => {
+    const result = cycleService.updateCycle(cycleId, updates);
+
+    if ("error" in result) {
+      alert(`Failed to update cycle: ${result.error}`);
+      return;
+    }
+  };
+
+  // Handle delete
+  const handleDelete = (cycleId: string) => {
+    const result = cycleService.deleteCycle(cycleId);
+
+    if ("error" in result) {
+      alert(`Failed to delete cycle: ${result.error}`);
+      return;
+    }
+
+    // Clear selection if deleted cycle was selected
+    if (selectedCycleId === cycleId) {
+      setSelectedCycleId(null);
+    }
+  };
+
+  // Get current and future cycles (sorted chronologically)
+  const cyclesList = cycleService.getCurrentAndFutureCycles();
+  const allCycles = cycleService.getAllCycles();
+
+  // Format date range for collapsed view
+  const formatDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const day = date.getDate();
+    const month = date.toLocaleDateString("en-GB", { month: "short" });
+    return `${day} ${month}`;
+  };
+
+  // Calculate days remaining in cycle
+  const getDaysRemaining = (cycle: Cycle): string => {
+    if (!cycle.endDate) {
+      return "ongoing";
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(cycle.endDate);
+    endDate.setHours(0, 0, 0, 0);
+
+    const diffMs = endDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return "ended";
+    }
+    if (diffDays === 0) {
+      return "ends today";
+    }
+    if (diffDays === 1) {
+      return "1 day left";
+    }
+    return `${diffDays} days left`;
+  };
+
+  return (
+    <>
+      {/* Page Title - Always visible */}
+      {!isCollapsed && (
+        <div className="px-6 pt-6 pb-4">
+          <h2 className="text-xl font-mono font-bold text-stone-900 dark:text-stone-100 mb-1">
+            Cycles
+          </h2>
+          <p className="text-sm text-stone-500 dark:text-stone-400 font-mono">
+            Budget habits to time periods
+          </p>
+        </div>
+      )}
+
+      {/* Header with Collapse Button */}
+      <div
+        className={cn(
+          "px-6 flex items-center justify-between transition-all",
+          isCollapsed ? "h-14 py-3" : "pt-0 pb-2"
+        )}
+      >
+        <div className="flex-1">
+          {!isCollapsed ? (
+            <CycleTabs
+              selectedCycleId={effectiveSelectedCycleId}
+              onSelectCycle={setSelectedCycleId}
+              onCreateCycle={openCreateDialog}
+              onEditCycle={openEditDialog}
+            />
+          ) : (
+            <div className="flex items-center gap-3 overflow-x-auto">
+              {cyclesList.length > 0 ? (
+                cyclesList.map((cycle) => (
+                  <button
+                    key={cycle.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCycleId(cycle.id);
+                      setIsCollapsed(false);
+                    }}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-md bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors"
+                  >
+                    <span className="text-xs font-mono text-stone-700 dark:text-stone-300">
+                      {cycle.name}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <span className="text-xs font-mono text-stone-500 dark:text-stone-400">
+                  No cycles
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={openCreateDialog}
+                className="flex-shrink-0 px-3 py-1 rounded-md bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 font-mono text-xs transition-colors"
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const newCollapsed = !isCollapsed;
+            setIsCollapsed(newCollapsed);
+            onCollapsedChange?.(newCollapsed);
+          }}
+          className="p-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 rounded transition-colors"
+          aria-label={isCollapsed ? "Expand cycles" : "Collapse cycles"}
+        >
+          {isCollapsed ? (
+            <ChevronUp className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+          )}
+        </button>
+      </div>
+
+      {/* Collapsible Content */}
+      {!isCollapsed && (
+        <>
+          {effectiveSelectedCycleId ? (
+            <div className="pb-4">
+              {/* Cycle Header */}
+              {(() => {
+                const selectedCycle = allCycles.find(
+                  (c) => c.id === effectiveSelectedCycleId
+                );
+                if (!selectedCycle) return null;
+
+                return (
+                  <div className="px-6 pb-4 flex items-baseline justify-between border-b border-stone-200 dark:border-stone-700">
+                    <h2 className="text-lg font-mono font-medium text-stone-900 dark:text-stone-100">
+                      {selectedCycle.name}
+                    </h2>
+                    <span className="text-sm font-mono text-stone-500 dark:text-stone-400">
+                      {getDaysRemaining(selectedCycle)}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* Grouping Selector */}
+              <div className="px-6 pt-4 pb-3 flex items-center gap-2">
+                <span className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                  Group
+                </span>
+                <div className="flex items-center gap-0.5 p-0.5 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setGroupBy("area")}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                      groupBy === "area"
+                        ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-sm"
+                        : "text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700"
+                    )}
+                  >
+                    Area
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGroupBy("attitude")}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                      groupBy === "attitude"
+                        ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-sm"
+                        : "text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700"
+                    )}
+                  >
+                    Attitude
+                  </button>
+                </div>
+              </div>
+
+              <CycleDeckBuilder cycleId={effectiveSelectedCycleId} groupBy={groupBy} />
+            </div>
+          ) : (
+            <div className="px-6 pb-6 text-center py-12">
+              <p className="text-sm text-stone-500 dark:text-stone-400 font-mono mb-4">
+                No cycles yet
+              </p>
+              <button
+                type="button"
+                onClick={openCreateDialog}
+                className="px-4 py-2 rounded-lg bg-stone-800 hover:bg-stone-900 text-stone-50 dark:bg-stone-100 dark:hover:bg-stone-200 dark:text-stone-900 font-mono text-sm transition-colors"
+              >
+                Create Your First Cycle
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Cycle Form Dialog */}
+      <CycleFormDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        cycleId={cycleToEdit?.id}
+        initialName={cycleToEdit?.name}
+        initialStartDate={
+          dialogMode === "create" ? defaultStartDate : cycleToEdit?.startDate
+        }
+        initialEndDate={cycleToEdit?.endDate}
+        onClose={closeDialog}
+        onSave={handleSave}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+      />
+    </>
+  );
+});

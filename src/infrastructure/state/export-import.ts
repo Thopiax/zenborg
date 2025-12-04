@@ -12,6 +12,7 @@ import {
   areas$,
   habits$,
   cycles$,
+  cyclePlans$,
   phaseConfigs$,
   crystallizedRoutines$,
   metricLogs$
@@ -20,8 +21,8 @@ import {
 /**
  * Export all garden data to JSON file
  *
- * Downloads a JSON file containing all moments, areas, habits, cycles, phase configs,
- * crystallized routines, and metric logs.
+ * Downloads a JSON file containing all moments, areas, habits, cycles, cycle plans,
+ * phase configs, crystallized routines, and metric logs.
  * File is named "zenborg-export-{date}.json" by default.
  *
  * @param filename - Optional custom filename
@@ -31,6 +32,7 @@ export function exportGardenData(filename?: string): void {
   const areas = areas$.get();
   const habits = habits$.get();
   const cycles = cycles$.get();
+  const cyclePlans = cyclePlans$.get();
   const phaseConfigs = phaseConfigs$.get();
   const crystallizedRoutines = crystallizedRoutines$.get();
   const metricLogs = metricLogs$.get();
@@ -40,6 +42,7 @@ export function exportGardenData(filename?: string): void {
     areas,
     habits,
     cycles,
+    cyclePlans,
     phaseConfigs,
     crystallizedRoutines,
     metricLogs
@@ -57,6 +60,8 @@ export function exportGardenData(filename?: string): void {
     "habits,",
     exportedData.metadata.totalCycles,
     "cycles,",
+    exportedData.metadata.totalCyclePlans,
+    "cycle plans,",
     exportedData.metadata.totalPhaseConfigs,
     "phase configs,",
     exportedData.metadata.totalCrystallizedRoutines,
@@ -110,6 +115,7 @@ export async function importGardenData(
     areas: areas$.get(),
     habits: habits$.get(),
     cycles: cycles$.get(),
+    cyclePlans: cyclePlans$.get(),
     phaseConfigs: phaseConfigs$.get(),
     crystallizedRoutines: crystallizedRoutines$.get(),
     metricLogs: metricLogs$.get(),
@@ -121,6 +127,7 @@ export async function importGardenData(
     areas,
     habits,
     cycles,
+    cyclePlans,
     phaseConfigs,
     crystallizedRoutines,
     metricLogs,
@@ -132,6 +139,7 @@ export async function importGardenData(
   areas$.set(areas);
   habits$.set(habits);
   cycles$.set(cycles);
+  cyclePlans$.set(cyclePlans);
   phaseConfigs$.set(phaseConfigs);
   crystallizedRoutines$.set(crystallizedRoutines);
   metricLogs$.set(metricLogs);

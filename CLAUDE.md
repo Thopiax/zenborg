@@ -10,7 +10,6 @@ Zenborg is a **local-first web application** for conscious attention allocation.
 - **Orchestration, not elimination**: Accept distractions, budget for them
 - **Consciousness as currency**: Allocate attention, not time
 - **Presence over outcomes**: No "done" buttons, no completion tracking
-- **Vim-inspired efficiency**: Modal interaction for power users
 
 **The Question**: "Where will I place my consciousness today?"
 
@@ -102,7 +101,6 @@ interface PhaseConfig {
 
 **Interactions**:
 - `@dnd-kit/core` + `@dnd-kit/sortable` - Drag & drop (optional for mouse users)
-- Custom Vim mode state machine - Modal keyboard interactions
 - `date-fns` - Lightweight date handling
 
 **Testing**:
@@ -127,13 +125,13 @@ src/
 │   └── repositories/    # Interfaces (ports)
 ├── infrastructure/      # Framework-specific implementations
 │   ├── persistence/     # IndexedDB + future Supabase adapters
-│   └── state/           # Legend State store + Vim mode machine
+│   └── state/           # Legend State store
 ├── application/         # Use cases (orchestration)
 │   ├── use-cases/       # CreateMoment, AllocateMoment, etc.
 │   └── services/        # TimeService (phase detection)
 └── presentation/        # React components + hooks
     ├── components/      # UI components (Vim-aware)
-    ├── hooks/           # useVimMode, useVimNavigation, etc.
+    ├── hooks/           # Custom React hooks
     └── app/             # Next.js pages
 ```
 
@@ -144,25 +142,6 @@ src/
 - **SOLID**: Single responsibility, dependency inversion, open/closed
 
 ---
-
-## Vim Modal System
-
-### Modes
-
-**Normal Mode** (default):
-- Navigate with `hjkl`, `gg`, `G`, `w`, `b`
-- Quick actions: `dd` (delete), `yy` (yank/duplicate), `x` (quick delete)
-- Switch modes: `i` (Insert), `:` (Command)
-
-**Insert Mode**:
-- Create/edit moments
-- `Tab` to cycle areas
-- `Enter` to save, `Esc` to cancel
-
-**Command Mode**:
-- Allocate moments: `:ty1` (Today Morning), `:wy3` (Tomorrow Evening)
-- Quick allocation: type `t1` in Normal mode
-- Commands: `:area` (manage areas), `:settings` (phase config), `:d` (unallocate)
 
 ### Key Bindings Reference
 
@@ -197,7 +176,7 @@ src/
 ### Desktop Layout (≥768px)
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Zenborg                                    [Vim: NORMAL]│
+│  Zenborg                                                │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  Timeline (3 days × 3-4 phases grid)                     │
@@ -238,7 +217,6 @@ src/
 - **Single-day column** (not 3-day grid)
 - Drawing board **below** timeline (not sidebar)
 - Swipe left/right to navigate days
-- Still supports Vim shortcuts if keyboard connected
 
 ---
 
@@ -249,10 +227,8 @@ src/
 - **Phase colors as accents**: Morning (amber), Afternoon (yellow), Evening (purple), Night (dark slate)
 - **Area colors on moments**: Border or small pill
 - **Flat design**: No modals, inline editing only
-- **Vim aesthetic**: Monospace fonts for command line, mode indicator
 
 ### Inspiration
-- **Vim**: Modal interaction, command line at bottom
 - **Things 3**: Flat hierarchy, inline editing, keyboard-first
 - **Linear**: Clean spacing, subtle borders, fast shortcuts
 - **Vercel Dashboard**: Monochrome with color accents, no clutter
@@ -282,51 +258,6 @@ Joyful: #eab308 (yellow)
 Introspective: #6b7280 (gray)
 ```
 
----
-
-## Critical User Flows
-
-### 1. Create & Allocate Moment (Vim Flow)
-```vim
-i                    # Enter Insert mode
-Morning Run          # Type moment name (1-3 words)
-Tab Tab              # Cycle to Wellness area
-Enter                # Save → returns to Normal mode
-
-j j                  # Navigate down to new moment
-t 1                  # Quick allocate: Today Morning
-Enter                # Confirm → moment allocated
-```
-
-### 2. Duplicate Across Days
-```vim
-h k k                # Navigate to moment
-y y                  # Yank (duplicate)
-l l k                # Navigate to Tomorrow Morning
-p                    # Put → duplicate appears
-```
-
-### 3. View Current Moment (Compass)
-```vim
-Ctrl+/               # Toggle compass view
-                     # Shows full-screen current moment
-                     # Auto-detects phase based on time
-Esc                  # Return to timeline
-```
-
-### 4. Manage Areas
-```vim
-: area               # Open area management
-Enter
-i                    # Create new area
-Focus                # Type name
-Tab                  # Pick color from palette
-Tab                  # Pick emoji
-Enter                # Save
-Esc                  # Back to timeline
-```
-
----
 
 ## Data Persistence Strategy
 
@@ -393,7 +324,7 @@ npm run dev
 # Unit tests (domain logic)
 npm run test
 
-# E2E tests (Vim flows)
+# E2E tests 
 npx playwright install  # First time only
 npm run test:e2e
 ```
@@ -407,99 +338,11 @@ npm run build
 npm run start
 ```
 
----
-
-## Implementation Phases
-
-### Phase 1: Domain Foundation (Sprint 1)
-- PostgreSQL schema files (migrations)
-- TypeScript entities matching schema
-- Validation logic (3-word names, max-3-per-phase)
-- Unit tests for domain rules
-
-### Phase 2: State & Persistence (Sprint 1)
-- Legend State store setup
-- IndexedDB persistence
-- Seed default areas + phase settings
-- Auto-save (500ms debounce)
-
-### Phase 3: Vim Mode System (Sprint 2)
-- Modal state machine (Normal/Insert/Command)
-- Mode indicator + command line UI
-- Command parsing (`:ty1`, `:area`, etc.)
-
-### Phase 4: Vim Navigation (Sprint 2)
-- `hjkl` grid navigation
-- `gg`, `G`, `w`, `b` motions
-- Focus management
-- Visual focus indicator
-
-### Phase 5: UI Components (Sprint 3)
-- Responsive timeline (grid desktop, single-day mobile)
-- Inline editable moment cards
-- Drawing board (below timeline on mobile)
-- Phase headers (colored)
-- Compass view (full-screen modal)
-
-### Phase 6: Moment CRUD (Sprint 3)
-- Create (`i` → inline form)
-- Edit (`i` on focused moment)
-- Delete (`dd`, `x`)
-- Duplicate (`yy` → `p`)
-- Area selection (Tab cycling)
-
-### Phase 7: Allocation (Sprint 4)
-- Command mode allocation (`:ty1`, etc.)
-- Quick allocation (`t1` in Normal mode)
-- Unallocation (`:d`, `dd` on allocated)
-- Drag & drop (optional, for mouse users)
-- Max-3-per-cell enforcement
-
-### Phase 8: Compass View (Sprint 4)
-- Time-based phase detection
-- Full-screen current moment display
-- `Ctrl+/` toggle
-- Empty state handling
-
-### Phase 9: Area Management (Sprint 5)
-- `:area` command → CRUD interface
-- Inline create/edit/delete
-- Reordering (Ctrl+↑↓ or drag)
-- Color/emoji pickers
-
-### Phase 10: Phase Settings (Sprint 5)
-- `:settings` command → config interface
-- Time boundary sliders
-- Visibility toggles (show/hide Night)
-- Persist to IndexedDB
-
-### Phase 11: Mobile Optimizations (Sprint 6)
-- Single-day view (swipe navigation)
-- Drawing board below timeline
-- Touch interactions (tap, swipe, long-press)
-- Optional: Vim shortcuts with bluetooth keyboard
-
-### Phase 12: Polish & Testing (Sprint 6)
-- Accessibility audit (WCAG 2.1 AA)
-- Visual refinement (spacing, colors, focus states)
-- Performance (60fps, <16ms input lag)
-- E2E tests (Vim flows + drag flows)
-
-### Phase 13 (Optional): Supabase Migration (Sprint 7+)
-- Supabase project setup
-- Run PostgreSQL migrations
-- Configure auth (email/Google)
-- Enable Legend State sync plugin
-- Test offline → online sync
-
----
-
 ## Success Metrics (Qualitative)
 
 **Primary Question**: "Did I consciously allocate my attention today?"
 
 **User Testing Goals**:
-- Does Vim mode feel efficient or frustrating?
 - Is the learning curve acceptable for power users?
 - Does single-day mobile view feel focused?
 - Is inline editing better than modals?
@@ -507,7 +350,6 @@ npm run start
 
 **Technical Health**:
 - No data loss on refresh/crash
-- Vim shortcuts respond instantly (<16ms)
 - Drag & drop smooth (60fps desktop)
 - Touch interactions smooth (mobile)
 - Loads in <1 second
@@ -537,8 +379,6 @@ This project is the digital evolution of a physical whiteboard system using magn
 
 ## Common Questions
 
-**Q: Why Vim keybindings?**
-A: Power users can navigate and allocate moments without touching the mouse. Efficiency enables presence.
 
 **Q: Why 3 words maximum for moments?**
 A: Forces clarity. If you can't name it in 3 words, the intention isn't clear enough.

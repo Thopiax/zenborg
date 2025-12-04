@@ -113,12 +113,12 @@ export function createHabit(props: CreateHabitProps): HabitResult {
 }
 
 /**
- * Updates habit properties
+ * Updates habit properties (excluding immutable fields and those with dedicated methods)
  */
 export function updateHabit(
   habit: Habit,
   updates: Partial<
-    Pick<Habit, "name" | "attitude" | "tags" | "emoji" | "order">
+    Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">
   >
 ): HabitResult {
   if (updates.name !== undefined) {
