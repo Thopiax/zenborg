@@ -215,6 +215,98 @@ export function closeMomentForm() {
 }
 
 /**
+ * Habit form dialog state
+ * Controls the create/edit habit modal
+ * Ephemeral - not persisted
+ */
+export interface HabitFormState {
+  open: boolean;
+  mode: "create" | "edit";
+  /** Form field values - directly editable via the store */
+  name: string;
+  areaId: string;
+  emoji: string | null;
+  attitude: Attitude | null;
+  phase: Phase | null;
+  tags: string[];
+  /** For edit mode: the habit ID being edited */
+  editingHabitId: string | null;
+}
+
+export const habitFormState$ = observable<HabitFormState>({
+  open: false,
+  mode: "create",
+  name: "",
+  areaId: "",
+  emoji: "⭐",
+  attitude: null,
+  phase: null,
+  tags: [],
+  editingHabitId: null,
+});
+
+/**
+ * Helper function to open habit form in create mode
+ */
+export function openHabitFormCreate(params?: {
+  areaId?: string;
+  attitude?: Attitude;
+  phase?: Phase;
+}) {
+  // Use provided areaId, or fall back to last used area
+  const areaId = params?.areaId || lastUsedAreaId$.peek() || "";
+
+  habitFormState$.set({
+    open: true,
+    mode: "create",
+    name: "",
+    areaId,
+    emoji: "⭐",
+    attitude: params?.attitude ?? null,
+    phase: params?.phase ?? null,
+    tags: [],
+    editingHabitId: null,
+  });
+}
+
+/**
+ * Helper function to open habit form in edit mode
+ */
+export function openHabitFormEdit(
+  habitId: string,
+  habit: { name: string; areaId: string; emoji: string | null; attitude: Attitude | null; phase: Phase | null; tags: string[] }
+) {
+  habitFormState$.set({
+    open: true,
+    mode: "edit",
+    name: habit.name,
+    areaId: habit.areaId,
+    emoji: habit.emoji || "⭐",
+    attitude: habit.attitude,
+    phase: habit.phase,
+    tags: habit.tags || [],
+    editingHabitId: habitId,
+  });
+}
+
+/**
+ * Helper function to close habit form
+ */
+export function closeHabitForm() {
+  habitFormState$.set({
+    open: false,
+    mode: "create",
+    name: "",
+    areaId: "",
+    emoji: "⭐",
+    attitude: null,
+    phase: null,
+    tags: [],
+    editingHabitId: null,
+  });
+}
+
+/**
  * Archive area confirmation dialog state
  * Controls the area archival confirmation modal
  * Ephemeral - not persisted

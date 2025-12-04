@@ -1,4 +1,3 @@
-import { getDefaultAreas } from "@/domain/entities/Area";
 import { createCycle } from "@/domain/entities/Cycle";
 import { getDefaultPhaseConfigs } from "@/domain/value-objects/Phase";
 import { configurePersistence } from "./persistence";
