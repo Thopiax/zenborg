@@ -65,7 +65,6 @@ export function PlanAreaCard({
   const [editedName, setEditedName] = useState(area.name);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Tag extraction for area name
@@ -227,6 +226,36 @@ export function PlanAreaCard({
                   </button>
                 )}
               </div>
+
+              {/* Right: Color Picker + Settings Dropdown */}
+              <div className="flex-shrink-0 flex h-full items-center gap-2">
+                {/* Color Picker (inline) */}
+                <ColorPicker value={area.color} onChange={handleColorChange} />
+
+                {/* Settings Dropdown */}
+                {!area.isDefault && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
+                        aria-label="Area settings"
+                      >
+                        <MoreVertical className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onSelect={() => onArchiveArea(area.id)}
+                        className="text-red-600 dark:text-red-400"
+                      >
+                        <Archive className="w-4 h-4 mr-2" />
+                        Archive Area
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
 
             {/* Tags + Attitude Row */}
@@ -254,36 +283,6 @@ export function PlanAreaCard({
                   <TagBadges tags={area.tags} onRemoveTag={handleRemoveTag} />
                 )}
               </div>
-            )}
-          </div>
-
-          {/* Right: Color Picker + Settings Dropdown */}
-          <div className="flex-shrink-0 flex h-full items-center gap-2">
-            {/* Color Picker (inline) */}
-            <ColorPicker value={area.color} onChange={handleColorChange} />
-
-            {/* Settings Dropdown */}
-            {!area.isDefault && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
-                    aria-label="Area settings"
-                  >
-                    <MoreVertical className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() => onArchiveArea(area.id)}
-                    className="text-red-600 dark:text-red-400"
-                  >
-                    <Archive className="w-4 h-4 mr-2" />
-                    Archive Area
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             )}
           </div>
         </div>

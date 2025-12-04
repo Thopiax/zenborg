@@ -8,7 +8,7 @@ import { use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import type { Area } from "@/domain/entities/Area";
-import type { Horizon, Moment } from "@/domain/entities/Moment";
+import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import {
   activeAreas$,
@@ -28,7 +28,6 @@ import {
   groupByArea,
   groupByAttitude,
   groupByCreated,
-  groupByHorizon,
   groupByPhase,
   groupByTag,
 } from "@/lib/grouping";
@@ -100,8 +99,6 @@ export function DrawingBoard({
       case "area":
         // Use activeAreasRecord so only active areas get columns
         return groupByArea(unallocated, allHabits, activeAreasRecord);
-      case "horizon":
-        return groupByHorizon(unallocated);
       case "attitude":
         // areas$ and habits$ are already Records, pass them directly
         return groupByAttitude(unallocated, allHabits, allAreas);
@@ -144,13 +141,11 @@ export function DrawingBoard({
 
   const handleCreateFromColumn = (
     areaId?: string,
-    cycle?: string,
     phase?: string
   ) => {
     // Open create modal with pre-filled properties
     openMomentFormCreate({
       areaId,
-      horizon: cycle as Horizon | undefined,
       phase: phase as Phase | undefined,
     });
   };
