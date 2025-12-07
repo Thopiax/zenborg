@@ -65,7 +65,17 @@ interface HabitFormDialogProps {
 export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   // Read state from UI store - single source of truth
   const formState = use$(habitFormState$);
-  const { open, mode, name, areaId, emoji, attitude, phase, tags } = formState;
+  const {
+    open,
+    mode,
+    name,
+    areaId,
+    emoji,
+    attitude,
+    phase,
+    tags,
+    editingHabitId,
+  } = formState;
 
   // Local UI state only (not form data)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -87,26 +97,14 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   // Tagged name field
   const taggedField = useTaggedNameField(name, tags);
 
-  // Sync form state TO tagged field when dialog opens (especially for edit mode)
+  // Sync form state TO tagged field when dialog opens or editing habit changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
-    if (open) {
-      // The taggedField hook only initializes once, so we need to manually
-      // update it when opening in edit mode with pre-filled values
-      if (
-        name !== taggedField.name ||
-        tags.length !== taggedField.tags.length
-      ) {
-        // Reinitialize the field with new values (preserves both name and tags)
-        taggedField.reinitialize(name, tags);
-      }
-    }
-  }, [open, name, tags, taggedField]);
+    if (!open) return;
 
-  // Sync field values back to form state
-  useEffect(() => {
-    habitFormState$.name.set(taggedField.name);
-    habitFormState$.tags.set(taggedField.tags);
-  }, [taggedField.name, taggedField.tags]);
+    // Reinitialize field when opening dialog (create or edit mode)
+    taggedField.reinitialize(name, tags);
+  }, [open, editingHabitId]);
 
   // Disable form hotkeys when area selector or emoji picker is open
   const formHotkeysEnabled =
