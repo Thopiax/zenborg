@@ -95,7 +95,8 @@
       "Bash(npx shadcn@latest add:*)",
       "Skill(ddd)",
       "Bash(git rev-parse:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Skill(superpowers:verification-before-completion)"
     ],
     "deny": [],
     "ask": []

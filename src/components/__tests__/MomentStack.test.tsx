@@ -8,6 +8,9 @@ import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { MomentStack } from "../MomentStack";
 
+// Make React globally available (needed for JSX in components without React import)
+globalThis.React = React;
+
 // Mock MomentCard to avoid complex dependencies
 vi.mock("../MomentCard", () => ({
   MomentCard: ({ moment, area }: { moment: Moment; area: Area }) => (
@@ -15,6 +18,16 @@ vi.mock("../MomentCard", () => ({
       {moment.name}
     </div>
   ),
+}));
+
+// Mock @dnd-kit/core
+vi.mock("@dnd-kit/core", () => ({
+  useDraggable: vi.fn(() => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: vi.fn(),
+    isDragging: false,
+  })),
 }));
 
 // Helper to create test moments
@@ -84,21 +97,21 @@ describe("MomentStack", () => {
       expect(badge).toHaveTextContent("x3");
     });
 
-    it("should render visual stack layers (max 3 layers)", () => {
+    it("should render visual stack layers (max 2 layers behind)", () => {
       const moments = Array.from({ length: 6 }, (_, i) =>
         createTestMoment({ id: `moment-${i}` })
       );
 
-      const { container } = render(
+      const { container} = render(
         <MomentStack moments={moments} area={testArea} />
       );
 
-      // Should have exactly 3 visual layers (never more than 3)
+      // Should have exactly 2 visual layers behind the top card (max is 2)
       const layers = container.querySelectorAll('[data-testid="stack-layer"]');
-      expect(layers).toHaveLength(3);
+      expect(layers).toHaveLength(2);
     });
 
-    it("should render 2 layers for 2 moments", () => {
+    it("should render 1 layer behind for 2 moments", () => {
       const moments = [
         createTestMoment({ id: "1" }),
         createTestMoment({ id: "2" }),
@@ -108,8 +121,9 @@ describe("MomentStack", () => {
         <MomentStack moments={moments} area={testArea} />
       );
 
+      // count-1 = 2-1 = 1 layer behind
       const layers = container.querySelectorAll('[data-testid="stack-layer"]');
-      expect(layers).toHaveLength(2);
+      expect(layers).toHaveLength(1);
     });
 
     it("should render top moment card", () => {

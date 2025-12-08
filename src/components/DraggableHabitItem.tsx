@@ -2,7 +2,6 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
 import type { Habit } from "@/domain/entities/Habit";
 import { getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
@@ -17,7 +16,7 @@ interface DraggableHabitItemProps {
  * DraggableHabitItem - Draggable habit that can be moved between areas or to cycles
  *
  * Features:
- * - Drag handle (grip dots) on left side
+ * - Entire card is draggable (grab cursor indicates draggability)
  * - Can be dragged to different areas (changes areaId)
  * - Can be dragged to cycle deck (budgets to cycle)
  * - Click to edit
@@ -49,6 +48,7 @@ export function DraggableHabitItem({
     opacity: isDragging ? 0.5 : 1,
     backgroundColor: areaColor,
     "--tw-ring-color": `${areaColor}99`, // 60% opacity for ring
+    cursor: isDragging ? "grabbing" : "grab",
   };
 
   // Get accessible text colors for area color
@@ -59,9 +59,18 @@ export function DraggableHabitItem({
       ref={setNodeRef}
       style={style}
       className="group flex items-center justify-between gap-2 px-3 py-2 rounded-md transition-all hover:ring-2 hover:ring-offset-2 ring-offset-transparent"
+      {...attributes}
+      {...listeners}
     >
       {/* Habit Content - Click to edit */}
-      <button type="button" onClick={onEdit} className="flex-1 text-left">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }}
+        className="flex-1 text-left"
+      >
         <div
           className={cn(
             "flex items-center text-sm font-mono",
@@ -93,20 +102,6 @@ export function DraggableHabitItem({
             ))}
           </div>
         )}
-      </button>
-
-      {/* Drag Handle - Right side */}
-      <button
-        type="button"
-        className="p-1 cursor-grab active:cursor-grabbing transition-opacity flex-shrink-0"
-        {...attributes}
-        {...listeners}
-        aria-label="Drag to move habit"
-      >
-        <GripVertical
-          className={cn("w-4 h-4", textColors.secondary)}
-          style={{ opacity: 0.6 }}
-        />
       </button>
     </div>
   );

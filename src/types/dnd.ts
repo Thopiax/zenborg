@@ -9,7 +9,7 @@ import type { Phase } from "@/domain/value-objects/Phase";
 /**
  * Source location types for draggable moments
  */
-export type DragSourceType = "timeline" | "drawing-board";
+export type DragSourceType = "timeline" | "drawing-board" | "cycle-deck";
 
 /**
  * Target location types for droppable zones
@@ -17,7 +17,8 @@ export type DragSourceType = "timeline" | "drawing-board";
 export type DropTargetType =
   | "timeline-cell"
   | "drawing-board"
-  | "drawing-board-column";
+  | "drawing-board-column"
+  | "cycle-deck";
 
 /**
  * Data attached to draggable moments
@@ -39,6 +40,7 @@ export interface DroppableData {
   targetPhase?: Phase; // Phase for timeline cells
   columnId?: string; // Column ID for drawing board columns
   groupBy?: string; // Grouping mode (area, created, urgency)
+  cycleId?: string; // Cycle ID for cycle deck
 }
 
 /**

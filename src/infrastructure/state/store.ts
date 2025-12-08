@@ -151,6 +151,35 @@ export const activeCycle$ = observable(() => {
 });
 
 /**
+ * The current cycle (the one containing today's date)
+ * This is the cycle that's actually happening right now
+ * Computed from cycles$ - automatically updates when cycles change or date changes
+ */
+export const currentCycle$ = observable(() => {
+  const cycles = cycles$.get();
+  const today = new Date().toISOString().split("T")[0];
+
+  return (
+    Object.values(cycles).find((cycle) => {
+      const startDate = new Date(cycle.startDate);
+      startDate.setHours(0, 0, 0, 0);
+
+      if (new Date(today) < startDate) {
+        return false;
+      }
+
+      if (cycle.endDate === null) {
+        return true; // Ongoing cycle
+      }
+
+      const endDate = new Date(cycle.endDate);
+      endDate.setHours(0, 0, 0, 0);
+      return new Date(today) <= endDate;
+    }) || null
+  );
+});
+
+/**
  * All visible phase configurations, sorted by order
  * Computed from phaseConfigs$ - automatically updates when configs change
  */
@@ -420,16 +449,17 @@ export const metricLogsByMoment$ = observable(() => {
 /**
  * Moments in the cycle deck (unallocated but budgeted)
  * These are moments created from cycle plans that haven't been allocated yet
+ * Filtered by current cycle (the one containing today)
  */
 export const deckMoments$ = observable(() => {
   const moments = moments$.get();
-  const activeCycle = activeCycle$.get();
+  const currentCycle = currentCycle$.get();
 
-  if (!activeCycle) return [];
+  if (!currentCycle) return [];
 
   return Object.values(moments).filter(
     (m) =>
-      m.cycleId === activeCycle.id &&
+      m.cycleId === currentCycle.id &&
       m.cyclePlanId !== null &&
       m.day === null &&
       m.phase === null
@@ -437,31 +467,31 @@ export const deckMoments$ = observable(() => {
 });
 
 /**
- * Allocated moments in the active cycle
+ * Allocated moments in the current cycle
  */
 export const allocatedMomentsInCycle$ = observable(() => {
   const moments = moments$.get();
-  const activeCycle = activeCycle$.get();
+  const currentCycle = currentCycle$.get();
 
-  if (!activeCycle) return [];
+  if (!currentCycle) return [];
 
   return Object.values(moments).filter(
-    (m) => m.cycleId === activeCycle.id && m.day !== null && m.phase !== null
+    (m) => m.cycleId === currentCycle.id && m.day !== null && m.phase !== null
   );
 });
 
 /**
- * Spontaneous moments in the active cycle (not from budget)
+ * Spontaneous moments in the current cycle (not from budget)
  */
 export const spontaneousMomentsInCycle$ = observable(() => {
   const moments = moments$.get();
-  const activeCycle = activeCycle$.get();
+  const currentCycle = currentCycle$.get();
 
-  if (!activeCycle) return [];
+  if (!currentCycle) return [];
 
   return Object.values(moments).filter(
     (m) =>
-      m.cycleId === activeCycle.id &&
+      m.cycleId === currentCycle.id &&
       m.cyclePlanId === null &&
       m.day !== null &&
       m.phase !== null

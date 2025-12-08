@@ -3,13 +3,8 @@
 import { use$ } from "@legendapp/state/react";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
-import { getAttitudeLabel } from "@/domain/value-objects/Attitude";
 import { useSelection } from "@/hooks/useSelection";
-import {
-  metricLogs$,
-  moments$,
-  phaseConfigs$,
-} from "@/infrastructure/state/store";
+import { phaseConfigs$ } from "@/infrastructure/state/store";
 import { openMomentFormEdit } from "@/infrastructure/state/ui-store";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
@@ -20,6 +15,8 @@ interface MomentCardProps {
   /** Optional array of all moment IDs in the current context (for shift-click range selection) */
   contextMomentIds?: string[];
 }
+
+export const MOMENT_CARD_WIDTH_CLASSNAME = "min-w-[300px] max-w-[340px]";
 
 /**
  * MomentCard - Display card for a moment
@@ -55,8 +52,6 @@ export function MomentCard({
     selectRange,
   } = useSelection();
   const allPhaseConfigs = use$(phaseConfigs$);
-  const allMoments = use$(moments$);
-  const allMetricLogs = use$(metricLogs$);
 
   const isSelected = isSelectedMoment(moment.id);
 
@@ -98,7 +93,7 @@ export function MomentCard({
     <button
       type="button"
       className={cn(
-        "min-w-[200px]",
+        "min-w-[300px]",
         "rounded-lg cursor-pointer w-full",
         "focus:outline-none relative",
         // Elastic transitions for natural, organic feel (using design system classes)
@@ -129,6 +124,12 @@ export function MomentCard({
       tabIndex={0}
     >
       <div className="flex flex-row items-baseline gap-2 h-full">
+        {/* Emoji - optional, no fallback */}
+        {moment.emoji && (
+          <span className={cn("mr-2 text-lg", textColors.primary)}>
+            {moment.emoji}
+          </span>
+        )}
         {/* Moment name */}
         <p
           className={cn(

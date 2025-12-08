@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import { momentCard } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
+import { MOMENT_CARD_WIDTH_CLASSNAME } from "./MomentCard";
 
 interface EmptyMomentCardProps {
   onClick: () => void;
@@ -31,7 +32,7 @@ export function EmptyMomentCard({
     <button
       type="button"
       className={cn(
-        "min-w-[200px] w-full",
+        MOMENT_CARD_WIDTH_CLASSNAME,
         "rounded-lg cursor-pointer",
         "focus:outline-none",
         // Glassmorphism with dashed border

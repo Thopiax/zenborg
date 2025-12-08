@@ -59,50 +59,24 @@ export const CyclePane = observer(
     const [defaultStartDate, setDefaultStartDate] = useState<string>("");
     const [groupBy, setGroupBy] = useState<"area" | "attitude">("area");
 
-    // Get active cycle as default selection
+    // Get current and future cycles (sorted chronologically)
+    const cyclesList = cycleService.getCurrentAndFutureCycles();
+
+    // Default to current cycle (the one containing today), fallback to active cycle
+    const currentCycle = cycleService.getCurrentCycle();
     const activeCycle = cycleService.getActiveCycle();
-    const effectiveSelectedCycleId = selectedCycleId || activeCycle?.id || null;
 
-    // Calculate default start date for new cycles
-    const calculateDefaultStartDate = (): string => {
-      const allCycles = cycleService.getAllCycles();
-      const cycleArray = Object.values(allCycles);
-
-      if (cycleArray.length === 0) {
-        // No cycles - default to tomorrow
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return tomorrow.toISOString().split("T")[0];
-      }
-
-      // Find the cycle with the latest end date
-      const latestCycle = cycleArray
-        .filter((c) => c.endDate)
-        .sort((a, b) => {
-          const dateA = new Date(a.endDate!);
-          const dateB = new Date(b.endDate!);
-          return dateB.getTime() - dateA.getTime();
-        })[0];
-
-      if (latestCycle?.endDate) {
-        // Start the day after the latest cycle ends
-        const dayAfter = new Date(latestCycle.endDate);
-        dayAfter.setDate(dayAfter.getDate() + 1);
-        return dayAfter.toISOString().split("T")[0];
-      }
-
-      // Fallback to tomorrow
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      return tomorrow.toISOString().split("T")[0];
-    };
+    // Use current cycle if available, otherwise active cycle, only if in the list
+    const defaultCycle = currentCycle || activeCycle;
+    const defaultCycleInList = defaultCycle && cyclesList.find(c => c.id === defaultCycle.id);
+    const effectiveSelectedCycleId = selectedCycleId || defaultCycleInList?.id || null;
 
     // Open create dialog
     const openCreateDialog = () => {
       setDialogMode("create");
       setCycleToEdit(null);
-      // Calculate smart default start date
-      const defaultDate = calculateDefaultStartDate();
+      // Get default start date from service (business logic)
+      const defaultDate = cycleService.getDefaultStartDate();
       setDefaultStartDate(defaultDate);
       setDialogOpen(true);
     };
@@ -169,10 +143,6 @@ export const CyclePane = observer(
         setSelectedCycleId(null);
       }
     };
-
-    // Get current and future cycles (sorted chronologically)
-    const cyclesList = cycleService.getCurrentAndFutureCycles();
-    const allCycles = cycleService.getAllCycles();
 
     // Calculate days remaining in cycle
     const getDaysRemaining = (cycle: Cycle): string => {
@@ -299,7 +269,7 @@ export const CyclePane = observer(
               <div className="pb-4">
                 {/* Cycle Header */}
                 {(() => {
-                  const selectedCycle = allCycles.find(
+                  const selectedCycle = cyclesList.find(
                     (c) => c.id === effectiveSelectedCycleId
                   );
                   if (!selectedCycle) return null;

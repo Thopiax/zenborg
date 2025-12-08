@@ -153,3 +153,96 @@ export function getActiveDay(morningStartHour = 6): string {
 
   return toISODate(now);
 }
+
+/**
+ * Formats a cycle's date range as a compact string
+ *
+ * Examples:
+ * - Same month: "Jan 5 - 12"
+ * - Same year: "Jan 5 - Feb 10"
+ * - Different years: "Dec 28 2024 - Jan 10 2025"
+ * - Ongoing: "Jan 5 - ongoing"
+ *
+ * @param startDate - ISO date string (YYYY-MM-DD)
+ * @param endDate - ISO date string or null for ongoing cycles
+ * @returns Formatted date range string
+ */
+export function formatCycleDateRange(
+  startDate: string,
+  endDate: string | null
+): string {
+  const start = fromISODate(startDate);
+  const end = endDate ? fromISODate(endDate) : null;
+
+  if (!end) {
+    return `${format(start, "MMM dd")} - ongoing`;
+  }
+
+  const isSameMonth =
+    start.getMonth() === end.getMonth() &&
+    start.getFullYear() === end.getFullYear();
+
+  const isSameYear = start.getFullYear() === end.getFullYear();
+
+  if (isSameMonth) {
+    const startDay = format(start, "d");
+    const endDay = format(end, "d");
+    const month = format(start, "MMM");
+    return `${month} ${startDay} - ${endDay}`;
+  }
+
+  if (isSameYear) {
+    const startStr = format(start, "MMM dd");
+    const endStr = format(end, "MMM dd");
+    return `${startStr} - ${endStr}`;
+  }
+
+  const startStr = format(start, "MMM dd yyyy");
+  const endStr = format(end, "MMM dd yyyy");
+  return `${startStr} - ${endStr}`;
+}
+
+/**
+ * Formats a cycle's end date as a countdown or date string
+ *
+ * Examples:
+ * - "ends in 5 days"
+ * - "ends today"
+ * - "ends tomorrow"
+ * - "ends on Jan 15"
+ * - "ongoing"
+ *
+ * @param endDate - ISO date string or null for ongoing cycles
+ * @returns Formatted end date string
+ */
+export function formatCycleEndDate(endDate: string | null): string {
+  if (!endDate) {
+    return "ongoing";
+  }
+
+  const end = fromISODate(endDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  const diffTime = end.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return `ended ${Math.abs(diffDays)} days ago`;
+  }
+
+  if (diffDays === 0) {
+    return "ends today";
+  }
+
+  if (diffDays === 1) {
+    return "ends tomorrow";
+  }
+
+  if (diffDays <= 7) {
+    return `ends in ${diffDays} days`;
+  }
+
+  return `ends on ${format(end, "MMM dd")}`;
+}

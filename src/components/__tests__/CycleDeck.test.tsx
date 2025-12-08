@@ -7,9 +7,28 @@ import React from "react";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 
+// Make React globally available (needed for JSX in components without React import)
+globalThis.React = React;
+
+// Test data - needs to be before mocks
+const testArea: Area = {
+  id: "area-1",
+  name: "Wellness",
+  color: "#10b981",
+  emoji: "🟢",
+  isDefault: true,
+  attitude: null,
+  tags: [],
+  isArchived: false,
+  order: 0,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 // Mock dependencies
 vi.mock("@legendapp/state/react", () => ({
   use$: vi.fn(),
+  useValue: vi.fn(),
 }));
 
 vi.mock("../MomentStack", () => ({
@@ -21,16 +40,47 @@ vi.mock("../MomentStack", () => ({
 }));
 
 vi.mock("@/infrastructure/state/store", () => ({
-  deckMomentsByAreaAndHabit$: {},
-  areas$: {},
-  activeCycle$: {},
+  deckMomentsByAreaAndHabit$: { get: vi.fn(() => ({})) },
+  areas$: {
+    get: vi.fn(() => ({
+      "area-1": testArea,
+      "area-2": { ...testArea, id: "area-2", name: "Craft", emoji: "🔵", order: 1 },
+    }))
+  },
+  currentCycle$: { get: vi.fn(() => null) },
 }));
 
-import { use$ } from "@legendapp/state/react";
+vi.mock("@dnd-kit/core", () => ({
+  useDroppable: vi.fn(() => ({ setNodeRef: vi.fn(), isOver: false })),
+}));
+
+vi.mock("@/application/services/CycleService", () => ({
+  CycleService: vi.fn().mockImplementation(() => ({
+    getAreasWithDeckMoments: vi.fn((deckMoments) => {
+      const areasMap = {
+        "area-1": testArea,
+        "area-2": { ...testArea, id: "area-2", name: "Craft", emoji: "🔵", order: 1 },
+      };
+      return Object.keys(deckMoments)
+        .map((areaId) => ({
+          area: areasMap[areaId as keyof typeof areasMap],
+          habits: deckMoments[areaId],
+        }))
+        .filter(({ area }) => Boolean(area))
+        .sort((a, b) => a.area.order - b.area.order);
+    }),
+  })),
+}));
+
+vi.mock("@/lib/dates", () => ({
+  formatCycleEndDate: vi.fn(() => "ends in 5 days"),
+}));
+
+import { useValue } from "@legendapp/state/react";
 // Import after mocks
 import { CycleDeck } from "../CycleDeck";
 
-const mockUse$ = use$ as unknown as ReturnType<typeof vi.fn>;
+const mockUseValue = useValue as unknown as ReturnType<typeof vi.fn>;
 
 // Test helpers
 const createTestMoment = (overrides: Partial<Moment> = {}): Moment => ({
@@ -49,20 +99,6 @@ const createTestMoment = (overrides: Partial<Moment> = {}): Moment => ({
   ...overrides,
 });
 
-const testArea: Area = {
-  id: "area-1",
-  name: "Wellness",
-  color: "#10b981",
-  emoji: "🟢",
-  isDefault: true,
-  attitude: null,
-  tags: [],
-  isArchived: false,
-  order: 0,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
 describe("CycleDeck", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -70,7 +106,7 @@ describe("CycleDeck", () => {
 
   describe("empty state", () => {
     it("should show empty message when no budgeted moments", () => {
-      mockUse$.mockReturnValue({});
+      mockUseValue.mockReturnValue({});
 
       render(<CycleDeck />);
 
@@ -80,7 +116,7 @@ describe("CycleDeck", () => {
     });
 
     it("should show hint to drag habits from library", () => {
-      mockUse$.mockReturnValue({});
+      mockUseValue.mockReturnValue({});
 
       render(<CycleDeck />);
 
@@ -96,14 +132,8 @@ describe("CycleDeck", () => {
         },
       };
 
-      const areas = {
-        "area-1": testArea,
-      };
-
-      mockUse$.mockReturnValue(deckMoments);
-      mockUse$.mockReturnValueOnce(deckMoments);
-      mockUse$.mockReturnValueOnce(areas);
-      mockUse$.mockReturnValueOnce(null);
+      mockUseValue.mockReturnValueOnce(deckMoments);
+      mockUseValue.mockReturnValueOnce(null);
 
       render(<CycleDeck />);
 
@@ -121,13 +151,8 @@ describe("CycleDeck", () => {
         },
       };
 
-      const areas = {
-        "area-1": testArea,
-      };
-
-      mockUse$.mockReturnValueOnce(deckMoments);
-      mockUse$.mockReturnValueOnce(areas);
-      mockUse$.mockReturnValueOnce(null);
+      mockUseValue.mockReturnValueOnce(deckMoments);
+      mockUseValue.mockReturnValueOnce(null);
 
       const { container } = render(<CycleDeck />);
 
@@ -146,14 +171,8 @@ describe("CycleDeck", () => {
         },
       };
 
-      const areas = {
-        "area-1": testArea,
-        "area-2": { ...testArea, id: "area-2", name: "Craft", emoji: "🔵" },
-      };
-
-      mockUse$.mockReturnValueOnce(deckMoments);
-      mockUse$.mockReturnValueOnce(areas);
-      mockUse$.mockReturnValueOnce(null);
+      mockUseValue.mockReturnValueOnce(deckMoments);
+      mockUseValue.mockReturnValueOnce(null);
 
       render(<CycleDeck />);
 

@@ -244,8 +244,8 @@ describe('Store', () => {
     })
 
     it('should return the active cycle', () => {
-      const cycle1 = createCycle('Q1 2025', '2025-01-01', null, false)
-      const cycle2 = createCycle('Q2 2025', '2025-04-01', null, true)
+      const cycle1 = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: false })
+      const cycle2 = createCycle({ name: 'Q2 2025', startDate: '2025-04-01', isActive: true })
       if ('error' in cycle1 || 'error' in cycle2) throw new Error('Cycle creation failed')
 
       cycles$[cycle1.id].set(cycle1)
@@ -258,7 +258,7 @@ describe('Store', () => {
     })
 
     it('should return null when no cycle is active', () => {
-      const cycle = createCycle('Q1 2025', '2025-01-01', null, false)
+      const cycle = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: false })
       if ('error' in cycle) throw new Error(cycle.error)
 
       cycles$[cycle.id].set(cycle)

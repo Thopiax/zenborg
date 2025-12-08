@@ -59,7 +59,12 @@ export async function initializeStore(): Promise<void> {
   // Create first cycle
   if (!hasCycles) {
     const today = new Date().toISOString().split("T")[0];
-    const firstCycle = createCycle("First Cycle", today, null, true);
+    const firstCycle = createCycle({
+      name: "First Cycle",
+      startDate: today,
+      endDate: null,
+      isActive: true,
+    });
 
     if ("error" in firstCycle) {
       console.error(

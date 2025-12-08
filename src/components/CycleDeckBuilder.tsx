@@ -1,16 +1,18 @@
 "use client";
 
-import { use$ } from "@legendapp/state/react";
 import { useDroppable } from "@dnd-kit/core";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { use$ } from "@legendapp/state/react";
 import { CycleService } from "@/application/services/CycleService";
-import { MomentCard } from "@/components/MomentCard";
+import {
+  MOMENT_CARD_WIDTH_CLASSNAME,
+  MomentCard,
+} from "@/components/MomentCard";
 import { MomentStack } from "@/components/MomentStack";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { areas$, habits$, moments$ } from "@/infrastructure/state/store";
 import { groupByArea, groupByAttitude, type MomentGroup } from "@/lib/grouping";
+import { cn } from "@/lib/utils";
 
 /**
  * CycleDeckBuilder - Shows budgeted moments grouped in vertical columns
@@ -37,7 +39,7 @@ interface CycleDeckBuilderProps {
 export function CycleDeckBuilder({
   cycleId,
   groupBy = "area",
-  stackMoments = true
+  stackMoments = true,
 }: CycleDeckBuilderProps) {
   const allAreas = use$(areas$);
   const allHabits = use$(habits$);
@@ -58,9 +60,13 @@ export function CycleDeckBuilder({
     );
 
   // Group moments based on groupBy setting
-  const groups = groupBy === "area"
-    ? groupByArea(cycleDeckMoments, allHabits, allAreas)
-    : groupByAttitude(cycleDeckMoments, allHabits, allAreas);
+  const groups =
+    groupBy === "area"
+      ? groupByArea(cycleDeckMoments, allHabits, allAreas)
+      : groupByAttitude(cycleDeckMoments, allHabits, allAreas);
+
+  // Filter to only show groups that have budgeted moments
+  const groupsWithMoments = groups.filter((group) => group.moments.length > 0);
 
   // Setup droppable for the entire deck area
   const { setNodeRef, isOver } = useDroppable({
@@ -119,7 +125,7 @@ export function CycleDeckBuilder({
 
       {/* Horizontal scrollable columns */}
       <div className="flex gap-4 overflow-x-auto px-2 py-4 snap-x snap-mandatory scroll-smooth">
-        {groups.map((group) => (
+        {groupsWithMoments.map((group) => (
           <CycleDeckColumn
             key={group.groupId}
             group={group}
@@ -169,7 +175,12 @@ function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
   }
 
   return (
-    <div className="flex flex-col min-w-[280px] max-w-[320px] snap-start rounded-lg">
+    <div
+      className={cn(
+        "flex flex-col snap-start rounded-lg",
+        MOMENT_CARD_WIDTH_CLASSNAME
+      )}
+    >
       {/* Column Header */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
@@ -186,16 +197,12 @@ function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
           </span>
         </div>
       </div>
-
-      {/* Colored Divider */}
       <div
         className="h-[3px] mx-4 mb-2"
         style={{
           backgroundColor: group.color || "#d6d3d1", // stone-300 fallback
         }}
       />
-
-      {/* Column Content */}
       <div className="flex flex-col gap-3 p-4 min-h-[300px]">
         {group.moments.length === 0 ? (
           // Empty state
@@ -237,16 +244,11 @@ function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
             const area = allAreas[moment.areaId];
             if (!area) return null;
 
-            return (
-              <MomentCard
-                key={moment.id}
-                moment={moment}
-                area={area}
-              />
-            );
+            return <MomentCard key={moment.id} moment={moment} area={area} />;
           })
         )}
       </div>
+      ;
     </div>
   );
 }
@@ -254,11 +256,9 @@ function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
 /**
  * CycleDeckStack - Moment stack with count controls for cycle planning
  *
- * Wraps MomentStack and adds overlay controls to adjust budget count:
- * - Increment (+) button
- * - Current count display
- * - Decrement (-) button
- * - Remove (X) button
+ * Passes control handlers to MomentStack to display integrated controls on the badge:
+ * - count = 1: [×] x1 [↑] (remove on left, increment on right)
+ * - count > 1: [↓] x{count} [↑] (decrement on left, increment on right)
  */
 interface CycleDeckStackProps {
   habitId: string;
@@ -287,42 +287,12 @@ function CycleDeckStack({ habitId, moments, area }: CycleDeckStackProps) {
   };
 
   return (
-    <div className="relative">
-      {/* Moment Stack */}
-      <MomentStack moments={moments} area={area} />
-
-      {/* Count Controls Overlay */}
-      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm px-2 py-1 rounded-md border border-stone-200 dark:border-stone-700 shadow-sm">
-        <button
-          type="button"
-          onClick={handleDecrement}
-          disabled={count <= 1}
-          className="p-0.5 rounded hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Decrease count"
-        >
-          <ChevronDown className="h-3 w-3 text-stone-600 dark:text-stone-400" />
-        </button>
-        <span className="text-xs font-mono text-stone-700 dark:text-stone-300 min-w-[1.5rem] text-center font-semibold">
-          {count}
-        </span>
-        <button
-          type="button"
-          onClick={handleIncrement}
-          className="p-0.5 rounded hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-          title="Increase count"
-        >
-          <ChevronUp className="h-3 w-3 text-stone-600 dark:text-stone-400" />
-        </button>
-        <div className="w-px h-4 bg-stone-300 dark:bg-stone-600 mx-0.5" />
-        <button
-          type="button"
-          onClick={handleRemove}
-          className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-          title="Remove from cycle"
-        >
-          <X className="h-3 w-3 text-red-600 dark:text-red-400" />
-        </button>
-      </div>
-    </div>
+    <MomentStack
+      moments={moments}
+      area={area}
+      onIncrement={handleIncrement}
+      onDecrement={handleDecrement}
+      onRemove={handleRemove}
+    />
   );
 }
