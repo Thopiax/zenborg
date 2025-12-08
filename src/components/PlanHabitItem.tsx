@@ -3,6 +3,8 @@
 import { Archive } from "lucide-react";
 import { useState } from "react";
 import type { Habit } from "@/domain/entities/Habit";
+import { getAttitudeIcon } from "@/domain/value-objects/Attitude";
+import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { cn } from "@/lib/utils";
 
 interface PlanHabitItemProps {
@@ -85,6 +87,22 @@ export function PlanHabitItem({
       <div className="flex items-center gap-2">
         <span>{habit.emoji}</span>
         <span>{habit.name}</span>
+        {/* Quiet display of attitude and phase */}
+        {(habit.attitude || habit.phase) && (
+          <span className="flex items-center gap-1 text-stone-400 dark:text-stone-500 text-xs ml-1">
+            {habit.attitude && (
+              <span title={`Attitude: ${habit.attitude}`}>
+                {getAttitudeIcon(habit.attitude)}
+              </span>
+            )}
+            {habit.phase && (
+              <PhaseIcon
+                phase={habit.phase}
+                className="w-3 h-3"
+              />
+            )}
+          </span>
+        )}
       </div>
       <button
         type="button"
