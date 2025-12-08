@@ -23,7 +23,7 @@ import {
 } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { use$ } from "@legendapp/state/react";
+import { useValue } from "@legendapp/state/react";
 import { useState } from "react";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
@@ -33,7 +33,7 @@ import {
   reorderMomentsWithHistory,
 } from "@/infrastructure/state/history-middleware";
 import { selectionState$ } from "@/infrastructure/state/selection";
-import { areas$, moments$ } from "@/infrastructure/state/store";
+import { areas$, currentCycle$, moments$ } from "@/infrastructure/state/store";
 import {
   drawingBoardSortMode$,
   isDuplicateMode$,
@@ -53,10 +53,10 @@ interface DnDProviderProps {
 
 export function DnDProvider({ children }: DnDProviderProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const isDuplicateMode = use$(isDuplicateMode$);
-  const allMoments = use$(moments$);
-  const allAreas = use$(areas$);
-  const selectedMomentIds = use$(selectionState$.selectedMomentIds);
+  const isDuplicateMode = useValue(isDuplicateMode$);
+  const allMoments = useValue(moments$);
+  const allAreas = useValue(areas$);
+  const selectedMomentIds = useValue(selectionState$.selectedMomentIds);
 
   // Custom collision detection strategy
   // Prioritize pointer-based detection for better accuracy when dropping
@@ -182,6 +182,45 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
+    if (isDraggingSelection && dropData?.targetType === "cycle-deck") {
+      // Handle batch drop on cycle deck (unallocate all)
+      if (!wasDuplicateMode) {
+        // Guard: only allow unallocation if all moments belong to the current cycle
+        const currentCycle = currentCycle$.get();
+        if (!currentCycle) {
+          console.warn("No current cycle - cannot unallocate to cycle deck");
+          return;
+        }
+
+        // Filter moments that belong to the current cycle
+        const validMomentIds = currentSelectedIds.filter((momentId) => {
+          const moment = allMoments[momentId];
+          if (!moment) return false;
+
+          if (moment.cycleId !== currentCycle.id) {
+            console.warn(
+              `Moment ${moment.name} (${moment.cycleId}) does not match current cycle (${currentCycle.id}) - skipping`
+            );
+            return false;
+          }
+
+          return true;
+        });
+
+        if (validMomentIds.length === 0) {
+          console.warn("No valid moments to unallocate to cycle deck");
+          return;
+        }
+
+        console.log(
+          `[DnD] Batch unallocating ${validMomentIds.length} moments to cycle deck`,
+          validMomentIds
+        );
+        handleBatchDropOnDrawingBoard(validMomentIds);
+      }
+      return;
+    }
+
     // Handle sortable reordering (when dragging over another moment, not a cell)
     if (active.id !== over.id && !dropData?.targetType) {
       const activeMoment = allMoments[active.id as string];
@@ -294,6 +333,28 @@ export function DnDProvider({ children }: DnDProviderProps) {
         // Handle drop on a grouped column
         if (!wasDuplicateMode) {
           handleDropOnColumn(dragData, dropData);
+        }
+        break;
+
+      case "cycle-deck":
+        // Unallocate moment back to cycle deck (only if coming from timeline)
+        if (!wasDuplicateMode && dragData.sourceType === "timeline") {
+          // Guard: only allow unallocation if moment belongs to the current cycle
+          const currentCycle = currentCycle$.get();
+          if (!currentCycle) {
+            console.warn("No current cycle - cannot unallocate to cycle deck");
+            break;
+          }
+
+          if (moment.cycleId !== currentCycle.id) {
+            console.warn(
+              `Moment cycleId (${moment.cycleId}) does not match current cycle (${currentCycle.id})`
+            );
+            break;
+          }
+
+          console.log("Unallocating moment to cycle deck", dragData);
+          handleDropOnDrawingBoard(dragData); // Reuse unallocate logic
         }
         break;
 

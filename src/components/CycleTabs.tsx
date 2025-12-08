@@ -1,10 +1,9 @@
 "use client";
 
-import { formatDate } from "date-fns/format";
 import { Pencil } from "lucide-react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Cycle } from "@/domain/entities/Cycle";
-import { fromISODate } from "@/lib/dates";
+import { formatCycleDateRange } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,40 +20,6 @@ interface CycleTabsProps {
   onSelectCycle: (cycleId: string) => void;
   onCreateCycle: () => void;
   onEditCycle?: (cycle: Cycle) => void;
-}
-
-const isSameMonth = (date1: Date, date2: Date) =>
-  date1.getMonth() === date2.getMonth() &&
-  date1.getFullYear() === date2.getFullYear();
-
-const isSameYear = (date1: Date, date2: Date) =>
-  date1.getFullYear() === date2.getFullYear();
-
-/**
- * Get date range label for a cycle
- */
-function getDateRangeLabel(cycle: Cycle): string {
-  const startDate = fromISODate(cycle.startDate);
-  const endDate = cycle.endDate ? fromISODate(cycle.endDate) : null;
-
-  if (!endDate) {
-    return `${formatDate(startDate, "MMM dd")} - ongoing`;
-  }
-
-  if (isSameMonth(startDate, endDate)) {
-    const startDay = formatDate(startDate, "d");
-    const endDay = formatDate(endDate, "d");
-    const month = formatDate(startDate, "MMM");
-    return `${month} ${startDay} - ${endDay}`;
-  } else if (isSameYear(startDate, endDate)) {
-    const startStr = formatDate(startDate, "MMM dd");
-    const endStr = formatDate(endDate, "MMM dd");
-    return `${startStr} - ${endStr}`;
-  } else {
-    const startStr = formatDate(startDate, "MMM dd yyyy");
-    const endStr = formatDate(endDate, "MMM dd yyyy");
-    return `${startStr} - ${endStr}`;
-  }
 }
 
 export function CycleTabs({
@@ -88,7 +53,7 @@ export function CycleTabs({
             <div className="flex flex-col items-start">
               <span>{cycle.name}</span>
               <span className="text-xs opacity-70">
-                {getDateRangeLabel(cycle)}
+                {formatCycleDateRange(cycle.startDate, cycle.endDate)}
               </span>
             </div>
             {onEditCycle && (

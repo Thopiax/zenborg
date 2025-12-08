@@ -12,7 +12,7 @@ import {
 describe('Cycle', () => {
   describe('createCycle', () => {
     it('should create a valid cycle', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
 
       expect(isCycleError(result)).toBe(false)
       if (!isCycleError(result)) {
@@ -27,7 +27,7 @@ describe('Cycle', () => {
     })
 
     it('should create cycle with end date', () => {
-      const result = createCycle('Q1 2025', '2025-01-01', '2025-03-31')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-03-31' })
 
       expect(isCycleError(result)).toBe(false)
       if (!isCycleError(result)) {
@@ -37,7 +37,7 @@ describe('Cycle', () => {
     })
 
     it('should create active cycle', () => {
-      const result = createCycle('Q1 2025', '2025-01-01', null, true)
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: true })
 
       expect(isCycleError(result)).toBe(false)
       if (!isCycleError(result)) {
@@ -46,7 +46,7 @@ describe('Cycle', () => {
     })
 
     it('should reject empty name', () => {
-      const result = createCycle('', '2025-01-01')
+      const result = createCycle({ name: '', startDate: '2025-01-01' })
 
       expect(isCycleError(result)).toBe(true)
       if (isCycleError(result)) {
@@ -55,7 +55,7 @@ describe('Cycle', () => {
     })
 
     it('should reject whitespace-only name', () => {
-      const result = createCycle('   ', '2025-01-01')
+      const result = createCycle({ name: '   ', startDate: '2025-01-01' })
 
       expect(isCycleError(result)).toBe(true)
       if (isCycleError(result)) {
@@ -64,7 +64,7 @@ describe('Cycle', () => {
     })
 
     it('should reject empty start date', () => {
-      const result = createCycle('Q1 2025', '')
+      const result = createCycle({ name: 'Q1 2025', startDate: '' })
 
       expect(isCycleError(result)).toBe(true)
       if (isCycleError(result)) {
@@ -73,7 +73,7 @@ describe('Cycle', () => {
     })
 
     it('should reject invalid start date', () => {
-      const result = createCycle('Q1 2025', 'invalid-date')
+      const result = createCycle({ name: 'Q1 2025', startDate: 'invalid-date' })
 
       expect(isCycleError(result)).toBe(true)
       if (isCycleError(result)) {
@@ -82,7 +82,7 @@ describe('Cycle', () => {
     })
 
     it('should reject invalid end date', () => {
-      const result = createCycle('Q1 2025', '2025-01-01', 'invalid-date')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: 'invalid-date' })
 
       expect(isCycleError(result)).toBe(true)
       if (isCycleError(result)) {
@@ -91,7 +91,7 @@ describe('Cycle', () => {
     })
 
     it('should reject end date before start date', () => {
-      const result = createCycle('Q1 2025', '2025-03-31', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-03-31', endDate: '2025-01-01' })
 
       expect(isCycleError(result)).toBe(true)
       if (isCycleError(result)) {
@@ -100,7 +100,7 @@ describe('Cycle', () => {
     })
 
     it('should reject end date equal to start date', () => {
-      const result = createCycle('Q1 2025', '2025-01-01', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-01-01' })
 
       expect(isCycleError(result)).toBe(true)
       if (isCycleError(result)) {
@@ -109,7 +109,7 @@ describe('Cycle', () => {
     })
 
     it('should trim name', () => {
-      const result = createCycle('  Q1 2025  ', '2025-01-01')
+      const result = createCycle({ name: '  Q1 2025  ', startDate: '2025-01-01' })
 
       expect(isCycleError(result)).toBe(false)
       if (!isCycleError(result)) {
@@ -120,7 +120,7 @@ describe('Cycle', () => {
 
   describe('updateCycle', () => {
     it('should update cycle name', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -137,7 +137,7 @@ describe('Cycle', () => {
     })
 
     it('should update start date', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -151,7 +151,7 @@ describe('Cycle', () => {
     })
 
     it('should update end date', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -165,7 +165,7 @@ describe('Cycle', () => {
     })
 
     it('should update isActive', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -179,7 +179,7 @@ describe('Cycle', () => {
     })
 
     it('should update multiple fields at once', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -199,7 +199,7 @@ describe('Cycle', () => {
     })
 
     it('should reject empty name update', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -213,7 +213,7 @@ describe('Cycle', () => {
     })
 
     it('should reject invalid start date update', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -227,7 +227,7 @@ describe('Cycle', () => {
     })
 
     it('should reject invalid end date update', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -241,7 +241,7 @@ describe('Cycle', () => {
     })
 
     it('should reject end date before start date', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -255,7 +255,7 @@ describe('Cycle', () => {
     })
 
     it('should allow clearing end date', () => {
-      const result = createCycle('Q1 2025', '2025-01-01', '2025-03-31')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-03-31' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -271,7 +271,7 @@ describe('Cycle', () => {
 
   describe('activateCycle', () => {
     it('should activate a cycle', () => {
-      const result = createCycle('Q1 2025', '2025-01-01')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -284,7 +284,7 @@ describe('Cycle', () => {
 
   describe('deactivateCycle', () => {
     it('should deactivate a cycle', () => {
-      const result = createCycle('Q1 2025', '2025-01-01', null, true)
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: true })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -297,7 +297,7 @@ describe('Cycle', () => {
 
   describe('completeCycle', () => {
     it('should complete a cycle by setting end date to today', () => {
-      const result = createCycle('Q1 2025', '2025-01-01', null, true)
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: true })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -313,7 +313,7 @@ describe('Cycle', () => {
 
   describe('isDateInCycle', () => {
     it('should detect date within bounded cycle', () => {
-      const result = createCycle('Q1 2025', '2025-01-01', '2025-03-31')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-03-31' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -324,7 +324,7 @@ describe('Cycle', () => {
     })
 
     it('should detect date outside bounded cycle', () => {
-      const result = createCycle('Q1 2025', '2025-01-01', '2025-03-31')
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-03-31' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -334,7 +334,7 @@ describe('Cycle', () => {
     })
 
     it('should detect date within ongoing cycle', () => {
-      const result = createCycle('Ongoing', '2025-01-01', null)
+      const result = createCycle({ name: 'Ongoing', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -345,7 +345,7 @@ describe('Cycle', () => {
     })
 
     it('should detect date before ongoing cycle', () => {
-      const result = createCycle('Ongoing', '2025-01-01', null)
+      const result = createCycle({ name: 'Ongoing', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {

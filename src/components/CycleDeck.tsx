@@ -1,15 +1,16 @@
 "use client";
 
-import { use$ } from "@legendapp/state/react";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import React, { useState } from "react";
+import { useDroppable } from "@dnd-kit/core";
+import { useValue } from "@legendapp/state/react";
+import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import {
-  activeCycle$,
-  areas$,
+  currentCycle$,
   deckMomentsByAreaAndHabit$,
 } from "@/infrastructure/state/store";
+import { formatCycleEndDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { MOMENT_CARD_WIDTH_CLASSNAME } from "./MomentCard";
 import { MomentStack } from "./MomentStack";
 
 /**
@@ -28,26 +29,50 @@ import { MomentStack } from "./MomentStack";
  * - Grouped by area automatically (no grouping options)
  */
 export function CycleDeck() {
-  const deckMoments = use$(deckMomentsByAreaAndHabit$);
-  const allAreas = use$(areas$);
-  const activeCycle = use$(activeCycle$);
+  const cycleService = new CycleService();
+  const deckMoments = useValue(() => deckMomentsByAreaAndHabit$.get());
 
-  // Get areas that have budgeted moments
-  const areasWithMoments = Object.keys(deckMoments)
-    .map((areaId) => allAreas[areaId])
-    .filter(Boolean)
-    .sort((a, b) => a.order - b.order);
+  // Get the current cycle (the one containing today's date) - reactive!
+  const currentCycle = useValue(() => currentCycle$.get());
+
+  // Get all budgeted moments for current cycle (using store's computed selector)
+  const allDeckMoments = Object.values(deckMoments).flatMap((areaHabits) =>
+    Object.values(areaHabits).flat()
+  );
+
+  // Setup droppable for the entire deck (to unallocate moments from timeline)
+  const cycleId = currentCycle?.id;
+  const { setNodeRef, isOver } = useDroppable({
+    id: `cycle-deck-${cycleId || "none"}`,
+    data: {
+      cycleId,
+      targetType: "cycle-deck",
+    },
+  });
+
+  // Get title: cycle name + end date countdown
+  const deckTitle = currentCycle
+    ? `${currentCycle.name} · ${formatCycleEndDate(currentCycle.endDate)}`
+    : "Cycle Deck";
 
   // Empty state - no budgeted moments
-  if (areasWithMoments.length === 0) {
+  if (allDeckMoments.length === 0) {
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
         <div className="px-6 py-3 border-b border-stone-200 dark:border-stone-700">
-          <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 uppercase tracking-wider font-semibold">
-            Cycle Deck
+          <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold">
+            {deckTitle}
           </h2>
         </div>
-        <div className="p-8 min-h-[200px] flex flex-col items-center justify-center gap-3">
+        <div
+          ref={setNodeRef}
+          className={cn(
+            "p-8 min-h-[200px] flex flex-col items-center justify-center gap-3 border-2 border-dashed mx-6 my-4 rounded-lg transition-colors",
+            isOver
+              ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
+              : "border-stone-300 dark:border-stone-600"
+          )}
+        >
           <p className="text-stone-400 text-sm font-mono text-center">
             No budgeted moments in deck
           </p>
@@ -59,87 +84,102 @@ export function CycleDeck() {
     );
   }
 
+  // Get areas with moments using application service
+  const areasWithMoments = cycleService.getAreasWithDeckMoments(deckMoments);
+
   return (
     <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
       {/* Header */}
       <div className="px-6 py-3 border-b border-stone-200 dark:border-stone-700">
-        <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 uppercase tracking-wider font-semibold">
-          Cycle Deck
+        <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold">
+          {deckTitle}
         </h2>
       </div>
 
-      {/* Areas with budgeted moments */}
-      <div className="p-6 space-y-6">
-        {areasWithMoments.map((area) => {
-          const habitMoments = deckMoments[area.id];
-          const habitIds = Object.keys(habitMoments);
+      {/* Droppable container for unallocating moments */}
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "relative transition-colors",
+          isOver && "bg-stone-100/50 dark:bg-stone-800/50"
+        )}
+      >
+        {/* Drop indicator when dragging over */}
+        {isOver && (
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+            <div className="border-4 border-dashed border-stone-400 dark:border-stone-500 rounded-lg absolute inset-4 bg-stone-100/30 dark:bg-stone-800/30">
+              <div className="flex items-center justify-center h-full">
+                <div className="bg-stone-800/90 dark:bg-stone-200/90 text-white dark:text-stone-900 px-6 py-3 rounded-lg shadow-lg">
+                  <p className="text-sm font-bold font-mono">
+                    Drop to unallocate back to cycle deck
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-          return (
-            <CycleDeckAreaSection
-              key={area.id}
-              area={area}
-              habitMoments={habitMoments}
-              habitIds={habitIds}
-            />
-          );
-        })}
+        {/* Horizontal scrollable columns (matching CycleDeckBuilder) */}
+        <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
+          {areasWithMoments.map(({ area, habits }) => (
+            <CycleDeckColumn key={area.id} area={area} habitMoments={habits} />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
 /**
- * CycleDeckAreaSection - Collapsible section for one area's moments
+ * CycleDeckColumn - Single vertical column for an area
+ * Matches the design from CycleDeckBuilder for consistency
  */
-interface CycleDeckAreaSectionProps {
+interface CycleDeckColumnProps {
   area: Area;
   habitMoments: Record<string, any[]>;
-  habitIds: string[];
 }
 
-function CycleDeckAreaSection({
-  area,
-  habitMoments,
-  habitIds,
-}: CycleDeckAreaSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+function CycleDeckColumn({ area, habitMoments }: CycleDeckColumnProps) {
+  const habitIds = Object.keys(habitMoments);
+  const totalMoments = habitIds.reduce(
+    (sum, id) => sum + habitMoments[id].length,
+    0
+  );
 
   return (
-    <div>
-      {/* Area Header - Collapsible */}
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 mb-3 w-full hover:opacity-80 transition-opacity"
-      >
-        <span className="text-lg">{area.emoji}</span>
-        <h3 className="text-sm font-mono font-medium text-stone-900 dark:text-stone-100 flex-1 text-left">
-          {area.name}
-        </h3>
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-stone-500" />
-        ) : (
-          <ChevronUp className="h-4 w-4 text-stone-500" />
-        )}
-      </button>
-
-      {/* Habit Stacks - Animated collapse */}
-      <div
-        className={cn(
-          "grid transition-all duration-medium transition-elastic overflow-hidden",
-          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-        )}
-      >
-        <div className="overflow-hidden">
-          <div className="space-y-3">
-            {habitIds.map((habitId) => {
-              const moments = habitMoments[habitId];
-              return (
-                <MomentStack key={habitId} moments={moments} area={area} />
-              );
-            })}
-          </div>
+    <div
+      className={cn(
+        "flex flex-col max-w-[320px] snap-start rounded-lg",
+        MOMENT_CARD_WIDTH_CLASSNAME
+      )}
+    >
+      {/* Column Header */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-base" aria-hidden="true">
+            {area.emoji}
+          </span>
+          <h3 className="text-sm font-mono font-medium text-stone-700 dark:text-stone-300">
+            {area.name}
+          </h3>
+          <span className="text-xs font-mono text-stone-400 dark:text-stone-500">
+            {totalMoments}
+          </span>
         </div>
+      </div>
+
+      {/* Colored Divider */}
+      <div
+        className="h-[3px] mx-4 mb-2"
+        style={{ backgroundColor: area.color }}
+      />
+
+      {/* Column Content */}
+      <div className="flex flex-col gap-3 p-4 min-h-[300px]">
+        {habitIds.map((habitId) => {
+          const moments = habitMoments[habitId];
+          return <MomentStack key={habitId} moments={moments} area={area} />;
+        })}
       </div>
     </div>
   );
