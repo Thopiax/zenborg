@@ -1,3 +1,4 @@
+import type { Area } from "@/domain/entities/Area";
 import {
   activateCycle,
   type Cycle,
@@ -20,16 +21,22 @@ import {
 } from "@/domain/entities/Moment";
 import {
   activeCycle$,
+  areas$,
   cyclePlans$,
   cycles$,
   habits$,
   moments$,
 } from "@/infrastructure/state/store";
+import {
+  calculateDefaultStartDate,
+  calculateTemplateDates,
+  findOverlappingCycle,
+  getDayBefore,
+  type TemplateDuration,
+} from "@/domain/services/CycleDateService";
 
-/**
- * Template durations for cycle creation
- */
-export type TemplateDuration = "week" | "2-week" | "month" | "quarter";
+// Re-export TemplateDuration for backward compatibility
+export type { TemplateDuration };
 
 /**
  * Application Service for Cycle Management
@@ -40,10 +47,23 @@ export type TemplateDuration = "week" | "2-week" | "month" | "quarter";
  * Business Rules:
  * 1. Only one cycle can be active at a time
  * 2. Cycles must not overlap (validate date ranges)
- * 3. Template durations calculate contiguous dates from last cycle
- * 4. Cycle plans materialize as budgeted moments
+ * 3. Cycles can start on the same day previous cycle ended
+ * 4. Template durations align to calendar boundaries
+ * 5. Cycle plans materialize as budgeted moments
  */
 export class CycleService {
+  /**
+   * Gets the default start date for a new cycle
+   *
+   * Business Rule: New cycles start on the same day the last cycle ended,
+   * or tomorrow if no cycles exist
+   *
+   * @returns ISO date string for default start date
+   */
+  getDefaultStartDate(): string {
+    const allCycles = Object.values(cycles$.get());
+    return calculateDefaultStartDate(allCycles);
+  }
   /**
    * Plans a new cycle with template duration or manual dates
    *
@@ -62,9 +82,11 @@ export class CycleService {
     let calculatedStartDate: string;
     let calculatedEndDate: string | null;
 
+    const allCycles = Object.values(cycles$.get());
+
     // Calculate dates from template if provided and no manual override
     if (templateDuration && !startDate) {
-      const dates = this.calculateTemplateDates(templateDuration);
+      const dates = calculateTemplateDates(templateDuration, allCycles);
       calculatedStartDate = dates.startDate;
       calculatedEndDate = dates.endDate;
     } else if (startDate) {
@@ -76,13 +98,10 @@ export class CycleService {
     }
 
     // Auto-close any ongoing cycles (set end date to day before new cycle starts)
-    const allCycles = Object.values(cycles$.get());
     const ongoingCycles = allCycles.filter((c) => c.endDate === null);
 
     if (ongoingCycles.length > 0) {
-      const dayBeforeStart = new Date(calculatedStartDate);
-      dayBeforeStart.setDate(dayBeforeStart.getDate() - 1);
-      const closeDate = dayBeforeStart.toISOString().split("T")[0];
+      const closeDate = getDayBefore(calculatedStartDate);
 
       for (const ongoingCycle of ongoingCycles) {
         const updatedCycle: Cycle = {
@@ -96,7 +115,7 @@ export class CycleService {
 
     // Validate non-overlapping with existing cycles (after closing ongoing ones)
     const updatedCycles = Object.values(cycles$.get());
-    const overlapping = this.findOverlappingCycle(
+    const overlapping = findOverlappingCycle(
       updatedCycles,
       calculatedStartDate,
       calculatedEndDate
@@ -109,12 +128,12 @@ export class CycleService {
     }
 
     // Create cycle (not active yet)
-    const result = createCycle(
+    const result = createCycle({
       name,
-      calculatedStartDate,
-      calculatedEndDate,
-      false
-    );
+      startDate: calculatedStartDate,
+      endDate: calculatedEndDate,
+      isActive: false,
+    });
 
     if ("error" in result) {
       return result;
@@ -126,166 +145,6 @@ export class CycleService {
     return result;
   }
 
-  /**
-   * Calculates start and end dates based on template duration
-   * Dates are contiguous from the last cycle's end date, or today if no cycles exist
-   *
-   * @param template - Template duration
-   * @returns Calculated start and end dates
-   */
-  private calculateTemplateDates(template: TemplateDuration): {
-    startDate: string;
-    endDate: string;
-  } {
-    const allCycles = Object.values(cycles$.get());
-
-    // Find the last cycle's end date
-    let baseDate: Date;
-    if (allCycles.length > 0) {
-      // Sort by end date (or start date if ongoing)
-      const sorted = allCycles.sort((a, b) => {
-        const aDate = a.endDate || a.startDate;
-        const bDate = b.endDate || b.startDate;
-        return new Date(bDate).getTime() - new Date(aDate).getTime();
-      });
-
-      const lastCycle = sorted[0];
-      if (lastCycle.endDate) {
-        // Start from day after last cycle ended
-        baseDate = new Date(lastCycle.endDate);
-        baseDate.setDate(baseDate.getDate() + 1);
-      } else {
-        // Last cycle is ongoing, start today
-        baseDate = new Date();
-      }
-    } else {
-      // No cycles yet, start today
-      baseDate = new Date();
-    }
-
-    // Align to calendar boundaries
-    const startDate = this.alignToCalendar(baseDate, template);
-    const endDate = this.calculateEndDate(startDate, template);
-
-    return {
-      startDate: startDate.toISOString().split("T")[0],
-      endDate: endDate.toISOString().split("T")[0],
-    };
-  }
-
-  /**
-   * Aligns a date to calendar boundaries based on template
-   *
-   * @param date - Base date
-   * @param template - Template duration
-   * @returns Aligned date
-   */
-  private alignToCalendar(date: Date, template: TemplateDuration): Date {
-    const aligned = new Date(date);
-
-    switch (template) {
-      case "week":
-      case "2-week": {
-        // Align to Monday
-        const dayOfWeek = aligned.getDay();
-        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        aligned.setDate(aligned.getDate() + daysToMonday);
-        break;
-      }
-
-      case "month":
-        // Align to 1st of month
-        aligned.setDate(1);
-        break;
-
-      case "quarter": {
-        // Align to 1st of quarter month (Jan, Apr, Jul, Oct)
-        const month = aligned.getMonth();
-        const quarterStartMonth = Math.floor(month / 3) * 3;
-        aligned.setMonth(quarterStartMonth);
-        aligned.setDate(1);
-        break;
-      }
-    }
-
-    return aligned;
-  }
-
-  /**
-   * Calculates end date based on start date and template
-   *
-   * @param startDate - Start date
-   * @param template - Template duration
-   * @returns End date
-   */
-  private calculateEndDate(startDate: Date, template: TemplateDuration): Date {
-    const endDate = new Date(startDate);
-
-    switch (template) {
-      case "week":
-        // 7 days
-        endDate.setDate(endDate.getDate() + 6);
-        break;
-
-      case "2-week":
-        // 14 days
-        endDate.setDate(endDate.getDate() + 13);
-        break;
-
-      case "month":
-        // Last day of month
-        endDate.setMonth(endDate.getMonth() + 1);
-        endDate.setDate(0); // Last day of previous month
-        break;
-
-      case "quarter":
-        // Last day of quarter (3 months)
-        endDate.setMonth(endDate.getMonth() + 3);
-        endDate.setDate(0); // Last day of previous month
-        break;
-    }
-
-    return endDate;
-  }
-
-  /**
-   * Finds a cycle that overlaps with the given date range
-   *
-   * @param cycles - All cycles to check
-   * @param startDate - Start date to check
-   * @param endDate - End date to check (null = ongoing)
-   * @returns Overlapping cycle or null
-   */
-  private findOverlappingCycle(
-    cycles: Cycle[],
-    startDate: string,
-    endDate: string | null
-  ): Cycle | null {
-    for (const cycle of cycles) {
-      // Check if ranges overlap
-      const cycleStart = new Date(cycle.startDate);
-      const cycleEnd = cycle.endDate ? new Date(cycle.endDate) : null;
-      const newStart = new Date(startDate);
-      const newEnd = endDate ? new Date(endDate) : null;
-
-      // If either cycle is ongoing (null end date), check start dates
-      if (!cycleEnd || !newEnd) {
-        // Ongoing cycles: check if start dates are different
-        if (cycleStart.getTime() === newStart.getTime()) {
-          return cycle;
-        }
-        continue;
-      }
-
-      // Both have end dates: check for overlap
-      // Overlap if: newStart <= cycleEnd AND newEnd >= cycleStart
-      if (newStart <= cycleEnd && newEnd >= cycleStart) {
-        return cycle;
-      }
-    }
-
-    return null;
-  }
 
   /**
    * Updates a cycle's name and/or dates
@@ -317,7 +176,7 @@ export class CycleService {
       const allCycles = Object.values(cycles$.get()).filter(
         (c) => c.id !== cycleId
       );
-      const overlapping = this.findOverlappingCycle(
+      const overlapping = findOverlappingCycle(
         allCycles,
         updatedCycle.startDate,
         updatedCycle.endDate
@@ -392,12 +251,26 @@ export class CycleService {
   }
 
   /**
-   * Gets the currently active cycle
+   * Gets the currently active cycle (marked as isActive)
    *
    * @returns Active cycle or null
    */
   getActiveCycle(): Cycle | null {
     return activeCycle$.get();
+  }
+
+  /**
+   * Gets the cycle that contains today's date
+   *
+   * Business rule: Current cycle is the one whose date range contains today
+   *
+   * @returns Current cycle or null if no cycle contains today
+   */
+  getCurrentCycle(): Cycle | null {
+    const today = new Date().toISOString().split("T")[0];
+    const allCycles = Object.values(cycles$.get());
+
+    return allCycles.find(cycle => isDateInCycle(cycle, today)) || null;
   }
 
   /**
@@ -572,6 +445,7 @@ export class CycleService {
       const result = createMoment({
         name: habit.name, // Inherit from habit
         areaId: habit.areaId, // Inherit from habit
+        emoji: habit.emoji, // Inherit from habit
         habitId: plan.habitId,
         cycleId: plan.cycleId,
         cyclePlanId: plan.id,
@@ -708,6 +582,7 @@ export class CycleService {
     const result = createMoment({
       name: habit.name,
       areaId: habit.areaId,
+      emoji: habit.emoji,
       habitId: habit.id,
       cycleId: activeCycle?.id || null,
       cyclePlanId: null, // Spontaneous
@@ -777,5 +652,30 @@ export class CycleService {
     moments$[finalMoment.id].set(finalMoment);
 
     return finalMoment;
+  }
+
+  /**
+   * Gets areas with their grouped deck moments for the active cycle
+   *
+   * Returns areas that have budgeted moments in the cycle deck,
+   * grouped by area and then by habit. Only includes areas with
+   * at least one deck moment.
+   *
+   * @param deckMomentsByAreaAndHabit - Grouped moments from store selector
+   * @returns Array of areas with their habit-grouped moments, sorted by area order
+   */
+  getAreasWithDeckMoments(
+    deckMomentsByAreaAndHabit: Record<string, Record<string, Moment[]>>
+  ): Array<{ area: Area; habits: Record<string, Moment[]> }> {
+    const allAreas = areas$.get();
+    const areasMap: Record<string, Area> = allAreas;
+
+    return Object.keys(deckMomentsByAreaAndHabit)
+      .map((areaId) => ({
+        area: areasMap[areaId],
+        habits: deckMomentsByAreaAndHabit[areaId],
+      }))
+      .filter(({ area }) => Boolean(area))
+      .sort((a, b) => a.area.order - b.area.order);
   }
 }

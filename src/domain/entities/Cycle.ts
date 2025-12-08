@@ -15,6 +15,26 @@ export interface Cycle {
 }
 
 /**
+ * Props for creating a new cycle
+ */
+export interface CreateCycleProps {
+  name: string;
+  startDate: string;
+  endDate?: string | null;
+  isActive?: boolean;
+}
+
+/**
+ * Props for updating an existing cycle
+ */
+export interface UpdateCycleProps {
+  name?: string;
+  startDate?: string;
+  endDate?: string | null;
+  isActive?: boolean;
+}
+
+/**
  * Result type for operations that may fail
  */
 export type CycleResult = Cycle | { error: string };
@@ -22,33 +42,27 @@ export type CycleResult = Cycle | { error: string };
 /**
  * Creates a new cycle
  *
- * @param name - Cycle name
- * @param startDate - ISO date string
- * @param endDate - Optional ISO date string (null for ongoing)
- * @param isActive - Whether this cycle is active
+ * @param props - Cycle creation properties
  * @returns New cycle or error
  */
-export function createCycle(
-  name: string,
-  startDate: string,
-  endDate: string | null = null,
-  isActive: boolean = false
-): CycleResult {
-  const trimmedName = name.trim();
+export function createCycle(props: CreateCycleProps): CycleResult {
+  const trimmedName = props.name.trim();
 
   if (!trimmedName) {
     return { error: "Cycle name cannot be empty" };
   }
 
-  if (!startDate) {
+  if (!props.startDate) {
     return { error: "Cycle must have a start date" };
   }
 
   // Validate ISO date format
-  const startDateObj = new Date(startDate);
+  const startDateObj = new Date(props.startDate);
   if (Number.isNaN(startDateObj.getTime())) {
     return { error: "Start date must be a valid ISO date string" };
   }
+
+  const endDate = props.endDate ?? null;
 
   if (endDate !== null) {
     const endDateObj = new Date(endDate);
@@ -67,9 +81,9 @@ export function createCycle(
   return {
     id: crypto.randomUUID(),
     name: trimmedName,
-    startDate,
+    startDate: props.startDate,
     endDate,
-    isActive,
+    isActive: props.isActive ?? false,
     createdAt: now,
     updatedAt: now,
   };
@@ -79,23 +93,20 @@ export function createCycle(
  * Updates a cycle's properties
  *
  * @param cycle - Cycle to update
- * @param updates - Partial cycle properties to update
+ * @param props - Update properties
  * @returns Updated cycle or error
  */
-export function updateCycle(
-  cycle: Cycle,
-  updates: Partial<Pick<Cycle, "name" | "startDate" | "endDate" | "isActive">>
-): CycleResult {
-  if (updates.name !== undefined) {
-    const trimmedName = updates.name.trim();
+export function updateCycle(cycle: Cycle, props: UpdateCycleProps): CycleResult {
+  if (props.name !== undefined) {
+    const trimmedName = props.name.trim();
     if (!trimmedName) {
       return { error: "Cycle name cannot be empty" };
     }
   }
 
-  const newStartDate = updates.startDate ?? cycle.startDate;
+  const newStartDate = props.startDate ?? cycle.startDate;
   const newEndDate =
-    updates.endDate !== undefined ? updates.endDate : cycle.endDate;
+    props.endDate !== undefined ? props.endDate : cycle.endDate;
 
   // Validate start date
   const startDateObj = new Date(newStartDate);
@@ -117,8 +128,8 @@ export function updateCycle(
 
   return {
     ...cycle,
-    ...updates,
-    name: updates.name ? updates.name.trim() : cycle.name,
+    ...props,
+    name: props.name ? props.name.trim() : cycle.name,
     updatedAt: new Date().toISOString(),
   };
 }
