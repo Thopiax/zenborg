@@ -1,6 +1,6 @@
 "use client";
 
-import { use$ } from "@legendapp/state/react";
+import { useValue } from "@legendapp/state/react";
 import { CycleDeck } from "@/components/CycleDeck";
 import { DnDProvider } from "@/components/DnDProvider";
 import { DrawingBoard } from "@/components/DrawingBoard";
@@ -13,7 +13,7 @@ import type { Phase } from "@/domain/value-objects/Phase";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
 import { useSelection } from "@/hooks/useSelection";
-import { activeCycle$, moments$ } from "@/infrastructure/state/store";
+import { currentCycle$, moments$ } from "@/infrastructure/state/store";
 import { momentFormState$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 
@@ -58,11 +58,11 @@ export default function CultivatePage() {
   };
 
   // Get all moments for selection
-  const allMoments = use$(moments$);
+  const allMoments = useValue(moments$);
   useGlobalSelection(Object.keys(allMoments));
 
-  // Check for active cycle
-  const activeCycle = use$(activeCycle$);
+  // Check for current cycle (the one containing today)
+  const currentCycle = useValue(currentCycle$);
 
   // Selection management
   const { clearSelection, hasAnySelected } = useSelection();
@@ -106,9 +106,9 @@ export default function CultivatePage() {
             <Timeline />
           </div>
 
-          {/* Cycle Deck (active cycle) or Drawing Board (no cycle) */}
+          {/* Cycle Deck (current cycle) or Drawing Board (no cycle) */}
           <div className="flex-shrink-0">
-            {activeCycle ? <CycleDeck /> : <DrawingBoard />}
+            {currentCycle ? <CycleDeck /> : <DrawingBoard />}
           </div>
         </main>
 

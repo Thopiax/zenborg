@@ -77,7 +77,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
             return (
               <div
                 key={phaseConfig.phase}
-                className="flex flex-col flex-1 min-w-[200px] md:min-w-[240px]"
+                className="flex flex-col w-[320px] md:w-[360px] flex-shrink-0"
               >
                 {/* Phase Cell - Height based on 3 cards (64px each) + 2 gaps (12px each) + padding */}
                 <div className="flex-1 p-0.5 md:p-1 h-full">

@@ -30,7 +30,11 @@ import type {
   CreateHabitProps,
   UpdateHabitProps,
 } from "@/domain/entities/Habit";
-import type { Attitude } from "@/domain/value-objects/Attitude";
+import {
+  type Attitude,
+  getAttitudeIcon,
+  getAttitudeLabel,
+} from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { useTaggedNameField } from "@/hooks/useTaggedNameField";
@@ -93,6 +97,11 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   const allAreas = use$(areas$);
   const allPhaseConfigs = use$(phaseConfigs$);
   const selectedArea = areaId ? allAreas[areaId] : null;
+
+  // Get phase config for display
+  const selectedPhaseConfig = phase
+    ? Object.values(allPhaseConfigs).find((pc) => pc.phase === phase)
+    : null;
 
   // Tagged name field
   const taggedField = useTaggedNameField(name, tags);
@@ -203,21 +212,27 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     lastUsedAreaId$.set(selectedAreaId);
   };
 
+  // Prevent closing on escape when inputs have focus or data exists
+  const preventCloseOnEscape = (e: KeyboardEvent) => {
+    // Check if the target was an input/textarea
+    const target = e.target as HTMLElement;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+      // Blur the input naturally, but still prevent dialog close
+      target.blur();
+      // Always prevent dialog from closing
+      e.preventDefault();
+    } else if (name.trim().length > 0) {
+      // If name has content, prevent closing to avoid losing data
+      e.preventDefault();
+    }
+  };
+
   // Keyboard shortcuts
   useHotkeys(
     "enter",
     (e) => {
       e.preventDefault();
       handleSave();
-    },
-    { enableOnFormTags: true, enabled: formHotkeysEnabled && open }
-  );
-
-  useHotkeys(
-    "escape",
-    (e) => {
-      e.preventDefault();
-      closeHabitForm();
     },
     { enableOnFormTags: true, enabled: formHotkeysEnabled && open }
   );
@@ -233,7 +248,11 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closeHabitForm()}>
-      <DialogContent ref={dialogRef} className="p-0 gap-0 max-w-2xl">
+      <DialogContent
+        ref={dialogRef}
+        className="p-0 gap-0 max-w-2xl"
+        onEscapeKeyDown={preventCloseOnEscape}
+      >
         {/* Header */}
         <DialogHeader className="border-b border-stone-200 dark:border-stone-700">
           <DialogTitle className="text-sm font-medium text-stone-600 dark:text-stone-400">
@@ -332,16 +351,10 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
             </div>
           )}
 
-          {/* Attitude & Phase Selectors */}
-          <div className="flex flex-col gap-3 mb-6">
-            {/* Attitude Selector */}
-            <div>
-              <label
-                htmlFor="attitude-selector-trigger"
-                className="block text-xs font-mono text-stone-500 dark:text-stone-400 mb-2"
-              >
-                Attitude
-              </label>
+          {/* Selected values shown as full-width buttons */}
+          <div className="flex flex-col gap-3">
+            {/* Attitude Selector - Show as button if selected */}
+            {attitude && (
               <AttitudeSelector
                 open={attitudeSelectorOpen}
                 selectedAttitude={attitude}
@@ -353,13 +366,14 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                 collisionBoundary={dialogRef.current}
                 trigger={
                   <button
-                    id="attitude-selector-trigger"
                     type="button"
                     className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
                   >
-                    <Clock className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                    <span className="text-base flex-shrink-0">
+                      {getAttitudeIcon(attitude)}
+                    </span>
                     <span className="font-mono text-sm flex-1 text-left truncate">
-                      {attitude ? `${attitude}` : "No attitude"}
+                      {getAttitudeLabel(attitude)}
                     </span>
                     <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
                       T
@@ -367,16 +381,10 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                   </button>
                 }
               />
-            </div>
+            )}
 
-            {/* Phase Selector */}
-            <div>
-              <label
-                htmlFor="phase-selector-trigger"
-                className="block text-xs font-mono text-stone-500 dark:text-stone-400 mb-2"
-              >
-                Default Phase
-              </label>
+            {/* Phase Selector - Show as button if selected */}
+            {phase && (
               <PhaseSelector
                 open={phaseSelectorOpen}
                 selectedPhase={phase}
@@ -388,24 +396,15 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                 collisionBoundary={dialogRef.current}
                 trigger={
                   <button
-                    id="phase-selector-trigger"
                     type="button"
                     className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
                   >
-                    {phase ? (
-                      <PhaseIcon
-                        phase={phase}
-                        className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
-                      />
-                    ) : (
-                      <Clock className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
-                    )}
+                    <PhaseIcon
+                      phase={phase}
+                      className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0"
+                    />
                     <span className="font-mono text-sm flex-1 text-left truncate">
-                      {phase
-                        ? Object.values(allPhaseConfigs).find(
-                            (pc) => pc.phase === phase
-                          )?.label
-                        : "No phase"}
+                      {selectedPhaseConfig?.label}
                     </span>
                     <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
                       P
@@ -413,7 +412,56 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                   </button>
                 }
               />
-            </div>
+            )}
+          </div>
+
+          {/* Subtle wrapped row for empty selectors */}
+          <div className="flex flex-wrap gap-3 items-center mt-8 mb-2">
+            {/* Attitude - subtle label if not selected */}
+            {!attitude && (
+              <AttitudeSelector
+                open={attitudeSelectorOpen}
+                selectedAttitude={attitude}
+                onSelectAttitude={(newAttitude) =>
+                  habitFormState$.attitude.set(newAttitude)
+                }
+                onClose={() => setAttitudeSelectorOpen(false)}
+                onOpen={() => setAttitudeSelectorOpen(true)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                  >
+                    <Clock className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    <span className="text-xs font-mono">no attitude</span>
+                  </button>
+                }
+              />
+            )}
+
+            {/* Phase - subtle label if not selected */}
+            {!phase && (
+              <PhaseSelector
+                open={phaseSelectorOpen}
+                selectedPhase={phase}
+                onSelectPhase={(newPhase) =>
+                  habitFormState$.phase.set(newPhase)
+                }
+                onClose={() => setPhaseSelectorOpen(false)}
+                onOpen={() => setPhaseSelectorOpen(true)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                  >
+                    <Clock className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    <span className="text-xs font-mono">no phase</span>
+                  </button>
+                }
+              />
+            )}
           </div>
         </div>
 
