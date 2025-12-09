@@ -96,7 +96,9 @@
       "Skill(ddd)",
       "Bash(git rev-parse:*)",
       "Bash(grep:*)",
-      "Skill(superpowers:verification-before-completion)"
+      "Skill(superpowers:verification-before-completion)",
+      "Bash(ls:*)",
+      "Bash(sips:*)"
     ],
     "deny": [],
     "ask": []
