@@ -98,7 +98,19 @@
       "Bash(grep:*)",
       "Skill(superpowers:verification-before-completion)",
       "Bash(ls:*)",
-      "Bash(sips:*)"
+      "Bash(sips:*)",
+      "Bash(brew install:*)",
+      "Bash(magick:*)",
+      "Bash(icon.png -gravity center -compose over -composite )",
+      "Bash(icon-with-bg-v2.png)",
+      "Bash(pnpm tauri icon --help:*)",
+      "Bash(icon-inverted.png -gravity center -compose over -composite )",
+      "Bash(icon-with-bg-dark.png)",
+      "Bash(\\( +clone -alpha extract -negate \\) )",
+      "Bash(icon-white.png -gravity center -compose over -composite )",
+      "Bash(icon-scaled.png -gravity center -compose over -composite )",
+      "Bash(icon-white-scaled.png -gravity center -compose over -composite )",
+      "Bash(pnpm tauri icon:*)"
     ],
     "deny": [],
     "ask": []
