@@ -4,8 +4,8 @@
   "description": "A habit cultivation app focused on mindfulness and personal growth.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#292524",
-  "theme_color": "#292524",
+  "background_color": "#fafaf9",
+  "theme_color": "#fafaf9",
   "orientation": "any",
   "prefer_related_applications": false,
   "icons": [
