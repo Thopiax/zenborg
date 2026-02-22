@@ -1,18 +1,18 @@
 "use client";
 
 import { observer } from "@legendapp/state/react";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import type { TemplateDuration } from "@/application/services/CycleService";
 import { CycleService } from "@/application/services/CycleService";
 import { CycleDeckBuilder } from "@/components/CycleDeckBuilder";
 import { CycleFormDialog } from "@/components/CycleFormDialog";
 import { CycleTabs } from "@/components/CycleTabs";
+import { PaneHeader } from "@/components/PaneHeader";
 import type { Cycle } from "@/domain/entities/Cycle";
 import { cn } from "@/lib/utils";
 
 /**
- * CyclePane - Bottom pane for cycle planning
+ * CyclePane - Right pane for cycle planning
  *
  * Features:
  * - Cycle selector tabs (Current, Next, +)
@@ -21,37 +21,10 @@ import { cn } from "@/lib/utils";
  * - Smart default start dates (tomorrow or after latest cycle)
  */
 
-interface CyclePaneProps {
-  onCollapsedChange?: (isCollapsed: boolean) => void;
-}
-
-const CollapsedCyclePane = ({
-  onExpand,
-  cycles,
-}: {
-  onExpand: () => void;
-  cycles: Cycle[];
-}) => {
-  return (
-    <button
-      className="px-6 py-4 flex items-center w-full justify-between bg-stone-100 dark:bg-stone-800 border-t border-stone-200 dark:border-stone-700 cursor-pointer"
-      type="button"
-      onClick={onExpand}
-    >
-      <span className="text-sm font-mono text-stone-700 dark:text-stone-300 grow">
-        {cycles.length} {cycles.length === 1 ? "cycle" : "cycles"}
-      </span>
-      <ChevronUp className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-    </button>
-  );
-};
-
-export const CyclePane = observer(
-  ({ onCollapsedChange }: CyclePaneProps = {}) => {
+export const CyclePane = observer(() => {
     const cycleService = new CycleService();
 
     // UI state
-    const [isCollapsed, setIsCollapsed] = useState(false);
     const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
@@ -170,176 +143,99 @@ export const CyclePane = observer(
       return `${diffDays} days left`;
     };
 
-    if (isCollapsed) {
-      return (
-        <CollapsedCyclePane
-          onExpand={() => {
-            setIsCollapsed(false);
-            onCollapsedChange?.(false);
-          }}
-          cycles={cyclesList}
-        />
-      );
-    }
-
     return (
-      <>
-        {/* Page Title - Always visible */}
-        {!isCollapsed && (
-          <div className="px-6 pt-6 pb-4">
-            <h2 className="text-xl font-mono font-bold text-stone-900 dark:text-stone-100 mb-1">
-              Cycles
-            </h2>
-            <p className="text-sm text-stone-500 dark:text-stone-400 font-mono">
-              Budget habits to time periods
-            </p>
-          </div>
-        )}
+      <div className="flex flex-col h-full">
+        <PaneHeader title="Cycles" subtitle="Budget habits to time periods" />
 
-        {/* Header with Collapse Button */}
-        <div
-          className={cn(
-            "px-6 flex items-center justify-between transition-all",
-            isCollapsed ? "h-14 py-3" : "pt-0 pb-2"
-          )}
-        >
-          <div className="flex-1">
-            {!isCollapsed ? (
-              <CycleTabs
-                selectedCycleId={effectiveSelectedCycleId}
-                onSelectCycle={setSelectedCycleId}
-                onCreateCycle={openCreateDialog}
-                onEditCycle={openEditDialog}
-              />
-            ) : (
-              <div className="flex items-center gap-3 overflow-x-auto">
-                {cyclesList.length > 0 ? (
-                  cyclesList.map((cycle) => (
-                    <button
-                      key={cycle.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCycleId(cycle.id);
-                        setIsCollapsed(false);
-                      }}
-                      className="flex-shrink-0 px-3 py-1.5 rounded-md bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors"
-                    >
-                      <span className="text-xs font-mono text-stone-700 dark:text-stone-300">
-                        {cycle.name}
-                      </span>
-                    </button>
-                  ))
-                ) : (
-                  <span className="text-xs font-mono text-stone-500 dark:text-stone-400">
-                    No cycles
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={openCreateDialog}
-                  className="flex-shrink-0 px-3 py-1 rounded-md bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 font-mono text-xs transition-colors"
-                >
-                  +
-                </button>
-              </div>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              const newCollapsed = !isCollapsed;
-              setIsCollapsed(newCollapsed);
-              onCollapsedChange?.(newCollapsed);
-            }}
-            className="p-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 rounded transition-colors"
-            aria-label={isCollapsed ? "Expand cycles" : "Collapse cycles"}
-          >
-            {isCollapsed ? (
-              <ChevronUp className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-            )}
-          </button>
+        {/* Cycle Tabs */}
+        <div className="px-6 pb-2">
+          <CycleTabs
+            selectedCycleId={effectiveSelectedCycleId}
+            onSelectCycle={setSelectedCycleId}
+            onCreateCycle={openCreateDialog}
+            onEditCycle={openEditDialog}
+          />
         </div>
 
-        {/* Collapsible Content */}
-        {!isCollapsed && (
-          <>
-            {effectiveSelectedCycleId ? (
-              <div className="pb-4">
-                {/* Cycle Header */}
-                {(() => {
-                  const selectedCycle = cyclesList.find(
-                    (c) => c.id === effectiveSelectedCycleId
-                  );
-                  if (!selectedCycle) return null;
+        {/* Cycle Content */}
+        <div className="flex-1 min-h-0">
+          {effectiveSelectedCycleId ? (
+            <div className="h-full flex flex-col">
+              {/* Cycle Header */}
+              {(() => {
+                const selectedCycle = cyclesList.find(
+                  (c) => c.id === effectiveSelectedCycleId
+                );
+                if (!selectedCycle) return null;
 
-                  return (
-                    <div className="px-6 pb-4 flex items-baseline justify-between border-b border-stone-200 dark:border-stone-700">
-                      <h2 className="text-lg font-mono font-medium text-stone-900 dark:text-stone-100">
-                        {selectedCycle.name}
-                      </h2>
-                      <span className="text-sm font-mono text-stone-500 dark:text-stone-400">
-                        {getDaysRemaining(selectedCycle)}
-                      </span>
-                    </div>
-                  );
-                })()}
-
-                {/* Grouping Selector */}
-                <div className="px-6 pt-4 pb-3 flex items-center gap-2">
-                  <span className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">
-                    Group
-                  </span>
-                  <div className="flex items-center gap-0.5 p-0.5 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => setGroupBy("area")}
-                      className={cn(
-                        "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
-                        groupBy === "area"
-                          ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-sm"
-                          : "text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700"
-                      )}
-                    >
-                      Area
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setGroupBy("attitude")}
-                      className={cn(
-                        "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
-                        groupBy === "attitude"
-                          ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-sm"
-                          : "text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700"
-                      )}
-                    >
-                      Attitude
-                    </button>
+                return (
+                  <div className="px-6 pb-4 flex items-baseline justify-between border-b border-stone-200 dark:border-stone-700">
+                    <h2 className="text-lg font-mono font-medium text-stone-900 dark:text-stone-100">
+                      {selectedCycle.name}
+                    </h2>
+                    <span className="text-sm font-mono text-stone-500 dark:text-stone-400">
+                      {getDaysRemaining(selectedCycle)}
+                    </span>
                   </div>
-                </div>
+                );
+              })()}
 
+              {/* Grouping Selector */}
+              <div className="px-6 pt-4 pb-3 flex items-center gap-2">
+                <span className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                  Group
+                </span>
+                <div className="flex items-center gap-0.5 p-0.5 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setGroupBy("area")}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                      groupBy === "area"
+                        ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-sm"
+                        : "text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700"
+                    )}
+                  >
+                    Area
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGroupBy("attitude")}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                      groupBy === "attitude"
+                        ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-sm"
+                        : "text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700"
+                    )}
+                  >
+                    Attitude
+                  </button>
+                </div>
+              </div>
+
+              {/* Deck Builder - fills remaining space */}
+              <div className="flex-1 min-h-0">
                 <CycleDeckBuilder
                   cycleId={effectiveSelectedCycleId}
                   groupBy={groupBy}
                 />
               </div>
-            ) : (
-              <div className="px-6 pb-6 text-center py-12">
-                <p className="text-sm text-stone-500 dark:text-stone-400 font-mono mb-4">
-                  No cycles yet
-                </p>
-                <button
-                  type="button"
-                  onClick={openCreateDialog}
-                  className="px-4 py-2 rounded-lg bg-stone-800 hover:bg-stone-900 text-stone-50 dark:bg-stone-100 dark:hover:bg-stone-200 dark:text-stone-900 font-mono text-sm transition-colors"
-                >
-                  Create Your First Cycle
-                </button>
-              </div>
-            )}
-          </>
-        )}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center px-6">
+              <p className="text-sm text-stone-500 dark:text-stone-400 font-mono mb-4">
+                No cycles yet
+              </p>
+              <button
+                type="button"
+                onClick={openCreateDialog}
+                className="px-4 py-2 rounded-lg bg-stone-800 hover:bg-stone-900 text-stone-50 dark:bg-stone-100 dark:hover:bg-stone-200 dark:text-stone-900 font-mono text-sm transition-colors"
+              >
+                Create Your First Cycle
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Cycle Form Dialog */}
         <CycleFormDialog
@@ -356,7 +252,7 @@ export const CyclePane = observer(
           onUpdate={handleUpdate}
           onDelete={handleDelete}
         />
-      </>
+      </div>
     );
   }
 );
