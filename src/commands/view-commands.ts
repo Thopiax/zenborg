@@ -1,5 +1,10 @@
 import { Command } from "./types";
-import { drawingBoardExpanded$, isCommandPaletteOpen$ } from "@/infrastructure/state/ui-store";
+import { currentCycle$ } from "@/infrastructure/state/store";
+import {
+  cycleDeckCollapsed$,
+  drawingBoardExpanded$,
+  isCommandPaletteOpen$,
+} from "@/infrastructure/state/ui-store";
 
 export const viewCommands: Command[] = [
   {
@@ -14,13 +19,19 @@ export const viewCommands: Command[] = [
   },
   {
     id: "view.planning.toggle",
-    label: "Toggle Planning View",
+    label: "Toggle Planning Panel",
     shortcut: "p",
     category: "Views",
-    keywords: ["show", "hide", "board", "drawing"],
+    keywords: ["show", "hide", "board", "drawing", "cycle", "deck", "collapse"],
     action: () => {
-      const isOpen = drawingBoardExpanded$.get();
-      drawingBoardExpanded$.set(!isOpen);
+      // CycleDeck and DrawingBoard are mutually exclusive (only one shows at a time).
+      // Toggle whichever panel is currently active.
+      const cycle = currentCycle$.peek();
+      if (cycle) {
+        cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
+      } else {
+        drawingBoardExpanded$.set(!drawingBoardExpanded$.peek());
+      }
     }
   },
   {
