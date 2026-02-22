@@ -246,6 +246,26 @@ export const momentConstraints = {
 } as const;
 
 /**
+ * Column Width
+ * Single source of truth for all column/card widths across the app.
+ * Cards are always w-full inside these columns.
+ *
+ * Mobile: full-width (w-full) — fills the available space
+ * Desktop (md+): fixed rem-based width for predictable grid
+ *
+ * rem-based so it scales with user font-size preferences (accessibility).
+ * 20rem = 320px at default 16px base, 22.5rem = 360px.
+ */
+export const columnWidth = {
+  base: "20rem", // 320px — mobile and default
+  md: "22.5rem", // 360px — md breakpoint and above
+  /** Tailwind class for column containers: full-width on mobile, fixed on desktop */
+  className: "w-full md:w-[22.5rem]",
+  /** Tailwind class with flex-shrink-0 for scrollable contexts */
+  scrollableClassName: "w-full md:w-[22.5rem] md:flex-shrink-0",
+} as const;
+
+/**
  * Moment Card Dimensions
  * Optimized for 3 cards to fit vertically in timeline cells
  */
