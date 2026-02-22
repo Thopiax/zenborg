@@ -261,6 +261,13 @@ const PlantPage = observer(() => {
         collisionDetection={customCollisionDetection}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        autoScroll={{
+          threshold: {
+            x: 0.05, // 5% from horizontal edge (default 0.2) — prevents premature scroll
+            y: 0.05, // 5% from vertical edge — stops Areas panel scrolling during drag
+          },
+          acceleration: 5, // Lower acceleration (default 10) for smoother, less aggressive scroll
+        }}
       >
         <div className="h-dvh bg-background transition-colors">
           <PanelGroup direction="vertical" autoSaveId="plant-layout">
