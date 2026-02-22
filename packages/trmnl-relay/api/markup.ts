@@ -5,7 +5,7 @@ export const config = { runtime: "edge" };
 interface TrmnlPhase {
   label: string;
   emoji: string;
-  moments: Array<{ name: string; area_name: string; area_emoji: string }>;
+  moments: Array<{ name: string; emoji: string }>;
   moment_count: number;
 }
 
@@ -16,27 +16,25 @@ interface TrmnlMergeVariables {
 }
 
 function renderMarkup(vars: TrmnlMergeVariables): string {
-  const cycleHtml = vars.cycle_name
-    ? `<p class="description">${vars.cycle_name}</p>`
-    : "";
+  const cycleSuffix = vars.cycle_name ? ` &middot; ${vars.cycle_name}` : "";
 
   let bodyHtml = "";
 
   if (vars.phase) {
-    bodyHtml += `<p class="title" style="text-align:center;margin-top:1em;">${vars.phase.emoji} ${vars.phase.label}</p>`;
+    bodyHtml += `<p class="label" style="margin-top:0.5em;">${vars.phase.emoji} ${vars.phase.label} &middot; ${vars.date_label}${cycleSuffix}</p>`;
 
     if (vars.phase.moment_count > 0) {
       for (const m of vars.phase.moments) {
-        bodyHtml += `<p class="content" style="text-align:center;">${m.area_emoji} ${m.name}</p>`;
+        bodyHtml += `<p class="title" style="margin-top:1.5em;text-align:center;font-size:48px;">${m.emoji} ${m.name}</p>`;
       }
     } else {
-      bodyHtml += `<p class="description" style="text-align:center;margin-top:1em;">No moments allocated</p>`;
+      bodyHtml += `<p class="title" style="margin-top:3em;text-align:center;">No moments yet</p>`;
     }
   } else {
-    bodyHtml = `<p class="title" style="text-align:center;margin-top:2em;">Between phases</p><p class="description" style="text-align:center;">Rest well</p>`;
+    bodyHtml = `<p class="label" style="margin-top:0.5em;">${vars.date_label}${cycleSuffix}</p><p class="title" style="margin-top:3em;text-align:center;">Between phases</p><p class="description" style="text-align:center;">Rest well</p>`;
   }
 
-  return `<div class="view view--full"><div class="layout"><div class="columns"><div class="column"><div class="markdown"><div class="title_bar"><span class="title_bar__title">Zenborg</span><span class="title_bar__instance">${vars.date_label}</span></div>${cycleHtml}${bodyHtml}</div></div></div></div></div>`;
+  return `<div class="view view--full"><div class="layout"><div class="columns"><div class="column"><div class="markdown"><div class="title_bar"><span class="title_bar__title">Zenborg</span></div>${bodyHtml}</div></div></div></div></div>`;
 }
 
 export default async function handler(request: Request): Promise<Response> {
