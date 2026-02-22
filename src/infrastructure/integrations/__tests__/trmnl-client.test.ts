@@ -7,9 +7,7 @@ const mockPayload: TrmnlPayload = {
     date: "2026-02-22",
     date_label: "Sunday, Feb 22",
     cycle_name: "",
-    phases: [],
-    total_allocated: 0,
-    total_unallocated: 0,
+    phase: null,
     updated_at: "2026-02-22T12:00:00.000Z",
   },
 };
