@@ -162,6 +162,58 @@ describe("MomentStack", () => {
     });
   });
 
+  describe("stable height with controls", () => {
+    it("should reserve fixed padding-top when controls are provided, regardless of count", () => {
+      const singleMoment = [createTestMoment({ id: "1", name: "Running" })];
+
+      const { container } = render(
+        <MomentStack
+          moments={singleMoment}
+          area={testArea}
+          onIncrement={() => {}}
+          onDecrement={() => {}}
+          onRemove={() => {}}
+        />
+      );
+
+      // Even with 1 moment (no visual layers), padding-top should be reserved
+      const draggable = container.querySelector("[data-draggable]");
+      expect(draggable).toHaveStyle({ paddingTop: "8px" });
+    });
+
+    it("should keep same padding-top for multiple moments with controls", () => {
+      const moments = [
+        createTestMoment({ id: "1" }),
+        createTestMoment({ id: "2" }),
+        createTestMoment({ id: "3" }),
+      ];
+
+      const { container } = render(
+        <MomentStack
+          moments={moments}
+          area={testArea}
+          onIncrement={() => {}}
+          onDecrement={() => {}}
+          onRemove={() => {}}
+        />
+      );
+
+      const draggable = container.querySelector("[data-draggable]");
+      expect(draggable).toHaveStyle({ paddingTop: "8px" });
+    });
+
+    it("should NOT reserve padding when no controls provided", () => {
+      const singleMoment = [createTestMoment({ id: "1" })];
+
+      const { container } = render(
+        <MomentStack moments={singleMoment} area={testArea} />
+      );
+
+      const draggable = container.querySelector("[data-draggable]");
+      expect(draggable).toHaveStyle({ paddingTop: "0px" });
+    });
+  });
+
   describe("draggable behavior", () => {
     it("should make the stack draggable", () => {
       const moments = [
