@@ -129,6 +129,13 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     taggedField.reinitialize(name, tags);
   }, [open, editingMomentId]);
 
+  // Sync typed text FROM tagged field back to form store (for emoji auto-suggestion)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    if (!open) return;
+    momentFormState$.name.set(taggedField.displayValue);
+  }, [taggedField.displayValue, open]);
+
   // Reset local UI state when dialog opens
   useEffect(() => {
     if (!open) return;
@@ -149,7 +156,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     }
   }, [mode, open]);
 
-  // Extract leading emoji from name
+  // Extract leading emoji from name and auto-suggest emoji
   useEffect(() => {
     if (manualEmojiOverride) return;
     if (name === lastProcessedName.current) return;
@@ -160,7 +167,9 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
     if (leadingEmoji && remainingText.length > 0) {
       momentFormState$.emoji.set(leadingEmoji);
+      // Update both form store and tagged field to keep them in sync
       momentFormState$.name.set(remainingText);
+      taggedField.reinitialize(remainingText, taggedField.tags);
       return;
     }
 
@@ -171,7 +180,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         momentFormState$.emoji.set(suggested);
       }
     }
-  }, [name, mode, manualEmojiOverride]);
+  }, [name, mode, manualEmojiOverride, taggedField]);
 
   // Disable form hotkeys when any selector is open to avoid conflicts
   const formHotkeysEnabled =
