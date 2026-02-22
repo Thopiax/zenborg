@@ -7,47 +7,36 @@ interface TrmnlPhase {
   emoji: string;
   moments: Array<{ name: string; area_name: string; area_emoji: string }>;
   moment_count: number;
-  is_current: boolean;
 }
 
 interface TrmnlMergeVariables {
   date_label: string;
   cycle_name: string;
-  phases: TrmnlPhase[];
-  total_allocated: number;
-  total_unallocated: number;
+  phase: TrmnlPhase | null;
 }
 
 function renderMarkup(vars: TrmnlMergeVariables): string {
-  let phasesHtml = "";
-
-  for (const phase of vars.phases) {
-    if (phase.moment_count === 0) {
-      continue;
-    }
-
-    const nowMarker = phase.is_current ? " [NOW]" : "";
-    let momentsHtml = "";
-    for (const m of phase.moments) {
-      momentsHtml += `<p class="content">${m.area_emoji} ${m.name} <span class="label">${m.area_name}</span></p>`;
-    }
-
-    phasesHtml += `<p class="label label--underline">${phase.emoji} ${phase.label}${nowMarker}</p>${momentsHtml}`;
-  }
-
-  if (vars.total_allocated === 0) {
-    phasesHtml = `<p class="title" style="text-align:center;margin-top:2em;">No moments allocated</p><p class="description" style="text-align:center;">Open Zenborg to plan your day</p>`;
-  }
-
   const cycleHtml = vars.cycle_name
     ? `<p class="description">${vars.cycle_name}</p>`
     : "";
-  const deckLabel =
-    vars.total_unallocated > 0
-      ? ` &middot; ${vars.total_unallocated} in deck`
-      : "";
 
-  return `<div class="view view--full"><div class="layout"><div class="columns"><div class="column"><div class="markdown"><div class="title_bar"><span class="title_bar__title">Zenborg</span><span class="title_bar__instance">${vars.date_label}</span></div>${cycleHtml}${phasesHtml}<p class="label" style="margin-top:1em;">${vars.total_allocated} allocated${deckLabel}</p></div></div></div></div></div>`;
+  let bodyHtml = "";
+
+  if (vars.phase) {
+    bodyHtml += `<p class="title" style="text-align:center;margin-top:1em;">${vars.phase.emoji} ${vars.phase.label}</p>`;
+
+    if (vars.phase.moment_count > 0) {
+      for (const m of vars.phase.moments) {
+        bodyHtml += `<p class="content" style="text-align:center;">${m.area_emoji} ${m.name}</p>`;
+      }
+    } else {
+      bodyHtml += `<p class="description" style="text-align:center;margin-top:1em;">No moments allocated</p>`;
+    }
+  } else {
+    bodyHtml = `<p class="title" style="text-align:center;margin-top:2em;">Between phases</p><p class="description" style="text-align:center;">Rest well</p>`;
+  }
+
+  return `<div class="view view--full"><div class="layout"><div class="columns"><div class="column"><div class="markdown"><div class="title_bar"><span class="title_bar__title">Zenborg</span><span class="title_bar__instance">${vars.date_label}</span></div>${cycleHtml}${bodyHtml}</div></div></div></div></div>`;
 }
 
 export default async function handler(request: Request): Promise<Response> {
@@ -72,9 +61,7 @@ export default async function handler(request: Request): Promise<Response> {
     const emptyMarkup = renderMarkup({
       date_label: "Today",
       cycle_name: "",
-      phases: [],
-      total_allocated: 0,
-      total_unallocated: 0,
+      phase: null,
     });
 
     return new Response(JSON.stringify({ markup: emptyMarkup }), {

@@ -14,35 +14,30 @@
             <p class="description">{{ cycle_name }}</p>
           {% endif %}
 
-          {% for phase in phases %}
+          {% if phase %}
+            <p class="title" style="text-align: center; margin-top: 1em;">
+              {{ phase.emoji }} {{ phase.label }}
+            </p>
+
             {% if phase.moment_count > 0 %}
-              <p class="label label--underline">
-                {{ phase.emoji }} {{ phase.label }}{% if phase.is_current %} [NOW]{% endif %}
-              </p>
               {% for moment in phase.moments %}
-                <p class="content">
+                <p class="content" style="text-align: center;">
                   {{ moment.area_emoji }} {{ moment.name }}
-                  <span class="label"> {{ moment.area_name }}</span>
                 </p>
               {% endfor %}
+            {% else %}
+              <p class="description" style="text-align: center; margin-top: 1em;">
+                No moments allocated
+              </p>
             {% endif %}
-          {% endfor %}
-
-          {% if total_allocated == 0 %}
+          {% else %}
             <p class="title" style="text-align: center; margin-top: 2em;">
-              No moments allocated
+              Between phases
             </p>
             <p class="description" style="text-align: center;">
-              Open Zenborg to plan your day
+              Rest well
             </p>
           {% endif %}
-
-          <p class="label" style="margin-top: 1em;">
-            {{ total_allocated }} allocated
-            {% if total_unallocated > 0 %}
-              &middot; {{ total_unallocated }} in deck
-            {% endif %}
-          </p>
 
         </div>
       </div>
