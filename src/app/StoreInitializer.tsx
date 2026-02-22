@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { startTrmnlSync } from "@/infrastructure/integrations/trmnl-sync";
 import { initializeStore } from "@/infrastructure/state/initialize";
 
 /**
@@ -18,6 +19,7 @@ export function StoreInitializer() {
     initializeStore()
       .then(() => {
         setIsInitialized(true);
+        startTrmnlSync();
       })
       .catch((error) => {
         console.error("[Zenborg] Failed to initialize store:", error);
