@@ -98,7 +98,7 @@ export function EmptyAreaCard({ onCreateArea }: EmptyAreaCardProps) {
     // Edit mode - inline form
     return (
       <div
-        className="flex flex-col rounded-lg overflow-hidden border border-stone-300 dark:border-stone-600"
+        className="flex flex-col rounded-lg overflow-hidden border border-stone-300 dark:border-stone-600 min-w-[300px] max-w-[340px]"
         style={{
           backgroundColor: color + "08",
         }}
@@ -181,7 +181,8 @@ export function EmptyAreaCard({ onCreateArea }: EmptyAreaCardProps) {
         "bg-stone-50/50 dark:bg-stone-900/30",
         "hover:bg-stone-100/50 dark:hover:bg-stone-800/30",
         "transition-colors duration-200",
-        "cursor-pointer"
+        "cursor-pointer",
+        "min-w-[300px] max-w-[340px]"
       )}
     >
       {/* Header — matches PlanAreaCard header height */}
