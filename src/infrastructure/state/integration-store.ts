@@ -11,8 +11,7 @@ export interface TrmnlSettings {
   publishMode: PublishMode;
   // Direct mode: push straight to TRMNL webhook
   webhookUuid: string;
-  // Relay mode: push to Vercel function that TRMNL polls
-  relayUrl: string;
+  // Relay mode: push to same-origin /api/trmnl/push
   relayApiKey: string;
   // Status tracking
   lastSyncAt: string | null;
@@ -30,7 +29,6 @@ export const trmnlSettings$ = observable<TrmnlSettings>({
   enabled: false,
   publishMode: "direct",
   webhookUuid: "",
-  relayUrl: "",
   relayApiKey: "",
   lastSyncAt: null,
   lastError: null,
@@ -59,7 +57,6 @@ export function resetTrmnlSettings(): void {
     enabled: false,
     publishMode: "direct",
     webhookUuid: "",
-    relayUrl: "",
     relayApiKey: "",
     lastSyncAt: null,
     lastError: null,
@@ -75,8 +72,15 @@ export function isTrmnlConfigured(): boolean {
   if (settings.publishMode === "direct") {
     return settings.webhookUuid.trim().length > 0;
   }
-  return (
-    settings.relayUrl.trim().length > 0 &&
-    settings.relayApiKey.trim().length > 0
-  );
+  return settings.relayApiKey.trim().length > 0;
+}
+
+/**
+ * Returns the relay push URL derived from the current origin
+ */
+export function getRelayPushUrl(): string {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/api/trmnl/push`;
+  }
+  return "/api/trmnl/push";
 }
