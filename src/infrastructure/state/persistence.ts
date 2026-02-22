@@ -18,6 +18,7 @@ import {
   moments$,
   phaseConfigs$,
 } from "./store";
+import { trmnlSettings$ } from "./integration-store";
 import { drawingBoardGroupBy$, lastUsedAreaId$ } from "./ui-store";
 
 /**
@@ -169,6 +170,15 @@ export function configurePersistence(): void {
       persistLocalStorageOptions({
         persist: {
           name: "zenborg_drawingBoardGroupBy",
+        },
+      })
+    );
+
+    syncObservable(
+      trmnlSettings$,
+      persistLocalStorageOptions({
+        persist: {
+          name: "zenborg_trmnlSettings",
         },
       })
     );
