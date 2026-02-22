@@ -2,7 +2,7 @@ import { format, parseISO } from "date-fns";
 import type { Area } from "@/domain/entities/Area";
 import type { Cycle } from "@/domain/entities/Cycle";
 import type { Moment } from "@/domain/entities/Moment";
-import { type PhaseConfig, getVisiblePhases, getCurrentPhase } from "@/domain/value-objects/Phase";
+import { type PhaseConfig, getCurrentPhase, getPhaseConfig } from "@/domain/value-objects/Phase";
 
 // ============================================================================
 // Types
@@ -20,16 +20,13 @@ export interface TrmnlPhaseData {
   readonly emoji: string;
   readonly moments: TrmnlMomentData[];
   readonly moment_count: number;
-  readonly is_current: boolean;
 }
 
 export interface TrmnlMergeVariables {
   readonly date: string;
   readonly date_label: string;
   readonly cycle_name: string;
-  readonly phases: TrmnlPhaseData[];
-  readonly total_allocated: number;
-  readonly total_unallocated: number;
+  readonly phase: TrmnlPhaseData | null;
   readonly updated_at: string;
 }
 
@@ -46,73 +43,61 @@ export function formatTodayForTrmnl(
   areas: Record<string, Area>,
   phaseConfigs: Record<string, PhaseConfig>,
   activeCycle: Cycle | null,
-  today: string
+  today: string,
+  currentHour?: number
 ): TrmnlPayload {
   const allMoments = Object.values(moments);
   const configsArray = Object.values(phaseConfigs);
-  const visiblePhases = getVisiblePhases(configsArray);
-  const currentHour = new Date().getHours();
-  const currentPhase = getCurrentPhase(currentHour, configsArray);
-
-  // Filter moments allocated to today with a phase
-  const todayMoments = allMoments.filter(
-    (m) => m.day === today && m.phase !== null
-  );
-
-  // Group today's moments by phase
-  const momentsByPhase: Record<string, Moment[]> = {};
-  for (const moment of todayMoments) {
-    const phase = moment.phase!;
-    if (!momentsByPhase[phase]) {
-      momentsByPhase[phase] = [];
-    }
-    momentsByPhase[phase].push(moment);
-  }
-
-  // Sort moments within each phase by order
-  for (const phase in momentsByPhase) {
-    momentsByPhase[phase].sort((a, b) => a.order - b.order);
-  }
-
-  // Build phase data
-  const phases: TrmnlPhaseData[] = [];
-  for (const config of visiblePhases) {
-    const phaseMoments = momentsByPhase[config.phase] ?? [];
-
-    const trmnlMoments: TrmnlMomentData[] = [];
-    for (const moment of phaseMoments) {
-      const area = areas[moment.areaId];
-      trmnlMoments.push({
-        name: moment.name,
-        area_name: area?.name ?? "Unknown",
-        area_emoji: area?.emoji ?? "",
-      });
-    }
-
-    phases.push({
-      phase: config.phase,
-      label: config.label,
-      emoji: config.emoji,
-      moments: trmnlMoments,
-      moment_count: trmnlMoments.length,
-      is_current: config.phase === currentPhase,
-    });
-  }
-
-  // Count unallocated moments (day is null)
-  const unallocatedCount = allMoments.filter((m) => m.day === null).length;
+  const hour = currentHour ?? new Date().getHours();
+  const currentPhase = getCurrentPhase(hour, configsArray);
 
   // Format date label
   const dateLabel = format(parseISO(today), "EEEE, MMM d");
+
+  // No current phase → null
+  if (currentPhase === null) {
+    return {
+      merge_variables: {
+        date: today,
+        date_label: dateLabel,
+        cycle_name: activeCycle?.name ?? "",
+        phase: null,
+        updated_at: new Date().toISOString(),
+      },
+    };
+  }
+
+  // Get the config for the current phase
+  const config = getPhaseConfig(currentPhase, configsArray);
+
+  // Filter moments for today + current phase
+  const phaseMoments = allMoments
+    .filter((m) => m.day === today && m.phase === currentPhase)
+    .sort((a, b) => a.order - b.order);
+
+  // Build moment data
+  const trmnlMoments: TrmnlMomentData[] = [];
+  for (const moment of phaseMoments) {
+    const area = areas[moment.areaId];
+    trmnlMoments.push({
+      name: moment.name,
+      area_name: area?.name ?? "Unknown",
+      area_emoji: area?.emoji ?? "",
+    });
+  }
 
   return {
     merge_variables: {
       date: today,
       date_label: dateLabel,
       cycle_name: activeCycle?.name ?? "",
-      phases,
-      total_allocated: todayMoments.length,
-      total_unallocated: unallocatedCount,
+      phase: {
+        phase: currentPhase,
+        label: config?.label ?? currentPhase,
+        emoji: config?.emoji ?? "",
+        moments: trmnlMoments,
+        moment_count: trmnlMoments.length,
+      },
       updated_at: new Date().toISOString(),
     },
   };
