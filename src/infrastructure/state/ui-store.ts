@@ -58,6 +58,13 @@ export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("area");
 export const drawingBoardExpanded$ = observable<boolean>(false);
 
 /**
+ * Cycle deck collapsed state
+ * Controls whether the CycleDeck panel is visible or collapsed (header only)
+ * Ephemeral - not persisted (mirrors drawingBoardExpanded$ pattern)
+ */
+export const cycleDeckCollapsed$ = observable<boolean>(false);
+
+/**
  * Drawing board sorting mode
  * - "auto": Moments are sorted by order (primary) and createdAt (secondary)
  * - "manual": Moments are sorted only by user's drag-and-drop reordering
