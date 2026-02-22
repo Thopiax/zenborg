@@ -95,8 +95,18 @@ export function PlanAreaCard({
     const cleanName = taggedField.name;
     const finalTags = taggedField.tags;
 
-    if (cleanName && cleanName !== area.name) {
-      onUpdateArea(area.id, { name: cleanName, tags: finalTags });
+    // Save if name OR tags changed (previously only saved on name change, losing tag edits)
+    const nameChanged = cleanName && cleanName !== area.name;
+    const existingTags = area.tags || [];
+    const tagsChanged =
+      finalTags.length !== existingTags.length ||
+      finalTags.some((t, i) => t !== existingTags[i]);
+
+    if (nameChanged || tagsChanged) {
+      onUpdateArea(area.id, {
+        name: cleanName || area.name,
+        tags: finalTags,
+      });
     }
     setIsEditingName(false);
   };
