@@ -1,6 +1,7 @@
 import { kv } from "@vercel/kv";
+import { NextResponse } from "next/server";
 
-export const config = { runtime: "edge" };
+export const runtime = "edge";
 
 interface TrmnlPhase {
   label: string;
@@ -37,11 +38,7 @@ function renderMarkup(vars: TrmnlMergeVariables): string {
   return `<div class="view view--full"><div class="layout"><div class="columns"><div class="column"><div class="markdown"><div class="title_bar"><span class="title_bar__title">Zenborg</span></div>${bodyHtml}</div></div></div></div></div>`;
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
+export async function POST(request: Request): Promise<NextResponse> {
   // TRMNL sends access_token in authorization header
   const authHeader = request.headers.get("authorization");
   const accessToken = authHeader?.startsWith("Bearer ")
@@ -49,7 +46,7 @@ export default async function handler(request: Request): Promise<Response> {
     : "";
 
   if (!accessToken) {
-    return new Response("Unauthorized", { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Read stored payload
@@ -62,26 +59,17 @@ export default async function handler(request: Request): Promise<Response> {
       phase: null,
     });
 
-    return new Response(JSON.stringify({ markup: emptyMarkup }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json({ markup: emptyMarkup });
   }
 
   const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
   const vars = payload.merge_variables as TrmnlMergeVariables;
   const markup = renderMarkup(vars);
 
-  return new Response(
-    JSON.stringify({
-      markup,
-      markup_half_horizontal: markup,
-      markup_half_vertical: markup,
-      markup_quadrant: markup,
-    }),
-    {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }
-  );
+  return NextResponse.json({
+    markup,
+    markup_half_horizontal: markup,
+    markup_half_vertical: markup,
+    markup_quadrant: markup,
+  });
 }
