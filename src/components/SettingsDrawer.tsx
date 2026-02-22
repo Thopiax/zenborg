@@ -32,12 +32,12 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { useUpdater } from "@/hooks/useUpdater";
 import {
   exportGardenData,
   importGardenData,
 } from "@/infrastructure/state/export-import";
 import { resetStore } from "@/infrastructure/state/initialize";
-import { useUpdater } from "@/hooks/useUpdater";
 import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
 import { ConfirmableAction } from "./ConfirmableAction";
 import { TrmnlSettingsSection } from "./TrmnlSettingsSection";
@@ -86,8 +86,7 @@ export const SettingsDrawer = observer(function SettingsDrawer({
   } = useUpdater(false);
   const [hasChecked, setHasChecked] = useState(false);
 
-  const isTauri =
-    typeof window !== "undefined" && "__TAURI__" in window;
+  const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
   const handleCheckForUpdate = async () => {
     setHasChecked(false);
@@ -480,7 +479,7 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                                   </span>
                                   <span className="pt-0.5">{instruction}</span>
                                 </li>
-                              )
+                              ),
                             )}
                           </ol>
                         </div>
