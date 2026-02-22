@@ -147,7 +147,7 @@ export function PlanAreaCard({
 
   return (
     <div
-      className="flex flex-col border border-stone-200 dark:border-stone-700 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+      className="flex flex-col border border-stone-200 dark:border-stone-700 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow min-w-[300px] max-w-[340px]"
       style={{
         backgroundColor: `${area.color}08`, // 5% opacity background
       }}
