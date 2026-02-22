@@ -16,9 +16,8 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { observer, use$ } from "@legendapp/state/react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
-  type ImperativePanelHandle,
   Panel,
   PanelGroup,
   PanelResizeHandle,
@@ -30,21 +29,19 @@ import { AreaGallery } from "@/components/AreaGallery";
 import { CyclePane } from "@/components/CyclePane";
 import { DraggableHabitItem } from "@/components/DraggableHabitItem";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
+import { PaneHeader } from "@/components/PaneHeader";
 import {
   activeAreas$,
   activeHabits$,
   areas$,
 } from "@/infrastructure/state/store";
 
-const CYCLE_PANEL_MIN_SIZE = 5; // Minimum size percentage when collapsed
-const CYCLE_PANEL_DEFAULT_SIZE = 40; // Default size percentage when expanded
-
 /**
  * Plant Page - Habit Design & Cycle Planning
  *
  * Layout:
- * - Top: Area gallery (areas with habits)
- * - Bottom: Cycle planning (cycle tabs + habits library + cycle deck)
+ * - Left: Area gallery (areas with habits)
+ * - Right: Cycle planning (cycle tabs + cycle deck)
  *
  * Features:
  * - Drag habits from area gallery to cycle deck to budget them
@@ -59,19 +56,6 @@ const PlantPage = observer(() => {
 
   // Track active drag item for overlay
   const [activeId, setActiveId] = useState<string | null>(null);
-
-  // Cycle panel ref for programmatic resizing
-  const cyclePanelRef = useRef<ImperativePanelHandle>(null);
-
-  // Handle cycle pane collapse/expand
-  const handleCyclePaneCollapse = (isCollapsed: boolean) => {
-    if (cyclePanelRef.current) {
-      // When collapsed, resize to minimum (15%), when expanded, resize to default (40%)
-      cyclePanelRef.current.resize(
-        isCollapsed ? CYCLE_PANEL_MIN_SIZE : CYCLE_PANEL_DEFAULT_SIZE
-      );
-    }
-  };
 
   // Custom collision detection - prioritize area drops over habit reordering
   const customCollisionDetection = (args: any) => {
@@ -270,34 +254,28 @@ const PlantPage = observer(() => {
         }}
       >
         <div className="h-dvh bg-background transition-colors">
-          <PanelGroup direction="vertical" autoSaveId="plant-layout">
-            {/* Top Panel: Area Gallery - Resizable */}
-            <Panel defaultSize={60} minSize={30}>
-              <div className="h-full overflow-y-auto p-6 pt-16 pb-6">
-                <div className="mb-8">
-                  <h1 className="text-2xl font-mono font-bold text-stone-900 dark:text-stone-100 mb-2">
-                    Areas
-                  </h1>
-                  <p className="text-sm text-stone-500 dark:text-stone-400 font-mono">
-                    Map out the areas of your life
-                  </p>
+          <PanelGroup direction="horizontal" autoSaveId="plant-layout-h">
+            {/* Left Panel: Area Gallery - Resizable */}
+            <Panel defaultSize={45} minSize={25}>
+              <div className="h-full overflow-y-auto">
+                <PaneHeader title="Areas" subtitle="Map out the areas of your life" />
+                <div className="px-6 pb-6">
+                  <AreaGallery />
                 </div>
-
-                <AreaGallery />
               </div>
             </Panel>
 
-            {/* Resize Handle - Draggable divider */}
-            <PanelResizeHandle className="h-1 bg-stone-300 dark:bg-stone-600 hover:bg-stone-400 dark:hover:bg-stone-500 transition-colors relative group">
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-4 flex items-center justify-center">
-                <div className="w-12 h-1 rounded-full bg-stone-400 dark:bg-stone-500 group-hover:bg-stone-500 dark:group-hover:bg-stone-400 transition-colors" />
+            {/* Resize Handle - Vertical draggable divider */}
+            <PanelResizeHandle className="w-1 bg-stone-300 dark:bg-stone-600 hover:bg-stone-400 dark:hover:bg-stone-500 transition-colors relative group">
+              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-4 flex items-center justify-center">
+                <div className="w-1 h-12 rounded-full bg-stone-400 dark:bg-stone-500 group-hover:bg-stone-500 dark:group-hover:bg-stone-400 transition-colors" />
               </div>
             </PanelResizeHandle>
 
-            {/* Bottom Panel: Cycles - Resizable */}
-            <Panel ref={cyclePanelRef} defaultSize={40} minSize={5}>
+            {/* Right Panel: Cycles - Resizable */}
+            <Panel defaultSize={55} minSize={20}>
               <div className="h-full overflow-y-auto bg-stone-50 dark:bg-stone-900">
-                <CyclePane onCollapsedChange={handleCyclePaneCollapse} />
+                <CyclePane />
               </div>
             </Panel>
           </PanelGroup>
