@@ -115,6 +115,13 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     taggedField.reinitialize(name, tags);
   }, [open, editingHabitId]);
 
+  // Sync typed text FROM tagged field back to form store (for emoji auto-suggestion)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    if (!open) return;
+    habitFormState$.name.set(taggedField.displayValue);
+  }, [taggedField.displayValue, open]);
+
   // Disable form hotkeys when area selector or emoji picker is open
   const formHotkeysEnabled =
     !areaSelectorOpen &&
@@ -143,7 +150,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     }
   }, [open]);
 
-  // Extract leading emoji from name
+  // Extract leading emoji from name and auto-suggest emoji
   useEffect(() => {
     if (manualEmojiOverride) return;
     if (name === lastProcessedName.current) return;
@@ -154,7 +161,9 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
 
     if (leadingEmoji && remainingText.length > 0) {
       habitFormState$.emoji.set(leadingEmoji);
+      // Update both form store and tagged field to keep them in sync
       habitFormState$.name.set(remainingText);
+      taggedField.reinitialize(remainingText, taggedField.tags);
       return;
     }
 
@@ -165,7 +174,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
         habitFormState$.emoji.set(suggested);
       }
     }
-  }, [name, mode, manualEmojiOverride]);
+  }, [name, mode, manualEmojiOverride, taggedField]);
 
   // Handlers
   const handleSave = () => {
