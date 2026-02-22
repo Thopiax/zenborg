@@ -282,12 +282,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   );
 
   const handleSave = () => {
-    // Extract any remaining tags
-    taggedField.extractRemainingTags();
-
-    // Get the clean name and tags from field (reactive values updated by extractRemainingTags)
-    const cleanName = taggedField.name;
-    const finalTags = taggedField.tags;
+    // Extract any remaining tags and get fresh values (not stale React state)
+    const { name: cleanName, tags: finalTags } = taggedField.extractRemainingTags();
 
     const validation = validateMomentName(cleanName);
     const selectedArea =

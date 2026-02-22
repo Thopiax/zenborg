@@ -88,12 +88,8 @@ export function PlanAreaCard({
   }, [area.name, area.tags, taggedField, isEditingName]);
 
   const handleSaveName = () => {
-    // Extract any remaining tags before saving
-    taggedField.extractRemainingTags();
-
-    // Get clean name and tags (reactive values updated by extractRemainingTags)
-    const cleanName = taggedField.name;
-    const finalTags = taggedField.tags;
+    // Extract any remaining tags and get fresh values (not stale React state)
+    const { name: cleanName, tags: finalTags } = taggedField.extractRemainingTags();
 
     // Save if name OR tags changed (previously only saved on name change, losing tag edits)
     const nameChanged = cleanName && cleanName !== area.name;
