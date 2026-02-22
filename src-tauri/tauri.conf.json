@@ -37,7 +37,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMzMjA2MTIzMUY0NTVBMjEKUldRaFdrVWZJMkVnTTk1a1dMbnhxR050V1JGN0pHankwS3hqQVpqc3d2aTZ2K1NzZk5KckgyTXAK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFCMzFCMURCRTMzM0IwQzEKUldUQnNEUGoyN0V4RzFPTHRQRUlkL25jNlo2S29RaGc2eWhCNWNXSXFZVEZhK3VqdFBWZmlyZ20K",
       "endpoints": [
         "https://github.com/Thopiax/zenborg/releases/latest/download/latest.json"
       ]
