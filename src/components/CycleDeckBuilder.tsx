@@ -8,8 +8,8 @@ import { MomentStack } from "@/components/MomentStack";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { areas$, habits$, moments$ } from "@/infrastructure/state/store";
-import { groupByArea, groupByAttitude, type MomentGroup } from "@/lib/grouping";
 import { columnWidth } from "@/lib/design-tokens";
+import { groupByArea, groupByAttitude, type MomentGroup } from "@/lib/grouping";
 import { cn } from "@/lib/utils";
 
 /**
@@ -50,11 +50,11 @@ export function CycleDeckBuilder({
         m.cycleId === cycleId &&
         m.cyclePlanId !== null &&
         m.day === null &&
-        m.phase === null
+        m.phase === null,
     )
     .sort(
       (a: Moment, b: Moment) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
 
   // Group moments based on groupBy setting
@@ -84,7 +84,7 @@ export function CycleDeckBuilder({
           "mx-6 text-center border-2 border-dashed rounded-lg transition-colors h-full flex flex-col items-center justify-center",
           isOver
             ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
-            : "border-stone-300 dark:border-stone-600"
+            : "border-stone-300 dark:border-stone-600",
         )}
       >
         <p className="text-sm text-stone-500 dark:text-stone-400 font-mono">
@@ -103,7 +103,7 @@ export function CycleDeckBuilder({
       ref={setNodeRef}
       className={cn(
         "relative transition-colors rounded-lg",
-        isOver && "bg-stone-100/50 dark:bg-stone-800/50"
+        isOver && "bg-stone-100/50 dark:bg-stone-800/50",
       )}
     >
       {/* Drop indicator when dragging over */}
@@ -176,7 +176,7 @@ function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
     <div
       className={cn(
         "flex flex-col snap-start rounded-lg",
-        columnWidth.scrollableClassName
+        columnWidth.scrollableClassName,
       )}
     >
       {/* Column Header */}
@@ -246,7 +246,6 @@ function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
           })
         )}
       </div>
-      ;
     </div>
   );
 }

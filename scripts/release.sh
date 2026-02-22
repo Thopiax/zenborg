@@ -27,7 +27,6 @@ main() {
   sed -i '' "s/\"version\": \"$current\"/\"version\": \"$new_version\"/" package.json
   sed -i '' "s/\"version\": \"[0-9]*\.[0-9]*\.[0-9]*\"/\"version\": \"$new_version\"/" src-tauri/tauri.conf.json
   git add package.json src-tauri/tauri.conf.json
-  pnpm build:export
   git commit -m "release: v$new_version"
   git tag "v$new_version"
   git push origin main
