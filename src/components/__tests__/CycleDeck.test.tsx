@@ -104,9 +104,24 @@ describe("CycleDeck", () => {
     vi.clearAllMocks();
   });
 
+  // Helper: mock the three useValue calls CycleDeck makes:
+  // 1. deckMoments (via selector fn)
+  // 2. currentCycle (via selector fn)
+  // 3. cycleDeckCollapsed$ (boolean)
+  const mockCycleDeckValues = (
+    deckMoments: Record<string, unknown>,
+    currentCycle: unknown = null,
+    isCollapsed = false
+  ) => {
+    mockUseValue
+      .mockReturnValueOnce(deckMoments)
+      .mockReturnValueOnce(currentCycle)
+      .mockReturnValueOnce(isCollapsed);
+  };
+
   describe("empty state", () => {
     it("should show empty message when no budgeted moments", () => {
-      mockUseValue.mockReturnValue({});
+      mockCycleDeckValues({});
 
       render(<CycleDeck />);
 
@@ -116,7 +131,7 @@ describe("CycleDeck", () => {
     });
 
     it("should show hint to drag habits from library", () => {
-      mockUseValue.mockReturnValue({});
+      mockCycleDeckValues({});
 
       render(<CycleDeck />);
 
@@ -132,8 +147,7 @@ describe("CycleDeck", () => {
         },
       };
 
-      mockUseValue.mockReturnValueOnce(deckMoments);
-      mockUseValue.mockReturnValueOnce(null);
+      mockCycleDeckValues(deckMoments);
 
       render(<CycleDeck />);
 
@@ -151,8 +165,7 @@ describe("CycleDeck", () => {
         },
       };
 
-      mockUseValue.mockReturnValueOnce(deckMoments);
-      mockUseValue.mockReturnValueOnce(null);
+      mockCycleDeckValues(deckMoments);
 
       const { container } = render(<CycleDeck />);
 
@@ -171,8 +184,7 @@ describe("CycleDeck", () => {
         },
       };
 
-      mockUseValue.mockReturnValueOnce(deckMoments);
-      mockUseValue.mockReturnValueOnce(null);
+      mockCycleDeckValues(deckMoments);
 
       render(<CycleDeck />);
 
