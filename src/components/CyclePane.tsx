@@ -1,7 +1,7 @@
 "use client";
 
 import { observer } from "@legendapp/state/react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { TemplateDuration } from "@/application/services/CycleService";
 import { CycleService } from "@/application/services/CycleService";
@@ -34,14 +34,14 @@ const CollapsedCyclePane = ({
 }) => {
   return (
     <button
-      className="px-6 py-4 flex items-center w-full justify-between bg-stone-100 dark:bg-stone-800 border-t border-stone-200 dark:border-stone-700 cursor-pointer"
+      className="h-full px-2 py-6 flex flex-col items-center justify-start gap-3 bg-stone-100 dark:bg-stone-800 border-l border-stone-200 dark:border-stone-700 cursor-pointer"
       type="button"
       onClick={onExpand}
     >
-      <span className="text-sm font-mono text-stone-700 dark:text-stone-300 grow">
+      <ChevronLeft className="w-4 h-4 text-stone-500 dark:text-stone-400 flex-shrink-0" />
+      <span className="text-sm font-mono text-stone-700 dark:text-stone-300 [writing-mode:vertical-lr]">
         {cycles.length} {cycles.length === 1 ? "cycle" : "cycles"}
       </span>
-      <ChevronUp className="w-4 h-4 text-stone-500 dark:text-stone-400" />
     </button>
   );
 };
@@ -255,9 +255,9 @@ export const CyclePane = observer(
             aria-label={isCollapsed ? "Expand cycles" : "Collapse cycles"}
           >
             {isCollapsed ? (
-              <ChevronUp className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+              <ChevronLeft className="w-4 h-4 text-stone-500 dark:text-stone-400" />
             ) : (
-              <ChevronDown className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+              <ChevronRight className="w-4 h-4 text-stone-500 dark:text-stone-400" />
             )}
           </button>
         </div>
