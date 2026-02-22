@@ -11,6 +11,7 @@ import {
   Settings2,
   Smartphone,
   Sun,
+  Tv,
   Upload,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -36,6 +37,7 @@ import {
 import { resetStore } from "@/infrastructure/state/initialize";
 import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
 import { ConfirmableAction } from "./ConfirmableAction";
+import { TrmnlSettingsSection } from "./TrmnlSettingsSection";
 
 interface SettingsDrawerProps {
   open: boolean;
@@ -358,6 +360,22 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                     )}
                   </div>
                 </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* E-Ink Display Integration */}
+            <AccordionItem
+              value="integrations"
+              className="border-stone-200 dark:border-stone-700"
+            >
+              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
+                <div className="flex items-center gap-2">
+                  <Tv className="w-4 h-4" />
+                  <span>E-Ink Display</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <TrmnlSettingsSection />
               </AccordionContent>
             </AccordionItem>
 
