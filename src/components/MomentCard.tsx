@@ -16,7 +16,6 @@ interface MomentCardProps {
   contextMomentIds?: string[];
 }
 
-export const MOMENT_CARD_WIDTH_CLASSNAME = "min-w-[300px] max-w-[340px]";
 
 /**
  * MomentCard - Display card for a moment
@@ -93,7 +92,6 @@ export function MomentCard({
     <button
       type="button"
       className={cn(
-        "min-w-[300px]",
         "rounded-lg cursor-pointer w-full",
         "focus:outline-none relative",
         // Elastic transitions for natural, organic feel (using design system classes)

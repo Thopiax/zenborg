@@ -44,6 +44,7 @@ import {
   canDropInCell,
   reorderAfterRemoval,
 } from "@/lib/drag-validation";
+import { columnWidth } from "@/lib/design-tokens";
 import type { DraggableData, DroppableData } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
 
@@ -848,7 +849,10 @@ export function DnDProvider({ children }: DnDProviderProps) {
         // dropAnimation={{ duration: 200, easing: "ease" }}
       >
         {activeMoment && activeArea ? (
-          <div className={isDuplicateMode ? "cursor-copy" : "cursor-grabbing"}>
+          <div
+            className={isDuplicateMode ? "cursor-copy" : "cursor-grabbing"}
+            style={{ width: columnWidth.md }}
+          >
             {/* Check if dragging multiple selected moments */}
             {selectedMomentIds.includes(activeMoment.id) &&
             selectedMomentIds.length > 1 ? (
