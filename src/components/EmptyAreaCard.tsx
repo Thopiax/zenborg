@@ -175,36 +175,30 @@ export function EmptyAreaCard({ onCreateArea }: EmptyAreaCardProps) {
       type="button"
       onClick={handleStartCreating}
       className={cn(
-        "group flex flex-col rounded-lg overflow-hidden",
-        "bg-white/30 dark:bg-stone-950/30 backdrop-blur-sm",
-        "border border-stone-300/50 dark:border-stone-600/50",
-        "hover:border-stone-400/70 dark:hover:border-stone-500/70",
-        "hover:bg-white/40 dark:hover:bg-stone-950/40",
-        "transition-all duration-300",
+        "group flex flex-col rounded-lg overflow-hidden text-left",
+        "border border-dashed border-stone-300 dark:border-stone-600",
+        "hover:border-stone-400 dark:hover:border-stone-500",
+        "bg-stone-50/50 dark:bg-stone-900/30",
+        "hover:bg-stone-100/50 dark:hover:bg-stone-800/30",
+        "transition-colors duration-200",
         "cursor-pointer"
       )}
     >
-      {/* Header placeholder */}
-      <div className="px-4 py-3 border-b border-stone-200/30 dark:border-stone-700/30 backdrop-blur-sm">
-        <div className="h-5" />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 p-4 min-h-[120px] flex flex-col items-center justify-center">
-        <div className="w-16 h-16 rounded-full bg-stone-100/50 dark:bg-stone-800/50 backdrop-blur-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-          <Plus className="w-8 h-8 text-stone-400 dark:text-stone-500" />
+      {/* Header — matches PlanAreaCard header height */}
+      <div className="px-4 py-3 border-b border-stone-200/50 dark:border-stone-700/50 flex items-center gap-2">
+        <div className="w-8 h-8 rounded flex items-center justify-center bg-stone-200/60 dark:bg-stone-700/60 group-hover:bg-stone-300/60 dark:group-hover:bg-stone-600/60 transition-colors flex-shrink-0">
+          <Plus className="w-4 h-4 text-stone-500 dark:text-stone-400" />
         </div>
-        <p className="text-sm font-mono text-stone-500 dark:text-stone-400 text-center mb-1">
+        <span className="text-sm font-mono font-medium text-stone-500 dark:text-stone-400 group-hover:text-stone-700 dark:group-hover:text-stone-200 transition-colors">
           New area
-        </p>
-        <p className="text-xs font-mono text-stone-400 dark:text-stone-500 text-center">
-          Click to create
-        </p>
+        </span>
       </div>
 
-      {/* Footer placeholder */}
-      <div className="px-4 pb-4">
-        <div className="h-[34px]" />
+      {/* Content — same min-height as PlanAreaCard habits section */}
+      <div className="flex-1 p-4 h-[280px] flex flex-col items-center justify-center gap-1">
+        <p className="text-xs font-mono text-stone-400 dark:text-stone-500 text-center">
+          Click to create a new area
+        </p>
       </div>
     </button>
   );
