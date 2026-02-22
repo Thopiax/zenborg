@@ -26,7 +26,7 @@ export interface TaggedNameField {
   setDisplayValue: (value: string, cursorPos: number) => void;
   extractTag: (tag: string) => void;
   removeTag: (tag: string) => void;
-  extractRemainingTags: () => void;
+  extractRemainingTags: () => { name: string; tags: string[] };
   reset: () => void;
   reinitialize: (name: string, tags: string[]) => void;
 }
@@ -181,9 +181,13 @@ export function useTaggedNameField(
       const extractedTags = extractTagsFromText(currentValue);
       const newTags = extractedTags.filter((t) => !currentTags.includes(t));
 
+      let finalName: string;
+      let finalTags: string[];
+
       if (newTags.length > 0) {
         // Add new tags
-        state$.tags.set([...currentTags, ...newTags]);
+        finalTags = [...currentTags, ...newTags];
+        state$.tags.set(finalTags);
 
         // Clean display value
         const cleanedValue = currentValue
@@ -192,13 +196,18 @@ export function useTaggedNameField(
           .trim();
         state$.displayValue.set(cleanedValue);
         state$.name.set(cleanedValue);
+        finalName = cleanedValue;
       } else {
         // Just sync name with display value
-        state$.name.set(currentValue.trim());
+        finalName = currentValue.trim();
+        finalTags = currentTags;
+        state$.name.set(finalName);
       }
 
       // Close autocomplete
       state$.autocomplete.isOpen.set(false);
+
+      return { name: finalName, tags: finalTags };
     },
 
     reset: () => {
