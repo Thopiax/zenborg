@@ -1,0 +1,51 @@
+<div class="view view--full">
+  <div class="layout">
+    <div class="columns">
+      <div class="column">
+        <div class="markdown">
+
+          <div class="title_bar">
+            <img class="image image--logo" src="https://usetrmnl.com/images/plugins/trmnl--render.svg" />
+            <span class="title_bar__title">Zenborg</span>
+            <span class="title_bar__instance">{{ date_label }}</span>
+          </div>
+
+          {% if cycle_name != "" %}
+            <p class="description">{{ cycle_name }}</p>
+          {% endif %}
+
+          {% for phase in phases %}
+            {% if phase.moment_count > 0 %}
+              <p class="label label--underline">
+                {{ phase.emoji }} {{ phase.label }}{% if phase.is_current %} [NOW]{% endif %}
+              </p>
+              {% for moment in phase.moments %}
+                <p class="content">
+                  {{ moment.area_emoji }} {{ moment.name }}
+                  <span class="label"> {{ moment.area_name }}</span>
+                </p>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+
+          {% if total_allocated == 0 %}
+            <p class="title" style="text-align: center; margin-top: 2em;">
+              No moments allocated
+            </p>
+            <p class="description" style="text-align: center;">
+              Open Zenborg to plan your day
+            </p>
+          {% endif %}
+
+          <p class="label" style="margin-top: 1em;">
+            {{ total_allocated }} allocated
+            {% if total_unallocated > 0 %}
+              &middot; {{ total_unallocated }} in deck
+            {% endif %}
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
