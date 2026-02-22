@@ -8,6 +8,7 @@ import {
   phaseConfigs$,
 } from "@/infrastructure/state/store";
 import {
+  getRelayPushUrl,
   isTrmnlConfigured,
   trmnlSettings$,
   trmnlSyncStatus$,
@@ -71,7 +72,7 @@ export async function syncTrmnlNow(): Promise<void> {
   if (settings.publishMode === "direct") {
     result = await pushToTrmnlDirect(settings.webhookUuid, payload);
   } else {
-    result = await pushToRelay(settings.relayUrl, settings.relayApiKey, payload);
+    result = await pushToRelay(getRelayPushUrl(), settings.relayApiKey, payload);
   }
 
   pushTimestamps.push(Date.now());
