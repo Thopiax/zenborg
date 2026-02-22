@@ -211,28 +211,26 @@ export function PlanAreaCard({
                 <ColorPicker value={area.color} onChange={handleColorChange} />
 
                 {/* Settings Dropdown */}
-                {!area.isDefault && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
-                        aria-label="Area settings"
-                      >
-                        <MoreVertical className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onSelect={() => onArchiveArea(area.id)}
-                        className="text-red-600 dark:text-red-400"
-                      >
-                        <Archive className="w-4 h-4 mr-2" />
-                        Archive Area
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
+                      aria-label="Area settings"
+                    >
+                      <MoreVertical className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={() => onArchiveArea(area.id)}
+                      className="text-red-600 dark:text-red-400"
+                    >
+                      <Archive className="w-4 h-4 mr-2" />
+                      Archive Area
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
