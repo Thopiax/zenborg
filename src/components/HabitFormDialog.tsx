@@ -169,12 +169,8 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
 
   // Handlers
   const handleSave = () => {
-    // Extract any remaining #tags before validation
-    taggedField.extractRemainingTags();
-
-    // Get clean name and tags from field (reactive values updated by extractRemainingTags)
-    const cleanName = taggedField.name;
-    const finalTags = taggedField.tags;
+    // Extract any remaining #tags and get fresh values (not stale React state)
+    const { name: cleanName, tags: finalTags } = taggedField.extractRemainingTags();
 
     if (!cleanName) {
       setValidationError("Habit name cannot be empty");
