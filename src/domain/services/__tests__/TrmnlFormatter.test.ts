@@ -200,7 +200,7 @@ describe("TrmnlFormatter", () => {
       expect(result.merge_variables.phase!.moments).toHaveLength(0);
     });
 
-    it("falls back to 'Unknown' for missing area references", () => {
+    it("falls back to empty emoji for missing area references", () => {
       const areas: Record<string, Area> = {}; // no areas
       const moments = toRecord([
         createMoment("m-1", "Orphaned", "deleted-area-id", {
@@ -213,8 +213,7 @@ describe("TrmnlFormatter", () => {
 
       const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
 
-      expect(result.merge_variables.phase!.moments[0].area_name).toBe("Unknown");
-      expect(result.merge_variables.phase!.moments[0].area_emoji).toBe("");
+      expect(result.merge_variables.phase!.moments[0].emoji).toBe("");
     });
 
     it("sorts moments within the current phase by order", () => {
@@ -351,20 +350,30 @@ describe("TrmnlFormatter", () => {
       expect(payloadSize).toBeLessThan(2048);
     });
 
-    it("includes area emoji in moment data", () => {
+    it("includes moment emoji when available, falls back to area emoji", () => {
       const areas = toRecord([createArea("area-1", "Wellness", "🟢")]);
       const moments = toRecord([
         createMoment("m-1", "Running", "area-1", {
           day: TODAY,
           phase: Phase.MORNING,
           order: 0,
+          emoji: "🏃",
+        }),
+        createMoment("m-2", "Stretching", "area-1", {
+          day: TODAY,
+          phase: Phase.MORNING,
+          order: 1,
+          emoji: null,
         }),
       ]);
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
       const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
 
-      expect(result.merge_variables.phase!.moments[0].area_emoji).toBe("🟢");
+      // Moment with its own emoji → uses moment emoji
+      expect(result.merge_variables.phase!.moments[0].emoji).toBe("🏃");
+      // Moment without emoji → falls back to area emoji
+      expect(result.merge_variables.phase!.moments[1].emoji).toBe("🟢");
     });
 
     it("includes phase emoji from config", () => {

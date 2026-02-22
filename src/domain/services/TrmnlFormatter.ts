@@ -10,8 +10,7 @@ import { type PhaseConfig, getCurrentPhase, getPhaseConfig } from "@/domain/valu
 
 export interface TrmnlMomentData {
   readonly name: string;
-  readonly area_name: string;
-  readonly area_emoji: string;
+  readonly emoji: string;
 }
 
 export interface TrmnlPhaseData {
@@ -75,14 +74,13 @@ export function formatTodayForTrmnl(
     .filter((m) => m.day === today && m.phase === currentPhase)
     .sort((a, b) => a.order - b.order);
 
-  // Build moment data
+  // Build moment data — prefer moment emoji, fall back to area emoji
   const trmnlMoments: TrmnlMomentData[] = [];
   for (const moment of phaseMoments) {
     const area = areas[moment.areaId];
     trmnlMoments.push({
       name: moment.name,
-      area_name: area?.name ?? "Unknown",
-      area_emoji: area?.emoji ?? "",
+      emoji: moment.emoji || area?.emoji || "",
     });
   }
 
