@@ -3,15 +3,13 @@
 import { useDroppable } from "@dnd-kit/core";
 import { use$ } from "@legendapp/state/react";
 import { CycleService } from "@/application/services/CycleService";
-import {
-  MOMENT_CARD_WIDTH_CLASSNAME,
-  MomentCard,
-} from "@/components/MomentCard";
+import { MomentCard } from "@/components/MomentCard";
 import { MomentStack } from "@/components/MomentStack";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { areas$, habits$, moments$ } from "@/infrastructure/state/store";
 import { groupByArea, groupByAttitude, type MomentGroup } from "@/lib/grouping";
+import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
 /**
@@ -178,7 +176,7 @@ function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
     <div
       className={cn(
         "flex flex-col snap-start rounded-lg",
-        MOMENT_CARD_WIDTH_CLASSNAME
+        columnWidth.scrollableClassName
       )}
     >
       {/* Column Header */}

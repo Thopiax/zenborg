@@ -31,6 +31,7 @@ import {
   groupByPhase,
   groupByTag,
 } from "@/lib/grouping";
+import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
 import { DrawingBoardColumn } from "./DrawingBoardColumn";
@@ -307,7 +308,7 @@ function DraggableMomentCard({
         : undefined,
     // Keep original visible when in duplicate mode
     opacity: isDragging && !isDuplicateMode ? 0.5 : 1,
-    width: "300px",
+    width: columnWidth.md,
     flexShrink: 0,
     // Prevent browser scroll/pan interference during touch drag
     touchAction: "none",

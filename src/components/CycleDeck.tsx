@@ -12,7 +12,7 @@ import {
 import { cycleDeckCollapsed$ } from "@/infrastructure/state/ui-store";
 import { formatCycleEndDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { MOMENT_CARD_WIDTH_CLASSNAME } from "./MomentCard";
+import { columnWidth } from "@/lib/design-tokens";
 import { MomentStack } from "./MomentStack";
 
 /**
@@ -172,8 +172,8 @@ function CycleDeckColumn({ area, habitMoments }: CycleDeckColumnProps) {
   return (
     <div
       className={cn(
-        "flex flex-col max-w-[320px] snap-start rounded-lg",
-        MOMENT_CARD_WIDTH_CLASSNAME
+        "flex flex-col snap-start rounded-lg",
+        columnWidth.scrollableClassName
       )}
     >
       {/* Column Header */}

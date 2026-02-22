@@ -22,6 +22,7 @@ import {
   openArchiveAreaDialog,
 } from "@/infrastructure/state/ui-store";
 import type { MomentGroup } from "@/lib/grouping";
+import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import { EmptyMomentCard } from "./EmptyMomentCard";
 import { MomentCard } from "./MomentCard";
@@ -98,7 +99,7 @@ export function DrawingBoardColumn({
       ref={setNodeRef}
       className={cn(
         "flex flex-col transition-all rounded-lg snap-start",
-        isOnlyColumn ? "min-h-[350px]" : "min-w-[280px] max-w-[320px]",
+        isOnlyColumn ? "min-h-[350px]" : columnWidth.scrollableClassName,
         canAcceptDrops && isOver && "bg-stone-50 dark:bg-stone-900"
       )}
     >
