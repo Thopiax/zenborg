@@ -1,7 +1,7 @@
 "use client";
 
 import { useValue } from "@legendapp/state/react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Dice5, Loader2, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { PublishMode } from "@/infrastructure/state/integration-store";
 import {
@@ -14,6 +14,12 @@ import {
   stopTrmnlSync,
   syncTrmnlNow,
 } from "@/infrastructure/integrations/trmnl-sync";
+
+function generateApiKey(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 export function TrmnlSettingsSection() {
   const settings = useValue(trmnlSettings$);
@@ -33,6 +39,10 @@ export function TrmnlSettingsSection() {
 
   const handleModeChange = (mode: PublishMode) => {
     trmnlSettings$.publishMode.set(mode);
+  };
+
+  const handleGenerateApiKey = () => {
+    trmnlSettings$.relayApiKey.set(generateApiKey());
   };
 
   const lastSyncLabel = settings.lastSyncAt
@@ -69,7 +79,7 @@ export function TrmnlSettingsSection() {
         <p className="text-xs text-stone-400 dark:text-stone-600">
           {settings.publishMode === "direct"
             ? "Push directly to TRMNL webhook. Works when app is open."
-            : "Push to Vercel relay. Works even when computer is off."}
+            : "Push via server relay. Works even when browser is closed."}
         </p>
       </div>
 
@@ -97,27 +107,29 @@ export function TrmnlSettingsSection() {
         <div className="space-y-3">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-stone-700 dark:text-stone-300">
-              Relay URL
-            </label>
-            <input
-              type="text"
-              value={settings.relayUrl}
-              onChange={(e) => trmnlSettings$.relayUrl.set(e.target.value)}
-              placeholder="https://your-relay.vercel.app/api/push"
-              className="w-full px-3 py-2 text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-500"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-stone-700 dark:text-stone-300">
               API Key
             </label>
-            <input
-              type="password"
-              value={settings.relayApiKey}
-              onChange={(e) => trmnlSettings$.relayApiKey.set(e.target.value)}
-              placeholder="Your relay API key"
-              className="w-full px-3 py-2 text-sm bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-500"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={settings.relayApiKey}
+                onChange={(e) => trmnlSettings$.relayApiKey.set(e.target.value)}
+                placeholder="Click generate to create one"
+                readOnly
+                className="flex-1 px-3 py-2 text-sm font-mono bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleGenerateApiKey}
+                title="Generate API Key"
+                className="px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-stone-700 dark:text-stone-300"
+              >
+                <Dice5 className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-stone-400 dark:text-stone-600">
+              Shared secret between Zenborg and the relay. Copy this to your TRMNL plugin&apos;s polling headers.
+            </p>
           </div>
         </div>
       )}
