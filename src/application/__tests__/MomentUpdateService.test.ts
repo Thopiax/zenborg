@@ -14,7 +14,10 @@ describe("MomentUpdateService", () => {
         });
         if (isMomentError(moment)) throw new Error(moment.error);
 
-        const result = service.updateMoment(moment, {
+        // Backdate createdAt/updatedAt to avoid same-millisecond race
+        const pastMoment = { ...moment, updatedAt: "2020-01-01T00:00:00.000Z" };
+
+        const result = service.updateMoment(pastMoment, {
           name: "Evening Walk",
         });
 
@@ -23,7 +26,7 @@ describe("MomentUpdateService", () => {
           expect(result.name).toBe("Evening Walk");
           expect(result.areaId).toBe("area-123"); // Unchanged
           expect(result.id).toBe(moment.id); // Same moment
-          expect(result.updatedAt).not.toBe(moment.updatedAt); // Timestamp updated
+          expect(result.updatedAt).not.toBe(pastMoment.updatedAt); // Timestamp updated
         }
       });
 
