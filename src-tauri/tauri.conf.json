@@ -1,13 +1,13 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "zenborg",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "identifier": "org.rafaba.zenborg",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "pnpm run dev",
-    "beforeBuildCommand": "pnpm run build"
+    "beforeBuildCommand": "pnpm run build:export"
   },
   "app": {
     "windows": [
