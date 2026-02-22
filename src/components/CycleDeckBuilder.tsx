@@ -81,7 +81,7 @@ export function CycleDeckBuilder({
       <div
         ref={setNodeRef}
         className={cn(
-          "text-center py-12 border-2 border-dashed rounded-lg transition-colors min-h-[400px] flex flex-col items-center justify-center",
+          "mx-6 text-center border-2 border-dashed rounded-lg transition-colors h-full flex flex-col items-center justify-center",
           isOver
             ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
             : "border-stone-300 dark:border-stone-600"
