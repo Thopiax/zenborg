@@ -5,8 +5,10 @@ import {
   ChevronRight,
   Download,
   Info,
+  Loader2,
   Monitor,
   Moon,
+  RefreshCw,
   RotateCcw,
   Settings2,
   Smartphone,
@@ -35,6 +37,7 @@ import {
   importGardenData,
 } from "@/infrastructure/state/export-import";
 import { resetStore } from "@/infrastructure/state/initialize";
+import { useUpdater } from "@/hooks/useUpdater";
 import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
 import { ConfirmableAction } from "./ConfirmableAction";
 import { TrmnlSettingsSection } from "./TrmnlSettingsSection";
@@ -70,6 +73,27 @@ export const SettingsDrawer = observer(function SettingsDrawer({
   // Theme management
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
+  // Updater (no auto-check — manual only from settings)
+  const {
+    update,
+    checking,
+    downloading,
+    error: updateError,
+    downloadProgress,
+    checkForUpdate,
+    downloadAndInstall,
+  } = useUpdater(false);
+  const [hasChecked, setHasChecked] = useState(false);
+
+  const isTauri =
+    typeof window !== "undefined" && "__TAURI__" in window;
+
+  const handleCheckForUpdate = async () => {
+    setHasChecked(false);
+    await checkForUpdate();
+    setHasChecked(true);
+  };
 
   // PWA state
   const [pwaInstalled, setPwaInstalled] = useState(false);
@@ -615,9 +639,81 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                       toward personal flourishing.
                     </p>
                     <p className="text-xs text-stone-500 dark:text-stone-500 font-mono">
-                      Version 1.0.0
+                      Version {process.env.NEXT_PUBLIC_APP_VERSION ?? "0.3.1"}
                     </p>
                   </div>
+
+                  {/* Check for Updates (Tauri only) */}
+                  {isTauri && (
+                    <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={handleCheckForUpdate}
+                          disabled={checking || downloading}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-stone-100 dark:bg-stone-800">
+                            {checking ? (
+                              <Loader2 className="w-4 h-4 text-stone-600 dark:text-stone-400 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                              {checking ? "Checking..." : "Check for Updates"}
+                            </div>
+                          </div>
+                        </button>
+
+                        {/* Update available */}
+                        {hasChecked && update && !downloading && (
+                          <div className="p-3 rounded-lg border border-stone-300 dark:border-stone-600 bg-stone-100 dark:bg-stone-800">
+                            <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                              Version {update.version} available
+                            </p>
+                            <button
+                              type="button"
+                              onClick={downloadAndInstall}
+                              className="mt-2 w-full rounded bg-stone-900 dark:bg-stone-100 px-3 py-2 text-sm font-medium text-stone-50 dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
+                            >
+                              Install Update
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Downloading progress */}
+                        {downloading && (
+                          <div className="p-3 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800">
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
+                              <div
+                                className="h-full bg-stone-900 dark:bg-stone-100 transition-all duration-300"
+                                style={{ width: `${downloadProgress}%` }}
+                              />
+                            </div>
+                            <p className="mt-1.5 text-xs text-stone-600 dark:text-stone-400">
+                              Downloading... {Math.round(downloadProgress)}%
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Up to date */}
+                        {hasChecked && !update && !checking && !updateError && (
+                          <p className="px-3 text-xs text-stone-500 dark:text-stone-500">
+                            You're on the latest version.
+                          </p>
+                        )}
+
+                        {/* Error */}
+                        {updateError && (
+                          <p className="px-3 text-xs text-red-600 dark:text-red-400">
+                            {updateError}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
                     <h4 className="text-xs font-medium text-stone-900 dark:text-stone-100 mb-2">
