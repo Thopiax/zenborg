@@ -1,6 +1,6 @@
 {
   "name": "zenborg",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "An intention cultivation garden to help you plant the seeds of habits, nurture them with moments, and flourish.",
   "license": "MIT",
   "private": false,
@@ -26,6 +26,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
+    "build:export": "NEXT_OUTPUT_MODE=export next build --turbopack",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
