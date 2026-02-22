@@ -123,7 +123,13 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id as string;
-    setActiveId(id);
+    // MomentStack draggables use "stack-{momentId}" as their dnd-kit ID but
+    // store the real moment ID in data.current.momentId. Use that for the
+    // overlay lookup so allMoments[activeId] resolves correctly.
+    const momentId =
+      (event.active.data.current as { momentId?: string } | undefined)
+        ?.momentId ?? id;
+    setActiveId(momentId);
     // Capture duplicate decision at drag start (locked for entire drag operation)
     // If Option/Alt is held when drag begins, we'll duplicate on drop
     // @ts-expect-error - activatorEvent contains the original mouse/pointer event
