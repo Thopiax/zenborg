@@ -110,7 +110,8 @@
       "Bash(icon-white.png -gravity center -compose over -composite )",
       "Bash(icon-scaled.png -gravity center -compose over -composite )",
       "Bash(icon-white-scaled.png -gravity center -compose over -composite )",
-      "Bash(pnpm tauri icon:*)"
+      "Bash(pnpm tauri icon:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
