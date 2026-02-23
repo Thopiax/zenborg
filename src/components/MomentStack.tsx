@@ -132,7 +132,7 @@ export function MomentStack({
               "absolute -top-2 -right-2 rounded-md bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono font-medium shadow-sm",
               onIncrement || onDecrement || onRemove
                 ? "flex items-center gap-0.5 px-1 py-0.5"
-                : "px-2 py-0.5"
+                : "px-2 py-0.5",
             )}
             style={{ zIndex: behindLayerCount + 2 }}
           >

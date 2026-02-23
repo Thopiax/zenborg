@@ -48,7 +48,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
           isActiveDay
             ? "snap-start snap-always border border-slate-400/30 dark:ring-slate-300 rounded-md shadow-sm"
             : "snap-start",
-          isPastDay && "opacity-70"
+          isPastDay && "opacity-70",
         )}
       >
         {/* Day Title Section - Above Timeline */}
@@ -58,7 +58,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
               "font-mono font-bold text-2xl md:text-3xl",
               isActiveDay
                 ? "text-stone-900 dark:text-stone-100"
-                : "text-stone-700 dark:text-stone-300"
+                : "text-stone-700 dark:text-stone-300",
             )}
           >
             {label}
@@ -96,7 +96,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 DayRow.displayName = "DayRow";
@@ -202,7 +202,7 @@ export function Timeline() {
             "text-xs font-mono font-medium",
             "shadow-md hover:shadow-lg",
             "transition-all duration-150",
-            "hover:scale-105"
+            "hover:scale-105",
           )}
         >
           Today
@@ -217,7 +217,7 @@ export function Timeline() {
           "gap-3 md:gap-4 px-2 md:px-4 py-2 md:py-4",
           // Smooth fade-in on load
           "transition-opacity duration-slow transition-smooth",
-          isReady ? "opacity-100" : "opacity-0"
+          isReady ? "opacity-100" : "opacity-0",
         )}
         style={{
           // Enable momentum scrolling on iOS/Safari
@@ -237,7 +237,7 @@ export function Timeline() {
             "hover:text-stone-600 dark:hover:text-stone-400",
             "hover:bg-stone-100 dark:hover:bg-stone-800",
             "transition-colors font-mono text-xs",
-            "min-w-[60px]"
+            "min-w-[60px]",
           )}
           aria-label="Load 3 earlier days"
         >
@@ -268,7 +268,7 @@ export function Timeline() {
             "hover:text-stone-600 dark:hover:text-stone-400",
             "hover:bg-stone-100 dark:hover:bg-stone-800",
             "transition-colors font-mono text-xs",
-            "min-w-[60px]"
+            "min-w-[60px]",
           )}
           aria-label="Load 3 later days"
         >
