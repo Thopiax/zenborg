@@ -13,6 +13,7 @@ import type { Phase } from "@/domain/value-objects/Phase";
 import { moments$ } from "@/infrastructure/state/store";
 import {
   closeMomentForm,
+  isAreaManagementOpen$,
   momentFormState$,
 } from "@/infrastructure/state/ui-store";
 import { useFocusManager } from "./useFocusManager";
@@ -33,14 +34,13 @@ export function useGlobalKeyboard() {
 
   // UI state for CRUD operations
   const [isAreaSelectorOpen, setIsAreaSelectorOpen] = useState(false);
-  const [isAreaManagementOpen, setIsAreaManagementOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const globalShortcutsEnabled = useSelector(
     () =>
       !momentFormState$.open.get() &&
       !isAreaSelectorOpen &&
-      !isAreaManagementOpen &&
+      !isAreaManagementOpen$.get() &&
       !isSettingsOpen
   );
 
@@ -240,9 +240,6 @@ export function useGlobalKeyboard() {
     handleSaveEdit,
     handleDeleteEdit,
     handleOpenEditModal,
-    // Area management state
-    isAreaManagementOpen,
-    setIsAreaManagementOpen,
     // Settings state
     isSettingsOpen,
     setIsSettingsOpen,
