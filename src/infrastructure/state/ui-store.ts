@@ -432,3 +432,41 @@ export function switchToManualSort() {
  * Ephemeral - not persisted
  */
 export const isCommandPaletteOpen$ = observable<boolean>(false);
+
+/**
+ * Command Palette page state
+ * Tracks the two-level navigation: root search vs entity action submenu
+ * Ephemeral - not persisted
+ */
+export interface CommandPaletteState {
+  page: "root" | "entity-actions";
+  selectedEntity: {
+    type: "area" | "habit" | "moment";
+    id: string;
+  } | null;
+}
+
+export const commandPaletteState$ = observable<CommandPaletteState>({
+  page: "root",
+  selectedEntity: null,
+});
+
+/**
+ * Reset command palette state to defaults (called on close)
+ */
+export function resetCommandPaletteState() {
+  commandPaletteState$.set({ page: "root", selectedEntity: null });
+}
+
+/**
+ * Area Management Modal visibility
+ * Moved from LayoutClient local state so CommandPalette can trigger it
+ * Ephemeral - not persisted
+ */
+export const isAreaManagementOpen$ = observable<boolean>(false);
+
+/**
+ * Area Management Modal focus area ID
+ * Used to scroll to / highlight a specific area when opening management
+ */
+export const areaManagementFocusId$ = observable<string | undefined>(undefined);

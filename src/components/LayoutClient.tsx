@@ -20,8 +20,11 @@ import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { areas$ } from "@/infrastructure/state/store";
 import {
   archiveAreaDialogState$,
+  areaManagementFocusId$,
   closeArchiveAreaDialog,
+  isAreaManagementOpen$,
   isCommandPaletteOpen$,
+  resetCommandPaletteState,
 } from "@/infrastructure/state/ui-store";
 
 /**
@@ -43,9 +46,11 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
 
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAreaManagementOpen, setIsAreaManagementOpen] = useState(false);
   const [isPhaseSettingsOpen, setIsPhaseSettingsOpen] = useState(false);
-  const [focusAreaId, setFocusAreaId] = useState<string | undefined>(undefined);
+
+  // Area management via observable (allows CommandPalette to trigger it)
+  const isAreaManagementOpen = useSelector(() => isAreaManagementOpen$.get());
+  const focusAreaId = useSelector(() => areaManagementFocusId$.get());
 
   const archiveAreaState = use$(archiveAreaDialogState$);
 
@@ -101,17 +106,17 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
           setIsSettingsOpen(false);
         }}
         onOpenAreaManagement={() => {
-          setIsAreaManagementOpen(true);
+          isAreaManagementOpen$.set(true);
           setIsSettingsOpen(false);
         }}
       />
 
-      {/* Area Management Modal - Triggered by Mod+Shift+A or Settings */}
+      {/* Area Management Modal - Triggered by Mod+Shift+A, Settings, or CommandPalette */}
       <AreaManagementModal
         open={isAreaManagementOpen}
         onClose={() => {
-          setIsAreaManagementOpen(false);
-          setFocusAreaId(undefined);
+          isAreaManagementOpen$.set(false);
+          areaManagementFocusId$.set(undefined);
         }}
         focusAreaId={focusAreaId}
       />
@@ -159,7 +164,10 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
       {/* Command Palette - Global across all routes */}
       <CommandPalette
         open={isCommandPaletteOpen}
-        onClose={() => isCommandPaletteOpen$.set(false)}
+        onClose={() => {
+          isCommandPaletteOpen$.set(false);
+          resetCommandPaletteState();
+        }}
       />
     </>
   );

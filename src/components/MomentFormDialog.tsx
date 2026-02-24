@@ -26,6 +26,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { validateMomentName } from "@/domain/entities/Moment";
+import type { Habit } from "@/domain/entities/Habit";
 import type { CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
@@ -45,6 +46,7 @@ import {
   suggestEmojiForAreaName,
 } from "@/lib/emoji-utils";
 import { cn } from "@/lib/utils";
+import { HabitAutocompleteInline } from "./HabitAutocompleteInline";
 import { TaggedNameInput } from "./TaggedNameInput";
 
 interface MomentFormDialogProps {
@@ -109,6 +111,9 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
+
+  // Habit autocomplete state (create mode only)
+  const [showHabitAutocomplete, setShowHabitAutocomplete] = useState(false);
 
   // Tag autocomplete state
   const lastProcessedName = useRef<string>("");
@@ -182,12 +187,41 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     }
   }, [name, mode, manualEmojiOverride, taggedField]);
 
+  // Show habit autocomplete when typing in create mode
+  useEffect(() => {
+    if (mode === "create" && taggedField.displayValue.trim().length > 0) {
+      setShowHabitAutocomplete(true);
+    } else {
+      setShowHabitAutocomplete(false);
+    }
+  }, [mode, taggedField.displayValue]);
+
+  // Reset habit autocomplete when dialog opens/closes
+  useEffect(() => {
+    if (!open) setShowHabitAutocomplete(false);
+  }, [open]);
+
+  // Handle habit selection from autocomplete
+  const handleSelectHabit = (habit: Habit) => {
+    momentFormState$.name.set(habit.name);
+    momentFormState$.areaId.set(habit.areaId);
+    momentFormState$.emoji.set(habit.emoji);
+    if (habit.tags?.length) {
+      momentFormState$.tags.set(habit.tags);
+    }
+    taggedField.reinitialize(habit.name, habit.tags || []);
+    setShowHabitAutocomplete(false);
+    setManualEmojiOverride(true);
+    lastUsedAreaId$.set(habit.areaId);
+  };
+
   // Disable form hotkeys when any selector is open to avoid conflicts
   const formHotkeysEnabled =
     !isAreaSelectorOpen &&
     !isPhaseSelectorOpen &&
     !taggedField.isAutocompleteOpen &&
-    !emojiPickerOpen;
+    !emojiPickerOpen &&
+    !showHabitAutocomplete;
 
   // A - open area selector
   useHotkeys(
@@ -393,45 +427,56 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         <div className="px-6 py-6 flex-1 overflow-y-auto">
           {/* Name Input with Emoji - Prominent */}
           <div className="relative mb-6 w-full">
-            <div className="flex items-baseline gap-3">
-              {/* Emoji Picker */}
-              <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="text-4xl flex-shrink-0 hover:bg-stone-100 dark:hover:bg-stone-800 rounded w-14 h-14 flex items-center justify-center transition-colors mt-1"
-                    aria-label="Change emoji"
-                  >
-                    {emoji || "⭐"}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-fit p-0" align="start">
-                  <EmojiPicker
-                    className="h-[342px]"
-                    onEmojiSelect={({ emoji: selectedEmoji }) => {
-                      momentFormState$.emoji.set(selectedEmoji);
-                      setEmojiPickerOpen(false);
-                      setManualEmojiOverride(true);
-                    }}
-                  >
-                    <EmojiPickerSearch />
-                    <EmojiPickerContent />
-                    <EmojiPickerFooter />
-                  </EmojiPicker>
-                </PopoverContent>
-              </Popover>
+            <HabitAutocompleteInline
+              open={showHabitAutocomplete}
+              searchValue={taggedField.displayValue}
+              onSelectHabit={handleSelectHabit}
+              onCreateStandalone={() => setShowHabitAutocomplete(false)}
+              onClose={() => setShowHabitAutocomplete(false)}
+              collisionBoundary={dialogRef.current}
+              maxSuggestions={5}
+              trigger={
+                <div className="flex items-baseline gap-3">
+                  {/* Emoji Picker */}
+                  <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-4xl flex-shrink-0 hover:bg-stone-100 dark:hover:bg-stone-800 rounded w-14 h-14 flex items-center justify-center transition-colors mt-1"
+                        aria-label="Change emoji"
+                      >
+                        {emoji || "⭐"}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-fit p-0" align="start">
+                      <EmojiPicker
+                        className="h-[342px]"
+                        onEmojiSelect={({ emoji: selectedEmoji }) => {
+                          momentFormState$.emoji.set(selectedEmoji);
+                          setEmojiPickerOpen(false);
+                          setManualEmojiOverride(true);
+                        }}
+                      >
+                        <EmojiPickerSearch />
+                        <EmojiPickerContent />
+                        <EmojiPickerFooter />
+                      </EmojiPicker>
+                    </PopoverContent>
+                  </Popover>
 
-              {/* Name Input with Tags */}
-              <TaggedNameInput
-                field={taggedField}
-                placeholder="Moment..."
-                autoFocus={true}
-                className="flex-1 text-4xl font-bold"
-                collisionBoundary={dialogRef.current}
-                maxSuggestions={5}
-                showTags={true}
-              />
-            </div>
+                  {/* Name Input with Tags */}
+                  <TaggedNameInput
+                    field={taggedField}
+                    placeholder="Moment..."
+                    autoFocus={true}
+                    className="flex-1 text-4xl font-bold"
+                    collisionBoundary={dialogRef.current}
+                    maxSuggestions={5}
+                    showTags={true}
+                  />
+                </div>
+              }
+            />
 
             {/* Validation */}
             {!validation.valid &&
