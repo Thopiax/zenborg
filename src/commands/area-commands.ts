@@ -1,6 +1,7 @@
 import { Command } from "./types";
 import { areas$ } from "@/infrastructure/state/store";
 import { createArea } from "@/domain/entities/Area";
+import { isAreaManagementOpen$ } from "@/infrastructure/state/ui-store";
 
 /**
  * Area management commands
@@ -28,8 +29,7 @@ export const areaCommands: Command[] = [
     category: "Areas",
     keywords: ["edit", "organize", "settings"],
     action: () => {
-      // Already defined in view-commands, but including here for completeness
-      console.log("[Command] Manage areas");
+      isAreaManagementOpen$.set(true);
     }
   },
   {
