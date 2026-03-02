@@ -33,14 +33,14 @@ import {
   reorderMomentsWithHistory,
 } from "@/infrastructure/state/history-middleware";
 import { selectionState$ } from "@/infrastructure/state/selection";
-import { areas$, currentCycle$, moments$ } from "@/infrastructure/state/store";
+import { activeCycle$, areas$, moments$ } from "@/infrastructure/state/store";
 import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
+import { columnWidth } from "@/lib/design-tokens";
 import {
   calculateNextOrder,
   canDropInCell,
   reorderAfterRemoval,
 } from "@/lib/drag-validation";
-import { columnWidth } from "@/lib/design-tokens";
 import type { DraggableData, DroppableData } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
 
@@ -67,18 +67,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
       const sortableCollisions = pointerCollisions.filter((collision) => {
         const id = collision.id.toString();
         // Sortable items don't start with these prefixes - they're moment IDs
-        return !(
-          id.startsWith("timeline-") ||
-          id.startsWith("column-")
-        );
+        return !(id.startsWith("timeline-") || id.startsWith("column-"));
       });
 
       const droppableCollisions = pointerCollisions.filter((collision) => {
         const id = collision.id.toString();
-        return (
-          id.startsWith("timeline-") ||
-          id.startsWith("column-")
-        );
+        return id.startsWith("timeline-") || id.startsWith("column-");
       });
 
       // Prioritize sortable items (moments) for reordering within same cell
@@ -113,7 +107,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   function handleDragStart(event: DragStartEvent) {
@@ -165,12 +159,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
       // Handle batch drop for multiple selected moments
       console.log(
         "[DnD] Handling batch drop on timeline cell",
-        currentSelectedIds
+        currentSelectedIds,
       );
       handleBatchDropOnTimelineCell(
         currentSelectedIds,
         dropData,
-        wasDuplicateMode
+        wasDuplicateMode,
       );
       return;
     }
@@ -179,8 +173,8 @@ export function DnDProvider({ children }: DnDProviderProps) {
       // Handle batch drop on cycle deck (unallocate all)
       if (!wasDuplicateMode) {
         // Guard: only allow unallocation if all moments belong to the current cycle
-        const currentCycle = currentCycle$.get();
-        if (!currentCycle) {
+        const activeCycle = activeCycle$.get();
+        if (!activeCycle) {
           console.warn("No current cycle - cannot unallocate to cycle deck");
           return;
         }
@@ -190,9 +184,9 @@ export function DnDProvider({ children }: DnDProviderProps) {
           const moment = allMoments[momentId];
           if (!moment) return false;
 
-          if (moment.cycleId !== currentCycle.id) {
+          if (moment.cycleId !== activeCycle.id) {
             console.warn(
-              `Moment ${moment.name} (${moment.cycleId}) does not match current cycle (${currentCycle.id}) - skipping`
+              `Moment ${moment.name} (${moment.cycleId}) does not match current cycle (${activeCycle.id}) - skipping`,
             );
             return false;
           }
@@ -207,7 +201,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
         console.log(
           `[DnD] Batch unallocating ${validMomentIds.length} moments to cycle deck`,
-          validMomentIds
+          validMomentIds,
         );
         handleBatchUnallocate(validMomentIds);
       }
@@ -228,7 +222,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
         if (overMoment.day && overMoment.phase) {
           // Dropping on allocated moment -> move to its cell
           console.log(
-            "[DnD] Multi-select dropped on allocated moment - treating as cell drop"
+            "[DnD] Multi-select dropped on allocated moment - treating as cell drop",
           );
           const cellDropData: DroppableData = {
             targetType: "timeline-cell",
@@ -238,7 +232,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
           handleBatchDropOnTimelineCell(
             currentSelectedIds,
             cellDropData,
-            wasDuplicateMode
+            wasDuplicateMode,
           );
           return;
         }
@@ -255,11 +249,10 @@ export function DnDProvider({ children }: DnDProviderProps) {
           active.id as string,
           over.id as string,
           activeMoment.day,
-          activeMoment.phase
+          activeMoment.phase,
         );
         return;
       }
-
     }
 
     if (!dragData || !dropData) {
@@ -287,15 +280,15 @@ export function DnDProvider({ children }: DnDProviderProps) {
         // Unallocate moment back to cycle deck (only if coming from timeline)
         if (!wasDuplicateMode && dragData.sourceType === "timeline") {
           // Guard: only allow unallocation if moment belongs to the current cycle
-          const currentCycle = currentCycle$.get();
-          if (!currentCycle) {
+          const activeCycle = activeCycle$.get();
+          if (!activeCycle) {
             console.warn("No current cycle - cannot unallocate to cycle deck");
             break;
           }
 
-          if (moment.cycleId !== currentCycle.id) {
+          if (moment.cycleId !== activeCycle.id) {
             console.warn(
-              `Moment cycleId (${moment.cycleId}) does not match current cycle (${currentCycle.id})`
+              `Moment cycleId (${moment.cycleId}) does not match current cycle (${activeCycle.id})`,
             );
             break;
           }
@@ -314,7 +307,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     activeId: string,
     overId: string,
     day: string,
-    phase: Phase
+    phase: Phase,
   ) {
     // Get all moments in this cell, sorted by current order
     const cellMoments = Object.values(allMoments)
@@ -360,7 +353,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       sourceDay,
       sourcePhase,
       allMoments,
-      momentId
+      momentId,
     ).map(({ momentId: id, newOrder: order }) => ({
       momentId: id,
       fromOrder: allMoments[id].order,
@@ -393,7 +386,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
         sourceDay,
         sourcePhase,
         allMoments,
-        momentId
+        momentId,
       ).map(({ momentId: id, newOrder: order }) => ({
         momentId: id,
         fromOrder: allMoments[id].order,
@@ -410,7 +403,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
   function handleDropOnTimelineCell(
     dragData: DraggableData,
     dropData: DroppableData,
-    shouldDuplicate = false
+    shouldDuplicate = false,
   ) {
     const { momentId, sourceDay, sourcePhase } = dragData;
     const { targetDay, targetPhase } = dropData;
@@ -434,7 +427,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       targetDay,
       targetPhase,
       allMoments,
-      shouldDuplicate ? "" : momentId // Don't exclude original if duplicating
+      shouldDuplicate ? "" : momentId, // Don't exclude original if duplicating
     );
 
     if (!validation.isValid) {
@@ -448,7 +441,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       targetDay,
       targetPhase,
       allMoments,
-      shouldDuplicate ? "" : momentId
+      shouldDuplicate ? "" : momentId,
     );
 
     if (shouldDuplicate) {
@@ -457,7 +450,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
         momentId,
         targetDay,
         targetPhase as Phase,
-        newOrder
+        newOrder,
       );
     } else {
       // Move mode: batch the move + any reorders
@@ -470,7 +463,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
               sourceDay,
               sourcePhase,
               allMoments,
-              momentId
+              momentId,
             ).map(({ momentId: id, newOrder: order }) => ({
               momentId: id,
               fromOrder: allMoments[id].order,
@@ -484,7 +477,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
         targetDay,
         targetPhase as Phase,
         newOrder,
-        reorders
+        reorders,
       );
 
       endBatch(`Moved moment to ${targetDay} ${targetPhase}`);
@@ -497,7 +490,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
   function handleBatchDropOnTimelineCell(
     momentIds: string[],
     dropData: DroppableData,
-    shouldDuplicate = false
+    shouldDuplicate = false,
   ) {
     console.log("[DnD] handleBatchDropOnTimelineCell called with:", {
       momentIds,
@@ -516,7 +509,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     // Check if we have enough space for all selected moments
     const currentMomentsInCell = Object.values(allMoments).filter(
-      (m) => m.day === targetDay && m.phase === targetPhase
+      (m) => m.day === targetDay && m.phase === targetPhase,
     );
 
     const spaceNeeded = shouldDuplicate
@@ -531,7 +524,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     if (spaceNeeded > availableSpace) {
       console.warn(
-        `Cannot drop ${momentIds.length} moments: only ${availableSpace} spaces available`
+        `Cannot drop ${momentIds.length} moments: only ${availableSpace} spaces available`,
       );
       // TODO: Show visual feedback
       return;
@@ -544,7 +537,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       targetDay,
       targetPhase,
       allMoments,
-      shouldDuplicate ? "" : momentIds[0]
+      shouldDuplicate ? "" : momentIds[0],
     );
 
     for (const momentId of momentIds) {
@@ -567,7 +560,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
           momentId,
           targetDay,
           targetPhase as Phase,
-          currentOrder
+          currentOrder,
         );
         currentOrder++;
       } else {
@@ -588,7 +581,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
                 sourceDay,
                 sourcePhase,
                 allMoments,
-                momentId
+                momentId,
               ).map(({ momentId: id, newOrder: order }) => ({
                 momentId: id,
                 fromOrder: allMoments[id].order,
@@ -602,7 +595,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
           targetDay,
           targetPhase as Phase,
           currentOrder,
-          reorders
+          reorders,
         );
         currentOrder++;
       }
@@ -611,7 +604,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     endBatch(
       shouldDuplicate
         ? `Duplicated ${momentIds.length} moments to ${targetDay} ${targetPhase}`
-        : `Moved ${momentIds.length} moments to ${targetDay} ${targetPhase}`
+        : `Moved ${momentIds.length} moments to ${targetDay} ${targetPhase}`,
     );
 
     console.log("[DnD] Batch drop complete");

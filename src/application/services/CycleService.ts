@@ -1,10 +1,8 @@
 import type { Area } from "@/domain/entities/Area";
 import {
-  activateCycle,
   type Cycle,
   type CycleResult,
   createCycle,
-  deactivateCycle,
   isDateInCycle,
 } from "@/domain/entities/Cycle";
 import {
@@ -21,6 +19,7 @@ import {
 } from "@/domain/entities/Moment";
 import {
   activeCycle$,
+  activeCycleId$,
   areas$,
   cyclePlans$,
   cycles$,
@@ -97,23 +96,7 @@ export class CycleService {
       return { error: "Either templateDuration or startDate must be provided" };
     }
 
-    // Auto-close any ongoing cycles (set end date to day before new cycle starts)
-    const ongoingCycles = allCycles.filter((c) => c.endDate === null);
-
-    if (ongoingCycles.length > 0) {
-      const closeDate = getDayBefore(calculatedStartDate);
-
-      for (const ongoingCycle of ongoingCycles) {
-        const updatedCycle: Cycle = {
-          ...ongoingCycle,
-          endDate: closeDate,
-          updatedAt: new Date().toISOString(),
-        };
-        cycles$[ongoingCycle.id].set(updatedCycle);
-      }
-    }
-
-    // Validate non-overlapping with existing cycles (after closing ongoing ones)
+    // Validate non-overlapping with existing cycles
     const updatedCycles = Object.values(cycles$.get());
     const overlapping = findOverlappingCycle(
       updatedCycles,
@@ -127,12 +110,11 @@ export class CycleService {
       };
     }
 
-    // Create cycle (not active yet)
+    // Create cycle (not active yet — activation is done via activeCycleId$)
     const result = createCycle({
       name,
       startDate: calculatedStartDate,
       endDate: calculatedEndDate,
-      isActive: false,
     });
 
     if ("error" in result) {
@@ -251,7 +233,7 @@ export class CycleService {
   }
 
   /**
-   * Gets the currently active cycle (marked as isActive)
+   * Gets the currently active cycle (via activeCycleId$)
    *
    * @returns Active cycle or null
    */
@@ -510,26 +492,18 @@ export class CycleService {
       return { error: `Cycle with ID ${cycleId} not found` };
     }
 
-    // Deactivate current active cycle
-    const currentActive = activeCycle$.get();
-    if (currentActive && currentActive.id !== cycleId) {
-      const deactivated = deactivateCycle(currentActive);
-      cycles$[currentActive.id].set(deactivated);
-    }
-
-    // Activate new cycle
-    const activated = activateCycle(cycle);
-    cycles$[cycleId].set(activated);
+    // Set the active cycle ID (replaces any previously active cycle)
+    activeCycleId$.set(cycleId);
 
     // Materialize all cycle plans for this cycle
     const allPlans = Object.values(cyclePlans$.get());
-    const cyclePlans = allPlans.filter((plan) => plan.cycleId === cycleId);
+    const cyclePlansForCycle = allPlans.filter((plan) => plan.cycleId === cycleId);
 
-    for (const plan of cyclePlans) {
+    for (const plan of cyclePlansForCycle) {
       this.materializeCyclePlanMoments(plan.id);
     }
 
-    return activated;
+    return cycle;
   }
 
   /**

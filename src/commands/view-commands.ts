@@ -1,4 +1,5 @@
 import { Command } from "./types";
+import { activeCycle$ } from "@/infrastructure/state/store";
 import {
   cycleDeckCollapsed$,
   isCommandPaletteOpen$,
@@ -22,7 +23,11 @@ export const viewCommands: Command[] = [
     category: "Views",
     keywords: ["show", "hide", "cycle", "deck", "collapse"],
     action: () => {
-      cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
+      // Only toggle cycle deck when an active cycle exists
+      const cycle = activeCycle$.peek();
+      if (cycle) {
+        cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
+      }
     }
   },
   {

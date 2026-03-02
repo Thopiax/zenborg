@@ -51,6 +51,13 @@ export const habits$ = observable<Record<string, Habit>>({});
 export const cycles$ = observable<Record<string, Cycle>>({});
 
 /**
+ * Active cycle ID - single source of truth for which cycle is active
+ * Replaces the previous isActive flag on individual Cycle entities.
+ * Only one cycle can be active at a time (enforced by being a single value).
+ */
+export const activeCycleId$ = observable<string | null>(null);
+
+/**
  * Cycle plans collection - keyed by cycle plan ID
  * Links habits to cycles with budget counts
  */
@@ -143,11 +150,12 @@ export const allocatedMoments$ = observable(() => {
 
 /**
  * The currently active cycle (only one can be active at a time)
- * Computed from cycles$ - automatically updates when cycles change
+ * Computed from activeCycleId$ and cycles$ - O(1) lookup
  */
 export const activeCycle$ = observable(() => {
-  const cycles = cycles$.get();
-  return Object.values(cycles).find((c) => c.isActive) || null;
+  const id = activeCycleId$.get();
+  if (!id) return null;
+  return cycles$[id]?.get() ?? null;
 });
 
 /**
@@ -453,13 +461,13 @@ export const metricLogsByMoment$ = observable(() => {
  */
 export const deckMoments$ = observable(() => {
   const moments = moments$.get();
-  const currentCycle = currentCycle$.get();
+  const cycle = activeCycle$.get();
 
-  if (!currentCycle) return [];
+  if (!cycle) return [];
 
   return Object.values(moments).filter(
     (m) =>
-      m.cycleId === currentCycle.id &&
+      m.cycleId === cycle.id &&
       m.cyclePlanId !== null &&
       m.day === null &&
       m.phase === null
@@ -467,31 +475,31 @@ export const deckMoments$ = observable(() => {
 });
 
 /**
- * Allocated moments in the current cycle
+ * Allocated moments in the active cycle
  */
 export const allocatedMomentsInCycle$ = observable(() => {
   const moments = moments$.get();
-  const currentCycle = currentCycle$.get();
+  const cycle = activeCycle$.get();
 
-  if (!currentCycle) return [];
+  if (!cycle) return [];
 
   return Object.values(moments).filter(
-    (m) => m.cycleId === currentCycle.id && m.day !== null && m.phase !== null
+    (m) => m.cycleId === cycle.id && m.day !== null && m.phase !== null
   );
 });
 
 /**
- * Spontaneous moments in the current cycle (not from budget)
+ * Spontaneous moments in the active cycle (not from budget)
  */
 export const spontaneousMomentsInCycle$ = observable(() => {
   const moments = moments$.get();
-  const currentCycle = currentCycle$.get();
+  const cycle = activeCycle$.get();
 
-  if (!currentCycle) return [];
+  if (!cycle) return [];
 
   return Object.values(moments).filter(
     (m) =>
-      m.cycleId === currentCycle.id &&
+      m.cycleId === cycle.id &&
       m.cyclePlanId === null &&
       m.day !== null &&
       m.phase !== null
@@ -569,6 +577,7 @@ export function resetDatabase() {
   areas$.set({});
   habits$.set({});
   cycles$.set({});
+  activeCycleId$.set(null);
   cyclePlans$.set({});
   phaseConfigs$.set({});
   crystallizedRoutines$.set({});

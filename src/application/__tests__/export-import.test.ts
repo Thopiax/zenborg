@@ -83,7 +83,6 @@ describe("Export/Import System", () => {
       name: "Q1 2025",
       startDate: "2025-01-01",
       endDate: "2025-03-31",
-      isActive: true,
       createdAt: "2025-01-15T08:00:00.000Z",
       updatedAt: "2025-01-15T08:00:00.000Z",
     },
