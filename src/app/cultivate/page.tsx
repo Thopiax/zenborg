@@ -82,7 +82,7 @@ export default function CultivatePage() {
 
       {/* biome-ignore lint/a11y/noStaticElementInteractions: Background click to clear selection */}
       <div
-        className="min-h-dvh h-dvh md:h-auto bg-background transition-colors flex flex-col overflow-hidden"
+        className="h-full bg-background transition-colors flex flex-col overflow-hidden"
         onMouseDown={handleBackgroundClick}
       >
         {/* Main Content */}
@@ -95,7 +95,6 @@ export default function CultivatePage() {
             )}
             style={{
               paddingLeft: "env(safe-area-inset-left)",
-              paddingTop: "env(safe-area-inset-top)",
             }}
           >
             <Timeline />

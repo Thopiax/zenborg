@@ -169,7 +169,7 @@ const PlantPage = observer(() => {
           acceleration: 5,
         }}
       >
-        <div className="h-dvh bg-background transition-colors">
+        <div className="h-full bg-background transition-colors">
           <AreaBoardBuilder />
         </div>
 

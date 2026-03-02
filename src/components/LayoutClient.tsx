@@ -75,34 +75,40 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {children}
+      <div className="h-dvh grid grid-rows-[auto_1fr]">
+        {/* Top Bar - Unified navigation bar with mode selector and settings */}
+        <div
+          className="z-40 flex items-center justify-center bg-background"
+          style={{
+            paddingTop: "max(0.75rem, env(safe-area-inset-top) + 0.25rem)",
+            paddingBottom: "0.5rem",
+            paddingLeft: "max(1rem, env(safe-area-inset-left) + 0.5rem)",
+            paddingRight: "max(1rem, env(safe-area-inset-right) + 0.5rem)",
+          }}
+        >
+          {/* Spacer for left balance */}
+          <div className="w-8" />
+
+          {/* Center: Mode Selector */}
+          <ModeSelector />
+
+          {/* Right: Settings button */}
+          <div className="ml-2">
+            <HamburgerMenuButton
+              isOpen={isSettingsOpen}
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            />
+          </div>
+        </div>
+
+        {/* Page Content - Contained below top bar */}
+        <div className="overflow-hidden">
+          {children}
+        </div>
+      </div>
 
       {/* Update Notification - Auto-checks on mount */}
       <UpdateNotification />
-
-      {/* Top Bar - Unified navigation bar with mode selector and settings */}
-      <div
-        className="fixed z-40 left-0 right-0 flex items-center justify-center"
-        style={{
-          top: "max(0.75rem, env(safe-area-inset-top) + 0.25rem)",
-          paddingLeft: "max(1rem, env(safe-area-inset-left) + 0.5rem)",
-          paddingRight: "max(1rem, env(safe-area-inset-right) + 0.5rem)",
-        }}
-      >
-        {/* Spacer for left balance */}
-        <div className="w-8" />
-
-        {/* Center: Mode Selector */}
-        <ModeSelector />
-
-        {/* Right: Settings button */}
-        <div className="ml-2">
-          <HamburgerMenuButton
-            isOpen={isSettingsOpen}
-            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-          />
-        </div>
-      </div>
 
       {/* Settings Drawer - Triggered by Mod+, or hamburger menu */}
       <SettingsDrawer
