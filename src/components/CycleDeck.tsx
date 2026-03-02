@@ -2,22 +2,26 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { Check, ChevronDown, ChevronUp, Eye, EyeOff, Pencil, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, Plus, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import {
   activeCycle$,
+  areas$,
   deckMomentsByAreaAndHabit$,
   habits$,
 } from "@/infrastructure/state/store";
 import {
   cycleDeckCollapsed$,
   cycleDeckEditMode$,
+  cycleDeckSelectedCycleId$,
   cycleDeckShowAllHabits$,
 } from "@/infrastructure/state/ui-store";
 import { formatCycleEndDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { columnWidth } from "@/lib/design-tokens";
+import { CycleFormDialog } from "./CycleFormDialog";
 import { CycleStarter } from "./CycleStarter";
 import { MomentStack } from "./MomentStack";
 
@@ -25,11 +29,11 @@ import { MomentStack } from "./MomentStack";
  * CycleDeck - Container for budgeted moments during active cycle
  *
  * Features:
- * - Displays budgeted moments grouped by area → habit
- * - Renders MomentStack components for each habit
- * - Shows budgeted moments for the active cycle
- * - Collapsible with chevron toggle and `p` hotkey
- * - Read-only (no toolbar) - focus on execution
+ * - Arrow navigation (← name →) through current and future cycles
+ * - Double-click header to collapse/expand
+ * - Inline edit mode: editable name + date inputs, count controls, ghost cards
+ * - Labeled text buttons (Edit/Done/Show All)
+ * - CycleStarter shown when no cycle is active
  *
  * Design:
  * - Stone monochrome base
@@ -49,6 +53,7 @@ export function CycleDeck() {
   // Edit mode state
   const isEditMode = useValue(cycleDeckEditMode$);
   const showAllHabits = useValue(cycleDeckShowAllHabits$);
+  const selectedCycleId = useValue(cycleDeckSelectedCycleId$);
 
   // No active cycle → show CycleStarter instead
   if (!activeCycle) {
@@ -57,11 +62,61 @@ export function CycleDeck() {
 
   const toggleCollapsed = () => cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
   const toggleEditMode = () => {
+    if (isCollapsed) return;
     const next = !cycleDeckEditMode$.peek();
     cycleDeckEditMode$.set(next);
     if (!next) {
       cycleDeckShowAllHabits$.set(false);
     }
+  };
+
+  // Arrow navigation through cycles
+  const cyclesList = cycleService.getCurrentAndFutureCycles();
+  const effectiveCycleId = selectedCycleId || activeCycle?.id || null;
+  const effectiveCycle = cyclesList.find((c) => c.id === effectiveCycleId) || null;
+  const currentIndex = effectiveCycle ? cyclesList.findIndex((c) => c.id === effectiveCycle.id) : -1;
+
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex < cyclesList.length - 1;
+
+  const goToPrev = () => {
+    if (hasPrev) cycleDeckSelectedCycleId$.set(cyclesList[currentIndex - 1].id);
+  };
+  const goToNext = () => {
+    if (hasNext) {
+      cycleDeckSelectedCycleId$.set(cyclesList[currentIndex + 1].id);
+    } else {
+      setCreateDialogOpen(true);
+    }
+  };
+
+  // Create cycle dialog
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // Inline editing state for cycle name and dates
+  const [editName, setEditName] = useState(effectiveCycle?.name || "");
+  const [editStartDate, setEditStartDate] = useState(effectiveCycle?.startDate || "");
+  const [editEndDate, setEditEndDate] = useState(effectiveCycle?.endDate || "");
+
+  useEffect(() => {
+    if (effectiveCycle) {
+      setEditName(effectiveCycle.name);
+      setEditStartDate(effectiveCycle.startDate);
+      setEditEndDate(effectiveCycle.endDate || "");
+    }
+  }, [effectiveCycle?.name, effectiveCycle?.startDate, effectiveCycle?.endDate]);
+
+  const handleNameBlur = () => {
+    if (!effectiveCycleId || editName.trim() === effectiveCycle?.name) return;
+    cycleService.updateCycle(effectiveCycleId, { name: editName.trim() });
+  };
+
+  const handleDateBlur = () => {
+    if (!effectiveCycleId) return;
+    cycleService.updateCycle(effectiveCycleId, {
+      startDate: editStartDate,
+      endDate: editEndDate || null,
+    });
   };
 
   // Get all budgeted moments for current cycle (using store's computed selector)
@@ -70,7 +125,7 @@ export function CycleDeck() {
   );
 
   // Setup droppable for the entire deck (to unallocate moments from timeline)
-  const cycleId = activeCycle?.id;
+  const cycleId = effectiveCycle?.id;
   const { setNodeRef, isOver } = useDroppable({
     id: `cycle-deck-${cycleId || "none"}`,
     data: {
@@ -79,64 +134,172 @@ export function CycleDeck() {
     },
   });
 
-  // Get title: cycle name + end date countdown
-  const deckTitle = activeCycle
-    ? `${activeCycle.name} · ${formatCycleEndDate(activeCycle.endDate)}`
+  // Title for view mode
+  const deckTitle = effectiveCycle
+    ? `${effectiveCycle.name} · ${formatCycleEndDate(effectiveCycle.endDate)}`
     : "Cycle Deck";
 
-  // Shared header with collapse toggle — used by both empty and populated states
+  // Header with arrow navigation and labeled buttons
   const header = (
-    <div className="px-6 py-3 border-b border-stone-200 dark:border-stone-700 flex items-center justify-between">
-      <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold">
-        {deckTitle}
-      </h2>
-      <div className="flex items-center gap-1">
-      {isEditMode && (
-        <button
-          type="button"
-          onClick={() => cycleDeckShowAllHabits$.set(!cycleDeckShowAllHabits$.peek())}
-          className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-          title={showAllHabits ? "Hide unbudgeted habits" : "Show all habits"}
-          aria-label={showAllHabits ? "Hide unbudgeted habits" : "Show all habits"}
-        >
-          {showAllHabits ? (
-            <EyeOff className="h-3.5 w-3.5" />
-          ) : (
-            <Eye className="h-3.5 w-3.5" />
-          )}
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={toggleEditMode}
-        className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-        title={isEditMode ? "Done editing" : "Edit cycle deck"}
-        aria-label={isEditMode ? "Done editing" : "Edit cycle deck"}
-      >
+    <div
+      className="px-6 py-3 border-b border-stone-200 dark:border-stone-700 flex items-center justify-between cursor-default select-none"
+      onDoubleClick={toggleCollapsed}
+    >
+      {/* Left side: arrow nav or inline editing */}
+      <div className="flex items-center gap-2 min-w-0">
         {isEditMode ? (
-          <Check className="h-3.5 w-3.5" />
+          /* Edit mode: name input + date inputs */
+          <div className="flex items-center gap-3 min-w-0">
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={handleNameBlur}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold bg-transparent border-b border-stone-300 dark:border-stone-600 focus:border-stone-500 outline-none px-0 py-0 min-w-0"
+              aria-label="Cycle name"
+            />
+            <div className="flex items-center gap-1.5 text-xs font-mono text-stone-500 flex-shrink-0">
+              <input
+                type="date"
+                value={editStartDate}
+                onChange={(e) => setEditStartDate(e.target.value)}
+                onBlur={handleDateBlur}
+                className="bg-transparent border-b border-stone-300 dark:border-stone-600 focus:border-stone-500 outline-none px-0 py-0 text-xs font-mono text-stone-600 dark:text-stone-400"
+                aria-label="Start date"
+              />
+              <span className="text-stone-400">{"\u2192"}</span>
+              <input
+                type="date"
+                value={editEndDate}
+                onChange={(e) => setEditEndDate(e.target.value)}
+                onBlur={handleDateBlur}
+                className="bg-transparent border-b border-stone-300 dark:border-stone-600 focus:border-stone-500 outline-none px-0 py-0 text-xs font-mono text-stone-600 dark:text-stone-400"
+                aria-label="End date"
+              />
+            </div>
+          </div>
         ) : (
-          <Pencil className="h-3.5 w-3.5" />
+          /* View mode: ← name · countdown → */
+          <>
+            <button
+              type="button"
+              onClick={goToPrev}
+              disabled={!hasPrev}
+              className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 disabled:opacity-30 disabled:cursor-default transition-colors"
+              aria-label="Previous cycle"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold truncate">
+              {deckTitle}
+            </h2>
+            <button
+              type="button"
+              onClick={goToNext}
+              className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+              aria-label={hasNext ? "Next cycle" : "Create new cycle"}
+            >
+              {hasNext ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+            </button>
+          </>
         )}
-      </button>
-      <button
-        type="button"
-        onClick={toggleCollapsed}
-        className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-        title={isCollapsed ? "Expand cycle deck (p)" : "Collapse cycle deck (p)"}
-        aria-label={isCollapsed ? "Expand cycle deck" : "Collapse cycle deck"}
-      >
-        {isCollapsed ? (
-          <ChevronUp className="h-4 w-4" />
-        ) : (
-          <ChevronDown className="h-4 w-4" />
+      </div>
+
+      {/* Right side: labeled text buttons */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {!isCollapsed && (
+          <>
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={() => cycleDeckShowAllHabits$.set(!cycleDeckShowAllHabits$.peek())}
+                className="text-xs font-mono text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
+              >
+                {showAllHabits ? "Hide All" : "Show All"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={toggleEditMode}
+              className="text-xs font-mono text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
+            >
+              {isEditMode ? "Done" : "Edit"}
+            </button>
+          </>
         )}
-      </button>
       </div>
     </div>
   );
 
-  // Empty state - no budgeted moments
+  // Helper to render area columns content
+  const renderColumns = (areasWithMoments: { area: Area; habits: Record<string, any[]> }[]) => (
+    <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
+      {areasWithMoments.map(({ area, habits }) => (
+        <CycleDeckColumn
+          key={area.id}
+          area={area}
+          habitMoments={habits}
+          isEditMode={isEditMode}
+          showAllHabits={showAllHabits}
+          cycleId={cycleId!}
+        />
+      ))}
+    </div>
+  );
+
+  // Empty state — in edit mode, show area columns with ghost cards
+  if (allDeckMoments.length === 0 && isEditMode && !isCollapsed) {
+    const allHabitsMap = habits$.get();
+    const allAreasMap = areas$.get();
+
+    const areaIdsWithHabits = new Set(
+      Object.values(allHabitsMap)
+        .filter((h) => !h.isArchived)
+        .map((h) => h.areaId)
+    );
+
+    const areasToShow = Object.values(allAreasMap)
+      .filter((a) => areaIdsWithHabits.has(a.id))
+      .sort((a, b) => a.order - b.order);
+
+    return (
+      <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
+        {header}
+        <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
+          {areasToShow.map((area) => (
+            <CycleDeckColumn
+              key={area.id}
+              area={area}
+              habitMoments={{}}
+              isEditMode={true}
+              showAllHabits={true}
+              cycleId={effectiveCycleId!}
+            />
+          ))}
+        </div>
+        <CycleFormDialog
+          open={createDialogOpen}
+          mode="create"
+          initialStartDate={cycleService.getDefaultStartDate()}
+          onClose={() => setCreateDialogOpen(false)}
+          onSave={(name, templateDuration, startDate, endDate) => {
+            const result = cycleService.planCycle(name, templateDuration, startDate, endDate ?? undefined);
+            if (!("error" in result)) {
+              cycleDeckSelectedCycleId$.set(result.id);
+            }
+            setCreateDialogOpen(false);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Empty state — read-only mode
   if (allDeckMoments.length === 0) {
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
@@ -159,6 +322,19 @@ export function CycleDeck() {
             </p>
           </div>
         )}
+        <CycleFormDialog
+          open={createDialogOpen}
+          mode="create"
+          initialStartDate={cycleService.getDefaultStartDate()}
+          onClose={() => setCreateDialogOpen(false)}
+          onSave={(name, templateDuration, startDate, endDate) => {
+            const result = cycleService.planCycle(name, templateDuration, startDate, endDate ?? undefined);
+            if (!("error" in result)) {
+              cycleDeckSelectedCycleId$.set(result.id);
+            }
+            setCreateDialogOpen(false);
+          }}
+        />
       </div>
     );
   }
@@ -195,20 +371,23 @@ export function CycleDeck() {
           )}
 
           {/* Horizontal scrollable columns (matching CycleDeckBuilder) */}
-          <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
-            {areasWithMoments.map(({ area, habits }) => (
-              <CycleDeckColumn
-                key={area.id}
-                area={area}
-                habitMoments={habits}
-                isEditMode={isEditMode}
-                showAllHabits={showAllHabits}
-                cycleId={cycleId!}
-              />
-            ))}
-          </div>
+          {renderColumns(areasWithMoments)}
         </div>
       )}
+
+      <CycleFormDialog
+        open={createDialogOpen}
+        mode="create"
+        initialStartDate={cycleService.getDefaultStartDate()}
+        onClose={() => setCreateDialogOpen(false)}
+        onSave={(name, templateDuration, startDate, endDate) => {
+          const result = cycleService.planCycle(name, templateDuration, startDate, endDate ?? undefined);
+          if (!("error" in result)) {
+            cycleDeckSelectedCycleId$.set(result.id);
+          }
+          setCreateDialogOpen(false);
+        }}
+      />
     </div>
   );
 }
