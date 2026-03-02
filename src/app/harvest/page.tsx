@@ -5,7 +5,7 @@
  */
 export default function HarvestPage() {
   return (
-    <div className="min-h-dvh h-dvh bg-background transition-colors flex flex-col overflow-hidden">
+    <div className="h-full bg-background transition-colors flex flex-col overflow-hidden">
       <main className="flex-1 overflow-y-auto p-6">
         <div className="text-sm text-stone-400 dark:text-stone-500">
           Coming soon
