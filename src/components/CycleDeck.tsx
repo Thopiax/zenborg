@@ -2,7 +2,8 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import {
@@ -31,6 +32,7 @@ import { MomentStack } from "./MomentStack";
  * - Grouped by area automatically (no grouping options)
  */
 export function CycleDeck() {
+  const router = useRouter();
   const cycleService = new CycleService();
   const deckMoments = useValue(() => deckMomentsByAreaAndHabit$.get());
 
@@ -67,6 +69,16 @@ export function CycleDeck() {
       <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold">
         {deckTitle}
       </h2>
+      <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => router.push("/plant")}
+        className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+        title="Edit cycle plan"
+        aria-label="Edit cycle plan"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </button>
       <button
         type="button"
         onClick={toggleCollapsed}
@@ -80,6 +92,7 @@ export function CycleDeck() {
           <ChevronDown className="h-4 w-4" />
         )}
       </button>
+      </div>
     </div>
   );
 
