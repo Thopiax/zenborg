@@ -39,6 +39,12 @@ vi.mock("../MomentStack", () => ({
   ),
 }));
 
+vi.mock("../CycleStarter", () => ({
+  CycleStarter: () => (
+    <div data-testid="cycle-starter">CycleStarter</div>
+  ),
+}));
+
 vi.mock("@/infrastructure/state/store", () => ({
   deckMomentsByAreaAndHabit$: { get: vi.fn(() => ({})) },
   areas$: {
@@ -47,7 +53,7 @@ vi.mock("@/infrastructure/state/store", () => ({
       "area-2": { ...testArea, id: "area-2", name: "Craft", emoji: "🔵", order: 1 },
     }))
   },
-  currentCycle$: { get: vi.fn(() => null) },
+  activeCycle$: { get: vi.fn(() => null) },
   habits$: {
     get: vi.fn(() => ({})),
   },
@@ -115,14 +121,14 @@ describe("CycleDeck", () => {
 
   // Helper: mock the useValue calls CycleDeck makes:
   // 1. deckMoments (via selector fn)
-  // 2. currentCycle (via selector fn)
+  // 2. activeCycle (via selector fn)
   // 3. cycleDeckCollapsed$ (boolean)
   // 4. cycleDeckEditMode$ (boolean)
   // 5. cycleDeckShowAllHabits$ (boolean)
   // Then CycleDeckColumn calls useValue(habits$) for each column rendered
   const mockCycleDeckValues = (
     deckMoments: Record<string, unknown>,
-    currentCycle: unknown = null,
+    activeCycle: unknown = null,
     isCollapsed = false,
     isEditMode = false,
     showAllHabits = false,
@@ -130,7 +136,7 @@ describe("CycleDeck", () => {
   ) => {
     mockUseValue
       .mockReturnValueOnce(deckMoments)
-      .mockReturnValueOnce(currentCycle)
+      .mockReturnValueOnce(activeCycle)
       .mockReturnValueOnce(isCollapsed)
       .mockReturnValueOnce(isEditMode)
       .mockReturnValueOnce(showAllHabits);
@@ -141,9 +147,23 @@ describe("CycleDeck", () => {
     }
   };
 
+  describe("no active cycle", () => {
+    it("should render CycleStarter when no active cycle", () => {
+      // All 5 useValue calls happen (hooks called unconditionally), then early return
+      mockCycleDeckValues({}, null);
+
+      render(<CycleDeck />);
+
+      expect(screen.getByTestId("cycle-starter")).toBeInTheDocument();
+    });
+  });
+
   describe("empty state", () => {
     it("should show empty message when no budgeted moments", () => {
-      mockCycleDeckValues({});
+      mockCycleDeckValues(
+        {},
+        { id: "cycle-1", name: "Test", endDate: "2026-04-01" },
+      );
 
       render(<CycleDeck />);
 
@@ -153,7 +173,10 @@ describe("CycleDeck", () => {
     });
 
     it("should show hint to drag habits from library", () => {
-      mockCycleDeckValues({});
+      mockCycleDeckValues(
+        {},
+        { id: "cycle-1", name: "Test", endDate: "2026-04-01" },
+      );
 
       render(<CycleDeck />);
 
@@ -162,6 +185,8 @@ describe("CycleDeck", () => {
   });
 
   describe("with budgeted moments", () => {
+    const testCycle = { id: "cycle-1", name: "Test Cycle", endDate: "2026-04-01" };
+
     it("should render area headers", () => {
       const deckMoments = {
         "area-1": {
@@ -169,7 +194,7 @@ describe("CycleDeck", () => {
         },
       };
 
-      mockCycleDeckValues(deckMoments);
+      mockCycleDeckValues(deckMoments, testCycle);
 
       render(<CycleDeck />);
 
@@ -187,7 +212,7 @@ describe("CycleDeck", () => {
         },
       };
 
-      mockCycleDeckValues(deckMoments);
+      mockCycleDeckValues(deckMoments, testCycle);
 
       const { container } = render(<CycleDeck />);
 
@@ -206,7 +231,7 @@ describe("CycleDeck", () => {
         },
       };
 
-      mockCycleDeckValues(deckMoments);
+      mockCycleDeckValues(deckMoments, testCycle);
 
       render(<CycleDeck />);
 

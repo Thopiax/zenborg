@@ -30,9 +30,11 @@ import {
   calculateDefaultStartDate,
   calculateTemplateDates,
   findOverlappingCycle,
+  generateCycleName,
   getDayBefore,
   type TemplateDuration,
 } from "@/domain/services/CycleDateService";
+import { fromISODate } from "@/lib/dates";
 
 // Re-export TemplateDuration for backward compatibility
 export type { TemplateDuration };
@@ -63,6 +65,25 @@ export class CycleService {
     const allCycles = Object.values(cycles$.get());
     return calculateDefaultStartDate(allCycles);
   }
+
+  /**
+   * Quick-creates a cycle from a template: calculates dates, generates name,
+   * plans the cycle, and activates it in one step.
+   *
+   * @param template - Template duration (week, 2-week, month, quarter)
+   * @returns Created and activated cycle, or error
+   */
+  quickCreateCycle(template: TemplateDuration): CycleResult {
+    const allCycles = Object.values(cycles$.get());
+    const { startDate, endDate } = calculateTemplateDates(template, allCycles);
+    const name = generateCycleName(template, fromISODate(startDate));
+
+    const result = this.planCycle(name, undefined, startDate, endDate);
+    if ("error" in result) return result;
+
+    return this.activateCycle(result.id);
+  }
+
   /**
    * Plans a new cycle with template duration or manual dates
    *
