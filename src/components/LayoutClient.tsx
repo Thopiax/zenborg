@@ -75,10 +75,10 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="h-dvh flex flex-col">
+      <div className="h-dvh grid grid-rows-[auto_1fr]">
         {/* Top Bar - Unified navigation bar with mode selector and settings */}
         <div
-          className="flex-shrink-0 z-40 flex items-center justify-center bg-background"
+          className="z-40 flex items-center justify-center bg-background"
           style={{
             paddingTop: "max(0.75rem, env(safe-area-inset-top) + 0.25rem)",
             paddingBottom: "0.5rem",
@@ -102,7 +102,7 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Page Content - Contained below top bar */}
-        <div className="flex-1 overflow-hidden">
+        <div className="overflow-hidden">
           {children}
         </div>
       </div>
