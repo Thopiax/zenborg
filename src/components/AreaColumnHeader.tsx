@@ -1,10 +1,13 @@
 /** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
 "use client";
 
-import { Archive, MoreVertical, Pencil } from "lucide-react";
+import { Archive, MoreVertical } from "lucide-react";
 import { useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { AttitudeChip } from "@/components/AttitudeChip";
+import { AttitudeSelector } from "@/components/AttitudeSelector";
 import { ColorPicker } from "@/components/ColorPicker";
+import { TagBadges } from "@/components/TagBadges";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +27,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { Area } from "@/domain/entities/Area";
+import type { Attitude } from "@/domain/value-objects/Attitude";
 
 interface AreaColumnHeaderProps {
   area: Area;
@@ -41,6 +45,7 @@ export function AreaColumnHeader({
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(area.name);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const handleSaveName = () => {
@@ -65,6 +70,11 @@ export function AreaColumnHeader({
     onUpdateArea(area.id, { color: newColor });
   };
 
+  const handleAttitudeChange = (attitude: Attitude | null) => {
+    onUpdateArea(area.id, { attitude });
+    setAttitudeSelectorOpen(false);
+  };
+
   // Enter to save, Escape to cancel
   useHotkeys(
     "enter",
@@ -84,92 +94,123 @@ export function AreaColumnHeader({
   );
 
   return (
-    <div className="flex items-center justify-between px-4 py-3">
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        {/* Emoji Picker */}
-        <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
-          <PopoverTrigger asChild>
+    <div className="px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {/* Emoji Picker */}
+          <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="text-xl flex-shrink-0 hover:bg-stone-100 dark:hover:bg-stone-800 rounded w-8 h-8 flex items-center justify-center transition-colors"
+                aria-label="Change emoji"
+              >
+                {area.emoji}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-fit p-0" align="start">
+              <EmojiPicker
+                className="h-[342px]"
+                onEmojiSelect={({ emoji }) => handleEmojiSelect(emoji)}
+              >
+                <EmojiPickerSearch />
+                <EmojiPickerContent />
+                <EmojiPickerFooter />
+              </EmojiPicker>
+            </PopoverContent>
+          </Popover>
+
+          {/* Area Name — double-click to edit */}
+          {isEditingName ? (
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={handleSaveName}
+              onKeyDown={(e) => e.stopPropagation()}
+              autoFocus
+              className="flex-1 min-w-0 px-2 py-1 text-sm font-mono font-semibold bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
+            />
+          ) : (
+            <h3
+              className="text-sm font-mono font-medium text-stone-700 dark:text-stone-300 truncate cursor-text"
+              onDoubleClick={handleStartEditing}
+            >
+              {area.name}
+            </h3>
+          )}
+
+          {/* Habit count */}
+          <span className="text-xs font-mono text-stone-400 dark:text-stone-500 flex-shrink-0">
+            {habitCount}
+          </span>
+        </div>
+
+        {/* Burger Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="text-xl flex-shrink-0 hover:bg-stone-100 dark:hover:bg-stone-800 rounded w-8 h-8 flex items-center justify-center transition-colors"
-              aria-label="Change emoji"
+              className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors flex-shrink-0"
+              aria-label="Area settings"
             >
-              {area.emoji}
+              <MoreVertical className="w-4 h-4 text-stone-500 dark:text-stone-400" />
             </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-fit p-0" align="start">
-            <EmojiPicker
-              className="h-[342px]"
-              onEmojiSelect={({ emoji }) => handleEmojiSelect(emoji)}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {/* Color Picker (inline) */}
+            <div className="px-2 py-2">
+              <p className="text-xs font-mono text-stone-500 dark:text-stone-400 mb-2">
+                Color
+              </p>
+              <ColorPicker value={area.color} onChange={handleColorChange} />
+            </div>
+
+            <DropdownMenuSeparator />
+
+            {/* Archive */}
+            <DropdownMenuItem
+              onSelect={() => onArchiveArea(area.id)}
+              className="text-red-600 dark:text-red-400"
             >
-              <EmojiPickerSearch />
-              <EmojiPickerContent />
-              <EmojiPickerFooter />
-            </EmojiPicker>
-          </PopoverContent>
-        </Popover>
-
-        {/* Area Name */}
-        {isEditingName ? (
-          <input
-            ref={nameInputRef}
-            type="text"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onBlur={handleSaveName}
-            autoFocus
-            className="flex-1 min-w-0 px-2 py-1 text-sm font-mono font-semibold bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
-          />
-        ) : (
-          <h3 className="text-sm font-mono font-medium text-stone-700 dark:text-stone-300 truncate">
-            {area.name}
-          </h3>
-        )}
-
-        {/* Habit count */}
-        <span className="text-xs font-mono text-stone-400 dark:text-stone-500 flex-shrink-0">
-          {habitCount}
-        </span>
+              <Archive className="w-4 h-4 mr-2" />
+              Archive area
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Burger Menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors flex-shrink-0"
-            aria-label="Area settings"
-          >
-            <MoreVertical className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          {/* Color Picker (inline) */}
-          <div className="px-2 py-2">
-            <p className="text-xs font-mono text-stone-500 dark:text-stone-400 mb-2">
-              Color
-            </p>
-            <ColorPicker value={area.color} onChange={handleColorChange} />
-          </div>
+      {/* Tags + Attitude Row */}
+      {((area.tags && area.tags.length > 0) || area.attitude) && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-2 ml-10">
+          {area.attitude && (
+            <AttitudeSelector
+              open={attitudeSelectorOpen}
+              selectedAttitude={area.attitude}
+              onSelectAttitude={handleAttitudeChange}
+              onClose={() => setAttitudeSelectorOpen(false)}
+              onOpen={() => setAttitudeSelectorOpen(true)}
+              trigger={
+                <AttitudeChip
+                  attitude={area.attitude}
+                  onClick={() => setAttitudeSelectorOpen(true)}
+                />
+              }
+            />
+          )}
 
-          <DropdownMenuSeparator />
-
-          {/* Edit Name */}
-          <DropdownMenuItem onSelect={handleStartEditing}>
-            <Pencil className="w-4 h-4 mr-2" />
-            Edit name
-          </DropdownMenuItem>
-
-          {/* Archive */}
-          <DropdownMenuItem
-            onSelect={() => onArchiveArea(area.id)}
-            className="text-red-600 dark:text-red-400"
-          >
-            <Archive className="w-4 h-4 mr-2" />
-            Archive area
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          {area.tags && area.tags.length > 0 && (
+            <TagBadges
+              tags={area.tags}
+              onRemoveTag={(tag) => {
+                const updatedTags = (area.tags || []).filter((t) => t !== tag);
+                onUpdateArea(area.id, { tags: updatedTags });
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
