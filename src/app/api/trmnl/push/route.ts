@@ -1,5 +1,8 @@
-import { kv } from "@vercel/kv";
-import { NextRequest, NextResponse } from "next/server";
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
+
+import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
 
@@ -18,7 +21,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json();
 
     // Store payload keyed by API key (24h TTL)
-    await kv.set(`zenborg:${apiKey}`, JSON.stringify(body), { ex: 86400 });
+    await redis.set(`zenborg:${apiKey}`, JSON.stringify(body), { ex: 86400 });
 
     return NextResponse.json({ ok: true });
   } catch {

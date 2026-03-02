@@ -76,6 +76,10 @@ vi.mock("@/lib/dates", () => ({
   formatCycleEndDate: vi.fn(() => "ends in 5 days"),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(() => ({ push: vi.fn() })),
+}));
+
 import { useValue } from "@legendapp/state/react";
 // Import after mocks
 import { CycleDeck } from "../CycleDeck";

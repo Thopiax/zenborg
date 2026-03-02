@@ -11,6 +11,7 @@ import { type PhaseConfig, getCurrentPhase, getPhaseConfig } from "@/domain/valu
 export interface TrmnlMomentData {
   readonly name: string;
   readonly emoji: string;
+  readonly area_name: string;
 }
 
 export interface TrmnlPhaseData {
@@ -81,6 +82,7 @@ export function formatTodayForTrmnl(
     trmnlMoments.push({
       name: moment.name,
       emoji: moment.emoji || area?.emoji || "",
+      area_name: area?.name ?? "",
     });
   }
 
