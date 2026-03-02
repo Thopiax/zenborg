@@ -34,11 +34,7 @@ import {
 } from "@/infrastructure/state/history-middleware";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, currentCycle$, moments$ } from "@/infrastructure/state/store";
-import {
-  drawingBoardSortMode$,
-  isDuplicateMode$,
-  openSortModeConflictDialog,
-} from "@/infrastructure/state/ui-store";
+import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
 import {
   calculateNextOrder,
   canDropInCell,
@@ -73,7 +69,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
         // Sortable items don't start with these prefixes - they're moment IDs
         return !(
           id.startsWith("timeline-") ||
-          id.startsWith("drawing-board") ||
           id.startsWith("column-")
         );
       });
@@ -82,7 +77,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
         const id = collision.id.toString();
         return (
           id.startsWith("timeline-") ||
-          id.startsWith("drawing-board") ||
           id.startsWith("column-")
         );
       });
@@ -181,14 +175,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
-    if (isDraggingSelection && dropData?.targetType === "drawing-board") {
-      // Handle batch drop on drawing board (unallocate all)
-      if (!wasDuplicateMode) {
-        handleBatchDropOnDrawingBoard(currentSelectedIds);
-      }
-      return;
-    }
-
     if (isDraggingSelection && dropData?.targetType === "cycle-deck") {
       // Handle batch drop on cycle deck (unallocate all)
       if (!wasDuplicateMode) {
@@ -223,7 +209,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
           `[DnD] Batch unallocating ${validMomentIds.length} moments to cycle deck`,
           validMomentIds
         );
-        handleBatchDropOnDrawingBoard(validMomentIds);
+        handleBatchUnallocate(validMomentIds);
       }
       return;
     }
@@ -255,13 +241,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
             wasDuplicateMode
           );
           return;
-        } else if (!wasDuplicateMode) {
-          // Dropping on unallocated moment -> move to drawing board
-          console.log(
-            "[DnD] Multi-select dropped on unallocated moment - treating as drawing board drop"
-          );
-          handleBatchDropOnDrawingBoard(currentSelectedIds);
-          return;
         }
       }
 
@@ -281,30 +260,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
         return;
       }
 
-      // Reorder within drawing board (both moments are unallocated)
-      if (
-        !activeMoment.day &&
-        !activeMoment.phase &&
-        !overMoment.day &&
-        !overMoment.phase
-      ) {
-        console.log("[DnD] Reordering within drawing board");
-        handleDrawingBoardReorder(active.id as string, over.id as string);
-        return;
-      }
-
-      // Moving from timeline to drawing board (dropping on an unallocated moment)
-      if (
-        dragData?.sourceType === "timeline" &&
-        activeMoment.day &&
-        activeMoment.phase &&
-        !overMoment.day &&
-        !overMoment.phase
-      ) {
-        console.log("Moving from timeline to drawing board via moment drop");
-        handleDropOnDrawingBoard(dragData);
-        return;
-      }
     }
 
     if (!dragData || !dropData) {
@@ -328,21 +283,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
         handleDropOnTimelineCell(dragData, dropData, wasDuplicateMode);
         break;
 
-      case "drawing-board":
-        // Don't allow duplicating to drawing board (doesn't make sense)
-        if (!wasDuplicateMode) {
-          console.log("Handling drop on drawing board", dragData);
-          handleDropOnDrawingBoard(dragData);
-        }
-        break;
-
-      case "drawing-board-column":
-        // Handle drop on a grouped column
-        if (!wasDuplicateMode) {
-          handleDropOnColumn(dragData, dropData);
-        }
-        break;
-
       case "cycle-deck":
         // Unallocate moment back to cycle deck (only if coming from timeline)
         if (!wasDuplicateMode && dragData.sourceType === "timeline") {
@@ -361,7 +301,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
           }
 
           console.log("Unallocating moment to cycle deck", dragData);
-          handleDropOnDrawingBoard(dragData); // Reuse unallocate logic
+          handleUnallocateMoment(dragData);
         }
         break;
 
@@ -404,53 +344,67 @@ export function DnDProvider({ children }: DnDProviderProps) {
     reorderMomentsWithHistory(day, phase, reorders);
   }
 
-  function handleDrawingBoardReorder(activeId: string, overId: string) {
-    // Check if we're in auto-sort mode
-    const sortMode = drawingBoardSortMode$.peek();
+  function handleUnallocateMoment(dragData: DraggableData) {
+    const { momentId, sourceDay, sourcePhase } = dragData;
 
-    if (sortMode === "auto") {
-      // Show dialog asking if user wants to switch to manual mode
-      console.log("[DnD] Auto-sort mode active, showing conflict dialog");
-      openSortModeConflictDialog(activeId, overId);
-      return;
+    // Only process if moment was allocated (coming from timeline)
+    if (!sourceDay || !sourcePhase) {
+      return; // Already unallocated
     }
 
-    // We're in manual mode, proceed with reordering
-    console.log("[DnD] Manual sort mode, reordering drawing board moments");
-
-    // Get all unallocated moments, sorted by current order
-    const unallocatedMoments = Object.values(allMoments)
-      .filter((m) => !m.day && !m.phase)
-      .sort((a, b) => a.order - b.order);
-
-    const oldIndex = unallocatedMoments.findIndex((m) => m.id === activeId);
-    const newIndex = unallocatedMoments.findIndex((m) => m.id === overId);
-
-    if (oldIndex === -1 || newIndex === -1) {
-      console.warn("[DnD] Could not find moments in unallocated list");
-      return;
-    }
-
-    // Reorder the array
-    const reordered = [...unallocatedMoments];
-    const [movedItem] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, movedItem);
-
-    // Update the order property for all unallocated moments
-    // Use batch operation for performance
+    // Batch unallocate + reorders
     startBatch();
-    reordered.forEach((moment, index) => {
-      if (moment.order !== index) {
-        moments$[moment.id].order.set(index);
-        moments$[moment.id].updatedAt.set(new Date().toISOString());
-      }
-    });
-    endBatch("Reordered drawing board moments");
 
-    console.log(
-      "[DnD] Reordered drawing board:",
-      reordered.map((m) => m.name)
-    );
+    // Calculate reorders in source cell
+    const reorders = reorderAfterRemoval(
+      sourceDay,
+      sourcePhase,
+      allMoments,
+      momentId
+    ).map(({ momentId: id, newOrder: order }) => ({
+      momentId: id,
+      fromOrder: allMoments[id].order,
+      toOrder: order,
+    }));
+
+    // Apply move (null day/phase) with history
+    moveMomentWithHistory(momentId, null, null, 0, reorders);
+
+    endBatch("Unallocated moment");
+  }
+
+  function handleBatchUnallocate(momentIds: string[]) {
+    startBatch();
+
+    for (const momentId of momentIds) {
+      const moment = allMoments[momentId];
+      if (!moment) continue;
+
+      const sourceDay = moment.day;
+      const sourcePhase = moment.phase;
+
+      // Only process if moment was allocated
+      if (!sourceDay || !sourcePhase) {
+        continue; // Already unallocated
+      }
+
+      // Calculate reorders in source cell
+      const reorders = reorderAfterRemoval(
+        sourceDay,
+        sourcePhase,
+        allMoments,
+        momentId
+      ).map(({ momentId: id, newOrder: order }) => ({
+        momentId: id,
+        fromOrder: allMoments[id].order,
+        toOrder: order,
+      }));
+
+      // Unallocate the moment
+      moveMomentWithHistory(momentId, null, null, 0, reorders);
+    }
+
+    endBatch(`Unallocated ${momentIds.length} moments`);
   }
 
   function handleDropOnTimelineCell(
@@ -534,130 +488,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       );
 
       endBatch(`Moved moment to ${targetDay} ${targetPhase}`);
-    }
-  }
-
-  function handleDropOnDrawingBoard(dragData: DraggableData) {
-    const { momentId, sourceDay, sourcePhase } = dragData;
-
-    // Only process if moment was allocated (coming from timeline)
-    if (!sourceDay || !sourcePhase) {
-      return; // Already unallocated
-    }
-
-    // Batch unallocate + reorders
-    startBatch();
-
-    // Calculate reorders in source cell
-    const reorders = reorderAfterRemoval(
-      sourceDay,
-      sourcePhase,
-      allMoments,
-      momentId
-    ).map(({ momentId: id, newOrder: order }) => ({
-      momentId: id,
-      fromOrder: allMoments[id].order,
-      toOrder: order,
-    }));
-
-    // Apply move to drawing board (null day/phase) with history
-    moveMomentWithHistory(momentId, null, null, 0, reorders);
-
-    endBatch("Unallocated moment");
-  }
-
-  function handleDropOnColumn(
-    dragData: DraggableData,
-    dropData: DroppableData
-  ) {
-    const { momentId, sourceDay, sourcePhase } = dragData;
-    const { columnId, groupBy } = dropData;
-
-    if (!columnId || !groupBy) {
-      console.warn("Missing column data", dropData);
-      return;
-    }
-
-    const moment = allMoments[momentId];
-    if (!moment) {
-      console.error("Moment not found:", momentId);
-      return;
-    }
-
-    // If dragging from timeline to drawing board column, unallocate the moment
-    const shouldUnallocate = sourceDay && sourcePhase;
-
-    if (shouldUnallocate) {
-      // Batch unallocation + reorders + column update
-      startBatch();
-
-      // Calculate reorders in source cell
-      const reorders = reorderAfterRemoval(
-        sourceDay,
-        sourcePhase,
-        allMoments,
-        momentId
-      ).map(({ momentId: id, newOrder: order }) => ({
-        momentId: id,
-        fromOrder: allMoments[id].order,
-        toOrder: order,
-      }));
-
-      // Unallocate the moment first
-      moveMomentWithHistory(momentId, null, null, 0, reorders);
-    }
-
-    // Handle different grouping modes
-    if (groupBy === "area") {
-      // Extract area ID from column ID (format: "area-id")
-      const newAreaId = columnId;
-
-      // Don't update if already in this area
-      if (moment.areaId === newAreaId) {
-        if (shouldUnallocate) {
-          endBatch("Unallocated moment to drawing board");
-        }
-        return;
-      }
-
-      // Verify the area exists
-      if (!allAreas[newAreaId]) {
-        console.error("Target area not found:", newAreaId);
-        if (shouldUnallocate) {
-          endBatch("Failed to update area");
-        }
-        return;
-      }
-
-      // Update moment's area
-      console.log(`Moving moment ${momentId} to area ${newAreaId}`);
-      moments$[momentId].areaId.set(newAreaId);
-      moments$[momentId].updatedAt.set(new Date().toISOString());
-    } else if (groupBy === "phase") {
-      // Extract phase value from column ID (format: "phase-MORNING", "phase-AFTERNOON", etc.)
-      const phaseValue = columnId.replace("phase-", "");
-      const newPhase = phaseValue === "unset" ? null : phaseValue;
-
-      // Don't update if already has this phase
-      if (moment.phase === newPhase) {
-        if (shouldUnallocate) {
-          endBatch("Unallocated moment to drawing board");
-        }
-        return;
-      }
-
-      // Update moment's phase
-      console.log(`Setting moment ${momentId} phase to ${newPhase || "unset"}`);
-      moments$[momentId].phase.set(newPhase as Phase | null);
-      moments$[momentId].updatedAt.set(new Date().toISOString());
-    } else {
-      // Other grouping modes (attitude, created, tag) are read-only
-      // Note: attitude is read-only because it's inherited from habit/area
-      console.log("Ignoring drop - grouping mode is read-only:", groupBy);
-    }
-
-    if (shouldUnallocate) {
-      endBatch(`Unallocated moment to ${groupBy} column`);
     }
   }
 
@@ -785,43 +615,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
     );
 
     console.log("[DnD] Batch drop complete");
-  }
-
-  /**
-   * Handle batch drop of multiple selected moments on drawing board (unallocate all)
-   */
-  function handleBatchDropOnDrawingBoard(momentIds: string[]) {
-    startBatch();
-
-    for (const momentId of momentIds) {
-      const moment = allMoments[momentId];
-      if (!moment) continue;
-
-      const sourceDay = moment.day;
-      const sourcePhase = moment.phase;
-
-      // Only process if moment was allocated
-      if (!sourceDay || !sourcePhase) {
-        continue; // Already unallocated
-      }
-
-      // Calculate reorders in source cell
-      const reorders = reorderAfterRemoval(
-        sourceDay,
-        sourcePhase,
-        allMoments,
-        momentId
-      ).map(({ momentId: id, newOrder: order }) => ({
-        momentId: id,
-        fromOrder: allMoments[id].order,
-        toOrder: order,
-      }));
-
-      // Unallocate the moment
-      moveMomentWithHistory(momentId, null, null, 0, reorders);
-    }
-
-    endBatch(`Unallocated ${momentIds.length} moments to drawing board`);
   }
 
   function handleDragCancel() {
