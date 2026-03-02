@@ -8,13 +8,11 @@ export const runtime = "edge";
 
 interface TrmnlMoment {
   name: string;
-  emoji_url: string;
   area_name: string;
 }
 
 interface TrmnlPhase {
   label: string;
-  emoji_url: string;
   moments: TrmnlMoment[];
   moment_count: number;
 }
@@ -25,22 +23,13 @@ interface TrmnlMergeVariables {
   phase: TrmnlPhase | null;
 }
 
-function renderEmojiImg(url: string, size = 32): string {
-  if (!url) return "";
-  return `<img src="${url}" width="${size}" height="${size}" style="vertical-align:middle;display:inline-block;" />`;
-}
-
 function renderMomentItem(m: TrmnlMoment): string {
   const areaLabel = m.area_name
     ? `<span class="description">${m.area_name}</span>`
     : "";
 
-  const emojiImg = renderEmojiImg(m.emoji_url, 36);
-  const icon = emojiImg ? `<div class="icon">${emojiImg}</div>` : "";
-
   return `<div class="item item--emphasis-2">
   <div class="meta"></div>
-  ${icon}
   <div class="content">
     <span class="title title--large">${m.name}</span>
     ${areaLabel}
@@ -50,8 +39,7 @@ function renderMomentItem(m: TrmnlMoment): string {
 
 function renderMarkup(vars: TrmnlMergeVariables): string {
   const cycleSuffix = vars.cycle_name ? ` &middot; ${vars.cycle_name}` : "";
-  const phaseEmoji = vars.phase ? renderEmojiImg(vars.phase.emoji_url, 20) : "";
-  const phaseLabel = vars.phase ? `${phaseEmoji} ${vars.phase.label}` : "";
+  const phaseLabel = vars.phase ? vars.phase.label : "";
 
   let bodyHtml = "";
 
