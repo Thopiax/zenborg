@@ -1,4 +1,4 @@
-import { createCycle } from "@/domain/entities/Cycle";
+import { createCycle, isDateInCycle } from "@/domain/entities/Cycle";
 import { getDefaultPhaseConfigs } from "@/domain/value-objects/Phase";
 import { configurePersistence } from "./persistence";
 import { selectionState$ } from "./selection";
@@ -32,8 +32,9 @@ export async function initializeStore(): Promise<void> {
   const hasCycles = Object.keys(cycles$.get()).length > 0;
   const hasPhaseConfigs = Object.keys(phaseConfigs$.get()).length > 0;
 
-  // If data exists, skip initialization
+  // If data exists, run migrations then skip initialization
   if (hasCycles && hasPhaseConfigs) {
+    migrateActiveCycleId();
     return;
   }
 
@@ -79,6 +80,28 @@ export async function initializeStore(): Promise<void> {
   }
 
   console.log("[Zenborg] Initialization complete");
+}
+
+/**
+ * Migration: If activeCycleId$ is null but cycles exist,
+ * find a cycle containing today and set it as active.
+ *
+ * Handles the transition from the old isActive flag on Cycle entities
+ * to the new activeCycleId$ observable.
+ */
+function migrateActiveCycleId(): void {
+  if (activeCycleId$.get() !== null) return;
+
+  const allCycles = Object.values(cycles$.get());
+  if (allCycles.length === 0) return;
+
+  const today = new Date().toISOString().split("T")[0];
+  const currentCycle = allCycles.find((c) => isDateInCycle(c, today));
+
+  if (currentCycle) {
+    activeCycleId$.set(currentCycle.id);
+    console.log(`[Zenborg] Migration: activated cycle "${currentCycle.name}"`);
+  }
 }
 
 /**
