@@ -3,17 +3,15 @@
 import { useValue } from "@legendapp/state/react";
 import { CycleDeck } from "@/components/CycleDeck";
 import { DnDProvider } from "@/components/DnDProvider";
-import { DrawingBoard } from "@/components/DrawingBoard";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { MomentFormDialog } from "@/components/MomentFormDialog";
-import { SortModeConflictDialog } from "@/components/SortModeConflictDialog";
 import { Timeline } from "@/components/Timeline";
 import type { CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
 import { useSelection } from "@/hooks/useSelection";
-import { currentCycle$, moments$ } from "@/infrastructure/state/store";
+import { moments$ } from "@/infrastructure/state/store";
 import { momentFormState$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +20,7 @@ import { cn } from "@/lib/utils";
  *
  * Daily practice interface:
  * - Extended timeline (horizontal scroll, 5 days)
- * - Drawing Board for unallocated moments
+ * - Cycle Deck for habit budgeting
  * - Landscape-only mode (shows prompt in portrait)
  */
 export default function CultivatePage() {
@@ -60,9 +58,6 @@ export default function CultivatePage() {
   // Get all moments for selection
   const allMoments = useValue(moments$);
   useGlobalSelection(Object.keys(allMoments));
-
-  // Check for current cycle (the one containing today)
-  const currentCycle = useValue(currentCycle$);
 
   // Selection management
   const { clearSelection, hasAnySelected } = useSelection();
@@ -106,9 +101,9 @@ export default function CultivatePage() {
             <Timeline />
           </div>
 
-          {/* Cycle Deck (current cycle) or Drawing Board (no cycle) */}
+          {/* Cycle Deck */}
           <div className="flex-shrink-0">
-            {currentCycle ? <CycleDeck /> : <DrawingBoard />}
+            <CycleDeck />
           </div>
         </main>
 
@@ -118,8 +113,6 @@ export default function CultivatePage() {
           onDelete={handleDeleteEdit}
         />
 
-        {/* Sort Mode Conflict Dialog */}
-        <SortModeConflictDialog />
       </div>
     </DnDProvider>
   );

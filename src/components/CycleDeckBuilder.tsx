@@ -16,14 +16,13 @@ import { cn } from "@/lib/utils";
  * CycleDeckBuilder - Shows budgeted moments grouped in vertical columns
  *
  * Features:
- * - Displays moments in vertical columns (like drawing board)
+ * - Displays moments in vertical columns
  * - Groups by area or attitude
  * - Column-based layout with horizontal scroll
  * - Shows moments budgeted for a specific cycle
  * - Supports drag-and-drop to/from library
  *
  * Design:
- * - Inspired by DrawingBoardColumn
  * - Vertical columns with headers, colored dividers, and moment stacks
  * - Horizontal scroll with snap points
  * - Clean, minimal design with proper spacing
@@ -147,7 +146,7 @@ export function CycleDeckBuilder({
 /**
  * CycleDeckColumn - Single vertical column for a group
  *
- * Design inspired by DrawingBoardColumn:
+ * Design:
  * - Header with emoji/icon + name + count
  * - 3px colored divider
  * - Vertical list of moments or stacks

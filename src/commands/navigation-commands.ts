@@ -1,5 +1,4 @@
 import { Command } from "./types";
-import { drawingBoardExpanded$ } from "@/infrastructure/state/ui-store";
 import { addDays } from "date-fns";
 
 // Note: For focus navigation, we'll need to extract helpers from useFocusManager
@@ -110,17 +109,4 @@ export const navigationCommands: Command[] = [
       tomorrowElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   },
-  {
-    id: "nav.drawing-board",
-    label: "Go to Drawing Board",
-    shortcut: "d",
-    category: "Navigation",
-    keywords: ["unallocated", "unscheduled"],
-    action: () => {
-      // Expand drawing board and scroll to it
-      drawingBoardExpanded$.set(true);
-      const drawingBoard = document.querySelector('[data-drawing-board]');
-      drawingBoard?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }
 ];

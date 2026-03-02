@@ -345,7 +345,6 @@ export const keyboardShortcuts = {
  */
 export const ariaLabels = {
   timeline: "Timeline - organize your moments",
-  drawingBoard: "Drawing Board - unallocated moments",
   compass: "Compass View - current moment",
   vimMode: "Vim mode indicator",
   commandLine: "Command input",
