@@ -150,29 +150,42 @@ export function TimelineCell({
 
       <div className="flex-1 flex flex-col justify-start relative z-10">
         {cellMoments.length > 0 ? (
-          <SortableContext
-            items={cellMoments.map((m) => m.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="flex flex-col" style={{ gap: momentCard.gap }}>
-              {cellMoments.map((moment) => {
-                // Get area from the extracted values (use$ already unwrapped it)
-                const area = allAreas[moment.areaId];
-                if (!area) return null;
+          <>
+            <SortableContext
+              items={cellMoments.map((m) => m.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="flex flex-col" style={{ gap: momentCard.gap }}>
+                {cellMoments.map((moment) => {
+                  // Get area from the extracted values (use$ already unwrapped it)
+                  const area = allAreas[moment.areaId];
+                  if (!area) return null;
 
-                return (
-                  <SortableMomentCard
-                    key={moment.id}
-                    moment={moment}
-                    area={area}
-                    contextMomentIds={cellMoments.map((m) => m.id)}
-                  />
-                );
-              })}
-            </div>
-          </SortableContext>
+                  return (
+                    <SortableMomentCard
+                      key={moment.id}
+                      moment={moment}
+                      area={area}
+                      contextMomentIds={cellMoments.map((m) => m.id)}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+            {!isFull && (
+              <button
+                type="button"
+                onClick={handleEmptyCellClick}
+                className="flex-1 flex items-center justify-center min-h-[48px] rounded-md cursor-pointer group"
+                aria-label={`add moment to ${phaseLabel || phase}`}
+              >
+                <span className="text-slate-800 dark:text-slate-100 text-2xl opacity-0 group-hover:opacity-50 transition-opacity">
+                  +
+                </span>
+              </button>
+            )}
+          </>
         ) : (
-          /* Empty state - click to open modal */
           <button
             type="button"
             onClick={handleEmptyCellClick}
