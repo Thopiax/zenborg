@@ -48,6 +48,9 @@ vi.mock("@/infrastructure/state/store", () => ({
     }))
   },
   currentCycle$: { get: vi.fn(() => null) },
+  habits$: {
+    get: vi.fn(() => ({})),
+  },
 }));
 
 vi.mock("@dnd-kit/core", () => ({
@@ -76,8 +79,10 @@ vi.mock("@/lib/dates", () => ({
   formatCycleEndDate: vi.fn(() => "ends in 5 days"),
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: vi.fn(() => ({ push: vi.fn() })),
+vi.mock("@/infrastructure/state/ui-store", () => ({
+  cycleDeckCollapsed$: { get: vi.fn(() => false), set: vi.fn(), peek: vi.fn(() => false) },
+  cycleDeckEditMode$: { get: vi.fn(() => false), set: vi.fn(), peek: vi.fn(() => false) },
+  cycleDeckShowAllHabits$: { get: vi.fn(() => false), set: vi.fn(), peek: vi.fn(() => false) },
 }));
 
 import { useValue } from "@legendapp/state/react";
@@ -108,19 +113,32 @@ describe("CycleDeck", () => {
     vi.clearAllMocks();
   });
 
-  // Helper: mock the three useValue calls CycleDeck makes:
+  // Helper: mock the useValue calls CycleDeck makes:
   // 1. deckMoments (via selector fn)
   // 2. currentCycle (via selector fn)
   // 3. cycleDeckCollapsed$ (boolean)
+  // 4. cycleDeckEditMode$ (boolean)
+  // 5. cycleDeckShowAllHabits$ (boolean)
+  // Then CycleDeckColumn calls useValue(habits$) for each column rendered
   const mockCycleDeckValues = (
     deckMoments: Record<string, unknown>,
     currentCycle: unknown = null,
-    isCollapsed = false
+    isCollapsed = false,
+    isEditMode = false,
+    showAllHabits = false,
+    habitsMap: Record<string, unknown> = {},
   ) => {
     mockUseValue
       .mockReturnValueOnce(deckMoments)
       .mockReturnValueOnce(currentCycle)
-      .mockReturnValueOnce(isCollapsed);
+      .mockReturnValueOnce(isCollapsed)
+      .mockReturnValueOnce(isEditMode)
+      .mockReturnValueOnce(showAllHabits);
+    // Each CycleDeckColumn will call useValue(habits$) once
+    const areaCount = Object.keys(deckMoments).length;
+    for (let i = 0; i < areaCount; i++) {
+      mockUseValue.mockReturnValueOnce(habitsMap);
+    }
   };
 
   describe("empty state", () => {
@@ -197,6 +215,47 @@ describe("CycleDeck", () => {
       expect(screen.getByText("🔵")).toBeInTheDocument();
       expect(screen.getByText("Wellness")).toBeInTheDocument();
       expect(screen.getByText("Craft")).toBeInTheDocument();
+    });
+  });
+
+  describe("edit mode", () => {
+    it("should show checkmark icon when edit mode is active", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" }), createTestMoment({ id: "2" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        { id: "cycle-1", name: "Test", endDate: "2026-04-01" },
+        false, // not collapsed
+        true,  // editMode ON
+        false, // showAllHabits OFF
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.getByLabelText("Done editing")).toBeInTheDocument();
+    });
+
+    it("should show pencil icon when edit mode is inactive", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        { id: "cycle-1", name: "Test", endDate: "2026-04-01" },
+        false,
+        false, // editMode OFF
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.getByLabelText("Edit cycle deck")).toBeInTheDocument();
     });
   });
 });

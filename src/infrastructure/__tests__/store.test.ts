@@ -4,10 +4,12 @@ import { createMoment } from '@/domain/entities/Moment'
 import { createArea } from '@/domain/entities/Area'
 import { createCycle } from '@/domain/entities/Cycle'
 import { Phase } from '@/domain/value-objects/Phase'
+import { createHabit } from '@/domain/entities/Habit'
 import {
   moments$,
   areas$,
   cycles$,
+  habits$,
   phaseConfigs$,
   unallocatedMoments$,
   allocatedMoments$,
@@ -15,6 +17,7 @@ import {
   visiblePhases$,
   momentsByDay$,
   momentsByDayAndPhase$,
+  deckMomentsByAreaAndHabit$,
 } from '../state/store'
 
 describe('Store', () => {
@@ -23,6 +26,7 @@ describe('Store', () => {
     moments$.set({})
     areas$.set({})
     cycles$.set({})
+    habits$.set({})
     phaseConfigs$.set({})
   })
 
@@ -306,6 +310,47 @@ describe('Store', () => {
       expect(Object.keys(byDay)).toHaveLength(2)
       expect(byDay['2025-01-15']).toHaveLength(2)
       expect(byDay['2025-01-16']).toHaveLength(1)
+    })
+  })
+
+  describe('deckMomentsByAreaAndHabit$ ordering', () => {
+    it('should order habits within area by habit.order', () => {
+      // Create area
+      const area = createArea({
+        name: 'Wellness',
+        color: '#10b981',
+        emoji: '🟢',
+        order: 0,
+      })
+      if ('error' in area) throw new Error(area.error)
+      areas$[area.id].set(area)
+
+      // Create cycle that includes today
+      const today = new Date().toISOString().split('T')[0]
+      const cycle = createCycle({ name: 'Test Cycle', startDate: '2025-01-01', endDate: null, isActive: true })
+      if ('error' in cycle) throw new Error(cycle.error)
+      cycles$[cycle.id].set(cycle)
+
+      // Create two habits with different orders
+      const habitA = createHabit({ name: 'Habit A', areaId: area.id, order: 2 })
+      const habitB = createHabit({ name: 'Habit B', areaId: area.id, order: 0 })
+      if ('error' in habitA || 'error' in habitB) throw new Error('Habit creation failed')
+      habits$[habitA.id].set(habitA)
+      habits$[habitB.id].set(habitB)
+
+      // Create deck moments (unallocated, with cyclePlanId set)
+      const m1 = createMoment({ name: 'Moment A', areaId: area.id, habitId: habitA.id, cycleId: cycle.id, cyclePlanId: 'plan-a' })
+      const m2 = createMoment({ name: 'Moment B', areaId: area.id, habitId: habitB.id, cycleId: cycle.id, cyclePlanId: 'plan-b' })
+      if ('error' in m1 || 'error' in m2) throw new Error('Moment creation failed')
+      moments$[m1.id].set(m1)
+      moments$[m2.id].set(m2)
+
+      const result = deckMomentsByAreaAndHabit$.get()
+      const habitIds = Object.keys(result[area.id] || {})
+
+      // habit-b (order 0) should come before habit-a (order 2)
+      expect(habitIds[0]).toBe(habitB.id)
+      expect(habitIds[1]).toBe(habitA.id)
     })
   })
 
