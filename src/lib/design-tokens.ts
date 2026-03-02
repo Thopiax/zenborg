@@ -406,10 +406,12 @@ export function formatWordCount(wordCount: number): string {
  * @param hexColor - Background color in hex format (e.g., "#10b981")
  * @returns "white" or "dark" text color class
  */
-export function getTextColorForBackground(hexColor: string): "white" | "dark" {
+export function getTextColorForBackground(hexColor?: string): "white" | "dark" {
   // Safety check for undefined/null
   if (!hexColor) {
-    console.warn("getTextColorForBackground called with undefined color - using white text as fallback");
+    console.warn(
+      "getTextColorForBackground called with undefined color - using white text as fallback",
+    );
     return "white";
   }
 
@@ -436,12 +438,22 @@ export function getTextColorForBackground(hexColor: string): "white" | "dark" {
  * @param hexColor - Background color in hex format
  * @returns Object with primary, secondary, and tertiary text color classes
  */
-export function getTextColorsForBackground(hexColor: string): {
+export function getTextColorsForBackground(hexColor?: string): {
   primary: string;
   secondary: string;
   tertiary: string;
   placeholder: string;
 } {
+  if (!hexColor) {
+    // Default to dark text if no color provided
+    return {
+      primary: "text-stone-900 dark:text-stone-900",
+      secondary: "text-stone-700 dark:text-stone-700",
+      tertiary: "text-stone-600 dark:text-stone-600",
+      placeholder: "placeholder:text-stone-500 dark:placeholder:text-stone-500",
+    };
+  }
+
   const textColor = getTextColorForBackground(hexColor);
 
   if (textColor === "white") {
