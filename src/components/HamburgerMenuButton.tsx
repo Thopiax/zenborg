@@ -1,6 +1,7 @@
 "use client";
 
-import { Menu, X } from "lucide-react";
+import { Settings2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface HamburgerMenuButtonProps {
   isOpen: boolean;
@@ -8,35 +9,29 @@ interface HamburgerMenuButtonProps {
 }
 
 /**
- * Minimalistic hamburger menu button
- * - Opens settings drawer
- * - Positioned in top-right corner
- * - Animates between hamburger and X icon
- * - Monochromatic stone design
+ * Settings button - Clean, minimal icon button
+ *
+ * Simplified from animated hamburger to a single settings icon.
+ * Matches Claude's minimal top-bar aesthetic.
  */
-export function HamburgerMenuButton({ isOpen, onClick }: HamburgerMenuButtonProps) {
+export function HamburgerMenuButton({
+  isOpen,
+  onClick,
+}: HamburgerMenuButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="p-3 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50/80 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 hover:bg-stone-100/90 dark:hover:bg-stone-700/90 glass-base backdrop-blur-md transition-all duration-medium transition-elastic hover:-translate-y-0.5 shadow-sm hover:shadow-md"
+      className={cn(
+        "p-1.5 rounded-md text-stone-500 dark:text-stone-400 transition-colors duration-150",
+        "hover:text-stone-700 dark:hover:text-stone-300",
+        "hover:bg-stone-100 dark:hover:bg-stone-800",
+        isOpen && "text-stone-900 dark:text-stone-100 bg-stone-100 dark:bg-stone-800"
+      )}
       aria-label={isOpen ? "Close settings" : "Open settings"}
       aria-expanded={isOpen}
     >
-      <div className="relative w-5 h-5">
-        {/* Hamburger icon */}
-        <Menu
-          className={`absolute inset-0 w-5 h-5 transition-all duration-medium transition-elastic ${
-            isOpen ? "opacity-0 rotate-90 scale-75" : "opacity-100 rotate-0 scale-100"
-          }`}
-        />
-        {/* X icon */}
-        <X
-          className={`absolute inset-0 w-5 h-5 transition-all duration-medium transition-elastic ${
-            isOpen ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-75"
-          }`}
-        />
-      </div>
+      <Settings2 className="w-4.5 h-4.5" />
     </button>
   );
 }
