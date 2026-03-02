@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { relaunch } from '@tauri-apps/plugin-process';
-import { check, type Update } from '@tauri-apps/plugin-updater';
-import { useCallback, useEffect, useState } from 'react';
+import { isTauri } from "@tauri-apps/api/core";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check, type Update } from "@tauri-apps/plugin-updater";
+import { useCallback, useEffect, useState } from "react";
 
 interface UpdateState {
   update: Update | null;
@@ -23,20 +24,27 @@ export function useUpdater(checkOnMount = true) {
 
   const checkForUpdate = useCallback(async () => {
     // Only run in Tauri environment
-    if (typeof window === 'undefined' || !window.__TAURI__) {
+    if (!isTauri()) {
       return;
     }
 
-    setState(prev => ({ ...prev, checking: true, error: null }));
+    setState((prev) => ({ ...prev, checking: true, error: null }));
 
     try {
       const update = await check();
-      setState(prev => ({ ...prev, update: update ?? null, checking: false }));
+      setState((prev) => ({
+        ...prev,
+        update: update ?? null,
+        checking: false,
+      }));
     } catch (error) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         checking: false,
-        error: error instanceof Error ? error.message : 'Failed to check for updates',
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to check for updates",
       }));
     }
   }, []);
@@ -44,7 +52,7 @@ export function useUpdater(checkOnMount = true) {
   const downloadAndInstall = async () => {
     if (!state.update) return;
 
-    setState(prev => ({ ...prev, downloading: true, error: null }));
+    setState((prev) => ({ ...prev, downloading: true, error: null }));
 
     let contentLength: number | undefined;
     let downloadedBytes = 0;
@@ -52,19 +60,19 @@ export function useUpdater(checkOnMount = true) {
     try {
       await state.update.downloadAndInstall((event) => {
         switch (event.event) {
-          case 'Started':
+          case "Started":
             contentLength = event.data.contentLength;
-            setState(prev => ({ ...prev, downloadProgress: 0 }));
+            setState((prev) => ({ ...prev, downloadProgress: 0 }));
             break;
-          case 'Progress':
+          case "Progress":
             downloadedBytes += event.data.chunkLength;
             if (contentLength) {
               const progress = (downloadedBytes / contentLength) * 100;
-              setState(prev => ({ ...prev, downloadProgress: progress }));
+              setState((prev) => ({ ...prev, downloadProgress: progress }));
             }
             break;
-          case 'Finished':
-            setState(prev => ({ ...prev, downloadProgress: 100 }));
+          case "Finished":
+            setState((prev) => ({ ...prev, downloadProgress: 100 }));
             break;
         }
       });
@@ -72,10 +80,11 @@ export function useUpdater(checkOnMount = true) {
       // Relaunch the app to apply the update
       await relaunch();
     } catch (error) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         downloading: false,
-        error: error instanceof Error ? error.message : 'Failed to download update',
+        error:
+          error instanceof Error ? error.message : "Failed to download update",
       }));
     }
   };

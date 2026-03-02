@@ -1,10 +1,12 @@
-'use client';
+"use client";
 
-import { useUpdater } from '@/hooks/useUpdater';
-import { useEffect, useState } from 'react';
+import { isTauri } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+import { useUpdater } from "@/hooks/useUpdater";
 
 export function UpdateNotification() {
-  const { update, downloading, error, downloadProgress, downloadAndInstall } = useUpdater(true);
+  const { update, downloading, error, downloadProgress, downloadAndInstall } =
+    useUpdater(true);
   const [dismissed, setDismissed] = useState(false);
 
   // Reset dismissed state when a new update is available
@@ -15,7 +17,7 @@ export function UpdateNotification() {
   }, [update]);
 
   // Don't show if no update, dismissed, or not in Tauri
-  if (!update || dismissed || typeof window === 'undefined' || !window.__TAURI__) {
+  if (!update || dismissed || !isTauri()) {
     return null;
   }
 
@@ -28,9 +30,7 @@ export function UpdateNotification() {
             <p className="mt-1 text-sm text-stone-600">
               Version {update.version} is ready to install
             </p>
-            {error && (
-              <p className="mt-2 text-sm text-red-600">{error}</p>
-            )}
+            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
             {downloading && (
               <div className="mt-2">
                 <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
@@ -51,8 +51,20 @@ export function UpdateNotification() {
             className="text-stone-400 hover:text-stone-600"
             disabled={downloading}
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-label="Close notification"
+            >
+              <title>Close notification</title>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
