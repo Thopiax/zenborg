@@ -55,7 +55,7 @@ export function configurePersistence(): void {
       persist: {
         plugin: observablePersistIndexedDB({
           databaseName: "zenborg",
-          version: 4, // Incremented for cyclePlans table
+          version: 5, // Incremented for activeCycleId table
           tableNames: [
             "moments",
             "areas",
@@ -65,6 +65,7 @@ export function configurePersistence(): void {
             "phaseConfigs",
             "crystallizedRoutines",
             "metricLogs",
+            "activeCycleId",
           ],
         }),
       },
@@ -154,6 +155,15 @@ export function configurePersistence(): void {
       })
     );
 
+    syncObservable(
+      activeCycleId$,
+      persistIndexedDBOptions({
+        persist: {
+          name: "activeCycleId",
+        },
+      })
+    );
+
     // ========================================================================
     // Sync UI Preferences to localStorage
     // ========================================================================
@@ -162,15 +172,6 @@ export function configurePersistence(): void {
       persistLocalStorageOptions({
         persist: {
           name: "zenborg_lastUsedAreaId",
-        },
-      })
-    );
-
-    syncObservable(
-      activeCycleId$,
-      persistLocalStorageOptions({
-        persist: {
-          name: "zenborg_activeCycleId",
         },
       })
     );
