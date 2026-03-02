@@ -1,6 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { visiblePhases$ } from "@/infrastructure/state/store";
@@ -47,7 +48,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
           isActiveDay
             ? "snap-start snap-always border border-slate-400/30 dark:ring-slate-300 rounded-md shadow-sm"
             : "snap-start",
-          isPastDay && "opacity-70"
+          isPastDay && "opacity-70",
         )}
       >
         {/* Day Title Section - Above Timeline */}
@@ -57,7 +58,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
               "font-mono font-bold text-2xl md:text-3xl",
               isActiveDay
                 ? "text-stone-900 dark:text-stone-100"
-                : "text-stone-700 dark:text-stone-300"
+                : "text-stone-700 dark:text-stone-300",
             )}
           >
             {label}
@@ -95,7 +96,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 DayRow.displayName = "DayRow";
@@ -128,10 +129,22 @@ const formatDateShort = (dateStr: string) => {
  */
 export function Timeline() {
   const visiblePhases = use$(visiblePhases$);
-  const timelineDays = getExtendedTimelineDays(1, 1); // Yesterday, Today, Tomorrow
+  const [daysBefore, setDaysBefore] = useState(1);
+  const [daysAfter, setDaysAfter] = useState(1);
+  const timelineDays = getExtendedTimelineDays(daysBefore, daysAfter);
   const containerRef = useRef<HTMLDivElement>(null);
   const activeDayRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
+
+  const handleLoadEarlier = () => {
+    setDaysBefore((prev) => prev + 3);
+  };
+
+  const handleLoadLater = () => {
+    setDaysAfter((prev) => prev + 3);
+  };
+
+  const isExpanded = daysBefore > 1 || daysAfter > 1;
 
   // Scroll to active day
   const scrollToActiveDay = useCallback(() => {
@@ -171,35 +184,98 @@ export function Timeline() {
   const activeDayIndex = timelineDays.findIndex((d) => d.isActiveDay);
 
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "w-full h-full flex overflow-x-scroll snap-x snap-mandatory scroll-smooth scrollbar-hide",
-        // Minimal gap and padding on left/top, safe area padding on right
-        "gap-3 md:gap-4 px-2 md:px-4 py-2 md:py-4",
-        // Smooth fade-in on load
-        "transition-opacity duration-slow transition-smooth",
-        isReady ? "opacity-100" : "opacity-0"
+    <div className="relative w-full h-full">
+      {/* Back to Today indicator - shown when expanded beyond default range */}
+      {isExpanded && (
+        <button
+          type="button"
+          onClick={() => {
+            setDaysBefore(1);
+            setDaysAfter(1);
+            setTimeout(scrollToActiveDay, 100);
+          }}
+          className={cn(
+            "absolute top-2 left-1/2 -translate-x-1/2 z-10",
+            "px-3 py-1 rounded-full",
+            "bg-stone-800 dark:bg-stone-200",
+            "text-white dark:text-stone-900",
+            "text-xs font-mono font-medium",
+            "shadow-md hover:shadow-lg",
+            "transition-all duration-150",
+            "hover:scale-105",
+          )}
+        >
+          Today
+        </button>
       )}
-      style={{
-        // Enable momentum scrolling on iOS/Safari
-        WebkitOverflowScrolling: "touch",
-        // Ensure right padding includes safe area (bottom in landscape)
-        paddingRight: "max(1rem, env(safe-area-inset-right))",
-      }}
-    >
-      {timelineDays.map(({ date, isToday, isActiveDay }, index) => (
-        <DayRow
-          key={date}
-          ref={isActiveDay ? activeDayRef : null}
-          day={date}
-          isToday={isToday}
-          isActiveDay={isActiveDay}
-          isPastDay={index < activeDayIndex}
-          visiblePhases={visiblePhases}
-        />
-      ))}
-      <div className="w-16 flex-shrink-0" />
+
+      <div
+        ref={containerRef}
+        className={cn(
+          "w-full h-full flex overflow-x-scroll snap-x snap-mandatory scroll-smooth scrollbar-hide",
+          // Minimal gap and padding on left/top, safe area padding on right
+          "gap-3 md:gap-4 px-2 md:px-4 py-2 md:py-4",
+          // Smooth fade-in on load
+          "transition-opacity duration-slow transition-smooth",
+          isReady ? "opacity-100" : "opacity-0",
+        )}
+        style={{
+          // Enable momentum scrolling on iOS/Safari
+          WebkitOverflowScrolling: "touch",
+          // Ensure right padding includes safe area (bottom in landscape)
+          paddingRight: "max(1rem, env(safe-area-inset-right))",
+        }}
+      >
+        {/* Load Earlier Button */}
+        <button
+          type="button"
+          onClick={handleLoadEarlier}
+          className={cn(
+            "flex-shrink-0 flex flex-col items-center justify-center gap-1",
+            "px-3 py-4 rounded-md",
+            "text-stone-400 dark:text-stone-500",
+            "hover:text-stone-600 dark:hover:text-stone-400",
+            "hover:bg-stone-100 dark:hover:bg-stone-800",
+            "transition-colors font-mono text-xs",
+            "min-w-[60px]",
+          )}
+          aria-label="Load 3 earlier days"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Earlier</span>
+        </button>
+
+        {timelineDays.map(({ date, isToday, isActiveDay }, index) => (
+          <DayRow
+            key={date}
+            ref={isActiveDay ? activeDayRef : null}
+            day={date}
+            isToday={isToday}
+            isActiveDay={isActiveDay}
+            isPastDay={index < activeDayIndex}
+            visiblePhases={visiblePhases}
+          />
+        ))}
+
+        {/* Load Later Button */}
+        <button
+          type="button"
+          onClick={handleLoadLater}
+          className={cn(
+            "flex-shrink-0 flex flex-col items-center justify-center gap-1",
+            "px-3 py-4 rounded-md",
+            "text-stone-400 dark:text-stone-500",
+            "hover:text-stone-600 dark:hover:text-stone-400",
+            "hover:bg-stone-100 dark:hover:bg-stone-800",
+            "transition-colors font-mono text-xs",
+            "min-w-[60px]",
+          )}
+          aria-label="Load 3 later days"
+        >
+          <ChevronRight className="w-4 h-4" />
+          <span>Later</span>
+        </button>
+      </div>
     </div>
   );
 }

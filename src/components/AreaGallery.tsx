@@ -179,7 +179,7 @@ export const AreaGallery = observer(() => {
 
   return (
     <>
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 justify-center">
         {sortedAreas.map((area: Area) => (
           <PlanAreaCard
             key={area.id}
