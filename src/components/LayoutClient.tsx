@@ -80,21 +80,28 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
       {/* Update Notification - Auto-checks on mount */}
       <UpdateNotification />
 
-      {/* Mode Selector - Fixed top-center */}
-      <ModeSelector />
-
-      {/* Hamburger Menu Button - Fixed top-right with safe area support */}
+      {/* Top Bar - Unified navigation bar with mode selector and settings */}
       <div
-        className="fixed z-40"
+        className="fixed z-40 left-0 right-0 flex items-center justify-center"
         style={{
-          top: "max(1.5rem, env(safe-area-inset-top) + 1rem)",
-          right: "max(1.5rem, env(safe-area-inset-right) + 1rem)",
+          top: "max(0.75rem, env(safe-area-inset-top) + 0.25rem)",
+          paddingLeft: "max(1rem, env(safe-area-inset-left) + 0.5rem)",
+          paddingRight: "max(1rem, env(safe-area-inset-right) + 0.5rem)",
         }}
       >
-        <HamburgerMenuButton
-          isOpen={isSettingsOpen}
-          onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-        />
+        {/* Spacer for left balance */}
+        <div className="w-8" />
+
+        {/* Center: Mode Selector */}
+        <ModeSelector />
+
+        {/* Right: Settings button */}
+        <div className="ml-2">
+          <HamburgerMenuButton
+            isOpen={isSettingsOpen}
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+          />
+        </div>
       </div>
 
       {/* Settings Drawer - Triggered by Mod+, or hamburger menu */}
