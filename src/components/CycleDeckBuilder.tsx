@@ -161,6 +161,7 @@ interface CycleDeckColumnProps {
 
 function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
   const allAreas = use$(areas$);
+  const allHabitsMap = use$(habits$);
 
   // Group moments by habitId for stacking and count controls
   const momentsByHabit: Record<string, Moment[]> = {};
@@ -171,6 +172,15 @@ function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
     }
     momentsByHabit[habitId].push(moment);
   }
+
+  // Sort habit entries by habit.order
+  const sortedHabitEntries = Object.entries(momentsByHabit)
+    .filter(([habitId]) => habitId !== "standalone")
+    .sort(([a], [b]) => {
+      const habitA = allHabitsMap[a];
+      const habitB = allHabitsMap[b];
+      return (habitA?.order ?? 999) - (habitB?.order ?? 999);
+    });
 
   return (
     <div
@@ -221,8 +231,7 @@ function CycleDeckColumn({ group, stackMoments }: CycleDeckColumnProps) {
           </div>
         ) : stackMoments ? (
           // Stacked view with count controls (group by habitId)
-          Object.entries(momentsByHabit)
-            .filter(([habitId]) => habitId !== "standalone")
+          sortedHabitEntries
             .map(([habitId, moments]) => {
               const area = allAreas[moments[0].areaId];
               if (!area) return null;
