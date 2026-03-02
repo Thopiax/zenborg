@@ -118,8 +118,8 @@ export function TimelineCell({
     <div
       ref={setNodeRef}
       className={cn(
-        // Height: flexible to fill available space, with flex layout to distribute cards
-        "h-full flex flex-col min-h-[240px] relative",
+        // Height: fixed minimum for 3 cards, does not stretch to fill container
+        "flex flex-col min-h-[240px] relative",
         "p-2 rounded-md",
         // Smooth transitions for drag hover states
         "transition-all duration-fast transition-smooth",
