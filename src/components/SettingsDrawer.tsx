@@ -403,107 +403,111 @@ export const SettingsDrawer = observer(function SettingsDrawer({
             </AccordionItem>
 
             {/* PWA Installation Section */}
-            <AccordionItem
-              value="pwa"
-              className="border-stone-200 dark:border-stone-700"
-            >
-              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="w-4 h-4" />
-                  <span>Install App</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-4 px-2">
-                  {mounted ? (
-                    pwaInstalled ? (
-                      // Already installed
-                      <div className="p-4 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-stone-900 dark:bg-stone-100 flex items-center justify-center">
-                            <Smartphone className="w-5 h-5 text-stone-50 dark:text-stone-900" />
+            {!isTauri && !isPWA() && (
+              <AccordionItem
+                value="pwa"
+                className="border-stone-200 dark:border-stone-700"
+              >
+                <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4" />
+                    <span>Install App</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 px-2">
+                    {mounted ? (
+                      pwaInstalled ? (
+                        // Already installed
+                        <div className="p-4 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-stone-900 dark:bg-stone-100 flex items-center justify-center">
+                              <Smartphone className="w-5 h-5 text-stone-50 dark:text-stone-900" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-1">
+                                App Installed
+                              </h4>
+                              <p className="text-xs text-stone-600 dark:text-stone-400">
+                                You're using Zenborg as a standalone app. Enjoy
+                                the full-screen experience!
+                              </p>
+                            </div>
                           </div>
+                        </div>
+                      ) : (
+                        // Not installed - show instructions
+                        <div className="space-y-3">
                           <div>
-                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-1">
-                              App Installed
+                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-2">
+                              Why install Zenborg?
                             </h4>
-                            <p className="text-xs text-stone-600 dark:text-stone-400">
-                              You're using Zenborg as a standalone app. Enjoy
-                              the full-screen experience!
-                            </p>
+                            <ul className="space-y-1.5 text-sm text-stone-600 dark:text-stone-400">
+                              <li className="flex items-start gap-2">
+                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
+                                  ✓
+                                </span>
+                                <span>Full-screen without browser chrome</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
+                                  ✓
+                                </span>
+                                <span>Faster access from home screen</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
+                                  ✓
+                                </span>
+                                <span>Works offline with local data</span>
+                              </li>
+                            </ul>
                           </div>
+
+                          <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
+                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
+                              How to install:
+                            </h4>
+                            <ol className="space-y-2.5">
+                              {pwaInstructions.instructions.map(
+                                (instruction, index) => (
+                                  <li
+                                    key={`pwa-instruction-${index + 1}`}
+                                    className="flex items-start gap-3 text-sm text-stone-700 dark:text-stone-300"
+                                  >
+                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-50 dark:text-stone-900 flex items-center justify-center text-xs font-bold">
+                                      {index + 1}
+                                    </span>
+                                    <span className="pt-0.5">
+                                      {instruction}
+                                    </span>
+                                  </li>
+                                ),
+                              )}
+                            </ol>
+                          </div>
+
+                          {pwaInstructions.platform === "ios" && (
+                            <div className="p-3 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
+                              <p className="text-xs text-stone-600 dark:text-stone-400">
+                                <strong className="text-stone-900 dark:text-stone-100">
+                                  Note:
+                                </strong>{" "}
+                                On iOS, you must use Safari to install the app.
+                              </p>
+                            </div>
+                          )}
                         </div>
-                      </div>
+                      )
                     ) : (
-                      // Not installed - show instructions
-                      <div className="space-y-3">
-                        <div>
-                          <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-2">
-                            Why install Zenborg?
-                          </h4>
-                          <ul className="space-y-1.5 text-sm text-stone-600 dark:text-stone-400">
-                            <li className="flex items-start gap-2">
-                              <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
-                                ✓
-                              </span>
-                              <span>Full-screen without browser chrome</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
-                                ✓
-                              </span>
-                              <span>Faster access from home screen</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
-                                ✓
-                              </span>
-                              <span>Works offline with local data</span>
-                            </li>
-                          </ul>
-                        </div>
-
-                        <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
-                          <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
-                            How to install:
-                          </h4>
-                          <ol className="space-y-2.5">
-                            {pwaInstructions.instructions.map(
-                              (instruction, index) => (
-                                <li
-                                  key={`pwa-instruction-${index + 1}`}
-                                  className="flex items-start gap-3 text-sm text-stone-700 dark:text-stone-300"
-                                >
-                                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-50 dark:text-stone-900 flex items-center justify-center text-xs font-bold">
-                                    {index + 1}
-                                  </span>
-                                  <span className="pt-0.5">{instruction}</span>
-                                </li>
-                              ),
-                            )}
-                          </ol>
-                        </div>
-
-                        {pwaInstructions.platform === "ios" && (
-                          <div className="p-3 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
-                            <p className="text-xs text-stone-600 dark:text-stone-400">
-                              <strong className="text-stone-900 dark:text-stone-100">
-                                Note:
-                              </strong>{" "}
-                              On iOS, you must use Safari to install the app.
-                            </p>
-                          </div>
-                        )}
+                      <div className="text-center py-6 text-sm text-stone-500 dark:text-stone-500">
+                        Loading...
                       </div>
-                    )
-                  ) : (
-                    <div className="text-center py-6 text-sm text-stone-500 dark:text-stone-500">
-                      Loading...
-                    </div>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
 
             {/* Appearance Section */}
             <AccordionItem
