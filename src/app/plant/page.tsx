@@ -176,18 +176,45 @@ const PlantPage = observer(() => {
         <DragOverlay>
           {activeId
             ? (() => {
+                // Check if dragging a habit
                 const activeHabit = habits.find((h) => h.id === activeId);
-                if (!activeHabit) return null;
+                if (activeHabit) {
+                  const area = areas.find((a) => a.id === activeHabit.areaId);
+                  return (
+                    <DraggableHabitItem
+                      habit={activeHabit}
+                      areaColor={area?.color}
+                      onEdit={() => {}}
+                    />
+                  );
+                }
 
-                const area = areas.find((a) => a.id === activeHabit.areaId);
+                // Check if dragging an area column
+                const activeArea = areas.find((a) => a.id === activeId);
+                if (activeArea) {
+                  const areaHabits = habits.filter(
+                    (h) => h.areaId === activeArea.id,
+                  );
+                  return (
+                    <div className="w-[22.5rem] rounded-lg border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 shadow-lg opacity-90">
+                      <div className="px-4 py-3 flex items-center gap-2">
+                        <span className="text-xl">{activeArea.emoji}</span>
+                        <span className="text-sm font-mono font-medium text-stone-700 dark:text-stone-300">
+                          {activeArea.name}
+                        </span>
+                        <span className="text-xs font-mono text-stone-400 dark:text-stone-500">
+                          {areaHabits.length}
+                        </span>
+                      </div>
+                      <div
+                        className="h-[3px] mx-4"
+                        style={{ backgroundColor: activeArea.color }}
+                      />
+                    </div>
+                  );
+                }
 
-                return (
-                  <DraggableHabitItem
-                    habit={activeHabit}
-                    areaColor={area?.color}
-                    onEdit={() => {}}
-                  />
-                );
+                return null;
               })()
             : null}
         </DragOverlay>
