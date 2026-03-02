@@ -514,18 +514,14 @@ export const activeCyclePlans$ = observable(() => {
  * Deck moments grouped by area, then by habit
  * Returns structure: { "area-id": { "habit-id": [...moments] } }
  * Used for rendering the cycle deck with stacks
- * Moments are sorted by creation time to maintain stable order
+ * Habits are sorted by habit.order for stable visual ordering
  */
 export const deckMomentsByAreaAndHabit$ = observable(() => {
   const deckMoments = deckMoments$.get();
+  const allHabits = habits$.get();
   const byArea: Record<string, Record<string, Moment[]>> = {};
 
-  // Sort moments by creation time first to ensure stable order
-  const sortedMoments = deckMoments.sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
-
-  for (const moment of sortedMoments) {
+  for (const moment of deckMoments) {
     if (!byArea[moment.areaId]) {
       byArea[moment.areaId] = {};
     }
@@ -538,7 +534,23 @@ export const deckMomentsByAreaAndHabit$ = observable(() => {
     byArea[moment.areaId][habitId].push(moment);
   }
 
-  return byArea;
+  // Sort habit keys within each area by habit.order
+  const sorted: Record<string, Record<string, Moment[]>> = {};
+  for (const areaId of Object.keys(byArea)) {
+    const habitIds = Object.keys(byArea[areaId]);
+    habitIds.sort((a, b) => {
+      const habitA = allHabits[a];
+      const habitB = allHabits[b];
+      return (habitA?.order ?? 999) - (habitB?.order ?? 999);
+    });
+
+    sorted[areaId] = {};
+    for (const habitId of habitIds) {
+      sorted[areaId][habitId] = byArea[areaId][habitId];
+    }
+  }
+
+  return sorted;
 });
 
 // ============================================================================
