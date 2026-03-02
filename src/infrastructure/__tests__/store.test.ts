@@ -8,6 +8,7 @@ import { createHabit } from '@/domain/entities/Habit'
 import {
   moments$,
   areas$,
+  activeCycleId$,
   cycles$,
   habits$,
   phaseConfigs$,
@@ -26,6 +27,7 @@ describe('Store', () => {
     moments$.set({})
     areas$.set({})
     cycles$.set({})
+    activeCycleId$.set(null)
     habits$.set({})
     phaseConfigs$.set({})
   })
@@ -248,12 +250,13 @@ describe('Store', () => {
     })
 
     it('should return the active cycle', () => {
-      const cycle1 = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: false })
-      const cycle2 = createCycle({ name: 'Q2 2025', startDate: '2025-04-01', isActive: true })
+      const cycle1 = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
+      const cycle2 = createCycle({ name: 'Q2 2025', startDate: '2025-04-01' })
       if ('error' in cycle1 || 'error' in cycle2) throw new Error('Cycle creation failed')
 
       cycles$[cycle1.id].set(cycle1)
       cycles$[cycle2.id].set(cycle2)
+      activeCycleId$.set(cycle2.id)
 
       const active = activeCycle$.get()
       expect(active).toBeDefined()
@@ -262,10 +265,11 @@ describe('Store', () => {
     })
 
     it('should return null when no cycle is active', () => {
-      const cycle = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: false })
+      const cycle = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       if ('error' in cycle) throw new Error(cycle.error)
 
       cycles$[cycle.id].set(cycle)
+      // activeCycleId$ is already null from beforeEach
 
       const active = activeCycle$.get()
       expect(active == null).toBe(true)
@@ -325,11 +329,11 @@ describe('Store', () => {
       if ('error' in area) throw new Error(area.error)
       areas$[area.id].set(area)
 
-      // Create cycle that includes today
-      const today = new Date().toISOString().split('T')[0]
-      const cycle = createCycle({ name: 'Test Cycle', startDate: '2025-01-01', endDate: null, isActive: true })
+      // Create cycle and set it as active
+      const cycle = createCycle({ name: 'Test Cycle', startDate: '2025-01-01', endDate: null })
       if ('error' in cycle) throw new Error(cycle.error)
       cycles$[cycle.id].set(cycle)
+      activeCycleId$.set(cycle.id)
 
       // Create two habits with different orders
       const habitA = createHabit({ name: 'Habit A', areaId: area.id, order: 2 })

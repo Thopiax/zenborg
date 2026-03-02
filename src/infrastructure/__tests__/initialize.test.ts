@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import 'fake-indexeddb/auto'
 import { initializeStore, clearStore } from '../state/initialize'
-import { areas$, cycles$, phaseConfigs$ } from '../state/store'
+import { activeCycleId$, areas$, cycles$, phaseConfigs$ } from '../state/store'
 
 describe('Initialize Store', () => {
   beforeEach(() => {
@@ -45,12 +45,14 @@ describe('Initialize Store', () => {
 
       const firstCycle = cycleValues[0]
       expect(firstCycle.name).toBe('First Cycle')
-      expect(firstCycle.isActive).toBe(true)
       expect(firstCycle.endDate).toBeNull()
 
       // Verify start date is today
       const today = new Date().toISOString().split('T')[0]
       expect(firstCycle.startDate).toBe(today)
+
+      // Verify it's set as the active cycle
+      expect(activeCycleId$.get()).toBe(firstCycle.id)
     })
 
     it('should not overwrite existing data on subsequent runs', async () => {
