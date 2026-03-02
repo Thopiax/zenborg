@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface DraggableHabitItemProps {
   habit: Habit;
-  areaColor: string;
+  areaColor?: string;
   onEdit: () => void;
 }
 
@@ -74,13 +74,13 @@ export function DraggableHabitItem({
         <div
           className={cn(
             "flex items-center text-sm font-mono",
-            textColors.primary
+            textColors.primary,
           )}
         >
           <span className={cn("mr-2", "text-lg")}>{habit.emoji}</span>
           <span
             className={cn(
-              "text-lg font-semibold line-clamp-1 flex-shrink-0 flex-grow"
+              "text-lg font-semibold line-clamp-1 flex-shrink-0 flex-grow",
             )}
           >
             {habit.name}
@@ -94,7 +94,7 @@ export function DraggableHabitItem({
                 key={tag}
                 className={cn(
                   "text-xs font-mono opacity-60",
-                  textColors.primary
+                  textColors.primary,
                 )}
               >
                 #{tag}

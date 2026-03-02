@@ -17,104 +17,63 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { observer, use$ } from "@legendapp/state/react";
 import { useState } from "react";
-import {
-  Panel,
-  PanelGroup,
-  PanelResizeHandle,
-} from "react-resizable-panels";
 import { AreaService } from "@/application/services/AreaService";
-import { CycleService } from "@/application/services/CycleService";
 import { HabitService } from "@/application/services/HabitService";
-import { AreaGallery } from "@/components/AreaGallery";
-import { CyclePane } from "@/components/CyclePane";
+import { AreaBoardBuilder } from "@/components/AreaBoardBuilder";
 import { DraggableHabitItem } from "@/components/DraggableHabitItem";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
-import { PaneHeader } from "@/components/PaneHeader";
 import {
   activeAreas$,
   activeHabits$,
   areas$,
 } from "@/infrastructure/state/store";
 
-/**
- * Plant Page - Habit Design & Cycle Planning
- *
- * Layout:
- * - Left: Area gallery (areas with habits)
- * - Right: Cycle planning (cycle tabs + cycle deck)
- *
- * Features:
- * - Drag habits from area gallery to cycle deck to budget them
- * - Reorder areas within the gallery
- */
 const PlantPage = observer(() => {
   const areaService = new AreaService();
-  const cycleService = new CycleService();
   const habitService = new HabitService();
   const areas = use$(activeAreas$);
   const habits = use$(activeHabits$);
 
-  // Track active drag item for overlay
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Custom collision detection - prioritize area drops over habit reordering
+  // Custom collision detection
   const customCollisionDetection = (args: any) => {
     const { active } = args;
     const activeData = active?.data?.current;
 
-    // If dragging a habit (not an area)
     if (activeData?.type === "habit") {
-      // Check if pointer is within an area card (for cross-area drops)
       const pointerCollisions = pointerWithin(args);
       const areaCollisions = pointerCollisions.filter((collision: any) =>
-        collision.id.toString().startsWith("area-")
+        collision.id.toString().startsWith("area-"),
       );
-
-      // If hovering over an area, use that
       if (areaCollisions.length > 0) {
         return areaCollisions;
       }
-
-      // Otherwise, use rect intersection for habit reordering
       return rectIntersection(args);
     }
 
-    // For area reordering or cycle drops, use closest center
     return closestCenter(args);
   };
 
-  // Configure sensors for drag interactions
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 4, // 4px drag threshold
-      },
+      activationConstraint: { distance: 4 },
     }),
     useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 150, // 150ms hold for touch
-        tolerance: 5,
-      },
+      activationConstraint: { delay: 150, tolerance: 5 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
-  // Handle drag start - track active item for overlay
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
 
-  // Handle drag end - supports:
-  // 1. Habit reordering within same area
-  // 2. Habit dragging to different area (changes habit's areaId)
-  // 3. Habit dragging to cycle deck (budgets to cycle)
-  // 4. Area reordering (via SortableContext in AreaGallery)
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveId(null);
     const { active, over } = event;
-
     if (!over) return;
 
     const dragData = active.data.current as {
@@ -125,13 +84,12 @@ const PlantPage = observer(() => {
     const dropData = over.data.current as {
       habitId?: string;
       sourceAreaId?: string;
-      cycleId?: string;
       targetType?: string;
       targetAreaId?: string;
       type?: string;
     };
 
-    // Case 1: Reordering habits within same area
+    // Case 1: Reorder habits within same area
     if (
       dragData?.type === "habit" &&
       dropData?.type === "habit" &&
@@ -141,41 +99,34 @@ const PlantPage = observer(() => {
       const areaId = dragData.sourceAreaId;
       if (!areaId) return;
 
-      // Get habits in this area, sorted by order
       const areaHabits = habits
         .filter((h) => h.areaId === areaId)
         .sort((a, b) => a.order - b.order);
 
       const oldIndex = areaHabits.findIndex((h) => h.id === active.id);
       const newIndex = areaHabits.findIndex((h) => h.id === over.id);
-
       if (oldIndex === -1 || newIndex === -1) return;
 
-      // Reorder habits
       const reordered = arrayMove(areaHabits, oldIndex, newIndex);
-
-      // Update order property for all habits in this area
-      reordered.forEach((habit, index) => {
+      for (const [index, habit] of reordered.entries()) {
         const result = habitService.updateHabit(habit.id, { order: index });
         if ("error" in result) {
           console.error(`Failed to update habit order: ${result.error}`);
         }
-      });
+      }
       return;
     }
 
-    // Case 2: Dragging habit to different area
+    // Case 2: Drag habit to different area
     if (dragData?.type === "habit" && dropData?.targetType === "area") {
       const habitId = dragData.habitId;
       const sourceAreaId = dragData.sourceAreaId;
       const targetAreaId = dropData.targetAreaId;
 
-      // Don't do anything if dropping on same area
       if (habitId && targetAreaId && sourceAreaId !== targetAreaId) {
         const result = habitService.updateHabit(habitId, {
           areaId: targetAreaId,
         });
-
         if ("error" in result) {
           alert(`Failed to move habit: ${result.error}`);
         }
@@ -183,61 +134,29 @@ const PlantPage = observer(() => {
       return;
     }
 
-    // Case 3: Dragging habit to cycle deck
-    if (dragData?.habitId && dropData?.targetType === "cycle-deck") {
-      const habitId = dragData.habitId;
-      const cycleId = dropData.cycleId;
-
-      if (!cycleId) return;
-
-      // Get current cycle plans to find existing budget count
-      const allCyclePlans = cycleService.getAllCyclePlans();
-      const existingPlan = allCyclePlans.find(
-        (plan) => plan.cycleId === cycleId && plan.habitId === habitId
-      );
-
-      const newCount = existingPlan
-        ? (existingPlan as { budgetedCount: number }).budgetedCount + 1
-        : 1;
-
-      // Budget habit to cycle (this will materialize moments)
-      const result = cycleService.budgetHabitToCycle(
-        cycleId,
-        habitId,
-        newCount
-      );
-
-      if ("error" in result) {
-        alert(`Failed to budget habit: ${result.error}`);
-      }
-      return;
-    }
-
-    // Case 4: Area reordering (no type discrimination, just check if both are areas)
-    if (!dragData?.type && !dropData?.targetType) {
-      // This is likely an area reordering operation
+    // Case 3: Area reordering
+    if (
+      dragData?.type === "area" &&
+      (dropData?.type === "area" || !dropData?.type)
+    ) {
       const sortedAreas = [...areas].sort((a, b) => a.order - b.order);
       const oldIndex = sortedAreas.findIndex((area) => area.id === active.id);
       const newIndex = sortedAreas.findIndex((area) => area.id === over.id);
 
       if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
 
-      // Reorder areas
       const reordered = arrayMove(sortedAreas, oldIndex, newIndex);
-
-      // Update order property for all areas
-      reordered.forEach((area, index) => {
+      for (const [index, area] of reordered.entries()) {
         const updated = areaService.updateArea(area.id, { order: index });
         if ("error" in updated) return;
         areas$[area.id].set(updated);
-      });
+      }
       return;
     }
   };
 
   return (
     <>
-      {/* Landscape Prompt - Shows on mobile portrait mode only */}
       <LandscapePrompt />
 
       <DndContext
@@ -246,63 +165,26 @@ const PlantPage = observer(() => {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         autoScroll={{
-          threshold: {
-            x: 0.05, // 5% from horizontal edge (default 0.2) — prevents premature scroll
-            y: 0.05, // 5% from vertical edge — stops Areas panel scrolling during drag
-          },
-          acceleration: 5, // Lower acceleration (default 10) for smoother, less aggressive scroll
+          threshold: { x: 0.05, y: 0.05 },
+          acceleration: 5,
         }}
       >
         <div className="h-dvh bg-background transition-colors">
-          <PanelGroup direction="horizontal" autoSaveId="plant-layout-h">
-            {/* Left Panel: Area Gallery - Resizable */}
-            <Panel defaultSize={45} minSize={25}>
-              <div className="h-full overflow-y-auto">
-                <PaneHeader title="Areas" subtitle="Map out the areas of your life" />
-                <div className="px-6 pb-6">
-                  <AreaGallery />
-                </div>
-              </div>
-            </Panel>
-
-            {/* Resize Handle - Vertical draggable divider */}
-            <PanelResizeHandle className="w-1 bg-stone-300 dark:bg-stone-600 hover:bg-stone-400 dark:hover:bg-stone-500 transition-colors relative group">
-              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-4 flex items-center justify-center">
-                <div className="w-1 h-12 rounded-full bg-stone-400 dark:bg-stone-500 group-hover:bg-stone-500 dark:group-hover:bg-stone-400 transition-colors" />
-              </div>
-            </PanelResizeHandle>
-
-            {/* Right Panel: Cycles - Resizable */}
-            <Panel defaultSize={55} minSize={20}>
-              <div className="h-full overflow-y-auto bg-stone-50 dark:bg-stone-900">
-                <CyclePane />
-              </div>
-            </Panel>
-          </PanelGroup>
+          <AreaBoardBuilder />
         </div>
 
-        {/* Drag Overlay - renders dragged item outside overflow containers */}
         <DragOverlay>
           {activeId
             ? (() => {
-                // Only render overlay for habits (not areas)
                 const activeHabit = habits.find((h) => h.id === activeId);
                 if (!activeHabit) return null;
 
                 const area = areas.find((a) => a.id === activeHabit.areaId);
-                if (!area) {
-                  console.error("Habit area not found:", activeHabit.areaId);
-                  return null;
-                }
-                if (!area.color) {
-                  console.error("Area missing color property:", area);
-                  return null;
-                }
 
                 return (
                   <DraggableHabitItem
                     habit={activeHabit}
-                    areaColor={area.color}
+                    areaColor={area?.color}
                     onEdit={() => {}}
                   />
                 );
