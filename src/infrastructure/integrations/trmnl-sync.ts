@@ -1,19 +1,19 @@
 import { observe } from "@legendapp/state";
 import { formatTodayForTrmnl } from "@/domain/services/TrmnlFormatter";
 import {
+  getRelayPushUrl,
+  isTrmnlConfigured,
+  trmnlSettings$,
+  trmnlSyncStatus$,
+} from "@/infrastructure/state/integration-store";
+import {
   activeCycle$,
   areas$,
   moments$,
   momentsByDayAndPhase$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
-import {
-  getRelayPushUrl,
-  isTrmnlConfigured,
-  trmnlSettings$,
-  trmnlSyncStatus$,
-} from "@/infrastructure/state/integration-store";
-import { pushToTrmnlDirect, pushToRelay } from "./trmnl-client";
+import { pushToRelay, pushToTrmnlDirect } from "./trmnl-client";
 
 // ============================================================================
 // State
@@ -65,14 +65,18 @@ export async function syncTrmnlNow(): Promise<void> {
     areas$.peek(),
     phaseConfigs$.peek(),
     activeCycle$.peek(),
-    today
+    today,
   );
 
-  let result;
+  let result: { success: boolean; error?: string };
   if (settings.publishMode === "direct") {
     result = await pushToTrmnlDirect(settings.webhookUuid, payload);
   } else {
-    result = await pushToRelay(getRelayPushUrl(), settings.relayApiKey, payload);
+    result = await pushToRelay(
+      getRelayPushUrl(),
+      settings.relayApiKey,
+      payload,
+    );
   }
 
   pushTimestamps.push(Date.now());

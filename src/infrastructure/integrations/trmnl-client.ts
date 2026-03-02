@@ -18,7 +18,7 @@ const TRMNL_API_BASE = "https://trmnl.com/api/custom_plugins";
 
 export async function pushToTrmnlDirect(
   uuid: string,
-  payload: TrmnlPayload
+  payload: TrmnlPayload,
 ): Promise<TrmnlPushResult> {
   if (!uuid.trim()) {
     return { success: false, error: "TRMNL webhook UUID is required" };
@@ -32,7 +32,11 @@ export async function pushToTrmnlDirect(
     });
 
     if (response.status === 429) {
-      return { success: false, rateLimited: true, error: "Rate limited by TRMNL" };
+      return {
+        success: false,
+        rateLimited: true,
+        error: "Rate limited by TRMNL",
+      };
     }
 
     if (!response.ok) {
@@ -55,11 +59,18 @@ export async function pushToTrmnlDirect(
 export async function pushToRelay(
   relayUrl: string,
   apiKey: string,
-  payload: TrmnlPayload
+  payload: TrmnlPayload,
 ): Promise<TrmnlPushResult> {
   if (!relayUrl.trim()) {
     return { success: false, error: "Relay URL is required" };
   }
+
+  console.log(
+    "[TRMNL] Pushing to relay at",
+    relayUrl,
+    "with payload:",
+    JSON.stringify(payload, null, 2),
+  );
 
   try {
     const response = await fetch(relayUrl, {
