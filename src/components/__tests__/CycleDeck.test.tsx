@@ -25,6 +25,23 @@ const testArea: Area = {
   updatedAt: new Date().toISOString(),
 };
 
+const testArea2: Area = {
+  ...testArea,
+  id: "area-2",
+  name: "Craft",
+  emoji: "🔵",
+  order: 1,
+};
+
+const testCycle = {
+  id: "cycle-1",
+  name: "Barcelona Summer",
+  startDate: "2026-01-01",
+  endDate: "2026-04-01",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 // Mock dependencies
 vi.mock("@legendapp/state/react", () => ({
   use$: vi.fn(),
@@ -45,13 +62,32 @@ vi.mock("../CycleStarter", () => ({
   ),
 }));
 
+const mockGetCurrentAndFutureCycles = vi.fn(() => [testCycle]);
+const mockGetAreasWithDeckMoments = vi.fn((deckMoments) => {
+  const areasMap: Record<string, Area> = {
+    "area-1": testArea,
+    "area-2": testArea2,
+  };
+  return Object.keys(deckMoments)
+    .map((areaId) => ({
+      area: areasMap[areaId],
+      habits: deckMoments[areaId],
+    }))
+    .filter(({ area }) => Boolean(area))
+    .sort((a, b) => a.area.order - b.area.order);
+});
+const mockUpdateCycle = vi.fn();
+const mockGetDefaultStartDate = vi.fn(() => "2026-04-02");
+const mockPlanCycle = vi.fn(() => ({ id: "new-cycle" }));
+const mockBudgetHabitToCycle = vi.fn();
+
 vi.mock("@/infrastructure/state/store", () => ({
   deckMomentsByAreaAndHabit$: { get: vi.fn(() => ({})) },
   areas$: {
     get: vi.fn(() => ({
       "area-1": testArea,
-      "area-2": { ...testArea, id: "area-2", name: "Craft", emoji: "🔵", order: 1 },
-    }))
+      "area-2": testArea2,
+    })),
   },
   activeCycle$: { get: vi.fn(() => null) },
   habits$: {
@@ -65,19 +101,12 @@ vi.mock("@dnd-kit/core", () => ({
 
 vi.mock("@/application/services/CycleService", () => ({
   CycleService: vi.fn().mockImplementation(() => ({
-    getAreasWithDeckMoments: vi.fn((deckMoments) => {
-      const areasMap = {
-        "area-1": testArea,
-        "area-2": { ...testArea, id: "area-2", name: "Craft", emoji: "🔵", order: 1 },
-      };
-      return Object.keys(deckMoments)
-        .map((areaId) => ({
-          area: areasMap[areaId as keyof typeof areasMap],
-          habits: deckMoments[areaId],
-        }))
-        .filter(({ area }) => Boolean(area))
-        .sort((a, b) => a.area.order - b.area.order);
-    }),
+    getAreasWithDeckMoments: mockGetAreasWithDeckMoments,
+    getCurrentAndFutureCycles: mockGetCurrentAndFutureCycles,
+    updateCycle: mockUpdateCycle,
+    getDefaultStartDate: mockGetDefaultStartDate,
+    planCycle: mockPlanCycle,
+    budgetHabitToCycle: mockBudgetHabitToCycle,
   })),
 }));
 
@@ -89,9 +118,15 @@ vi.mock("@/infrastructure/state/ui-store", () => ({
   cycleDeckCollapsed$: { get: vi.fn(() => false), set: vi.fn(), peek: vi.fn(() => false) },
   cycleDeckEditMode$: { get: vi.fn(() => false), set: vi.fn(), peek: vi.fn(() => false) },
   cycleDeckShowAllHabits$: { get: vi.fn(() => false), set: vi.fn(), peek: vi.fn(() => false) },
+  cycleDeckSelectedCycleId$: { get: vi.fn(() => null), set: vi.fn(), peek: vi.fn(() => null) },
+}));
+
+vi.mock("../CycleFormDialog", () => ({
+  CycleFormDialog: () => <div data-testid="cycle-form-dialog" />,
 }));
 
 import { useValue } from "@legendapp/state/react";
+import { habits$ } from "@/infrastructure/state/store";
 // Import after mocks
 import { CycleDeck } from "../CycleDeck";
 
@@ -117,15 +152,21 @@ const createTestMoment = (overrides: Partial<Moment> = {}): Moment => ({
 describe("CycleDeck", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetCurrentAndFutureCycles.mockReturnValue([testCycle]);
   });
 
-  // Helper: mock the useValue calls CycleDeck makes:
-  // 1. deckMoments (via selector fn)
-  // 2. activeCycle (via selector fn)
-  // 3. cycleDeckCollapsed$ (boolean)
-  // 4. cycleDeckEditMode$ (boolean)
-  // 5. cycleDeckShowAllHabits$ (boolean)
-  // Then CycleDeckColumn calls useValue(habits$) for each column rendered
+  /**
+   * Mock useValue calls with a cycling implementation.
+   *
+   * CycleDeck calls useValue in this order:
+   * 1. deckMoments (via selector fn)
+   * 2. activeCycle (via selector fn)
+   * 3. cycleDeckCollapsed$ (boolean)
+   * 4. cycleDeckEditMode$ (boolean)
+   * 5. cycleDeckShowAllHabits$ (boolean)
+   * 6. cycleDeckSelectedCycleId$ (string | null)
+   * Then child components call useValue(habits$) etc.
+   */
   const mockCycleDeckValues = (
     deckMoments: Record<string, unknown>,
     activeCycle: unknown = null,
@@ -133,23 +174,31 @@ describe("CycleDeck", () => {
     isEditMode = false,
     showAllHabits = false,
     habitsMap: Record<string, unknown> = {},
+    selectedCycleId: string | null = null,
   ) => {
-    mockUseValue
-      .mockReturnValueOnce(deckMoments)
-      .mockReturnValueOnce(activeCycle)
-      .mockReturnValueOnce(isCollapsed)
-      .mockReturnValueOnce(isEditMode)
-      .mockReturnValueOnce(showAllHabits);
-    // Each CycleDeckColumn will call useValue(habits$) once
-    const areaCount = Object.keys(deckMoments).length;
-    for (let i = 0; i < areaCount; i++) {
-      mockUseValue.mockReturnValueOnce(habitsMap);
-    }
+    const values = [
+      deckMoments,
+      activeCycle,
+      isCollapsed,
+      isEditMode,
+      showAllHabits,
+      selectedCycleId,
+    ];
+    let callIndex = 0;
+
+    mockUseValue.mockImplementation(() => {
+      const idx = callIndex % values.length;
+      callIndex++;
+      // For calls beyond the first 6 (child components), return habitsMap
+      if (callIndex > values.length) {
+        return habitsMap;
+      }
+      return values[idx];
+    });
   };
 
   describe("no active cycle", () => {
     it("should render CycleStarter when no active cycle", () => {
-      // All 5 useValue calls happen (hooks called unconditionally), then early return
       mockCycleDeckValues({}, null);
 
       render(<CycleDeck />);
@@ -159,10 +208,10 @@ describe("CycleDeck", () => {
   });
 
   describe("empty state", () => {
-    it("should show empty message when no budgeted moments", () => {
+    it("should show empty message when no budgeted moments in read-only mode", () => {
       mockCycleDeckValues(
         {},
-        { id: "cycle-1", name: "Test", endDate: "2026-04-01" },
+        testCycle,
       );
 
       render(<CycleDeck />);
@@ -175,7 +224,7 @@ describe("CycleDeck", () => {
     it("should show hint to drag habits from library", () => {
       mockCycleDeckValues(
         {},
-        { id: "cycle-1", name: "Test", endDate: "2026-04-01" },
+        testCycle,
       );
 
       render(<CycleDeck />);
@@ -185,8 +234,6 @@ describe("CycleDeck", () => {
   });
 
   describe("with budgeted moments", () => {
-    const testCycle = { id: "cycle-1", name: "Test Cycle", endDate: "2026-04-01" };
-
     it("should render area headers", () => {
       const deckMoments = {
         "area-1": {
@@ -235,7 +282,6 @@ describe("CycleDeck", () => {
 
       render(<CycleDeck />);
 
-      // Both area headers should be present
       expect(screen.getByText("🟢")).toBeInTheDocument();
       expect(screen.getByText("🔵")).toBeInTheDocument();
       expect(screen.getByText("Wellness")).toBeInTheDocument();
@@ -243,28 +289,8 @@ describe("CycleDeck", () => {
     });
   });
 
-  describe("edit mode", () => {
-    it("should show checkmark icon when edit mode is active", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" }), createTestMoment({ id: "2" })],
-        },
-      };
-
-      mockCycleDeckValues(
-        deckMoments,
-        { id: "cycle-1", name: "Test", endDate: "2026-04-01" },
-        false, // not collapsed
-        true,  // editMode ON
-        false, // showAllHabits OFF
-      );
-
-      render(<CycleDeck />);
-
-      expect(screen.getByLabelText("Done editing")).toBeInTheDocument();
-    });
-
-    it("should show pencil icon when edit mode is inactive", () => {
+  describe("arrow navigation", () => {
+    it("should show left and right arrow buttons", () => {
       const deckMoments = {
         "area-1": {
           "habit-1": [createTestMoment({ id: "1" })],
@@ -273,14 +299,230 @@ describe("CycleDeck", () => {
 
       mockCycleDeckValues(
         deckMoments,
-        { id: "cycle-1", name: "Test", endDate: "2026-04-01" },
+        testCycle,
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.getByLabelText("Previous cycle")).toBeInTheDocument();
+      expect(screen.getByLabelText(/Next cycle|Create new cycle/)).toBeInTheDocument();
+    });
+
+    it("should disable left arrow when on first cycle", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
+      );
+
+      render(<CycleDeck />);
+
+      const prevButton = screen.getByLabelText("Previous cycle");
+      expect(prevButton).toBeDisabled();
+    });
+
+    it("should show + icon when on last cycle", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.getByLabelText("Create new cycle")).toBeInTheDocument();
+    });
+
+    it("should not show collapse chevron button", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.queryByLabelText("Collapse cycle deck")).toBeNull();
+    });
+  });
+
+  describe("edit mode", () => {
+    it("should show Done button when edit mode is active", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" }), createTestMoment({ id: "2" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
+        false,
+        true,  // editMode ON
+        false,
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.getByText("Done")).toBeInTheDocument();
+    });
+
+    it("should show Edit button when edit mode is inactive", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
         false,
         false, // editMode OFF
       );
 
       render(<CycleDeck />);
 
-      expect(screen.getByLabelText("Edit cycle deck")).toBeInTheDocument();
+      expect(screen.getByText("Edit")).toBeInTheDocument();
+    });
+
+    it("should hide Edit button when collapsed", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
+        true,  // collapsed
+        false,
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.queryByText("Edit")).toBeNull();
+    });
+  });
+
+  describe("inline cycle header editing", () => {
+    it("should render name as input when edit mode is active", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
+        false, true, false,
+      );
+
+      render(<CycleDeck />);
+
+      const nameInput = screen.getByDisplayValue("Barcelona Summer");
+      expect(nameInput).toBeInTheDocument();
+      expect(nameInput.tagName).toBe("INPUT");
+    });
+
+    it("should render name as plain text when edit mode is off", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
+        false, false, false,
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.getByText(/Barcelona Summer/)).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("Barcelona Summer")).toBeNull();
+    });
+
+    it("should render date inputs when edit mode is active", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
+        false, true, false,
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.getByLabelText("Start date")).toBeInTheDocument();
+      expect(screen.getByLabelText("End date")).toBeInTheDocument();
+    });
+
+    it("should hide arrow navigation during edit mode", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(
+        deckMoments,
+        testCycle,
+        false, true, false,
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.queryByLabelText("Previous cycle")).toBeNull();
+      expect(screen.queryByLabelText(/Next cycle|Create new cycle/)).toBeNull();
+    });
+  });
+
+  describe("empty state in edit mode", () => {
+    it("should show area columns with ghost cards instead of empty message", () => {
+      const habitsData = {
+        "habit-1": { id: "habit-1", name: "Morning Run", areaId: "area-1", isArchived: false, order: 0, emoji: null },
+        "habit-2": { id: "habit-2", name: "Deep Work", areaId: "area-2", isArchived: false, order: 0, emoji: null },
+      };
+
+      (habits$.get as ReturnType<typeof vi.fn>).mockReturnValue(habitsData);
+
+      mockCycleDeckValues(
+        {},           // empty deck
+        testCycle,
+        false,
+        true,         // editMode ON
+        false,
+        habitsData,   // habits for child components
+      );
+
+      render(<CycleDeck />);
+
+      expect(screen.queryByText(/No budgeted moments/)).toBeNull();
+      expect(screen.getByTestId("ghost-card-habit-1")).toBeInTheDocument();
+      expect(screen.getByTestId("ghost-card-habit-2")).toBeInTheDocument();
     });
   });
 });
