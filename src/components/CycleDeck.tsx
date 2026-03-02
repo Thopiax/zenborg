@@ -18,6 +18,7 @@ import {
 import { formatCycleEndDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { columnWidth } from "@/lib/design-tokens";
+import { CycleStarter } from "./CycleStarter";
 import { MomentStack } from "./MomentStack";
 
 /**
@@ -44,11 +45,17 @@ export function CycleDeck() {
 
   // Collapse state — shared with the `p` hotkey in view-commands
   const isCollapsed = useValue(cycleDeckCollapsed$);
-  const toggleCollapsed = () => cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
 
   // Edit mode state
   const isEditMode = useValue(cycleDeckEditMode$);
   const showAllHabits = useValue(cycleDeckShowAllHabits$);
+
+  // No active cycle → show CycleStarter instead
+  if (!activeCycle) {
+    return <CycleStarter />;
+  }
+
+  const toggleCollapsed = () => cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
   const toggleEditMode = () => {
     const next = !cycleDeckEditMode$.peek();
     cycleDeckEditMode$.set(next);

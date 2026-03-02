@@ -4,6 +4,8 @@ import {
   addWeeks,
   endOfMonth,
   endOfQuarter,
+  format,
+  getISOWeek,
   startOfMonth,
   startOfQuarter,
   startOfWeek,
@@ -24,6 +26,27 @@ import type { Cycle } from "@/domain/entities/Cycle";
  */
 
 export type TemplateDuration = "week" | "2-week" | "month" | "quarter";
+
+/**
+ * Generates a human-readable cycle name from a template duration and start date.
+ * Uses ISO week numbers for week-based templates.
+ *
+ * @param template - Template duration
+ * @param startDate - Start date for the cycle
+ * @returns Generated cycle name (e.g., "Week 10", "March 2026", "Q1 2026")
+ */
+export function generateCycleName(template: TemplateDuration, startDate: Date): string {
+  switch (template) {
+    case "week":
+      return `Week ${getISOWeek(startDate)}`;
+    case "2-week":
+      return `Weeks ${getISOWeek(startDate)}\u2013${getISOWeek(addDays(startDate, 13))}`;
+    case "month":
+      return format(startDate, "MMMM yyyy");
+    case "quarter":
+      return `Q${Math.ceil((startDate.getMonth() + 1) / 3)} ${startDate.getFullYear()}`;
+  }
+}
 
 /**
  * Calculates the default start date for a new cycle
