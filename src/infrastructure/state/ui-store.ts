@@ -56,6 +56,13 @@ export const cycleDeckEditMode$ = observable<boolean>(false);
  */
 export const cycleDeckShowAllHabits$ = observable<boolean>(false);
 
+/**
+ * Currently selected cycle ID for the CycleDeck pane
+ * When null, defaults to the active cycle
+ * Ephemeral - not persisted
+ */
+export const cycleDeckSelectedCycleId$ = observable<string | null>(null);
+
 // ============================================================================
 // Focus State (for keyboard navigation)
 // ============================================================================
