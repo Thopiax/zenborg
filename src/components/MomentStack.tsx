@@ -57,6 +57,7 @@ export function MomentStack({
   const showLayers = count > 1;
   // Show badge if count > 1 (visual stack indicator) OR if controls are provided (interaction needed)
   const showBadge = count > 1 || !!(onIncrement || onDecrement);
+  const hasControls = !!(onIncrement || onDecrement || onRemove);
 
   // Setup draggable for the top moment
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -78,8 +79,13 @@ export function MomentStack({
       style={{
         opacity: isDragging ? 0.5 : 1,
         cursor: isDragging ? "grabbing" : "grab",
-        // Add padding to top to accommodate the stack layers above
-        paddingTop: showLayers ? `${behindLayerCount * 4}px` : 0,
+        // Reserve fixed padding when controls present (prevents jitter on count change)
+        // Without controls, use dynamic padding based on actual layers
+        paddingTop: hasControls
+          ? "8px"
+          : showLayers
+            ? `${behindLayerCount * 4}px`
+            : 0,
       }}
     >
       {/* Visual stack layers - rendered behind the top card, centered and scaled */}
@@ -126,7 +132,7 @@ export function MomentStack({
               "absolute -top-2 -right-2 rounded-md bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono font-medium shadow-sm",
               onIncrement || onDecrement || onRemove
                 ? "flex items-center gap-0.5 px-1 py-0.5"
-                : "px-2 py-0.5"
+                : "px-2 py-0.5",
             )}
             style={{ zIndex: behindLayerCount + 2 }}
           >
