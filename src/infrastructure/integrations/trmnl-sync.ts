@@ -8,7 +8,7 @@ import {
 } from "@/infrastructure/state/integration-store";
 import {
   areas$,
-  currentCycle$,
+  activeCycle$,
   moments$,
   momentsByDayAndPhase$,
   phaseConfigs$,
@@ -64,7 +64,7 @@ export async function syncTrmnlNow(): Promise<void> {
     moments$.peek(),
     areas$.peek(),
     phaseConfigs$.peek(),
-    currentCycle$.peek(),
+    activeCycle$.peek(),
     today,
   );
 
@@ -114,7 +114,7 @@ export function startTrmnlSync(): void {
     momentsByDayAndPhase$.get();
     areas$.get();
     phaseConfigs$.get();
-    currentCycle$.get();
+    activeCycle$.get();
 
     // Debounce the push
     if (debounceTimer) {
