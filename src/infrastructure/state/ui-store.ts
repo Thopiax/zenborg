@@ -65,6 +65,20 @@ export const drawingBoardExpanded$ = observable<boolean>(false);
 export const cycleDeckCollapsed$ = observable<boolean>(false);
 
 /**
+ * Cycle deck edit mode
+ * Controls whether count controls and editing features are shown
+ * Ephemeral - not persisted
+ */
+export const cycleDeckEditMode$ = observable<boolean>(false);
+
+/**
+ * Cycle deck "show all habits" toggle
+ * When true, shows ghost cards for unbudgeted habits (only in edit mode)
+ * Ephemeral - not persisted
+ */
+export const cycleDeckShowAllHabits$ = observable<boolean>(false);
+
+/**
  * Drawing board sorting mode
  * - "auto": Moments are sorted by order (primary) and createdAt (secondary)
  * - "manual": Moments are sorted only by user's drag-and-drop reordering
