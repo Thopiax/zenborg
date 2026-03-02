@@ -2,15 +2,19 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { ChevronDown, ChevronUp, Pencil } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Check, ChevronDown, ChevronUp, Eye, EyeOff, Pencil, X } from "lucide-react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import {
   currentCycle$,
   deckMomentsByAreaAndHabit$,
+  habits$,
 } from "@/infrastructure/state/store";
-import { cycleDeckCollapsed$ } from "@/infrastructure/state/ui-store";
+import {
+  cycleDeckCollapsed$,
+  cycleDeckEditMode$,
+  cycleDeckShowAllHabits$,
+} from "@/infrastructure/state/ui-store";
 import { formatCycleEndDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { columnWidth } from "@/lib/design-tokens";
@@ -32,7 +36,6 @@ import { MomentStack } from "./MomentStack";
  * - Grouped by area automatically (no grouping options)
  */
 export function CycleDeck() {
-  const router = useRouter();
   const cycleService = new CycleService();
   const deckMoments = useValue(() => deckMomentsByAreaAndHabit$.get());
 
@@ -42,6 +45,17 @@ export function CycleDeck() {
   // Collapse state — shared with the `p` hotkey in view-commands
   const isCollapsed = useValue(cycleDeckCollapsed$);
   const toggleCollapsed = () => cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
+
+  // Edit mode state
+  const isEditMode = useValue(cycleDeckEditMode$);
+  const showAllHabits = useValue(cycleDeckShowAllHabits$);
+  const toggleEditMode = () => {
+    const next = !cycleDeckEditMode$.peek();
+    cycleDeckEditMode$.set(next);
+    if (!next) {
+      cycleDeckShowAllHabits$.set(false);
+    }
+  };
 
   // Get all budgeted moments for current cycle (using store's computed selector)
   const allDeckMoments = Object.values(deckMoments).flatMap((areaHabits) =>
@@ -70,14 +84,33 @@ export function CycleDeck() {
         {deckTitle}
       </h2>
       <div className="flex items-center gap-1">
+      {isEditMode && (
+        <button
+          type="button"
+          onClick={() => cycleDeckShowAllHabits$.set(!cycleDeckShowAllHabits$.peek())}
+          className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+          title={showAllHabits ? "Hide unbudgeted habits" : "Show all habits"}
+          aria-label={showAllHabits ? "Hide unbudgeted habits" : "Show all habits"}
+        >
+          {showAllHabits ? (
+            <EyeOff className="h-3.5 w-3.5" />
+          ) : (
+            <Eye className="h-3.5 w-3.5" />
+          )}
+        </button>
+      )}
       <button
         type="button"
-        onClick={() => router.push("/plant")}
+        onClick={toggleEditMode}
         className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-        title="Edit cycle plan"
-        aria-label="Edit cycle plan"
+        title={isEditMode ? "Done editing" : "Edit cycle deck"}
+        aria-label={isEditMode ? "Done editing" : "Edit cycle deck"}
       >
-        <Pencil className="h-3.5 w-3.5" />
+        {isEditMode ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : (
+          <Pencil className="h-3.5 w-3.5" />
+        )}
       </button>
       <button
         type="button"
@@ -157,7 +190,14 @@ export function CycleDeck() {
           {/* Horizontal scrollable columns (matching CycleDeckBuilder) */}
           <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
             {areasWithMoments.map(({ area, habits }) => (
-              <CycleDeckColumn key={area.id} area={area} habitMoments={habits} />
+              <CycleDeckColumn
+                key={area.id}
+                area={area}
+                habitMoments={habits}
+                isEditMode={isEditMode}
+                showAllHabits={showAllHabits}
+                cycleId={cycleId!}
+              />
             ))}
           </div>
         </div>
@@ -173,11 +213,38 @@ export function CycleDeck() {
 interface CycleDeckColumnProps {
   area: Area;
   habitMoments: Record<string, any[]>;
+  isEditMode: boolean;
+  showAllHabits: boolean;
+  cycleId: string;
 }
 
-function CycleDeckColumn({ area, habitMoments }: CycleDeckColumnProps) {
-  const habitIds = Object.keys(habitMoments);
-  const totalMoments = habitIds.reduce(
+function CycleDeckColumn({ area, habitMoments, isEditMode, showAllHabits, cycleId }: CycleDeckColumnProps) {
+  const allHabits = useValue(habits$);
+  const cycleService = new CycleService();
+
+  // Get budgeted habit IDs sorted by habit.order
+  const budgetedHabitIds = Object.keys(habitMoments).sort((a, b) => {
+    const habitA = allHabits[a];
+    const habitB = allHabits[b];
+    return (habitA?.order ?? 999) - (habitB?.order ?? 999);
+  });
+
+  // If showAllHabits, include unbudgeted habits for this area
+  const allAreaHabitIds = showAllHabits
+    ? Object.values(allHabits)
+        .filter((h) => h.areaId === area.id && !h.isArchived)
+        .sort((a, b) => a.order - b.order)
+        .map((h) => h.id)
+    : budgetedHabitIds;
+
+  // Merge: all area habits (ordered), with budgeted data where available
+  const habitEntries = allAreaHabitIds.map((habitId) => ({
+    habitId,
+    moments: habitMoments[habitId] || [],
+    isBudgeted: !!habitMoments[habitId],
+  }));
+
+  const totalMoments = budgetedHabitIds.reduce(
     (sum, id) => sum + habitMoments[id].length,
     0
   );
@@ -212,10 +279,111 @@ function CycleDeckColumn({ area, habitMoments }: CycleDeckColumnProps) {
 
       {/* Column Content */}
       <div className="flex flex-col gap-3 p-4 min-h-[300px]">
-        {habitIds.map((habitId) => {
-          const moments = habitMoments[habitId];
+        {habitEntries.map(({ habitId, moments, isBudgeted }) => {
+          if (!isBudgeted) {
+            return (
+              <GhostHabitCard
+                key={habitId}
+                habitId={habitId}
+                area={area}
+                cycleId={cycleId}
+              />
+            );
+          }
+
+          if (isEditMode) {
+            const count = moments.length;
+            const handleIncrement = () => {
+              cycleService.budgetHabitToCycle(cycleId, habitId, count + 1);
+            };
+            const handleDecrement = () => {
+              if (count <= 1) return;
+              cycleService.budgetHabitToCycle(cycleId, habitId, count - 1);
+            };
+            const handleRemove = () => {
+              cycleService.budgetHabitToCycle(cycleId, habitId, 0);
+            };
+
+            return (
+              <MomentStack
+                key={habitId}
+                moments={moments}
+                area={area}
+                onIncrement={handleIncrement}
+                onDecrement={handleDecrement}
+                onRemove={handleRemove}
+              />
+            );
+          }
+
           return <MomentStack key={habitId} moments={moments} area={area} />;
         })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * GhostHabitCard - Dashed card for unbudgeted habits in edit mode
+ */
+interface GhostHabitCardProps {
+  habitId: string;
+  area: Area;
+  cycleId: string;
+}
+
+function GhostHabitCard({ habitId, area, cycleId }: GhostHabitCardProps) {
+  const allHabits = useValue(habits$);
+  const habit = allHabits[habitId];
+  const cycleService = new CycleService();
+
+  if (!habit) return null;
+
+  const handleAdd = () => {
+    cycleService.budgetHabitToCycle(cycleId, habitId, 1);
+  };
+
+  return (
+    <div
+      data-testid={`ghost-card-${habitId}`}
+      className="relative opacity-40 w-full"
+      style={{ paddingTop: "8px" }}
+    >
+      <div className="relative" style={{ zIndex: 1 }}>
+        <div
+          className="rounded-lg border-2 border-dashed p-3 min-h-[64px] flex items-center gap-2"
+          style={{ borderColor: area.color }}
+        >
+          {habit.emoji && (
+            <span className="text-sm">{habit.emoji}</span>
+          )}
+          <span className="text-sm font-mono font-medium text-stone-500 dark:text-stone-400 truncate">
+            {habit.name}
+          </span>
+        </div>
+
+        {/* Badge: [x] x0 [+] */}
+        <div
+          className="absolute -top-2 -right-2 rounded-md bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono font-medium shadow-sm flex items-center gap-0.5 px-1 py-0.5"
+          style={{ zIndex: 2 }}
+        >
+          <button
+            type="button"
+            className="p-0.5 rounded opacity-30 cursor-default"
+            disabled
+          >
+            <X className="h-3 w-3" />
+          </button>
+          <span className="px-1">x0</span>
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="p-0.5 rounded hover:bg-stone-700 dark:hover:bg-stone-300 transition-colors"
+            title="Add to cycle"
+          >
+            <ChevronUp className="h-3 w-3" />
+          </button>
+        </div>
       </div>
     </div>
   );
