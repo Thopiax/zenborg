@@ -39,6 +39,7 @@ import {
 } from "@/infrastructure/state/export-import";
 import { resetStore } from "@/infrastructure/state/initialize";
 import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
+import { isTauri } from "@/lib/tauri-utils";
 import { ConfirmableAction } from "./ConfirmableAction";
 import { TrmnlSettingsSection } from "./TrmnlSettingsSection";
 
@@ -85,8 +86,6 @@ export const SettingsDrawer = observer(function SettingsDrawer({
     downloadAndInstall,
   } = useUpdater(false);
   const [hasChecked, setHasChecked] = useState(false);
-
-  const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
   const handleCheckForUpdate = async () => {
     setHasChecked(false);
@@ -403,7 +402,7 @@ export const SettingsDrawer = observer(function SettingsDrawer({
             </AccordionItem>
 
             {/* PWA Installation Section */}
-            {!isTauri && !isPWA() && (
+            {!isTauri() && !isPWA() && (
               <AccordionItem
                 value="pwa"
                 className="border-stone-200 dark:border-stone-700"
@@ -647,7 +646,7 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                   </div>
 
                   {/* Check for Updates (Tauri only) */}
-                  {isTauri && (
+                  {isTauri() && (
                     <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
                       <div className="space-y-2">
                         <button

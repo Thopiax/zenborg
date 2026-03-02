@@ -200,7 +200,7 @@ describe("TrmnlFormatter", () => {
       expect(result.merge_variables.phase!.moments).toHaveLength(0);
     });
 
-    it("falls back to empty emoji for missing area references", () => {
+    it("falls back to empty emoji and area_name for missing area references", () => {
       const areas: Record<string, Area> = {}; // no areas
       const moments = toRecord([
         createMoment("m-1", "Orphaned", "deleted-area-id", {
@@ -214,6 +214,7 @@ describe("TrmnlFormatter", () => {
       const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
 
       expect(result.merge_variables.phase!.moments[0].emoji).toBe("");
+      expect(result.merge_variables.phase!.moments[0].area_name).toBe("");
     });
 
     it("sorts moments within the current phase by order", () => {
