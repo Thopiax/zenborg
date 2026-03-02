@@ -1,64 +1,62 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 
+const modes = [
+  { name: "Plant", path: "/plant" },
+  { name: "Cultivate", path: "/cultivate" },
+  { name: "Harvest", path: "/harvest" },
+] as const;
+
 /**
- * ModeSelector - Minimal centered text navigation for Plant, Cultivate, Harvest
+ * ModeSelector - Claude-inspired segmented pill control
  *
  * Design:
- * - Ultra-minimal: just text, no backgrounds or borders
- * - Inactive: grey text
- * - Active: bold + underline
- * - Keyboard shortcuts: Cmd+1/2/3
+ * - Segmented control with subtle container background
+ * - Active tab: filled pill with solid background
+ * - Inactive: plain text, hover highlight
+ * - Keyboard shortcuts: Cmd+1/2/3 (handled globally)
  */
 export function ModeSelector() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const modes = [
-    { name: "Plant", path: "/plant" },
-    { name: "Cultivate", path: "/cultivate" },
-    { name: "Harvest", path: "/harvest" },
-  ] as const;
-
   const currentMode = pathname.startsWith("/plan")
     ? "Plant"
     : pathname.startsWith("/harvest")
-    ? "Harvest"
-    : "Cultivate";
+      ? "Harvest"
+      : "Cultivate";
 
   return (
-    <div
+    <nav
       className={cn(
-        "fixed top-0 left-1/2 -translate-x-1/2 z-30",
-        "backdrop-blur-sm rounded-md px-8 py-4"
+        "inline-flex items-center gap-0.5",
+        "rounded-lg bg-stone-100 dark:bg-stone-800 p-0.5"
       )}
-      style={{
-        top: "max(1rem, env(safe-area-inset-top) + 0.5rem)",
-      }}
+      role="tablist"
+      aria-label="Navigation"
     >
-      <div className="flex items-center gap-8">
-        {modes.map((mode) => {
-          const isActive = currentMode === mode.name;
-          return (
-            <button
-              key={mode.path}
-              type="button"
-              onClick={() => router.push(mode.path)}
-              className={cn(
-                "text-sm transition-colors duration-200",
-                isActive
-                  ? "font-bold underline underline-offset-4 text-stone-900 dark  :text-stone-100"
-                  : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-400"
-              )}
-            >
-              {mode.name}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+      {modes.map((mode) => {
+        const isActive = currentMode === mode.name;
+        return (
+          <button
+            key={mode.path}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => router.push(mode.path)}
+            className={cn(
+              "px-3.5 py-1 rounded-md text-sm font-medium transition-all duration-150",
+              isActive
+                ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm"
+                : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300"
+            )}
+          >
+            {mode.name}
+          </button>
+        );
+      })}
+    </nav>
   );
 }
