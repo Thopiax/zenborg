@@ -212,7 +212,7 @@ export function Timeline() {
       <div
         ref={containerRef}
         className={cn(
-          "w-full h-full flex overflow-x-scroll snap-x snap-mandatory scroll-smooth scrollbar-hide",
+          "w-full h-full flex items-center overflow-x-scroll snap-x snap-mandatory scroll-smooth scrollbar-hide",
           // Minimal gap and padding on left/top, safe area padding on right
           "gap-3 md:gap-4 px-2 md:px-4 py-2 md:py-4",
           // Smooth fade-in on load
