@@ -45,9 +45,7 @@ export const trmnlSyncStatus$ = observable<
 // Helpers
 // ============================================================================
 
-export function updateTrmnlSettings(
-  updates: Partial<TrmnlSettings>
-): void {
+export function updateTrmnlSettings(updates: Partial<TrmnlSettings>): void {
   const current = trmnlSettings$.peek();
   trmnlSettings$.set({ ...current, ...updates });
 }
@@ -76,11 +74,8 @@ export function isTrmnlConfigured(): boolean {
 }
 
 /**
- * Returns the relay push URL derived from the current origin
+ * Returns the relay push URL for the Zenborg API
  */
 export function getRelayPushUrl(): string {
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}/api/trmnl/push`;
-  }
-  return "/api/trmnl/push";
+  return "https://zenborg.vercel.app/api/trmnl/push";
 }
