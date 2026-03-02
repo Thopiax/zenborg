@@ -9,6 +9,7 @@ import { observablePersistIndexedDB } from "@legendapp/state/persist-plugins/ind
 import { ObservablePersistLocalStorage } from "@legendapp/state/persist-plugins/local-storage";
 import { configureSynced, syncObservable } from "@legendapp/state/sync";
 import {
+  activeCycleId$,
   areas$,
   crystallizedRoutines$,
   cyclePlans$,
@@ -161,6 +162,15 @@ export function configurePersistence(): void {
       persistLocalStorageOptions({
         persist: {
           name: "zenborg_lastUsedAreaId",
+        },
+      })
+    );
+
+    syncObservable(
+      activeCycleId$,
+      persistLocalStorageOptions({
+        persist: {
+          name: "zenborg_activeCycleId",
         },
       })
     );

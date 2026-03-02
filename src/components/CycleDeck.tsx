@@ -6,7 +6,7 @@ import { Check, ChevronDown, ChevronUp, Eye, EyeOff, Pencil, X } from "lucide-re
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import {
-  currentCycle$,
+  activeCycle$,
   deckMomentsByAreaAndHabit$,
   habits$,
 } from "@/infrastructure/state/store";
@@ -39,8 +39,8 @@ export function CycleDeck() {
   const cycleService = new CycleService();
   const deckMoments = useValue(() => deckMomentsByAreaAndHabit$.get());
 
-  // Get the current cycle (the one containing today's date) - reactive!
-  const currentCycle = useValue(() => currentCycle$.get());
+  // Get the active cycle (via activeCycleId$) - reactive!
+  const activeCycle = useValue(() => activeCycle$.get());
 
   // Collapse state — shared with the `p` hotkey in view-commands
   const isCollapsed = useValue(cycleDeckCollapsed$);
@@ -63,7 +63,7 @@ export function CycleDeck() {
   );
 
   // Setup droppable for the entire deck (to unallocate moments from timeline)
-  const cycleId = currentCycle?.id;
+  const cycleId = activeCycle?.id;
   const { setNodeRef, isOver } = useDroppable({
     id: `cycle-deck-${cycleId || "none"}`,
     data: {
@@ -73,8 +73,8 @@ export function CycleDeck() {
   });
 
   // Get title: cycle name + end date countdown
-  const deckTitle = currentCycle
-    ? `${currentCycle.name} · ${formatCycleEndDate(currentCycle.endDate)}`
+  const deckTitle = activeCycle
+    ? `${activeCycle.name} · ${formatCycleEndDate(activeCycle.endDate)}`
     : "Cycle Deck";
 
   // Shared header with collapse toggle — used by both empty and populated states

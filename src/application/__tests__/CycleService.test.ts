@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { CycleService } from "../services/CycleService";
 import {
+  activeCycleId$,
   cycles$,
   cyclePlans$,
   habits$,
@@ -28,7 +29,6 @@ const makeCycle = (id: string) => ({
   name: `Cycle ${id}`,
   startDate: "2026-01-01",
   endDate: "2026-03-31",
-  isActive: true,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });
@@ -40,9 +40,11 @@ describe("CycleService.budgetHabitToCycle (incremental materialize)", () => {
     moments$.set({});
     cyclePlans$.set({});
     cycles$.set({});
+    activeCycleId$.set(null);
     habits$.set({});
 
     cycles$["cycle-1"].set(makeCycle("cycle-1"));
+    activeCycleId$.set("cycle-1");
     habits$["habit-1"].set(makeHabit("habit-1"));
 
     service = new CycleService();
