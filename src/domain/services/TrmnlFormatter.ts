@@ -10,16 +10,12 @@ import { type PhaseConfig, getCurrentPhase, getPhaseConfig } from "@/domain/valu
 
 export interface TrmnlMomentData {
   readonly name: string;
-  readonly emoji: string;
-  readonly emoji_url: string;
   readonly area_name: string;
 }
 
 export interface TrmnlPhaseData {
   readonly phase: string;
   readonly label: string;
-  readonly emoji: string;
-  readonly emoji_url: string;
   readonly moments: TrmnlMomentData[];
   readonly moment_count: number;
 }
@@ -34,27 +30,6 @@ export interface TrmnlMergeVariables {
 
 export interface TrmnlPayload {
   readonly merge_variables: TrmnlMergeVariables;
-}
-
-// ============================================================================
-// Twemoji
-// ============================================================================
-
-const TWEMOJI_BASE = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg";
-
-function emojiToTwemojiUrl(emoji: string): string {
-  if (!emoji) return "";
-
-  const codepoints = [];
-  for (const char of emoji) {
-    const cp = char.codePointAt(0);
-    if (cp !== undefined && cp !== 0xfe0f) {
-      codepoints.push(cp.toString(16));
-    }
-  }
-
-  if (codepoints.length === 0) return "";
-  return `${TWEMOJI_BASE}/${codepoints.join("-")}.svg`;
 }
 
 // ============================================================================
@@ -102,11 +77,8 @@ export function formatTodayForTrmnl(
   const trmnlMoments: TrmnlMomentData[] = [];
   for (const moment of phaseMoments) {
     const area = areas[moment.areaId];
-    const emoji = moment.emoji || area?.emoji || "";
     trmnlMoments.push({
       name: moment.name,
-      emoji,
-      emoji_url: emojiToTwemojiUrl(emoji),
       area_name: area?.name ?? "",
     });
   }
@@ -119,8 +91,6 @@ export function formatTodayForTrmnl(
       phase: {
         phase: currentPhase,
         label: config?.label ?? currentPhase,
-        emoji: config?.emoji ?? "",
-        emoji_url: emojiToTwemojiUrl(config?.emoji ?? ""),
         moments: trmnlMoments,
         moment_count: trmnlMoments.length,
       },

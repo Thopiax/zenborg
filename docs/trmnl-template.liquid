@@ -8,11 +8,6 @@
             {% for moment in phase.moments %}
               <div class="item item--emphasis-2">
                 <div class="meta"></div>
-                {% if moment.emoji_url != "" %}
-                  <div class="icon">
-                    <img src="{{ moment.emoji_url }}" width="36" height="36" />
-                  </div>
-                {% endif %}
                 <div class="content">
                   <span class="title title--large">{{ moment.name }}</span>
                   {% if moment.area_name != "" %}
@@ -40,7 +35,7 @@
       <img class="image image--logo" src="https://usetrmnl.com/images/plugins/trmnl--render.svg" />
       <span class="title">Zenborg · {{ date_label }}{% if cycle_name != "" %} · {{ cycle_name }}{% endif %}</span>
       {% if phase %}
-        <span class="instance">{{ phase.emoji }} {{ phase.label }}</span>
+        <span class="instance">{{ phase.label }}</span>
       {% endif %}
     </div>
   </div>
