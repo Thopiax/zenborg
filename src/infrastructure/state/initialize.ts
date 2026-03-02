@@ -2,7 +2,7 @@ import { createCycle } from "@/domain/entities/Cycle";
 import { getDefaultPhaseConfigs } from "@/domain/value-objects/Phase";
 import { configurePersistence } from "./persistence";
 import { selectionState$ } from "./selection";
-import { areas$, cycles$, moments$, phaseConfigs$ } from "./store";
+import { activeCycleId$, areas$, cycles$, moments$, phaseConfigs$ } from "./store";
 
 /**
  * Initializes the application state on first run
@@ -63,7 +63,6 @@ export async function initializeStore(): Promise<void> {
       name: "First Cycle",
       startDate: today,
       endDate: null,
-      isActive: true,
     });
 
     if ("error" in firstCycle) {
@@ -75,6 +74,7 @@ export async function initializeStore(): Promise<void> {
     }
 
     cycles$[firstCycle.id].set(firstCycle);
+    activeCycleId$.set(firstCycle.id);
     console.log("[Zenborg] Created first cycle:", firstCycle.name);
   }
 
@@ -94,6 +94,7 @@ export function clearStore(): void {
   moments$.set({});
   areas$.set({});
   cycles$.set({});
+  activeCycleId$.set(null);
   phaseConfigs$.set({});
   selectionState$.set({
     editingMomentId: null,

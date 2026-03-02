@@ -9,7 +9,6 @@ export interface Cycle {
   name: string;
   startDate: string; // ISO date: "2025-01-15"
   endDate: string | null; // null for ongoing cycles
-  isActive: boolean; // only one active at a time
   createdAt: string;
   updatedAt: string;
 }
@@ -21,7 +20,6 @@ export interface CreateCycleProps {
   name: string;
   startDate: string;
   endDate?: string | null;
-  isActive?: boolean;
 }
 
 /**
@@ -31,7 +29,6 @@ export interface UpdateCycleProps {
   name?: string;
   startDate?: string;
   endDate?: string | null;
-  isActive?: boolean;
 }
 
 /**
@@ -83,7 +80,6 @@ export function createCycle(props: CreateCycleProps): CycleResult {
     name: trimmedName,
     startDate: props.startDate,
     endDate,
-    isActive: props.isActive ?? false,
     createdAt: now,
     updatedAt: now,
   };
@@ -135,35 +131,6 @@ export function updateCycle(cycle: Cycle, props: UpdateCycleProps): CycleResult 
 }
 
 /**
- * Marks a cycle as active
- * Note: Application logic should ensure only one cycle is active at a time
- *
- * @param cycle - Cycle to activate
- * @returns Updated cycle
- */
-export function activateCycle(cycle: Cycle): Cycle {
-  return {
-    ...cycle,
-    isActive: true,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-/**
- * Marks a cycle as inactive
- *
- * @param cycle - Cycle to deactivate
- * @returns Updated cycle
- */
-export function deactivateCycle(cycle: Cycle): Cycle {
-  return {
-    ...cycle,
-    isActive: false,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-/**
  * Completes a cycle by setting its end date to today
  *
  * @param cycle - Cycle to complete
@@ -175,7 +142,6 @@ export function completeCycle(cycle: Cycle): Cycle {
   return {
     ...cycle,
     endDate: today,
-    isActive: false,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -213,16 +179,6 @@ export function isCycleError(result: CycleResult): result is { error: string } {
 // ============================================================================
 // Cycle Helpers
 // ============================================================================
-
-/**
- * Gets the currently active cycle from a collection
- *
- * @param cycles - Record of all cycles
- * @returns Active cycle or null if none is active
- */
-export function getActiveCycle(cycles: Record<string, Cycle>): Cycle | null {
-  return Object.values(cycles).find((c) => c.isActive) ?? null;
-}
 
 /**
  * Calculates the total bandwidth (available moment slots) for a cycle

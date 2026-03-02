@@ -2,8 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   createCycle,
   updateCycle,
-  activateCycle,
-  deactivateCycle,
   completeCycle,
   isDateInCycle,
   isCycleError
@@ -20,7 +18,6 @@ describe('Cycle', () => {
         expect(result.name).toBe('Q1 2025')
         expect(result.startDate).toBe('2025-01-01')
         expect(result.endDate).toBeNull()
-        expect(result.isActive).toBe(false)
         expect(result.createdAt).toBeDefined()
         expect(result.updatedAt).toBeDefined()
       }
@@ -33,15 +30,6 @@ describe('Cycle', () => {
       if (!isCycleError(result)) {
         expect(result.startDate).toBe('2025-01-01')
         expect(result.endDate).toBe('2025-03-31')
-      }
-    })
-
-    it('should create active cycle', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: true })
-
-      expect(isCycleError(result)).toBe(false)
-      if (!isCycleError(result)) {
-        expect(result.isActive).toBe(true)
       }
     })
 
@@ -164,20 +152,6 @@ describe('Cycle', () => {
       }
     })
 
-    it('should update isActive', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
-
-      if (!isCycleError(result)) {
-        const updated = updateCycle(result, { isActive: true })
-
-        expect(isCycleError(updated)).toBe(false)
-        if (!isCycleError(updated)) {
-          expect(updated.isActive).toBe(true)
-        }
-      }
-    })
-
     it('should update multiple fields at once', () => {
       const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
@@ -186,14 +160,12 @@ describe('Cycle', () => {
         const updated = updateCycle(result, {
           name: 'First Quarter',
           endDate: '2025-03-31',
-          isActive: true
         })
 
         expect(isCycleError(updated)).toBe(false)
         if (!isCycleError(updated)) {
           expect(updated.name).toBe('First Quarter')
           expect(updated.endDate).toBe('2025-03-31')
-          expect(updated.isActive).toBe(true)
         }
       }
     })
@@ -269,35 +241,9 @@ describe('Cycle', () => {
     })
   })
 
-  describe('activateCycle', () => {
-    it('should activate a cycle', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
-
-      if (!isCycleError(result)) {
-        const activated = activateCycle(result)
-        expect(activated.isActive).toBe(true)
-        expect(activated.updatedAt).toBeDefined()
-      }
-    })
-  })
-
-  describe('deactivateCycle', () => {
-    it('should deactivate a cycle', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: true })
-      expect(isCycleError(result)).toBe(false)
-
-      if (!isCycleError(result)) {
-        const deactivated = deactivateCycle(result)
-        expect(deactivated.isActive).toBe(false)
-        expect(deactivated.updatedAt).toBeDefined()
-      }
-    })
-  })
-
   describe('completeCycle', () => {
     it('should complete a cycle by setting end date to today', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', isActive: true })
+      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
       expect(isCycleError(result)).toBe(false)
 
       if (!isCycleError(result)) {
@@ -305,7 +251,6 @@ describe('Cycle', () => {
         const today = new Date().toISOString().split('T')[0]
 
         expect(completed.endDate).toBe(today)
-        expect(completed.isActive).toBe(false)
         expect(completed.updatedAt).toBeDefined()
       }
     })

@@ -11,7 +11,7 @@ import type { Phase } from "@/domain/value-objects/Phase";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
 import { useSelection } from "@/hooks/useSelection";
-import { moments$ } from "@/infrastructure/state/store";
+import { activeCycle$, moments$ } from "@/infrastructure/state/store";
 import { momentFormState$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +59,10 @@ export default function CultivatePage() {
   const allMoments = useValue(moments$);
   useGlobalSelection(Object.keys(allMoments));
 
+  // Check for active cycle (status-based, not date-based)
+  const activeCycle = useValue(activeCycle$);
+
+
   // Selection management
   const { clearSelection, hasAnySelected } = useSelection();
 
@@ -103,7 +107,7 @@ export default function CultivatePage() {
 
           {/* Cycle Deck */}
           <div className="flex-shrink-0">
-            <CycleDeck />
+            {activeCycle && <CycleDeck />}
           </div>
         </main>
 
