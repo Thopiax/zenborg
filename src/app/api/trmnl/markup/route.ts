@@ -8,13 +8,13 @@ export const runtime = "edge";
 
 interface TrmnlMoment {
   name: string;
-  emoji: string;
+  emoji_url: string;
   area_name: string;
 }
 
 interface TrmnlPhase {
   label: string;
-  emoji: string;
+  emoji_url: string;
   moments: TrmnlMoment[];
   moment_count: number;
 }
@@ -25,26 +25,7 @@ interface TrmnlMergeVariables {
   phase: TrmnlPhase | null;
 }
 
-const TWEMOJI_BASE =
-  "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg";
-
-function emojiToTwemojiUrl(emoji: string): string | null {
-  if (!emoji) return null;
-
-  const codepoints = [];
-  for (const char of emoji) {
-    const cp = char.codePointAt(0);
-    if (cp !== undefined && cp !== 0xfe0f) {
-      codepoints.push(cp.toString(16));
-    }
-  }
-
-  if (codepoints.length === 0) return null;
-  return `${TWEMOJI_BASE}/${codepoints.join("-")}.svg`;
-}
-
-function renderEmojiImg(emoji: string, size = 32): string {
-  const url = emojiToTwemojiUrl(emoji);
+function renderEmojiImg(url: string, size = 32): string {
   if (!url) return "";
   return `<img src="${url}" width="${size}" height="${size}" style="vertical-align:middle;display:inline-block;" />`;
 }
@@ -54,7 +35,7 @@ function renderMomentItem(m: TrmnlMoment): string {
     ? `<span class="description">${m.area_name}</span>`
     : "";
 
-  const emojiImg = renderEmojiImg(m.emoji, 36);
+  const emojiImg = renderEmojiImg(m.emoji_url, 36);
   const icon = emojiImg ? `<div class="icon">${emojiImg}</div>` : "";
 
   return `<div class="item item--emphasis-2">
@@ -69,7 +50,7 @@ function renderMomentItem(m: TrmnlMoment): string {
 
 function renderMarkup(vars: TrmnlMergeVariables): string {
   const cycleSuffix = vars.cycle_name ? ` &middot; ${vars.cycle_name}` : "";
-  const phaseEmoji = vars.phase ? renderEmojiImg(vars.phase.emoji, 20) : "";
+  const phaseEmoji = vars.phase ? renderEmojiImg(vars.phase.emoji_url, 20) : "";
   const phaseLabel = vars.phase ? `${phaseEmoji} ${vars.phase.label}` : "";
 
   let bodyHtml = "";
@@ -99,7 +80,7 @@ function renderMarkup(vars: TrmnlMergeVariables): string {
     <div class="flex flex--col flex--center-x flex--center-y stretch">${bodyHtml}</div>
   </div>
   <div class="title_bar">
-    <img class="image" src="/images/plugins/trmnl--render.svg" />
+    <img class="image" src="https://usetrmnl.com/images/plugins/trmnl--render.svg" />
     <span class="title">Zenborg &middot; ${vars.date_label}${cycleSuffix}</span>
     <span class="instance">${phaseLabel}</span>
   </div>
