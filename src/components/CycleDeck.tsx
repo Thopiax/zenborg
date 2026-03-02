@@ -26,7 +26,7 @@ import { MomentStack } from "./MomentStack";
  * Features:
  * - Displays budgeted moments grouped by area → habit
  * - Renders MomentStack components for each habit
- * - Replaces DrawingBoard when active cycle exists
+ * - Shows budgeted moments for the active cycle
  * - Collapsible with chevron toggle and `p` hotkey
  * - Read-only (no toolbar) - focus on execution
  *
