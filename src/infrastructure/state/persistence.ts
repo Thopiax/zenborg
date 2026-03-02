@@ -19,7 +19,7 @@ import {
   phaseConfigs$,
 } from "./store";
 import { trmnlSettings$ } from "./integration-store";
-import { drawingBoardGroupBy$, lastUsedAreaId$ } from "./ui-store";
+import { lastUsedAreaId$ } from "./ui-store";
 
 /**
  * Flag to ensure persistence is only configured once
@@ -161,15 +161,6 @@ export function configurePersistence(): void {
       persistLocalStorageOptions({
         persist: {
           name: "zenborg_lastUsedAreaId",
-        },
-      })
-    );
-
-    syncObservable(
-      drawingBoardGroupBy$,
-      persistLocalStorageOptions({
-        persist: {
-          name: "zenborg_drawingBoardGroupBy",
         },
       })
     );

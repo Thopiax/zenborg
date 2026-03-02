@@ -36,31 +36,9 @@ export const lastUsedAreaId$ = observable<string | null>(null);
 export const isDuplicateMode$ = observable<boolean>(false);
 
 /**
- * Grouping mode for drawing board
- * Determines how unallocated moments are organized
- * Persisted to localStorage
- */
-export type DrawingBoardGroupBy =
-  | "none"
-  | "area"
-  | "created"
-  | "attitude"
-  | "phase"
-  | "tag";
-
-export const drawingBoardGroupBy$ = observable<DrawingBoardGroupBy>("area");
-
-/**
- * Drawing board expanded state
- * Controls whether the drawing board is visible (expanded) or collapsed at bottom
- * Ephemeral - not persisted
- */
-export const drawingBoardExpanded$ = observable<boolean>(false);
-
-/**
  * Cycle deck collapsed state
  * Controls whether the CycleDeck panel is visible or collapsed (header only)
- * Ephemeral - not persisted (mirrors drawingBoardExpanded$ pattern)
+ * Ephemeral - not persisted
  */
 export const cycleDeckCollapsed$ = observable<boolean>(false);
 
@@ -77,16 +55,6 @@ export const cycleDeckEditMode$ = observable<boolean>(false);
  * Ephemeral - not persisted
  */
 export const cycleDeckShowAllHabits$ = observable<boolean>(false);
-
-/**
- * Drawing board sorting mode
- * - "auto": Moments are sorted by order (primary) and createdAt (secondary)
- * - "manual": Moments are sorted only by user's drag-and-drop reordering
- * Persisted to localStorage
- */
-export type DrawingBoardSortMode = "auto" | "manual";
-
-export const drawingBoardSortMode$ = observable<DrawingBoardSortMode>("auto");
 
 // ============================================================================
 // Focus State (for keyboard navigation)
@@ -368,78 +336,6 @@ export function closeArchiveAreaDialog() {
     areaName: null,
   });
 }
-
-/**
- * Sorting mode conflict dialog state
- * Shown when user tries to manually reorder moments while in auto-sort mode
- * Ephemeral - not persisted
- */
-export interface SortModeConflictDialogState {
-  open: boolean;
-  pendingReorder: {
-    activeId: string;
-    overId: string;
-    columnId?: string;
-  } | null;
-}
-
-export const sortModeConflictDialogState$ =
-  observable<SortModeConflictDialogState>({
-    open: false,
-    pendingReorder: null,
-  });
-
-/**
- * Helper function to open sort mode conflict dialog
- */
-export function openSortModeConflictDialog(
-  activeId: string,
-  overId: string,
-  columnId?: string
-) {
-  sortModeConflictDialogState$.set({
-    open: true,
-    pendingReorder: {
-      activeId,
-      overId,
-      columnId,
-    },
-  });
-}
-
-/**
- * Helper function to close sort mode conflict dialog
- */
-export function closeSortModeConflictDialog() {
-  sortModeConflictDialogState$.set({
-    open: false,
-    pendingReorder: null,
-  });
-}
-
-/**
- * Helper function to switch to manual sort mode and apply pending reorder
- */
-export function switchToManualSort() {
-  drawingBoardSortMode$.set("manual");
-  closeSortModeConflictDialog();
-}
-
-// ============================================================================
-// Future UI State (examples for when needed)
-// ============================================================================
-
-/**
- * Compass view visibility
- * Ephemeral - not persisted
- */
-// export const isCompassVisible$ = observable<boolean>(false);
-
-/**
- * Drawing board collapsed state (mobile)
- * Could be persisted to localStorage if desired
- */
-// export const isDrawingBoardCollapsed$ = observable<boolean>(false);
 
 /**
  * Command Palette visibility

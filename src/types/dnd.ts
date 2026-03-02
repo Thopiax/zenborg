@@ -9,15 +9,13 @@ import type { Phase } from "@/domain/value-objects/Phase";
 /**
  * Source location types for draggable moments
  */
-export type DragSourceType = "timeline" | "drawing-board" | "cycle-deck";
+export type DragSourceType = "timeline" | "cycle-deck";
 
 /**
  * Target location types for droppable zones
  */
 export type DropTargetType =
   | "timeline-cell"
-  | "drawing-board"
-  | "drawing-board-column"
   | "cycle-deck";
 
 /**
@@ -26,9 +24,9 @@ export type DropTargetType =
 export interface DraggableData {
   momentId: string;
   sourceType: DragSourceType;
-  sourceDay?: string; // ISO date, undefined if from drawing board
-  sourcePhase?: Phase; // undefined if from drawing board
-  sourceOrder?: number; // 0-2, undefined if from drawing board
+  sourceDay?: string; // ISO date, undefined if from cycle deck
+  sourcePhase?: Phase; // undefined if from cycle deck
+  sourceOrder?: number; // 0-2, undefined if from cycle deck
 }
 
 /**
@@ -38,8 +36,6 @@ export interface DroppableData {
   targetType: DropTargetType;
   targetDay?: string; // ISO date for timeline cells
   targetPhase?: Phase; // Phase for timeline cells
-  columnId?: string; // Column ID for drawing board columns
-  groupBy?: string; // Grouping mode (area, created, urgency)
   cycleId?: string; // Cycle ID for cycle deck
 }
 
