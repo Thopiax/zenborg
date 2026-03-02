@@ -39,7 +39,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col h-full",
+          "flex flex-col",
           // Minimal padding
           "scroll-ml-2 md:scroll-ml-6",
           "gap-1.5 px-2 py-2 md:px-4 md:py-4",
@@ -74,7 +74,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
         </div>
 
         {/* Phase Sections - Horizontal Flow */}
-        <div className="flex gap-1.5 md:gap-2 flex-1 overflow-x-auto scrollbar-hide h-full">
+        <div className="flex gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide">
           {visiblePhases.map((phaseConfig, index) => {
             return (
               <div
@@ -82,7 +82,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
                 className={cn("flex flex-col", columnWidth.scrollableClassName)}
               >
                 {/* Phase Cell - Height based on 3 cards (64px each) + 2 gaps (12px each) + padding */}
-                <div className="flex-1 p-0.5 md:p-1 h-full">
+                <div className="p-0.5 md:p-1">
                   <TimelineCell
                     day={day}
                     phase={phaseConfig.phase}
@@ -184,7 +184,7 @@ export function Timeline() {
   const activeDayIndex = timelineDays.findIndex((d) => d.isActiveDay);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full overflow-hidden">
       {/* Back to Today indicator - shown when expanded beyond default range */}
       {isExpanded && (
         <button
@@ -212,7 +212,7 @@ export function Timeline() {
       <div
         ref={containerRef}
         className={cn(
-          "w-full h-full flex overflow-x-scroll snap-x snap-mandatory scroll-smooth scrollbar-hide",
+          "w-full h-full flex items-center overflow-x-scroll snap-x snap-mandatory scroll-smooth scrollbar-hide",
           // Minimal gap and padding on left/top, safe area padding on right
           "gap-3 md:gap-4 px-2 md:px-4 py-2 md:py-4",
           // Smooth fade-in on load
