@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, EyeOff, Pencil, Plus } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
@@ -17,7 +17,6 @@ import {
   cycleDeckCollapsed$,
   cycleDeckEditMode$,
   cycleDeckSelectedCycleId$,
-  cycleDeckShowAllHabits$,
 } from "@/infrastructure/state/ui-store";
 import { formatCycleSubtitle } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -52,7 +51,6 @@ export function CycleDeck() {
 
   // Edit mode state
   const isEditMode = useValue(cycleDeckEditMode$);
-  const showAllHabits = useValue(cycleDeckShowAllHabits$);
   const selectedCycleId = useValue(cycleDeckSelectedCycleId$);
 
   const toggleCollapsed = () =>
@@ -62,9 +60,6 @@ export function CycleDeck() {
     if (isCollapsed) return;
     const next = !cycleDeckEditMode$.peek();
     cycleDeckEditMode$.set(next);
-    if (!next) {
-      cycleDeckShowAllHabits$.set(false);
-    }
   };
 
   // Arrow navigation through cycles
@@ -244,18 +239,6 @@ export function CycleDeck() {
       <div className="flex items-center gap-1 flex-shrink-0">
         {!isCollapsed && (
           <>
-            {isEditMode && (
-              <button
-                type="button"
-                onClick={() =>
-                  cycleDeckShowAllHabits$.set(!cycleDeckShowAllHabits$.peek())
-                }
-                className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                title={showAllHabits ? "Hide unbudgeted habits" : "Show all habits"}
-              >
-                {showAllHabits ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              </button>
-            )}
             <button
               type="button"
               onClick={toggleEditMode}
@@ -290,7 +273,7 @@ export function CycleDeck() {
           area={area}
           habitMoments={habits}
           isEditMode={isEditMode}
-          showAllHabits={showAllHabits}
+          showAllHabits={isEditMode}
           cycleId={cycleId ?? ""}
         />
       ))}

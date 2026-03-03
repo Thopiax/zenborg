@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
+import { useMemo } from "react";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
@@ -40,6 +41,8 @@ interface TimelineCellProps {
   phaseLabel?: string; // "Morning", "Afternoon", etc.
   phaseIndex?: number; // Phase row index for alternating greyscale tints (0, 1, 2)
 }
+
+export const MAX_MOMENTS_PER_CELL = 3; // Enforce max 3 moments per cell at the UI level
 
 /**
  * TimelineCell - Grid cell that holds 0-3 moments
@@ -79,7 +82,7 @@ export function TimelineCell({
     .filter((m) => m.day === day && m.phase === phase)
     .sort((a, b) => a.order - b.order);
 
-  const isFull = cellMoments.length >= 3;
+  const isFull = cellMoments.length >= MAX_MOMENTS_PER_CELL;
 
   // Droppable configuration
   const { setNodeRef, isOver } = useDroppable({
@@ -92,7 +95,7 @@ export function TimelineCell({
   });
 
   // Check if current drop would be valid
-  const wouldAcceptDrop = !isFull; // Simple check for now, validation happens in DnDProvider
+  const wouldAcceptDrop = !isFull;
 
   // Handle empty cell click - always opens modal
   const handleEmptyCellClick = () => {
@@ -110,7 +113,7 @@ export function TimelineCell({
           dayLabel,
           phaseLabel,
           cellMoments.length,
-          momentConstraints.maxMomentsPerCell
+          momentConstraints.maxMomentsPerCell,
         )
       : `${day} ${phase}, ${cellMoments.length} of ${momentConstraints.maxMomentsPerCell} moments`;
 
@@ -133,7 +136,7 @@ export function TimelineCell({
         isOver &&
           wouldAcceptDrop &&
           "ring-2 ring-slate-400 dark:ring-slate-300",
-        isOver && !wouldAcceptDrop && "ring-2 ring-red-400 dark:ring-red-500"
+        isOver && !wouldAcceptDrop && "ring-2 ring-red-400 dark:ring-red-500",
       )}
       data-cell={`${day}-${phase}`}
       aria-label={cellLabel}
@@ -148,44 +151,47 @@ export function TimelineCell({
         />
       </div>
 
-      <div className="flex-1 flex flex-col justify-start relative z-10">
-        {cellMoments.length > 0 ? (
-          <>
-            <SortableContext
-              items={cellMoments.map((m) => m.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="flex flex-col" style={{ gap: momentCard.gap }}>
-                {cellMoments.map((moment) => {
-                  // Get area from the extracted values (use$ already unwrapped it)
-                  const area = allAreas[moment.areaId];
-                  if (!area) return null;
+      {cellMoments.length > 0 && (
+        <div className="flex-1 flex flex-col justify-start relative z-10">
+          <SortableContext
+            items={cellMoments.map((m) => m.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col" style={{ gap: momentCard.gap }}>
+              {cellMoments.map((moment) => {
+                // Get area from the extracted values (use$ already unwrapped it)
+                const area = allAreas[moment.areaId];
+                if (!area) return null;
 
-                  return (
-                    <SortableMomentCard
-                      key={moment.id}
-                      moment={moment}
-                      area={area}
-                      contextMomentIds={cellMoments.map((m) => m.id)}
-                    />
-                  );
-                })}
-              </div>
-            </SortableContext>
-            {!isFull && (
-              <button
-                type="button"
-                onClick={handleEmptyCellClick}
-                className="flex-1 flex items-center justify-center min-h-[48px] rounded-md cursor-pointer group"
-                aria-label={`add moment to ${phaseLabel || phase}`}
-              >
-                <span className="text-slate-800 dark:text-slate-100 text-2xl opacity-0 group-hover:opacity-50 transition-opacity">
-                  +
-                </span>
-              </button>
-            )}
-          </>
-        ) : (
+                return (
+                  <SortableMomentCard
+                    key={moment.id}
+                    moment={moment}
+                    area={area}
+                    contextMomentIds={cellMoments.map((m) => m.id)}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+          {!isFull && (
+            <button
+              type="button"
+              onClick={handleEmptyCellClick}
+              className="flex-1 flex items-center justify-center min-h-[48px] rounded-md cursor-pointer group"
+              aria-label={`add moment to ${phaseLabel || phase}`}
+            >
+              <span className="text-slate-800 dark:text-slate-100 text-2xl opacity-0 group-hover:opacity-50 transition-opacity">
+                +
+              </span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Empty state - only show when no moments */}
+      {cellMoments.length === 0 && (
+        <div className="flex-1 flex items-center justify-center relative z-10">
           <button
             type="button"
             onClick={handleEmptyCellClick}
@@ -196,8 +202,8 @@ export function TimelineCell({
               +
             </span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

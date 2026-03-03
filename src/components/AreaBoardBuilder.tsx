@@ -11,6 +11,7 @@ import type { Area, UpdateAreaProps } from "@/domain/entities/Area";
 import type { CreateHabitProps, UpdateHabitProps } from "@/domain/entities/Habit";
 import { activeAreas$, activeHabits$ } from "@/infrastructure/state/store";
 import {
+  closeHabitForm,
   habitFormState$,
   openHabitFormCreate,
   openHabitFormEdit,
@@ -108,6 +109,7 @@ export const AreaBoardBuilder = observer(() => {
     if ("error" in result) {
       alert(`Failed to archive habit: ${result.error}`);
     }
+    closeHabitForm();
   };
 
   return (
