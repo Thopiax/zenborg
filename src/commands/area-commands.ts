@@ -1,7 +1,4 @@
-import { Command } from "./types";
-import { areas$ } from "@/infrastructure/state/store";
-import { createArea } from "@/domain/entities/Area";
-import { isAreaManagementOpen$ } from "@/infrastructure/state/ui-store";
+import type { Command } from "./types";
 
 /**
  * Area management commands
@@ -20,17 +17,7 @@ export const areaCommands: Command[] = [
       // Open area management modal with create mode
       // This requires state refactor - for now log
       console.log("[Command] Create new area");
-    }
-  },
-  {
-    id: "area.manage",
-    label: "Manage Areas",
-    shortcut: "shift+e",
-    category: "Areas",
-    keywords: ["edit", "organize", "settings"],
-    action: () => {
-      isAreaManagementOpen$.set(true);
-    }
+    },
   },
   {
     id: "area.quick.1",
@@ -41,7 +28,7 @@ export const areaCommands: Command[] = [
     action: () => {
       // Only works when area selector is open
       console.log("[Command] Quick select area 1");
-    }
+    },
   },
   {
     id: "area.quick.2",
@@ -51,7 +38,7 @@ export const areaCommands: Command[] = [
     keywords: ["quick", "select"],
     action: () => {
       console.log("[Command] Quick select area 2");
-    }
+    },
   },
   {
     id: "area.quick.3",
@@ -61,7 +48,7 @@ export const areaCommands: Command[] = [
     keywords: ["quick", "select"],
     action: () => {
       console.log("[Command] Quick select area 3");
-    }
+    },
   },
   {
     id: "area.quick.4",
@@ -71,7 +58,7 @@ export const areaCommands: Command[] = [
     keywords: ["quick", "select"],
     action: () => {
       console.log("[Command] Quick select area 4");
-    }
+    },
   },
   {
     id: "area.quick.5",
@@ -81,6 +68,6 @@ export const areaCommands: Command[] = [
     keywords: ["quick", "select"],
     action: () => {
       console.log("[Command] Quick select area 5");
-    }
+    },
   },
 ];

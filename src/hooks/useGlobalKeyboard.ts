@@ -13,7 +13,6 @@ import type { Phase } from "@/domain/value-objects/Phase";
 import { moments$ } from "@/infrastructure/state/store";
 import {
   closeMomentForm,
-  isAreaManagementOpen$,
   momentFormState$,
 } from "@/infrastructure/state/ui-store";
 import { useFocusManager } from "./useFocusManager";
@@ -38,10 +37,7 @@ export function useGlobalKeyboard() {
 
   const globalShortcutsEnabled = useSelector(
     () =>
-      !momentFormState$.open.get() &&
-      !isAreaSelectorOpen &&
-      !isAreaManagementOpen$.get() &&
-      !isSettingsOpen
+      !momentFormState$.open.get() && !isAreaSelectorOpen && !isSettingsOpen,
   );
 
   // Register all commands from registry
@@ -50,7 +46,7 @@ export function useGlobalKeyboard() {
     (e, handler) => {
       e.preventDefault();
       const command = allCommands.find(
-        (cmd) => cmd.shortcut === handler.keys?.join("+")
+        (cmd) => cmd.shortcut === handler.keys?.join("+"),
       );
       if (command) {
         command.action();
@@ -60,7 +56,7 @@ export function useGlobalKeyboard() {
       enabled: globalShortcutsEnabled,
       enableOnFormTags: false,
     },
-    [allCommands]
+    [allCommands],
   );
 
   useHotkeys(
@@ -72,7 +68,7 @@ export function useGlobalKeyboard() {
     {
       enabled: globalShortcutsEnabled,
       enableOnFormTags: false,
-    }
+    },
   );
 
   useHotkeys(
@@ -84,7 +80,7 @@ export function useGlobalKeyboard() {
     {
       enabled: globalShortcutsEnabled,
       enableOnFormTags: false,
-    }
+    },
   );
 
   useHotkeys(
@@ -96,7 +92,7 @@ export function useGlobalKeyboard() {
     {
       enabled: globalShortcutsEnabled,
       enableOnFormTags: false,
-    }
+    },
   );
 
   // ==================== HELPER FUNCTIONS ====================
@@ -114,7 +110,7 @@ export function useGlobalKeyboard() {
     createMore?: boolean,
     emoji?: string | null,
     tags?: string[],
-    customMetric?: CustomMetric
+    customMetric?: CustomMetric,
   ) => {
     // Get prefilled allocation from UI state
     const uiAllocation = momentFormState$.prefilledAllocation.peek();
@@ -158,7 +154,7 @@ export function useGlobalKeyboard() {
     day?: string,
     phase?: string,
     areaId?: string,
-    attitude?: string
+    attitude?: string,
   ) => {
     const { openMomentFormCreate } = require("@/infrastructure/state/ui-store");
     openMomentFormCreate({
@@ -176,7 +172,7 @@ export function useGlobalKeyboard() {
     phase: Phase | null,
     emoji?: string | null,
     tags?: string[],
-    customMetric?: CustomMetric
+    customMetric?: CustomMetric,
   ) => {
     const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {
