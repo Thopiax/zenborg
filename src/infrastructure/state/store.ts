@@ -7,6 +7,7 @@ import type { Habit } from "@/domain/entities/Habit";
 import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
+import { cycleDeckSelectedCycleId$ } from "./ui-store";
 
 /**
  * Core application state stored as observables
@@ -156,6 +157,19 @@ export const activeCycle$ = observable(() => {
   const id = activeCycleId$.get();
   if (!id) return null;
   return cycles$[id]?.get() ?? null;
+});
+
+/**
+ * The effective cycle for the deck view.
+ * Uses the user-selected cycle (via arrow navigation) if set,
+ * otherwise falls back to the active cycle.
+ */
+export const effectiveDeckCycle$ = observable(() => {
+  const selectedId = cycleDeckSelectedCycleId$.get();
+  if (selectedId) {
+    return cycles$[selectedId]?.get() ?? null;
+  }
+  return activeCycle$.get();
 });
 
 /**
@@ -457,11 +471,11 @@ export const metricLogsByMoment$ = observable(() => {
 /**
  * Moments in the cycle deck (unallocated but budgeted)
  * These are moments created from cycle plans that haven't been allocated yet
- * Filtered by current cycle (the one containing today)
+ * Filtered by the effective deck cycle (selected or active)
  */
 export const deckMoments$ = observable(() => {
   const moments = moments$.get();
-  const cycle = activeCycle$.get();
+  const cycle = effectiveDeckCycle$.get();
 
   if (!cycle) return [];
 
