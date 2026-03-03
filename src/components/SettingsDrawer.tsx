@@ -47,7 +47,6 @@ interface SettingsDrawerProps {
   open: boolean;
   onClose: () => void;
   onOpenPhaseSettings: () => void;
-  onOpenAreaManagement: () => void;
 }
 
 /**
@@ -61,7 +60,6 @@ export const SettingsDrawer = observer(function SettingsDrawer({
   open,
   onClose,
   onOpenPhaseSettings,
-  onOpenAreaManagement,
 }: SettingsDrawerProps) {
   const [importMessage, setImportMessage] = useState<{
     type: "success" | "error";
@@ -202,24 +200,6 @@ export const SettingsDrawer = observer(function SettingsDrawer({
 
         <div className="flex-1 overflow-y-auto p-4">
           <Accordion type="single" collapsible className="space-y-2">
-            {/* Areas Section (Link Button) */}
-            <AccordionItem
-              value="areas"
-              className="border-stone-200 dark:border-stone-700"
-            >
-              <button
-                onClick={onOpenAreaManagement}
-                className="flex w-full items-center justify-between px-2 py-4 text-left text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
-                type="button"
-              >
-                <div className="flex items-center gap-2">
-                  <Settings2 className="w-4 h-4" />
-                  <span>Areas</span>
-                </div>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </AccordionItem>
-
             {/* Phase Settings Section (Link Button) */}
             <AccordionItem
               value="phases"

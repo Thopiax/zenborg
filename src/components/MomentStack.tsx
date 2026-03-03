@@ -135,6 +135,8 @@ export function MomentStack({
                 : "px-2 py-0.5",
             )}
             style={{ zIndex: behindLayerCount + 2 }}
+            // Stop pointer events from reaching the draggable parent so buttons work
+            onPointerDown={(e) => e.stopPropagation()}
           >
             {/* Left button: X when count=1, chevron down when count>1 */}
             {count === 1 && onRemove ? (

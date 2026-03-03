@@ -270,7 +270,14 @@ export function openHabitFormCreate(params?: {
  */
 export function openHabitFormEdit(
   habitId: string,
-  habit: { name: string; areaId: string; emoji: string | null; attitude: Attitude | null; phase: Phase | null; tags: string[] }
+  habit: {
+    name: string;
+    areaId: string;
+    emoji: string | null;
+    attitude: Attitude | null;
+    phase: Phase | null;
+    tags: string[];
+  },
 ) {
   habitFormState$.set({
     open: true,
@@ -374,16 +381,3 @@ export const commandPaletteState$ = observable<CommandPaletteState>({
 export function resetCommandPaletteState() {
   commandPaletteState$.set({ page: "root", selectedEntity: null });
 }
-
-/**
- * Area Management Modal visibility
- * Moved from LayoutClient local state so CommandPalette can trigger it
- * Ephemeral - not persisted
- */
-export const isAreaManagementOpen$ = observable<boolean>(false);
-
-/**
- * Area Management Modal focus area ID
- * Used to scroll to / highlight a specific area when opening management
- */
-export const areaManagementFocusId$ = observable<string | undefined>(undefined);

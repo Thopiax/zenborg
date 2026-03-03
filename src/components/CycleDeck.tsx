@@ -2,10 +2,11 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { ChevronLeft, ChevronRight, ChevronUp, Plus, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Eye, EyeOff, Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
+import type { Moment } from "@/domain/entities/Moment";
 import {
   activeCycle$,
   areas$,
@@ -18,12 +19,11 @@ import {
   cycleDeckSelectedCycleId$,
   cycleDeckShowAllHabits$,
 } from "@/infrastructure/state/ui-store";
-import { formatCycleEndDate } from "@/lib/dates";
+import { formatCycleSubtitle } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { columnWidth } from "@/lib/design-tokens";
+import { CycleDeckColumn } from "./CycleDeckColumn";
 import { CycleFormDialog } from "./CycleFormDialog";
 import { CycleStarter } from "./CycleStarter";
-import { MomentStack } from "./MomentStack";
 
 /**
  * CycleDeck - Container for budgeted moments during active cycle
@@ -55,12 +55,9 @@ export function CycleDeck() {
   const showAllHabits = useValue(cycleDeckShowAllHabits$);
   const selectedCycleId = useValue(cycleDeckSelectedCycleId$);
 
-  // No active cycle → show CycleStarter instead
-  if (!activeCycle) {
-    return <CycleStarter />;
-  }
+  const toggleCollapsed = () =>
+    cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
 
-  const toggleCollapsed = () => cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
   const toggleEditMode = () => {
     if (isCollapsed) return;
     const next = !cycleDeckEditMode$.peek();
@@ -73,8 +70,11 @@ export function CycleDeck() {
   // Arrow navigation through cycles
   const cyclesList = cycleService.getCurrentAndFutureCycles();
   const effectiveCycleId = selectedCycleId || activeCycle?.id || null;
-  const effectiveCycle = cyclesList.find((c) => c.id === effectiveCycleId) || null;
-  const currentIndex = effectiveCycle ? cyclesList.findIndex((c) => c.id === effectiveCycle.id) : -1;
+  const effectiveCycle =
+    cyclesList.find((c) => c.id === effectiveCycleId) || null;
+  const currentIndex = effectiveCycle
+    ? cyclesList.findIndex((c) => c.id === effectiveCycle.id)
+    : -1;
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < cyclesList.length - 1;
@@ -95,16 +95,41 @@ export function CycleDeck() {
 
   // Inline editing state for cycle name and dates
   const [editName, setEditName] = useState(effectiveCycle?.name || "");
-  const [editStartDate, setEditStartDate] = useState(effectiveCycle?.startDate || "");
+  const [editStartDate, setEditStartDate] = useState(
+    effectiveCycle?.startDate || "",
+  );
   const [editEndDate, setEditEndDate] = useState(effectiveCycle?.endDate || "");
 
+  // Sync inline edit state when navigating to a different cycle
+  const effectiveCycleName = effectiveCycle?.name;
+  const effectiveCycleStartDate = effectiveCycle?.startDate;
+  const effectiveCycleEndDate = effectiveCycle?.endDate;
+
   useEffect(() => {
-    if (effectiveCycle) {
-      setEditName(effectiveCycle.name);
-      setEditStartDate(effectiveCycle.startDate);
-      setEditEndDate(effectiveCycle.endDate || "");
+    if (effectiveCycleName !== undefined) {
+      setEditName(effectiveCycleName);
     }
-  }, [effectiveCycle?.name, effectiveCycle?.startDate, effectiveCycle?.endDate]);
+    if (effectiveCycleStartDate !== undefined) {
+      setEditStartDate(effectiveCycleStartDate);
+    }
+    setEditEndDate(effectiveCycleEndDate || "");
+  }, [effectiveCycleName, effectiveCycleStartDate, effectiveCycleEndDate]);
+
+  // Setup droppable for the entire deck (to unallocate moments from timeline)
+  // Must be called unconditionally before any early returns to satisfy React hooks rules
+  const cycleId = effectiveCycle?.id;
+  const { setNodeRef, isOver } = useDroppable({
+    id: `cycle-deck-${cycleId || "none"}`,
+    data: {
+      cycleId,
+      targetType: "cycle-deck",
+    },
+  });
+
+  // No active cycle → show CycleStarter instead
+  if (!activeCycle) {
+    return <CycleStarter />;
+  }
 
   const handleNameBlur = () => {
     if (!effectiveCycleId || editName.trim() === effectiveCycle?.name) return;
@@ -121,33 +146,25 @@ export function CycleDeck() {
 
   // Get all budgeted moments for current cycle (using store's computed selector)
   const allDeckMoments = Object.values(deckMoments).flatMap((areaHabits) =>
-    Object.values(areaHabits).flat()
+    Object.values(areaHabits).flat(),
   );
 
-  // Setup droppable for the entire deck (to unallocate moments from timeline)
-  const cycleId = effectiveCycle?.id;
-  const { setNodeRef, isOver } = useDroppable({
-    id: `cycle-deck-${cycleId || "none"}`,
-    data: {
-      cycleId,
-      targetType: "cycle-deck",
-    },
-  });
+  // Subtitle for view mode
+  const isEffectiveCycleActive = effectiveCycle?.id === activeCycle?.id;
+  const deckSubtitle = effectiveCycle
+    ? formatCycleSubtitle(
+        effectiveCycle.startDate,
+        effectiveCycle.endDate,
+        isEffectiveCycleActive,
+      )
+    : "";
 
-  // Title for view mode
-  const deckTitle = effectiveCycle
-    ? `${effectiveCycle.name} · ${formatCycleEndDate(effectiveCycle.endDate)}`
-    : "Cycle Deck";
-
-  // Header with arrow navigation and labeled buttons
+  // Header with arrow navigation and action buttons
   const header = (
-    <div
-      className="px-6 py-3 border-b border-stone-200 dark:border-stone-700 flex items-center justify-between cursor-default select-none"
-      onDoubleClick={toggleCollapsed}
-    >
+    <div className="px-6 py-2.5 border-b border-stone-200 dark:border-stone-700 flex items-center justify-between cursor-default select-none">
       {/* Left side: arrow nav or inline editing */}
       <div className="flex items-center gap-2 min-w-0">
-        {isEditMode ? (
+        {isEditMode && !isCollapsed ? (
           /* Edit mode: name input + date inputs */
           <div className="flex items-center gap-3 min-w-0">
             <input
@@ -155,7 +172,9 @@ export function CycleDeck() {
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onBlur={handleNameBlur}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
               className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold bg-transparent border-b border-stone-300 dark:border-stone-600 focus:border-stone-500 outline-none px-0 py-0 min-w-0"
               aria-label="Cycle name"
             />
@@ -180,64 +199,90 @@ export function CycleDeck() {
             </div>
           </div>
         ) : (
-          /* View mode: ← name · countdown → */
+          /* View mode: ← [name + subtitle] → */
           <>
-            <button
-              type="button"
-              onClick={goToPrev}
-              disabled={!hasPrev}
-              className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 disabled:opacity-30 disabled:cursor-default transition-colors"
-              aria-label="Previous cycle"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold truncate">
-              {deckTitle}
-            </h2>
-            <button
-              type="button"
-              onClick={goToNext}
-              className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-              aria-label={hasNext ? "Next cycle" : "Create new cycle"}
-            >
-              {hasNext ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <Plus className="h-4 w-4" />
+            {!isCollapsed && (
+              <button
+                type="button"
+                onClick={goToPrev}
+                disabled={!hasPrev}
+                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 disabled:opacity-30 disabled:cursor-default transition-colors"
+                aria-label="Previous cycle"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+            <div className="min-w-0">
+              <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold truncate leading-tight">
+                {effectiveCycle?.name ?? "Cycle Deck"}
+              </h2>
+              {deckSubtitle && (
+                <p className="text-xs font-mono text-stone-500 dark:text-stone-400 truncate leading-tight">
+                  {deckSubtitle}
+                </p>
               )}
-            </button>
+            </div>
+            {!isCollapsed && (
+              <button
+                type="button"
+                onClick={goToNext}
+                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                aria-label={hasNext ? "Next cycle" : "Create new cycle"}
+              >
+                {hasNext ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+              </button>
+            )}
           </>
         )}
       </div>
 
-      {/* Right side: labeled text buttons */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      {/* Right side: action icon buttons */}
+      <div className="flex items-center gap-1 flex-shrink-0">
         {!isCollapsed && (
           <>
             {isEditMode && (
               <button
                 type="button"
-                onClick={() => cycleDeckShowAllHabits$.set(!cycleDeckShowAllHabits$.peek())}
-                className="text-xs font-mono text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
+                onClick={() =>
+                  cycleDeckShowAllHabits$.set(!cycleDeckShowAllHabits$.peek())
+                }
+                className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                title={showAllHabits ? "Hide unbudgeted habits" : "Show all habits"}
               >
-                {showAllHabits ? "Hide All" : "Show All"}
+                {showAllHabits ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </button>
             )}
             <button
               type="button"
               onClick={toggleEditMode}
-              className="text-xs font-mono text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
+              className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+              title={isEditMode ? "Done editing" : "Edit cycle deck"}
             >
-              {isEditMode ? "Done" : "Edit"}
+              {isEditMode ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
             </button>
           </>
         )}
+        {/* Collapse/expand toggle — always visible */}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+          title={isCollapsed ? "Expand cycle deck" : "Collapse cycle deck"}
+        >
+          {isCollapsed ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
       </div>
     </div>
   );
 
   // Helper to render area columns content
-  const renderColumns = (areasWithMoments: { area: Area; habits: Record<string, any[]> }[]) => (
+  const renderColumns = (
+    areasWithMoments: { area: Area; habits: Record<string, Moment[]> }[],
+  ) => (
     <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
       {areasWithMoments.map(({ area, habits }) => (
         <CycleDeckColumn
@@ -246,7 +291,7 @@ export function CycleDeck() {
           habitMoments={habits}
           isEditMode={isEditMode}
           showAllHabits={showAllHabits}
-          cycleId={cycleId!}
+          cycleId={cycleId ?? ""}
         />
       ))}
     </div>
@@ -260,7 +305,7 @@ export function CycleDeck() {
     const areaIdsWithHabits = new Set(
       Object.values(allHabitsMap)
         .filter((h) => !h.isArchived)
-        .map((h) => h.areaId)
+        .map((h) => h.areaId),
     );
 
     const areasToShow = Object.values(allAreasMap)
@@ -278,7 +323,7 @@ export function CycleDeck() {
               habitMoments={{}}
               isEditMode={true}
               showAllHabits={true}
-              cycleId={effectiveCycleId!}
+              cycleId={effectiveCycleId ?? ""}
             />
           ))}
         </div>
@@ -288,7 +333,12 @@ export function CycleDeck() {
           initialStartDate={cycleService.getDefaultStartDate()}
           onClose={() => setCreateDialogOpen(false)}
           onSave={(name, templateDuration, startDate, endDate) => {
-            const result = cycleService.planCycle(name, templateDuration, startDate, endDate ?? undefined);
+            const result = cycleService.planCycle(
+              name,
+              templateDuration,
+              startDate,
+              endDate ?? undefined,
+            );
             if (!("error" in result)) {
               cycleDeckSelectedCycleId$.set(result.id);
             }
@@ -311,7 +361,7 @@ export function CycleDeck() {
               "p-8 min-h-[200px] flex flex-col items-center justify-center gap-3 border-2 border-dashed mx-6 my-4 rounded-lg transition-colors",
               isOver
                 ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
-                : "border-stone-300 dark:border-stone-600"
+                : "border-stone-300 dark:border-stone-600",
             )}
           >
             <p className="text-stone-400 text-sm font-mono text-center">
@@ -328,7 +378,12 @@ export function CycleDeck() {
           initialStartDate={cycleService.getDefaultStartDate()}
           onClose={() => setCreateDialogOpen(false)}
           onSave={(name, templateDuration, startDate, endDate) => {
-            const result = cycleService.planCycle(name, templateDuration, startDate, endDate ?? undefined);
+            const result = cycleService.planCycle(
+              name,
+              templateDuration,
+              startDate,
+              endDate ?? undefined,
+            );
             if (!("error" in result)) {
               cycleDeckSelectedCycleId$.set(result.id);
             }
@@ -352,7 +407,7 @@ export function CycleDeck() {
           ref={setNodeRef}
           className={cn(
             "relative transition-colors",
-            isOver && "bg-stone-100/50 dark:bg-stone-800/50"
+            isOver && "bg-stone-100/50 dark:bg-stone-800/50",
           )}
         >
           {/* Drop indicator when dragging over */}
@@ -381,7 +436,12 @@ export function CycleDeck() {
         initialStartDate={cycleService.getDefaultStartDate()}
         onClose={() => setCreateDialogOpen(false)}
         onSave={(name, templateDuration, startDate, endDate) => {
-          const result = cycleService.planCycle(name, templateDuration, startDate, endDate ?? undefined);
+          const result = cycleService.planCycle(
+            name,
+            templateDuration,
+            startDate,
+            endDate ?? undefined,
+          );
           if (!("error" in result)) {
             cycleDeckSelectedCycleId$.set(result.id);
           }
@@ -392,185 +452,3 @@ export function CycleDeck() {
   );
 }
 
-/**
- * CycleDeckColumn - Single vertical column for an area
- * Matches the design from CycleDeckBuilder for consistency
- */
-interface CycleDeckColumnProps {
-  area: Area;
-  habitMoments: Record<string, any[]>;
-  isEditMode: boolean;
-  showAllHabits: boolean;
-  cycleId: string;
-}
-
-function CycleDeckColumn({ area, habitMoments, isEditMode, showAllHabits, cycleId }: CycleDeckColumnProps) {
-  const allHabits = useValue(habits$);
-  const cycleService = new CycleService();
-
-  // Get budgeted habit IDs sorted by habit.order
-  const budgetedHabitIds = Object.keys(habitMoments).sort((a, b) => {
-    const habitA = allHabits[a];
-    const habitB = allHabits[b];
-    return (habitA?.order ?? 999) - (habitB?.order ?? 999);
-  });
-
-  // If showAllHabits, include unbudgeted habits for this area
-  const allAreaHabitIds = showAllHabits
-    ? Object.values(allHabits)
-        .filter((h) => h.areaId === area.id && !h.isArchived)
-        .sort((a, b) => a.order - b.order)
-        .map((h) => h.id)
-    : budgetedHabitIds;
-
-  // Merge: all area habits (ordered), with budgeted data where available
-  const habitEntries = allAreaHabitIds.map((habitId) => ({
-    habitId,
-    moments: habitMoments[habitId] || [],
-    isBudgeted: !!habitMoments[habitId],
-  }));
-
-  const totalMoments = budgetedHabitIds.reduce(
-    (sum, id) => sum + habitMoments[id].length,
-    0
-  );
-
-  return (
-    <div
-      className={cn(
-        "flex flex-col snap-start rounded-lg",
-        columnWidth.scrollableClassName
-      )}
-    >
-      {/* Column Header */}
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="text-base" aria-hidden="true">
-            {area.emoji}
-          </span>
-          <h3 className="text-sm font-mono font-medium text-stone-700 dark:text-stone-300">
-            {area.name}
-          </h3>
-          <span className="text-xs font-mono text-stone-400 dark:text-stone-500">
-            {totalMoments}
-          </span>
-        </div>
-      </div>
-
-      {/* Colored Divider */}
-      <div
-        className="h-[3px] mx-4 mb-2"
-        style={{ backgroundColor: area.color }}
-      />
-
-      {/* Column Content */}
-      <div className="flex flex-col gap-3 p-4 min-h-[300px]">
-        {habitEntries.map(({ habitId, moments, isBudgeted }) => {
-          if (!isBudgeted) {
-            return (
-              <GhostHabitCard
-                key={habitId}
-                habitId={habitId}
-                area={area}
-                cycleId={cycleId}
-              />
-            );
-          }
-
-          if (isEditMode) {
-            const count = moments.length;
-            const handleIncrement = () => {
-              cycleService.budgetHabitToCycle(cycleId, habitId, count + 1);
-            };
-            const handleDecrement = () => {
-              if (count <= 1) return;
-              cycleService.budgetHabitToCycle(cycleId, habitId, count - 1);
-            };
-            const handleRemove = () => {
-              cycleService.budgetHabitToCycle(cycleId, habitId, 0);
-            };
-
-            return (
-              <MomentStack
-                key={habitId}
-                moments={moments}
-                area={area}
-                onIncrement={handleIncrement}
-                onDecrement={handleDecrement}
-                onRemove={handleRemove}
-              />
-            );
-          }
-
-          return <MomentStack key={habitId} moments={moments} area={area} />;
-        })}
-      </div>
-    </div>
-  );
-}
-
-/**
- * GhostHabitCard - Dashed card for unbudgeted habits in edit mode
- */
-interface GhostHabitCardProps {
-  habitId: string;
-  area: Area;
-  cycleId: string;
-}
-
-function GhostHabitCard({ habitId, area, cycleId }: GhostHabitCardProps) {
-  const allHabits = useValue(habits$);
-  const habit = allHabits[habitId];
-  const cycleService = new CycleService();
-
-  if (!habit) return null;
-
-  const handleAdd = () => {
-    cycleService.budgetHabitToCycle(cycleId, habitId, 1);
-  };
-
-  return (
-    <div
-      data-testid={`ghost-card-${habitId}`}
-      className="relative opacity-40 w-full"
-      style={{ paddingTop: "8px" }}
-    >
-      <div className="relative" style={{ zIndex: 1 }}>
-        <div
-          className="rounded-lg border-2 border-dashed p-3 min-h-[64px] flex items-center gap-2"
-          style={{ borderColor: area.color }}
-        >
-          {habit.emoji && (
-            <span className="text-sm">{habit.emoji}</span>
-          )}
-          <span className="text-sm font-mono font-medium text-stone-500 dark:text-stone-400 truncate">
-            {habit.name}
-          </span>
-        </div>
-
-        {/* Badge: [x] x0 [+] */}
-        <div
-          className="absolute -top-2 -right-2 rounded-md bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono font-medium shadow-sm flex items-center gap-0.5 px-1 py-0.5"
-          style={{ zIndex: 2 }}
-        >
-          <button
-            type="button"
-            className="p-0.5 rounded opacity-30 cursor-default"
-            disabled
-          >
-            <X className="h-3 w-3" />
-          </button>
-          <span className="px-1">x0</span>
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="p-0.5 rounded hover:bg-stone-700 dark:hover:bg-stone-300 transition-colors"
-            title="Add to cycle"
-          >
-            <ChevronUp className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
