@@ -25,8 +25,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { validateMomentName } from "@/domain/entities/Moment";
 import type { Habit } from "@/domain/entities/Habit";
+import { validateMomentName } from "@/domain/entities/Moment";
 import type { CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
@@ -57,7 +57,7 @@ interface MomentFormDialogProps {
     createMore?: boolean,
     emoji?: string | null,
     tags?: string[],
-    customMetric?: CustomMetric
+    customMetric?: CustomMetric,
   ) => void;
   /** For edit mode: called when user confirms deletion */
   onDelete?: () => void;
@@ -230,7 +230,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       e.preventDefault();
       setIsAreaSelectorOpen(true);
     },
-    { enabled: formHotkeysEnabled && open }
+    { enabled: formHotkeysEnabled && open },
   );
 
   // P - open phase selector
@@ -240,7 +240,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       e.preventDefault();
       setIsPhaseSelectorOpen(true);
     },
-    { enabled: formHotkeysEnabled && open }
+    { enabled: formHotkeysEnabled && open },
   );
 
   // Get focusable elements in order
@@ -259,12 +259,12 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       e.preventDefault();
       const focusable = getFocusableElements();
       const currentIndex = focusable.findIndex(
-        (el) => el === document.activeElement
+        (el) => el === document.activeElement,
       );
       const nextIndex = (currentIndex + 1) % focusable.length;
       focusable[nextIndex]?.focus();
     },
-    { enabled: formHotkeysEnabled && open, enableOnFormTags: true }
+    { enabled: formHotkeysEnabled && open, enableOnFormTags: true },
   );
 
   // Shift+Tab to cycle backwards
@@ -274,13 +274,13 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       e.preventDefault();
       const focusable = getFocusableElements();
       const currentIndex = focusable.findIndex(
-        (el) => el === document.activeElement
+        (el) => el === document.activeElement,
       );
       const prevIndex =
         currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1;
       focusable[prevIndex]?.focus();
     },
-    { enabled: formHotkeysEnabled && open, enableOnFormTags: true }
+    { enabled: formHotkeysEnabled && open, enableOnFormTags: true },
   );
 
   // Down arrow to move to next field
@@ -290,12 +290,12 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       e.preventDefault();
       const focusable = getFocusableElements();
       const currentIndex = focusable.findIndex(
-        (el) => el === document.activeElement
+        (el) => el === document.activeElement,
       );
       const nextIndex = (currentIndex + 1) % focusable.length;
       focusable[nextIndex]?.focus();
     },
-    { enabled: formHotkeysEnabled && open, enableOnFormTags: true }
+    { enabled: formHotkeysEnabled && open, enableOnFormTags: true },
   );
 
   // Up arrow to move to previous field
@@ -305,13 +305,13 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       e.preventDefault();
       const focusable = getFocusableElements();
       const currentIndex = focusable.findIndex(
-        (el) => el === document.activeElement
+        (el) => el === document.activeElement,
       );
       const prevIndex =
         currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1;
       focusable[prevIndex]?.focus();
     },
-    { enabled: formHotkeysEnabled && open, enableOnFormTags: true }
+    { enabled: formHotkeysEnabled && open, enableOnFormTags: true },
   );
 
   // Enter to save
@@ -321,12 +321,13 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       e.preventDefault();
       handleSave();
     },
-    { enableOnFormTags: true, enabled: formHotkeysEnabled && open }
+    { enableOnFormTags: true, enabled: formHotkeysEnabled && open },
   );
 
   const handleSave = () => {
     // Extract any remaining tags and get fresh values (not stale React state)
-    const { name: cleanName, tags: finalTags } = taggedField.extractRemainingTags();
+    const { name: cleanName, tags: finalTags } =
+      taggedField.extractRemainingTags();
 
     const validation = validateMomentName(cleanName);
     const selectedArea =
@@ -352,7 +353,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         shouldCreateMore,
         emoji,
         finalTags,
-        customMetric
+        customMetric,
       );
 
       // If "Create more" is enabled, reset form immediately
@@ -378,7 +379,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
   // Use useSelector to reactively get the selected area
   const selectedArea = useSelector(() =>
-    selectedAreaId ? areas$[selectedAreaId].get() : undefined
+    selectedAreaId ? areas$[selectedAreaId].get() : undefined,
   );
 
   // Validate name (remove tags for validation)
@@ -431,14 +432,16 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
               open={showHabitAutocomplete}
               searchValue={taggedField.displayValue}
               onSelectHabit={handleSelectHabit}
-              onCreateStandalone={() => setShowHabitAutocomplete(false)}
               onClose={() => setShowHabitAutocomplete(false)}
               collisionBoundary={dialogRef.current}
               maxSuggestions={5}
               trigger={
                 <div className="flex items-baseline gap-3">
                   {/* Emoji Picker */}
-                  <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+                  <Popover
+                    open={emojiPickerOpen}
+                    onOpenChange={setEmojiPickerOpen}
+                  >
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -639,7 +642,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all",
                 showDeleteConfirm
                   ? "bg-red-500 dark:bg-red-600 text-white hover:bg-red-600 dark:hover:bg-red-700"
-                  : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
+                  : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800",
               )}
             >
               <Trash2 className="w-4 h-4" />
@@ -659,7 +662,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
               "px-5 py-2 rounded-lg font-medium transition-all text-white",
               canSave
                 ? "hover:opacity-90 active:scale-95"
-                : "bg-stone-300 dark:bg-stone-700 text-stone-500 dark:text-stone-400 cursor-not-allowed"
+                : "bg-stone-300 dark:bg-stone-700 text-stone-500 dark:text-stone-400 cursor-not-allowed",
             )}
             style={
               canSave && selectedArea

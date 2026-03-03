@@ -1,9 +1,8 @@
 "use client";
 
-import React from "react";
 import { use$ } from "@legendapp/state/react";
 import Fuse from "fuse.js";
-import { Plus, Sparkles } from "lucide-react";
+import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Popover,
@@ -11,14 +10,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { Habit } from "@/domain/entities/Habit";
-import { habits$, areas$ } from "@/infrastructure/state/store";
+import { areas$, habits$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 
 interface HabitAutocompleteInlineProps {
   open: boolean;
   searchValue: string;
   onSelectHabit: (habit: Habit) => void;
-  onCreateStandalone: (name: string) => void;
   onClose: () => void;
   /** The anchor element (positioned at input field) */
   trigger: React.ReactNode;
@@ -48,7 +46,6 @@ export function HabitAutocompleteInline({
   open,
   searchValue,
   onSelectHabit,
-  onCreateStandalone,
   onClose,
   trigger,
   collisionBoundary,
@@ -60,20 +57,17 @@ export function HabitAutocompleteInline({
   const habitsArray = Object.values(allHabits);
 
   // Get filtered suggestions with optional "Create standalone" option
-  const { suggestions, createStandalone } = useMemo(() => {
+  const suggestions = useMemo(() => {
     const trimmedSearch = searchValue.trim();
 
     if (!trimmedSearch) {
       // No search - show all habits (sorted by creation date, newest first)
-      return {
-        suggestions: habitsArray
-          .sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )
-          .slice(0, maxSuggestions),
-        createStandalone: null,
-      };
+      return habitsArray
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+        .slice(0, maxSuggestions);
     }
 
     const lowerSearch = trimmedSearch.toLowerCase();
@@ -104,7 +98,7 @@ export function HabitAutocompleteInline({
       ...containsMatches.map((h) => h.id),
     ]);
     const remainingHabits = habitsArray.filter(
-      (habit) => !searchedHabits.has(habit.id)
+      (habit) => !searchedHabits.has(habit.id),
     );
 
     if (remainingHabits.length > 0) {
@@ -127,28 +121,20 @@ export function HabitAutocompleteInline({
     ];
     const matches = allMatches.slice(0, maxSuggestions);
 
-    // Check if we should show "Create standalone" option
-    // Show when: has search text, no exact match, and few matches
-    const hasExactMatch = exactMatches.length > 0;
-    const shouldShowCreateStandalone =
-      trimmedSearch && !hasExactMatch && matches.length < 3;
-
-    return {
-      suggestions: matches,
-      createStandalone: shouldShowCreateStandalone ? trimmedSearch : null,
-    };
+    return matches;
   }, [searchValue, habitsArray, maxSuggestions]);
 
-  const hasSuggestions = suggestions.length > 0 || createStandalone !== null;
+  const hasSuggestions = suggestions.length > 0;
   const shouldShowPopover = open && hasSuggestions;
 
   // Total items includes suggestions + optional createStandalone
-  const totalItems = suggestions.length + (createStandalone ? 1 : 0);
+  const totalItems = suggestions.length;
 
   // Keyboard navigation state
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Reset selected index when suggestions change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <should only reset when suggestions change, not on every render>
   useEffect(() => {
     setSelectedIndex(0);
   }, [suggestions]);
@@ -168,13 +154,9 @@ export function HabitAutocompleteInline({
         e.preventDefault();
         e.stopPropagation();
 
-        // If selecting the "Create standalone" item (last item)
-        if (createStandalone && selectedIndex === suggestions.length) {
-          onCreateStandalone(createStandalone);
-        } else {
-          const selectedHabit = suggestions[selectedIndex];
-          onSelectHabit(selectedHabit);
-        }
+        const selectedHabit = suggestions[selectedIndex];
+        if (!selectedHabit) return;
+        onSelectHabit(selectedHabit);
       } else if (e.key === "Escape") {
         e.preventDefault();
         onClose();
@@ -186,17 +168,15 @@ export function HabitAutocompleteInline({
   }, [
     shouldShowPopover,
     suggestions,
-    createStandalone,
     totalItems,
     selectedIndex,
     onSelectHabit,
-    onCreateStandalone,
     onClose,
   ]);
 
   return (
     <Popover
-      open={shouldShowPopover}
+      open={shouldShowPopover && totalItems > 0}
       onOpenChange={(isOpen) => !isOpen && onClose()}
       modal={false}
     >
@@ -234,7 +214,7 @@ export function HabitAutocompleteInline({
                   "text-left",
                   index === selectedIndex
                     ? "bg-stone-200 dark:bg-stone-700"
-                    : "hover:bg-stone-100 dark:hover:bg-stone-800"
+                    : "hover:bg-stone-100 dark:hover:bg-stone-800",
                 )}
               >
                 {/* Habit emoji */}
@@ -258,35 +238,6 @@ export function HabitAutocompleteInline({
               </button>
             );
           })}
-
-          {/* Create standalone option */}
-          {createStandalone && (
-            <button
-              key="create-standalone"
-              type="button"
-              onClick={() => onCreateStandalone(createStandalone)}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-md",
-                "text-stone-600 dark:text-stone-400",
-                "transition-colors cursor-pointer",
-                "text-left border-t border-stone-200 dark:border-stone-700 mt-0.5 pt-2",
-                selectedIndex === suggestions.length
-                  ? "bg-stone-200 dark:bg-stone-700"
-                  : "hover:bg-stone-100 dark:hover:bg-stone-800"
-              )}
-            >
-              {/* Plus icon */}
-              <Sparkles
-                className="w-3 h-3 text-stone-400 dark:text-stone-500 flex-shrink-0"
-                strokeWidth={1.5}
-              />
-
-              {/* Moment name with "Create" prefix */}
-              <span className="text-xs font-mono flex-1 min-w-0 truncate">
-                Create: {createStandalone}
-              </span>
-            </button>
-          )}
         </div>
       </PopoverContent>
     </Popover>
