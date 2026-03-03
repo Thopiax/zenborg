@@ -1,6 +1,8 @@
 import {
   addDays,
+  differenceInCalendarDays,
   format,
+  formatDistanceToNowStrict,
   isToday,
   isTomorrow,
   isYesterday,
@@ -245,4 +247,56 @@ export function formatCycleEndDate(endDate: string | null): string {
   }
 
   return `ends on ${format(end, "MMM dd")}`;
+}
+
+/**
+ * Formats a cycle subtitle based on its temporal relationship to today.
+ * Uses date-fns for humanized distance strings.
+ *
+ * Active cycle: "5 days left", "ends today", "ongoing"
+ * Future cycle: "starts in 3 days", "starts in 2 weeks"
+ * Past cycle: "ended 3 days ago"
+ *
+ * @param startDate - ISO date string
+ * @param endDate - ISO date string or null
+ * @param isActive - Whether this is the currently active cycle
+ * @returns Formatted subtitle string
+ */
+export function formatCycleSubtitle(
+  startDate: string,
+  endDate: string | null,
+  isActive: boolean,
+): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const start = fromISODate(startDate);
+  const startDiff = differenceInCalendarDays(start, today);
+
+  // Future cycle
+  if (startDiff > 0) {
+    if (startDiff === 1) {
+      return "starts tomorrow";
+    }
+    return `starts in ${formatDistanceToNowStrict(start)}`;
+  }
+
+  // Current/past cycle — check end date
+  if (!endDate) {
+    return isActive ? "ongoing" : "no end date";
+  }
+
+  const end = fromISODate(endDate);
+  const endDiff = differenceInCalendarDays(end, today);
+
+  if (endDiff < 0) {
+    return `ended ${formatDistanceToNowStrict(end)} ago`;
+  }
+  if (endDiff === 0) {
+    return "ends today";
+  }
+  if (endDiff === 1) {
+    return "ends tomorrow";
+  }
+  return `${formatDistanceToNowStrict(end)} left`;
 }

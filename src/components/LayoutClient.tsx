@@ -2,7 +2,6 @@
 
 import { use$, useSelector } from "@legendapp/state/react";
 import { useState } from "react";
-import { AreaManagementModal } from "@/components/AreaManagementModal";
 import { CommandPalette } from "@/components/CommandPalette";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
 import { ModeSelector } from "@/components/ModeSelector";
@@ -20,9 +19,7 @@ import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { areas$ } from "@/infrastructure/state/store";
 import {
   archiveAreaDialogState$,
-  areaManagementFocusId$,
   closeArchiveAreaDialog,
-  isAreaManagementOpen$,
   isCommandPaletteOpen$,
   resetCommandPaletteState,
 } from "@/infrastructure/state/ui-store";
@@ -47,10 +44,6 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPhaseSettingsOpen, setIsPhaseSettingsOpen] = useState(false);
-
-  // Area management via observable (allows CommandPalette to trigger it)
-  const isAreaManagementOpen = useSelector(() => isAreaManagementOpen$.get());
-  const focusAreaId = useSelector(() => areaManagementFocusId$.get());
 
   const archiveAreaState = use$(archiveAreaDialogState$);
 
@@ -102,9 +95,7 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Page Content - Contained below top bar */}
-        <div className="overflow-hidden">
-          {children}
-        </div>
+        <div className="overflow-hidden">{children}</div>
       </div>
 
       {/* Update Notification - Auto-checks on mount */}
@@ -118,20 +109,6 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
           setIsPhaseSettingsOpen(true);
           setIsSettingsOpen(false);
         }}
-        onOpenAreaManagement={() => {
-          isAreaManagementOpen$.set(true);
-          setIsSettingsOpen(false);
-        }}
-      />
-
-      {/* Area Management Modal - Triggered by Mod+Shift+A, Settings, or CommandPalette */}
-      <AreaManagementModal
-        open={isAreaManagementOpen}
-        onClose={() => {
-          isAreaManagementOpen$.set(false);
-          areaManagementFocusId$.set(undefined);
-        }}
-        focusAreaId={focusAreaId}
       />
 
       {/* Phase Settings Modal - Opened from Settings Drawer */}
