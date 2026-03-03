@@ -6,6 +6,9 @@ import React from "react";
 import type { Habit } from "@/domain/entities/Habit";
 import type { Area } from "@/domain/entities/Area";
 
+// Make React globally available (needed for JSX in components without React import)
+globalThis.React = React;
+
 // Mock dependencies
 vi.mock("@legendapp/state/react", () => ({
   use$: vi.fn(),
@@ -37,7 +40,6 @@ vi.mock("../HabitAutocompleteInline", () => ({
     open,
     searchValue,
     onSelectHabit,
-    onCreateStandalone,
     onClose,
   }: any) => (
     <div data-testid="habit-autocomplete">
@@ -46,9 +48,6 @@ vi.mock("../HabitAutocompleteInline", () => ({
           <div data-testid="search-value">{searchValue}</div>
           <button onClick={() => onSelectHabit({ id: "habit-1", name: "Running" })}>
             Select Running
-          </button>
-          <button onClick={() => onCreateStandalone("Custom Moment")}>
-            Create Standalone
           </button>
           <button onClick={onClose}>Close</button>
         </>
@@ -105,7 +104,7 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
+
           day="2025-01-01"
           phase="morning"
         />
@@ -120,7 +119,7 @@ describe("MomentFormInline", () => {
           open={false}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
+
           day="2025-01-01"
           phase="morning"
         />
@@ -135,7 +134,7 @@ describe("MomentFormInline", () => {
           open={false}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
+
           day="2025-01-01"
           phase="morning"
         />
@@ -146,7 +145,7 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
+
           day="2025-01-01"
           phase="morning"
         />
@@ -163,7 +162,7 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
+
           day="2025-01-01"
           phase="morning"
         />
@@ -182,7 +181,7 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
+
           day="2025-01-01"
           phase="morning"
         />
@@ -207,7 +206,7 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={onSpawnHabit}
-          onCreateStandalone={vi.fn()}
+
           day="2025-01-01"
           phase="morning"
         />
@@ -232,7 +231,7 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
+
           day="2025-01-01"
           phase="morning"
         />
@@ -248,57 +247,6 @@ describe("MomentFormInline", () => {
     });
   });
 
-  describe("standalone creation", () => {
-    it("should call onCreateStandalone when create option selected", () => {
-      const onCreateStandalone = vi.fn();
-
-      render(
-        <MomentFormInline
-          open={true}
-          onClose={vi.fn()}
-          onSpawnHabit={vi.fn()}
-          onCreateStandalone={onCreateStandalone}
-          day="2025-01-01"
-          phase="morning"
-        />
-      );
-
-      const input = screen.getByPlaceholderText(/type moment name/i);
-      fireEvent.change(input, { target: { value: "Custom Moment" } });
-
-      const createButton = screen.getByText("Create Standalone");
-      fireEvent.click(createButton);
-
-      expect(onCreateStandalone).toHaveBeenCalledWith(
-        "Custom Moment",
-        "area-1",
-        "2025-01-01",
-        "morning"
-      );
-    });
-
-    it("should clear input after standalone created", () => {
-      render(
-        <MomentFormInline
-          open={true}
-          onClose={vi.fn()}
-          onSpawnHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
-          day="2025-01-01"
-          phase="morning"
-        />
-      );
-
-      const input = screen.getByPlaceholderText(/type moment name/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "Custom Moment" } });
-
-      const createButton = screen.getByText("Create Standalone");
-      fireEvent.click(createButton);
-
-      expect(input.value).toBe("");
-    });
-  });
-
   describe("keyboard shortcuts", () => {
     it("should close on Escape key", () => {
       const onClose = vi.fn();
@@ -308,7 +256,7 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={onClose}
           onSpawnHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
+
           day="2025-01-01"
           phase="morning"
         />

@@ -62,6 +62,38 @@ vi.mock("../CycleStarter", () => ({
   ),
 }));
 
+vi.mock("../CycleDeckColumn", () => ({
+  CycleDeckColumn: ({
+    area,
+    habitMoments,
+    isEditMode,
+    showAllHabits,
+  }: {
+    area: Area;
+    habitMoments: Record<string, Moment[]>;
+    isEditMode: boolean;
+    showAllHabits: boolean;
+    cycleId: string;
+  }) => (
+    <div
+      data-testid={`cycle-deck-column-${area.id}`}
+      data-edit-mode={isEditMode}
+      data-show-all={showAllHabits}
+    >
+      <span>{area.emoji}</span>
+      <span>{area.name}</span>
+      {Object.entries(habitMoments).map(([habitId, moments]) => (
+        <div key={habitId} data-testid="moment-stack" data-area-id={area.id}>
+          Stack: {moments.length} moments
+        </div>
+      ))}
+      {showAllHabits && (
+        <div data-testid={`ghost-cards-${area.id}`}>Ghost cards</div>
+      )}
+    </div>
+  ),
+}));
+
 const mockGetCurrentAndFutureCycles = vi.fn(() => [testCycle]);
 const mockGetAreasWithDeckMoments = vi.fn((deckMoments) => {
   const areasMap: Record<string, Area> = {
@@ -111,13 +143,12 @@ vi.mock("@/application/services/CycleService", () => ({
 }));
 
 vi.mock("@/lib/dates", () => ({
-  formatCycleEndDate: vi.fn(() => "ends in 5 days"),
+  formatCycleSubtitle: vi.fn(() => "ends in 5 days"),
 }));
 
 vi.mock("@/infrastructure/state/ui-store", () => ({
   cycleDeckCollapsed$: { get: vi.fn(() => false), set: vi.fn(), peek: vi.fn(() => false) },
   cycleDeckEditMode$: { get: vi.fn(() => false), set: vi.fn(), peek: vi.fn(() => false) },
-  cycleDeckShowAllHabits$: { get: vi.fn(() => false), set: vi.fn(), peek: vi.fn(() => false) },
   cycleDeckSelectedCycleId$: { get: vi.fn(() => null), set: vi.fn(), peek: vi.fn(() => null) },
 }));
 
@@ -163,8 +194,7 @@ describe("CycleDeck", () => {
    * 2. activeCycle (via selector fn)
    * 3. cycleDeckCollapsed$ (boolean)
    * 4. cycleDeckEditMode$ (boolean)
-   * 5. cycleDeckShowAllHabits$ (boolean)
-   * 6. cycleDeckSelectedCycleId$ (string | null)
+   * 5. cycleDeckSelectedCycleId$ (string | null)
    * Then child components call useValue(habits$) etc.
    */
   const mockCycleDeckValues = (
@@ -172,7 +202,6 @@ describe("CycleDeck", () => {
     activeCycle: unknown = null,
     isCollapsed = false,
     isEditMode = false,
-    showAllHabits = false,
     habitsMap: Record<string, unknown> = {},
     selectedCycleId: string | null = null,
   ) => {
@@ -181,7 +210,6 @@ describe("CycleDeck", () => {
       activeCycle,
       isCollapsed,
       isEditMode,
-      showAllHabits,
       selectedCycleId,
     ];
     let callIndex = 0;
@@ -189,7 +217,7 @@ describe("CycleDeck", () => {
     mockUseValue.mockImplementation(() => {
       const idx = callIndex % values.length;
       callIndex++;
-      // For calls beyond the first 6 (child components), return habitsMap
+      // For calls beyond the first 5 (child components), return habitsMap
       if (callIndex > values.length) {
         return habitsMap;
       }
@@ -343,7 +371,7 @@ describe("CycleDeck", () => {
       expect(screen.getByLabelText("Create new cycle")).toBeInTheDocument();
     });
 
-    it("should not show collapse chevron button", () => {
+    it("should show collapse button", () => {
       const deckMoments = {
         "area-1": {
           "habit-1": [createTestMoment({ id: "1" })],
@@ -357,12 +385,12 @@ describe("CycleDeck", () => {
 
       render(<CycleDeck />);
 
-      expect(screen.queryByLabelText("Collapse cycle deck")).toBeNull();
+      expect(screen.getByTitle("Collapse cycle deck")).toBeInTheDocument();
     });
   });
 
   describe("edit mode", () => {
-    it("should show Done button when edit mode is active", () => {
+    it("should show Done editing button when edit mode is active", () => {
       const deckMoments = {
         "area-1": {
           "habit-1": [createTestMoment({ id: "1" }), createTestMoment({ id: "2" })],
@@ -374,12 +402,11 @@ describe("CycleDeck", () => {
         testCycle,
         false,
         true,  // editMode ON
-        false,
       );
 
       render(<CycleDeck />);
 
-      expect(screen.getByText("Done")).toBeInTheDocument();
+      expect(screen.getByTitle("Done editing")).toBeInTheDocument();
     });
 
     it("should show Edit button when edit mode is inactive", () => {
@@ -398,7 +425,7 @@ describe("CycleDeck", () => {
 
       render(<CycleDeck />);
 
-      expect(screen.getByText("Edit")).toBeInTheDocument();
+      expect(screen.getByTitle("Edit cycle deck")).toBeInTheDocument();
     });
 
     it("should hide Edit button when collapsed", () => {
@@ -417,7 +444,7 @@ describe("CycleDeck", () => {
 
       render(<CycleDeck />);
 
-      expect(screen.queryByText("Edit")).toBeNull();
+      expect(screen.queryByTitle("Edit cycle deck")).toBeNull();
     });
   });
 
@@ -432,7 +459,7 @@ describe("CycleDeck", () => {
       mockCycleDeckValues(
         deckMoments,
         testCycle,
-        false, true, false,
+        false, true,
       );
 
       render(<CycleDeck />);
@@ -452,7 +479,7 @@ describe("CycleDeck", () => {
       mockCycleDeckValues(
         deckMoments,
         testCycle,
-        false, false, false,
+        false, false,
       );
 
       render(<CycleDeck />);
@@ -471,7 +498,7 @@ describe("CycleDeck", () => {
       mockCycleDeckValues(
         deckMoments,
         testCycle,
-        false, true, false,
+        false, true,
       );
 
       render(<CycleDeck />);
@@ -490,7 +517,7 @@ describe("CycleDeck", () => {
       mockCycleDeckValues(
         deckMoments,
         testCycle,
-        false, true, false,
+        false, true,
       );
 
       render(<CycleDeck />);
@@ -501,7 +528,7 @@ describe("CycleDeck", () => {
   });
 
   describe("empty state in edit mode", () => {
-    it("should show area columns with ghost cards instead of empty message", () => {
+    it("should show area columns instead of empty message", () => {
       const habitsData = {
         "habit-1": { id: "habit-1", name: "Morning Run", areaId: "area-1", isArchived: false, order: 0, emoji: null },
         "habit-2": { id: "habit-2", name: "Deep Work", areaId: "area-2", isArchived: false, order: 0, emoji: null },
@@ -514,15 +541,14 @@ describe("CycleDeck", () => {
         testCycle,
         false,
         true,         // editMode ON
-        false,
         habitsData,   // habits for child components
       );
 
       render(<CycleDeck />);
 
       expect(screen.queryByText(/No budgeted moments/)).toBeNull();
-      expect(screen.getByTestId("ghost-card-habit-1")).toBeInTheDocument();
-      expect(screen.getByTestId("ghost-card-habit-2")).toBeInTheDocument();
+      expect(screen.getByTestId("cycle-deck-column-area-1")).toBeInTheDocument();
+      expect(screen.getByTestId("cycle-deck-column-area-2")).toBeInTheDocument();
     });
   });
 });

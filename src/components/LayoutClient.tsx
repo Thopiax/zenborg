@@ -1,7 +1,7 @@
 "use client";
 
 import { use$, useSelector } from "@legendapp/state/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CommandPalette } from "@/components/CommandPalette";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
 import { ModeSelector } from "@/components/ModeSelector";
@@ -23,6 +23,7 @@ import {
   isCommandPaletteOpen$,
   resetCommandPaletteState,
 } from "@/infrastructure/state/ui-store";
+import { isTauri } from "@/lib/tauri-utils";
 
 /**
  * LayoutClient - Client-side layout components
@@ -40,6 +41,15 @@ import {
 export function LayoutClient({ children }: { children: React.ReactNode }) {
   // Enable global keyboard shortcuts (Cmd+K, etc.) - registers once globally
   useGlobalKeyboard();
+
+  // Attach console to native Tauri log system (forwards console.* to OS log files)
+  useEffect(() => {
+    if (isTauri()) {
+      import("@tauri-apps/plugin-log").then(({ attachConsole }) => {
+        attachConsole();
+      });
+    }
+  }, []);
 
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);

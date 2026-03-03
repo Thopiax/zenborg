@@ -1,6 +1,6 @@
 {
   "name": "zenborg",
-  "version": "0.3.15",
+  "version": "0.3.16",
   "description": "An intention cultivation garden to help you plant the seeds of habits, nurture them with moments, and flourish.",
   "license": "MIT",
   "private": false,
@@ -49,6 +49,7 @@
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-select": "^2.2.6",
     "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-log": "~2",
     "@tauri-apps/plugin-process": "~2",
     "@tauri-apps/plugin-updater": "~2",
     "@upstash/redis": "^1.36.3",

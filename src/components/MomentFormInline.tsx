@@ -1,20 +1,15 @@
 "use client";
 
-import React from "react";
-import { use$ } from "@legendapp/state/react";
+import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { HabitAutocompleteInline } from "./HabitAutocompleteInline";
 import type { Habit } from "@/domain/entities/Habit";
-import type { Phase } from "@/domain/value-objects/Phase";
-import { areas$ } from "@/infrastructure/state/store";
-import { lastUsedAreaId$ } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
+import { HabitAutocompleteInline } from "./HabitAutocompleteInline";
 
 interface MomentFormInlineProps {
   open: boolean;
   onClose: () => void;
   onSpawnHabit: (habit: Habit, day: string, phase: string) => void;
-  onCreateStandalone: (name: string, areaId: string, day: string, phase: string) => void;
   day: string;
   phase: string;
   /** Element to use as collision boundary (e.g., timeline container) */
@@ -28,7 +23,6 @@ interface MomentFormInlineProps {
  * - Minimal inline input (no modal)
  * - HabitAutocompleteInline appears when typing
  * - Selecting habit → spawns spontaneous moment
- * - No match → creates standalone moment
  * - Escape to close
  * - Auto-focus on open
  *
@@ -41,7 +35,6 @@ export function MomentFormInline({
   open,
   onClose,
   onSpawnHabit,
-  onCreateStandalone,
   day,
   phase,
   collisionBoundary,
@@ -67,18 +60,6 @@ export function MomentFormInline({
   // Handle habit selection
   const handleSelectHabit = (habit: Habit) => {
     onSpawnHabit(habit, day, phase);
-    setSearchValue("");
-    setShowAutocomplete(false);
-  };
-
-  // Handle standalone creation
-  const handleCreateStandalone = (name: string) => {
-    // Use last used area or default area
-    const allAreas = areas$.get();
-    const lastUsedAreaId = lastUsedAreaId$.peek();
-    const areaId = lastUsedAreaId || Object.values(allAreas)[0]?.id || "";
-
-    onCreateStandalone(name, areaId, day, phase);
     setSearchValue("");
     setShowAutocomplete(false);
   };
@@ -111,7 +92,7 @@ export function MomentFormInline({
           "text-sm text-stone-900 dark:text-stone-100",
           "placeholder:text-stone-400 dark:placeholder:text-stone-500",
           "focus:outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-500",
-          "transition-all"
+          "transition-all",
         )}
       />
 
@@ -120,7 +101,6 @@ export function MomentFormInline({
         open={showAutocomplete}
         searchValue={searchValue}
         onSelectHabit={handleSelectHabit}
-        onCreateStandalone={handleCreateStandalone}
         onClose={() => setShowAutocomplete(false)}
         trigger={<div className="w-full absolute top-0 left-0" />}
         collisionBoundary={collisionBoundary}
