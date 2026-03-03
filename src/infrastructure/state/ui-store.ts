@@ -49,12 +49,6 @@ export const cycleDeckCollapsed$ = observable<boolean>(false);
  */
 export const cycleDeckEditMode$ = observable<boolean>(false);
 
-/**
- * Cycle deck "show all habits" toggle
- * When true, shows ghost cards for unbudgeted habits (only in edit mode)
- * Ephemeral - not persisted
- */
-export const cycleDeckShowAllHabits$ = observable<boolean>(false);
 
 /**
  * Currently selected cycle ID for the CycleDeck pane

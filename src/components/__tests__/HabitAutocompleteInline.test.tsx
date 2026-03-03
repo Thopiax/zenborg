@@ -6,6 +6,9 @@ import React from "react";
 import type { Habit } from "@/domain/entities/Habit";
 import type { Area } from "@/domain/entities/Area";
 
+// Make React globally available (needed for JSX in components without React import)
+globalThis.React = React;
+
 // Mock dependencies
 vi.mock("@legendapp/state/react", () => ({
   use$: vi.fn(),
@@ -90,15 +93,14 @@ describe("HabitAutocompleteInline", () => {
       mockUse$.mockReturnValueOnce(testHabits);
       mockUse$.mockReturnValueOnce({ "area-1": testArea });
 
-      const { container } = render(
+      render(
         <HabitAutocompleteInline
           open={false}
           searchValue=""
           onSelectHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
           onClose={vi.fn()}
           trigger={<div>Trigger</div>}
-        />
+        />,
       );
 
       // Popover should not be visible
@@ -117,10 +119,9 @@ describe("HabitAutocompleteInline", () => {
           open={true}
           searchValue=""
           onSelectHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
           onClose={vi.fn()}
           trigger={<div>Trigger</div>}
-        />
+        />,
       );
 
       // Should show all habits when no search
@@ -140,10 +141,9 @@ describe("HabitAutocompleteInline", () => {
           open={true}
           searchValue="Running"
           onSelectHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
           onClose={vi.fn()}
           trigger={<div>Trigger</div>}
-        />
+        />,
       );
 
       expect(screen.getByText("Running")).toBeInTheDocument();
@@ -159,17 +159,16 @@ describe("HabitAutocompleteInline", () => {
           open={true}
           searchValue="run"
           onSelectHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
           onClose={vi.fn()}
           trigger={<div>Trigger</div>}
-        />
+        />,
       );
 
       expect(screen.getByText("Running")).toBeInTheDocument();
       expect(screen.queryByText("Meditation")).not.toBeInTheDocument();
     });
 
-    it("should show create standalone option when no matches", () => {
+    it("should hide popover when no matches found", () => {
       mockUse$.mockReturnValueOnce(testHabits);
       mockUse$.mockReturnValueOnce({ "area-1": testArea });
 
@@ -178,15 +177,15 @@ describe("HabitAutocompleteInline", () => {
           open={true}
           searchValue="Coffee Break"
           onSelectHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
           onClose={vi.fn()}
           trigger={<div>Trigger</div>}
-        />
+        />,
       );
 
-      // Should show "Create standalone" option
-      expect(screen.getByText(/Create:/)).toBeInTheDocument();
-      expect(screen.getByText(/Coffee Break/)).toBeInTheDocument();
+      // No matching habits, popover should not show any results
+      expect(screen.queryByText("Running")).not.toBeInTheDocument();
+      expect(screen.queryByText("Meditation")).not.toBeInTheDocument();
+      expect(screen.queryByText("Writing")).not.toBeInTheDocument();
     });
   });
 
@@ -202,36 +201,13 @@ describe("HabitAutocompleteInline", () => {
           open={true}
           searchValue="run"
           onSelectHabit={onSelectHabit}
-          onCreateStandalone={vi.fn()}
           onClose={vi.fn()}
           trigger={<div>Trigger</div>}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText("Running"));
       expect(onSelectHabit).toHaveBeenCalledWith(testHabits["habit-1"]);
-    });
-
-    it("should call onCreateStandalone when create option clicked", () => {
-      mockUse$.mockReturnValueOnce(testHabits);
-      mockUse$.mockReturnValueOnce({ "area-1": testArea });
-
-      const onCreateStandalone = vi.fn();
-
-      render(
-        <HabitAutocompleteInline
-          open={true}
-          searchValue="Coffee Break"
-          onSelectHabit={vi.fn()}
-          onCreateStandalone={onCreateStandalone}
-          onClose={vi.fn()}
-          trigger={<div>Trigger</div>}
-        />
-      );
-
-      const createButton = screen.getByText(/Create:/);
-      fireEvent.click(createButton.closest("button")!);
-      expect(onCreateStandalone).toHaveBeenCalledWith("Coffee Break");
     });
   });
 
@@ -248,10 +224,9 @@ describe("HabitAutocompleteInline", () => {
           open={true}
           searchValue=""
           onSelectHabit={vi.fn()}
-          onCreateStandalone={vi.fn()}
           onClose={vi.fn()}
           trigger={<div>Trigger</div>}
-        />
+        />,
       );
 
       // Should show area names with habits (using getAllByText since Wellness appears twice)
