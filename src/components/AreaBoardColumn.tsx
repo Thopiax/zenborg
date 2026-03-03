@@ -3,7 +3,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus } from "lucide-react";
 import { AreaColumnHeader } from "@/components/AreaColumnHeader";
 import { PlanHabitsList } from "@/components/PlanHabitsList";
 import type { Area } from "@/domain/entities/Area";
@@ -19,6 +18,7 @@ interface AreaBoardColumnProps {
   onEditHabit: (habitId: string) => void;
   onArchiveHabit: (habitId: string) => void;
   onCreateHabit: () => void;
+  maxHabitsHeight?: string;
 }
 
 export function AreaBoardColumn({
@@ -29,6 +29,7 @@ export function AreaBoardColumn({
   onEditHabit,
   onArchiveHabit,
   onCreateHabit,
+  maxHabitsHeight = "calc(100vh - 16rem)",
 }: AreaBoardColumnProps) {
   // Sortable for area reordering (the column itself is draggable)
   const {
@@ -81,6 +82,7 @@ export function AreaBoardColumn({
           habitCount={habits.length}
           onUpdateArea={onUpdateArea}
           onArchiveArea={onArchiveArea}
+          onCreateHabit={onCreateHabit}
         />
       </div>
 
@@ -90,20 +92,19 @@ export function AreaBoardColumn({
         style={{ backgroundColor: area.color }}
       />
 
-      {/* Habits List */}
-      <div className="flex flex-col gap-3 p-4 min-h-[300px] flex-1">
+      {/* Habits List (scrollable) */}
+      <div
+        className="flex flex-col gap-3 p-4 flex-1 overflow-y-auto"
+        style={{ maxHeight: maxHabitsHeight }}
+      >
         {habits.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[240px] gap-3 py-8">
-            <div className="text-4xl opacity-20">{area.emoji}</div>
-            <div className="text-center space-y-1">
-              <p className="text-sm text-stone-500 dark:text-stone-400 font-mono">
-                No habits yet
-              </p>
-              <p className="text-xs text-stone-400 dark:text-stone-500">
-                Click below to add one
-              </p>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={onCreateHabit}
+            className="flex items-center justify-center gap-2 py-6 text-stone-400 dark:text-stone-500 hover:text-stone-500 dark:hover:text-stone-400 transition-colors cursor-pointer"
+          >
+            <span className="text-sm font-mono">Add first habit</span>
+          </button>
         ) : (
           <PlanHabitsList
             habits={habits}
@@ -113,29 +114,6 @@ export function AreaBoardColumn({
             onArchiveHabit={onArchiveHabit}
           />
         )}
-      </div>
-
-      {/* Add Habit Button */}
-      <div className="px-4 pb-4 pt-2">
-        <button
-          type="button"
-          onClick={onCreateHabit}
-          className={cn(
-            "w-full px-4 py-2.5 rounded-md",
-            "flex items-center justify-center gap-2",
-            "text-sm font-mono font-medium",
-            "bg-white dark:bg-stone-900",
-            "border-2 border-stone-300 dark:border-stone-600",
-            "hover:border-stone-400 dark:hover:border-stone-500",
-            "hover:shadow-sm",
-            "text-stone-700 dark:text-stone-300",
-            "transition-all duration-150",
-          )}
-          style={{ borderColor: `${area.color}40` }}
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add habit</span>
-        </button>
       </div>
     </div>
   );

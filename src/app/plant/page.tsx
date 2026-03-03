@@ -52,6 +52,19 @@ const PlantPage = observer(() => {
       return rectIntersection(args);
     }
 
+    // When dragging an area, only consider other area columns (not habit cards)
+    if (activeData?.type === "area") {
+      const allCollisions = closestCenter(args);
+      const areaOnlyCollisions = allCollisions.filter((collision: any) => {
+        const data = collision.data?.droppableContainer?.data?.current;
+        return data?.type === "area" || collision.id.toString().startsWith("area-");
+      });
+      if (areaOnlyCollisions.length > 0) {
+        return areaOnlyCollisions;
+      }
+      return allCollisions;
+    }
+
     return closestCenter(args);
   };
 

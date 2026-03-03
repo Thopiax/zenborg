@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
 "use client";
 
-import { Archive, MoreVertical } from "lucide-react";
+import { Archive, MoreVertical, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AttitudeChip } from "@/components/AttitudeChip";
@@ -34,6 +34,7 @@ interface AreaColumnHeaderProps {
   habitCount: number;
   onUpdateArea: (areaId: string, updates: Partial<Area>) => void;
   onArchiveArea: (areaId: string) => void;
+  onCreateHabit?: () => void;
 }
 
 export function AreaColumnHeader({
@@ -41,6 +42,7 @@ export function AreaColumnHeader({
   habitCount,
   onUpdateArea,
   onArchiveArea,
+  onCreateHabit,
 }: AreaColumnHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(area.name);
@@ -146,6 +148,21 @@ export function AreaColumnHeader({
             {habitCount}
           </span>
         </div>
+
+        {/* Add Habit */}
+        {onCreateHabit && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreateHabit();
+            }}
+            className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors flex-shrink-0"
+            aria-label="Add habit"
+          >
+            <Plus className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+          </button>
+        )}
 
         {/* Burger Menu */}
         <DropdownMenu>
