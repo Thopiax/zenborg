@@ -23,7 +23,6 @@ import {
   unallocateMomentWithHistory,
 } from "@/infrastructure/state/store";
 import {
-  isAreaManagementOpen$,
   momentFormState$,
   openHabitFormCreate,
   openHabitFormEdit,
@@ -50,7 +49,7 @@ export interface EntityAction {
  * - Moment: "Allocate to today", "Move to drawing board", "Edit moment", "Delete moment"
  */
 export function useEntityActions(
-  selectedEntity: SearchableEntity | null
+  selectedEntity: SearchableEntity | null,
 ): EntityAction[] {
   const activeCycle = useSelector(() => activeCycle$.get());
   const phaseConfigsMap = useSelector(() => phaseConfigs$.get());
@@ -73,14 +72,6 @@ export function useEntityActions(
             label: "Create habit in area",
             icon: Plus,
             action: () => openHabitFormCreate({ areaId: area.id }),
-          },
-          {
-            id: "area.edit",
-            label: "Edit area",
-            icon: Edit3,
-            action: () => {
-              isAreaManagementOpen$.set(true);
-            },
           },
         ];
       }
@@ -140,7 +131,7 @@ export function useEntityActions(
         if (!isAllocated && currentPhase) {
           // Count existing moments in today + current phase to determine order
           const existingCount = Object.values(allMoments).filter(
-            (m) => m.day === today && m.phase === currentPhase
+            (m) => m.day === today && m.phase === currentPhase,
           ).length;
 
           if (existingCount < 3) {
@@ -153,7 +144,7 @@ export function useEntityActions(
                   moment.id,
                   today,
                   currentPhase,
-                  existingCount
+                  existingCount,
                 );
               },
             });
