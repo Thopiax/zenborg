@@ -139,6 +139,9 @@ vi.mock("@/application/services/CycleService", () => ({
     getDefaultStartDate: mockGetDefaultStartDate,
     planCycle: mockPlanCycle,
     budgetHabitToCycle: mockBudgetHabitToCycle,
+    incrementHabitBudget: vi.fn(),
+    decrementHabitBudget: vi.fn(),
+    removeHabitFromDeck: vi.fn(),
   })),
 }));
 

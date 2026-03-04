@@ -26,7 +26,7 @@ export function GhostHabitCard({ habitId, area, cycleId }: GhostHabitCardProps) 
   if (!habit) return null;
 
   const handleAdd = () => {
-    cycleService.budgetHabitToCycle(cycleId, habitId, 1);
+    cycleService.incrementHabitBudget(cycleId, habitId);
   };
 
   return (
