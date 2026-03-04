@@ -380,6 +380,30 @@ export function CycleDeck() {
   // Get areas with moments using application service
   const areasWithMoments = cycleService.getAreasWithDeckMoments(deckMoments);
 
+  // In edit mode, include all areas that have habits (not just budgeted ones)
+  const allAreasForEdit = (() => {
+    if (!isEditMode) return areasWithMoments;
+
+    const allHabitsMap = habits$.get();
+    const allAreasMap = areas$.get();
+    const budgetedAreaIds = new Set(areasWithMoments.map(({ area }) => area.id));
+
+    const areasWithHabits = Object.values(allAreasMap)
+      .filter(
+        (a) =>
+          !budgetedAreaIds.has(a.id) &&
+          Object.values(allHabitsMap).some(
+            (h) => h.areaId === a.id && !h.isArchived,
+          ),
+      )
+      .sort((a, b) => a.order - b.order)
+      .map((area) => ({ area, habits: {} as Record<string, Moment[]> }));
+
+    return [...areasWithMoments, ...areasWithHabits].sort(
+      (a, b) => a.area.order - b.area.order,
+    );
+  })();
+
   return (
     <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
       {header}
@@ -409,7 +433,7 @@ export function CycleDeck() {
           )}
 
           {/* Horizontal scrollable columns (matching CycleDeckBuilder) */}
-          {renderColumns(areasWithMoments)}
+          {renderColumns(isEditMode ? allAreasForEdit : areasWithMoments)}
         </div>
       )}
 
