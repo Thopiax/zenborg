@@ -3,7 +3,7 @@
 import { use$ } from "@legendapp/state/react";
 import Fuse from "fuse.js";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Popover,
   PopoverContent,
@@ -139,6 +139,14 @@ export function HabitAutocompleteInline({
     setSelectedIndex(0);
   }, [suggestions]);
 
+  const handleSelectHabit = useCallback(
+    (habit: Habit) => {
+      onSelectHabit(habit);
+      onClose();
+    },
+    [onSelectHabit, onClose],
+  );
+
   // Handle keyboard navigation
   useEffect(() => {
     if (!shouldShowPopover) return;
@@ -156,7 +164,7 @@ export function HabitAutocompleteInline({
 
         const selectedHabit = suggestions[selectedIndex];
         if (!selectedHabit) return;
-        onSelectHabit(selectedHabit);
+        handleSelectHabit(selectedHabit);
       } else if (e.key === "Escape") {
         e.preventDefault();
         onClose();
@@ -170,7 +178,7 @@ export function HabitAutocompleteInline({
     suggestions,
     totalItems,
     selectedIndex,
-    onSelectHabit,
+    handleSelectHabit,
     onClose,
   ]);
 
@@ -206,7 +214,7 @@ export function HabitAutocompleteInline({
               <button
                 key={habit.id}
                 type="button"
-                onClick={() => onSelectHabit(habit)}
+                onClick={() => handleSelectHabit(habit)}
                 className={cn(
                   "flex items-center gap-2 px-3 py-1.5 rounded-md",
                   "text-stone-600 dark:text-stone-400",
