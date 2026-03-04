@@ -43,30 +43,27 @@ export function MomentStack({
   onDecrement,
   onRemove,
 }: MomentStackProps) {
-  // Handle empty array
-  if (moments.length === 0) {
-    return null;
-  }
-
-  const topMoment = moments[0];
+  const topMoment = moments[0] ?? null;
   const count = moments.length;
 
-  // Calculate how many visual layers to show behind the top card
-  // Show count-1 layers (e.g., if count=3, show 2 layers behind)
-  const behindLayerCount = Math.min(count - 1, 2); // Max 2 layers behind
+  const behindLayerCount = Math.min(Math.max(count - 1, 0), 2); // Max 2 layers behind
   const showLayers = count > 1;
-  // Show badge if count > 1 (visual stack indicator) OR if controls are provided (interaction needed)
   const showBadge = count > 1 || !!(onIncrement || onDecrement);
   const hasControls = !!(onIncrement || onDecrement || onRemove);
 
-  // Setup draggable for the top moment
+  // Setup draggable for the top moment — must be called unconditionally (hooks rule)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `stack-${topMoment.id}`,
+    id: topMoment ? `stack-${topMoment.id}` : "stack-empty",
     data: {
-      momentId: topMoment.id,
+      momentId: topMoment?.id,
       sourceType: "cycle-deck",
     },
+    disabled: !topMoment,
   });
+
+  if (!topMoment) {
+    return null;
+  }
 
   return (
     <div
