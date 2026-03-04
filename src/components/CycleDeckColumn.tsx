@@ -4,7 +4,7 @@ import { useValue } from "@legendapp/state/react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
-import { habits$, moments$ } from "@/infrastructure/state/store";
+import { habits$ } from "@/infrastructure/state/store";
 import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import { GhostHabitCard } from "./GhostHabitCard";
@@ -32,7 +32,6 @@ export function CycleDeckColumn({
   cycleId,
 }: CycleDeckColumnProps) {
   const allHabits = useValue(habits$);
-  const allMoments = useValue(moments$);
   const cycleService = new CycleService();
 
   // Get budgeted habit IDs sorted by habit.order
@@ -105,27 +104,14 @@ export function CycleDeckColumn({
           }
 
           if (isEditMode) {
-            const deckCount = moments.length;
-            // Count allocated moments (on timeline) for this habit in this cycle.
-            // budgetHabitToCycle expects the total (allocated + deck), so we need
-            // this to adjust correctly — the stack only sees deck moments.
-            const allocatedCount = Object.values(allMoments).filter(
-              (m) =>
-                m.cycleId === cycleId &&
-                m.habitId === habitId &&
-                m.day !== null &&
-                m.phase !== null
-            ).length;
-            const total = deckCount + allocatedCount;
             const handleIncrement = () => {
-              cycleService.budgetHabitToCycle(cycleId, habitId, total + 1);
+              cycleService.incrementHabitBudget(cycleId, habitId);
             };
             const handleDecrement = () => {
-              if (deckCount <= 1) return;
-              cycleService.budgetHabitToCycle(cycleId, habitId, total - 1);
+              cycleService.decrementHabitBudget(cycleId, habitId);
             };
             const handleRemove = () => {
-              cycleService.budgetHabitToCycle(cycleId, habitId, allocatedCount);
+              cycleService.removeHabitFromDeck(cycleId, habitId);
             };
 
             return (
