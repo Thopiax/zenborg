@@ -6,7 +6,11 @@ import type { CyclePlan } from "@/domain/entities/CyclePlan";
 import type { Habit } from "@/domain/entities/Habit";
 import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
-import type { PhaseConfig } from "@/domain/value-objects/Phase";
+import {
+  type PhaseConfig,
+  getCurrentPhase,
+} from "@/domain/value-objects/Phase";
+import { getCurrentHour } from "@/lib/dates";
 import { cycleDeckSelectedCycleId$ } from "./ui-store";
 
 /**
@@ -130,6 +134,23 @@ export {
 // ============================================================================
 // Computed Observables
 // ============================================================================
+
+/**
+ * Time tick counter - incremented on window focus + 60s interval.
+ * Forces time-dependent computations to re-evaluate.
+ */
+export const timeTick$ = observable(0);
+
+/**
+ * Current phase derived from timeTick$ + phaseConfigs$.
+ * Re-evaluates whenever the tick increments, giving reactive phase transitions.
+ */
+export const currentPhase$ = observable(() => {
+  timeTick$.get(); // Subscribe to tick changes
+  const configs = phaseConfigs$.get();
+  const hour = getCurrentHour();
+  return getCurrentPhase(hour, Object.values(configs));
+});
 
 /**
  * All moments that are unallocated (not assigned to any day)

@@ -37,6 +37,7 @@ interface TimelineCellProps {
   day: string; // ISO date
   phase: Phase;
   isHighlighted?: boolean; // True for "Today" column
+  isActivePhase?: boolean; // True for current phase on active day
   dayLabel?: string; // "Yesterday", "Today", "Tomorrow"
   phaseLabel?: string; // "Morning", "Afternoon", etc.
   phaseIndex?: number; // Phase row index for alternating greyscale tints (0, 1, 2)
@@ -70,6 +71,7 @@ export const MAX_MOMENTS_PER_CELL = 3; // Enforce max 3 moments per cell at the 
 export function TimelineCell({
   day,
   phase,
+  isActivePhase,
   dayLabel,
   phaseLabel,
   phaseIndex = 0,
@@ -132,6 +134,8 @@ export function TimelineCell({
         // Phase-based gradient background
         "md:p-2.5",
         phaseBackgrounds[phaseIndex],
+        // Active phase indicator (current phase on active day)
+        isActivePhase && "ring-1 ring-stone-400/50",
         // Drag hover states with smooth ring transitions
         isOver &&
           wouldAcceptDrop &&
@@ -147,7 +151,10 @@ export function TimelineCell({
       <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center z-0 pointer-events-none">
         <PhaseIcon
           phase={phase}
-          className="opacity-50 text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5"
+          className={cn(
+            "text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5",
+            isActivePhase ? "opacity-80" : "opacity-50",
+          )}
         />
       </div>
 
