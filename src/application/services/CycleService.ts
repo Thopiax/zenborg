@@ -484,6 +484,77 @@ export class CycleService {
   }
 
   /**
+   * Increments the budget for a habit in a cycle by 1.
+   * Creates a new cycle plan if none exists.
+   *
+   * Encapsulates the domain knowledge of "current total" so callers
+   * don't need to query allocated vs. deck moments themselves.
+   */
+  incrementHabitBudget(cycleId: string, habitId: string): CyclePlanResult {
+    const currentTotal = this.countMomentsForHabitInCycle(cycleId, habitId);
+    return this.budgetHabitToCycle(cycleId, habitId, currentTotal + 1);
+  }
+
+  /**
+   * Decrements the budget for a habit in a cycle by 1.
+   * Only removes unallocated (deck) moments — allocated moments survive.
+   * No-op if there are no unallocated moments left to remove.
+   */
+  decrementHabitBudget(cycleId: string, habitId: string): CyclePlanResult {
+    const deckCount = this.countDeckMomentsForHabitInCycle(cycleId, habitId);
+    if (deckCount <= 1) {
+      return { error: "Cannot decrement below 1 deck moment" };
+    }
+    const currentTotal = this.countMomentsForHabitInCycle(cycleId, habitId);
+    return this.budgetHabitToCycle(cycleId, habitId, currentTotal - 1);
+  }
+
+  /**
+   * Removes all unallocated (deck) moments for a habit in a cycle.
+   * Allocated moments on the timeline survive.
+   */
+  removeHabitFromDeck(cycleId: string, habitId: string): CyclePlanResult {
+    const allocatedCount = this.countAllocatedMomentsForHabitInCycle(cycleId, habitId);
+    return this.budgetHabitToCycle(cycleId, habitId, allocatedCount);
+  }
+
+  /**
+   * Counts all moments (allocated + deck) for a habit in a cycle.
+   */
+  private countMomentsForHabitInCycle(cycleId: string, habitId: string): number {
+    return Object.values(moments$.get()).filter(
+      (m) => m.cycleId === cycleId && m.habitId === habitId
+    ).length;
+  }
+
+  /**
+   * Counts only allocated (on timeline) moments for a habit in a cycle.
+   */
+  private countAllocatedMomentsForHabitInCycle(cycleId: string, habitId: string): number {
+    return Object.values(moments$.get()).filter(
+      (m) =>
+        m.cycleId === cycleId &&
+        m.habitId === habitId &&
+        m.day !== null &&
+        m.phase !== null
+    ).length;
+  }
+
+  /**
+   * Counts only deck (unallocated) moments for a habit in a cycle.
+   */
+  private countDeckMomentsForHabitInCycle(cycleId: string, habitId: string): number {
+    return Object.values(moments$.get()).filter(
+      (m) =>
+        m.cycleId === cycleId &&
+        m.habitId === habitId &&
+        m.cyclePlanId !== null &&
+        m.day === null &&
+        m.phase === null
+    ).length;
+  }
+
+  /**
    * Finds a cycle plan by cycle and habit IDs
    *
    * @param cycleId - Cycle ID
