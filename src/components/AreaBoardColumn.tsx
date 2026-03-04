@@ -4,6 +4,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AreaColumnHeader } from "@/components/AreaColumnHeader";
+import { AreaColumnSubtoolbar } from "@/components/AreaColumnSubtoolbar";
 import { PlanHabitsList } from "@/components/PlanHabitsList";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
@@ -88,9 +89,12 @@ export function AreaBoardColumn({
 
       {/* Colored Divider */}
       <div
-        className="h-[3px] mx-4 mb-2"
+        className="h-[3px] mx-4"
         style={{ backgroundColor: area.color }}
       />
+
+      {/* Tags + Attitude sub-toolbar */}
+      <AreaColumnSubtoolbar area={area} onUpdateArea={onUpdateArea} />
 
       {/* Habits List (scrollable) */}
       <div
