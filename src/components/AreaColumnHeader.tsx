@@ -4,10 +4,7 @@
 import { Archive, MoreVertical, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { AttitudeChip } from "@/components/AttitudeChip";
-import { AttitudeSelector } from "@/components/AttitudeSelector";
 import { ColorPicker } from "@/components/ColorPicker";
-import { TagBadges } from "@/components/TagBadges";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +24,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { Area } from "@/domain/entities/Area";
-import type { Attitude } from "@/domain/value-objects/Attitude";
 
 interface AreaColumnHeaderProps {
   area: Area;
@@ -47,7 +43,6 @@ export function AreaColumnHeader({
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(area.name);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   const handleSaveName = () => {
@@ -70,11 +65,6 @@ export function AreaColumnHeader({
 
   const handleColorChange = (newColor: string) => {
     onUpdateArea(area.id, { color: newColor });
-  };
-
-  const handleAttitudeChange = (attitude: Attitude | null) => {
-    onUpdateArea(area.id, { attitude });
-    setAttitudeSelectorOpen(false);
   };
 
   // Enter to save, Escape to cancel
@@ -198,36 +188,6 @@ export function AreaColumnHeader({
         </DropdownMenu>
       </div>
 
-      {/* Tags + Attitude Row */}
-      {((area.tags && area.tags.length > 0) || area.attitude) && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-2 ml-10">
-          {area.attitude && (
-            <AttitudeSelector
-              open={attitudeSelectorOpen}
-              selectedAttitude={area.attitude}
-              onSelectAttitude={handleAttitudeChange}
-              onClose={() => setAttitudeSelectorOpen(false)}
-              onOpen={() => setAttitudeSelectorOpen(true)}
-              trigger={
-                <AttitudeChip
-                  attitude={area.attitude}
-                  onClick={() => setAttitudeSelectorOpen(true)}
-                />
-              }
-            />
-          )}
-
-          {area.tags && area.tags.length > 0 && (
-            <TagBadges
-              tags={area.tags}
-              onRemoveTag={(tag) => {
-                const updatedTags = (area.tags || []).filter((t) => t !== tag);
-                onUpdateArea(area.id, { tags: updatedTags });
-              }}
-            />
-          )}
-        </div>
-      )}
     </div>
   );
 }
