@@ -4,7 +4,11 @@ import { use$ } from "@legendapp/state/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { Phase } from "@/domain/value-objects/Phase";
-import { visiblePhases$ } from "@/infrastructure/state/store";
+import {
+  currentPhase$,
+  timeTick$,
+  visiblePhases$,
+} from "@/infrastructure/state/store";
 import {
   fromISODate,
   getDateLabel,
@@ -23,10 +27,11 @@ interface DayRowProps {
   isActiveDay: boolean;
   isPastDay: boolean;
   visiblePhases: Array<{ phase: Phase }>;
+  currentPhase: Phase | null;
 }
 
 const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
-  ({ day, isActiveDay, isPastDay, visiblePhases }, ref) => {
+  ({ day, isActiveDay, isPastDay, visiblePhases, currentPhase }, ref) => {
     const { dayOfWeek, monthDay } = formatDateShort(day);
     const label = getDateLabel(day);
 
@@ -87,6 +92,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
                     day={day}
                     phase={phaseConfig.phase}
                     isHighlighted={isActiveDay}
+                    isActivePhase={isActiveDay && phaseConfig.phase === currentPhase}
                     phaseIndex={index}
                   />
                 </div>
@@ -129,6 +135,9 @@ const formatDateShort = (dateStr: string) => {
  */
 export function Timeline() {
   const visiblePhases = use$(visiblePhases$);
+  const currentPhase = use$(currentPhase$) as Phase | null;
+  // Subscribe to timeTick$ so getExtendedTimelineDays recalculates on tick
+  use$(timeTick$);
   const [daysBefore, setDaysBefore] = useState(1);
   const [daysAfter, setDaysAfter] = useState(1);
   const timelineDays = getExtendedTimelineDays(daysBefore, daysAfter);
@@ -169,16 +178,24 @@ export function Timeline() {
     return () => clearTimeout(timeout);
   }, [scrollToActiveDay]);
 
-  // Re-scroll to active day when window regains focus
+  // Re-scroll to active day and recalculate time on window focus
   useEffect(() => {
     const handleFocus = () => {
-      console.log("Window focused - re-scrolling to active day");
+      timeTick$.set((t) => t + 1);
       scrollToActiveDay();
     };
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, [scrollToActiveDay]);
+
+  // Tick every 60s so phase transitions happen even if app stays open
+  useEffect(() => {
+    const interval = setInterval(() => {
+      timeTick$.set((t) => t + 1);
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Find active day's index to determine which days are past
   const activeDayIndex = timelineDays.findIndex((d) => d.isActiveDay);
@@ -254,6 +271,7 @@ export function Timeline() {
             isActiveDay={isActiveDay}
             isPastDay={index < activeDayIndex}
             visiblePhases={visiblePhases}
+            currentPhase={currentPhase}
           />
         ))}
 
