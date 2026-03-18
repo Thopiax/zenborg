@@ -1,14 +1,16 @@
 // @vitest-environment happy-dom
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { CycleService } from "../services/CycleService";
+import type { Phase } from "@/domain/value-objects/Phase";
 import {
   activeCycleId$,
-  cycles$,
   cyclePlans$,
+  cycles$,
   habits$,
   moments$,
+  storeHydrated$,
 } from "@/infrastructure/state/store";
+import { CycleService } from "../services/CycleService";
 
 const makeHabit = (id: string, areaId = "area-1") => ({
   id,
@@ -41,6 +43,7 @@ describe("CycleService.budgetHabitToCycle (incremental materialize)", () => {
     cyclePlans$.set({});
     cycles$.set({});
     activeCycleId$.set(null);
+    storeHydrated$.set(false);
     habits$.set({});
 
     cycles$["cycle-1"].set(makeCycle("cycle-1"));
@@ -81,7 +84,7 @@ describe("CycleService.budgetHabitToCycle (incremental materialize)", () => {
     const allMoments = Object.values(moments$.get());
     const firstMoment = allMoments[0];
     moments$[firstMoment.id].day.set("2026-02-01");
-    moments$[firstMoment.id].phase.set("morning");
+    moments$[firstMoment.id].phase.set("morning" as Phase);
 
     // Decrement to 1
     service.budgetHabitToCycle("cycle-1", "habit-1", 1);
@@ -92,7 +95,7 @@ describe("CycleService.budgetHabitToCycle (incremental materialize)", () => {
 
     // Total moments for this plan should be 1 (the allocated one)
     const remaining = Object.values(moments$.get()).filter(
-      (m) => m.habitId === "habit-1"
+      (m) => m.habitId === "habit-1",
     );
     expect(remaining).toHaveLength(1);
   });
@@ -104,7 +107,7 @@ describe("CycleService.budgetHabitToCycle (incremental materialize)", () => {
     const allMoments = Object.values(moments$.get());
     const allocatedMoment = allMoments[0];
     moments$[allocatedMoment.id].day.set("2026-02-01");
-    moments$[allocatedMoment.id].phase.set("morning");
+    moments$[allocatedMoment.id].phase.set("morning" as Phase);
 
     // Set to 0
     service.budgetHabitToCycle("cycle-1", "habit-1", 0);
@@ -114,7 +117,7 @@ describe("CycleService.budgetHabitToCycle (incremental materialize)", () => {
 
     // Unallocated moments are gone
     const unallocated = Object.values(moments$.get()).filter(
-      (m) => m.day === null && m.habitId === "habit-1"
+      (m) => m.day === null && m.habitId === "habit-1",
     );
     expect(unallocated).toHaveLength(0);
   });
