@@ -33,7 +33,7 @@ import {
   reorderMomentsWithHistory,
 } from "@/infrastructure/state/history-middleware";
 import { selectionState$ } from "@/infrastructure/state/selection";
-import { activeCycle$, areas$, moments$ } from "@/infrastructure/state/store";
+import { areas$, moments$ } from "@/infrastructure/state/store";
 import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
 import { columnWidth } from "@/lib/design-tokens";
 import {
@@ -172,26 +172,9 @@ export function DnDProvider({ children }: DnDProviderProps) {
     if (isDraggingSelection && dropData?.targetType === "cycle-deck") {
       // Handle batch drop on cycle deck (unallocate all)
       if (!wasDuplicateMode) {
-        // Guard: only allow unallocation if all moments belong to the current cycle
-        const activeCycle = activeCycle$.get();
-        if (!activeCycle) {
-          console.warn("No current cycle - cannot unallocate to cycle deck");
-          return;
-        }
-
-        // Filter moments that belong to the current cycle
         const validMomentIds = currentSelectedIds.filter((momentId) => {
           const moment = allMoments[momentId];
-          if (!moment) return false;
-
-          if (moment.cycleId !== activeCycle.id) {
-            console.warn(
-              `Moment ${moment.name} (${moment.cycleId}) does not match current cycle (${activeCycle.id}) - skipping`,
-            );
-            return false;
-          }
-
-          return true;
+          return !!moment;
         });
 
         if (validMomentIds.length === 0) {
@@ -279,20 +262,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       case "cycle-deck":
         // Unallocate moment back to cycle deck (only if coming from timeline)
         if (!wasDuplicateMode && dragData.sourceType === "timeline") {
-          // Guard: only allow unallocation if moment belongs to the current cycle
-          const activeCycle = activeCycle$.get();
-          if (!activeCycle) {
-            console.warn("No current cycle - cannot unallocate to cycle deck");
-            break;
-          }
-
-          if (moment.cycleId !== activeCycle.id) {
-            console.warn(
-              `Moment cycleId (${moment.cycleId}) does not match current cycle (${activeCycle.id})`,
-            );
-            break;
-          }
-
           console.log("Unallocating moment to cycle deck", dragData);
           handleUnallocateMoment(dragData);
         }

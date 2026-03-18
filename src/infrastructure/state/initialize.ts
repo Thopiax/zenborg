@@ -2,7 +2,7 @@ import { createCycle, isDateInCycle } from "@/domain/entities/Cycle";
 import { getDefaultPhaseConfigs } from "@/domain/value-objects/Phase";
 import { configurePersistence } from "./persistence";
 import { selectionState$ } from "./selection";
-import { activeCycleId$, areas$, cycles$, moments$, phaseConfigs$ } from "./store";
+import { activeCycleId$, areas$, cycles$, moments$, phaseConfigs$, storeHydrated$ } from "./store";
 
 /**
  * Initializes the application state on first run
@@ -35,6 +35,7 @@ export async function initializeStore(): Promise<void> {
   // If data exists, run migrations then skip initialization
   if (hasCycles && hasPhaseConfigs) {
     migrateActiveCycleId();
+    storeHydrated$.set(true);
     return;
   }
 
@@ -79,6 +80,7 @@ export async function initializeStore(): Promise<void> {
     console.log("[Zenborg] Created first cycle:", firstCycle.name);
   }
 
+  storeHydrated$.set(true);
   console.log("[Zenborg] Initialization complete");
 }
 
