@@ -7,7 +7,11 @@ import {
   unarchiveHabit,
   updateHabit,
 } from "@/domain/entities/Habit";
-import { habits$ } from "@/infrastructure/state/store";
+import {
+  cyclePlans$,
+  habits$,
+  moments$,
+} from "@/infrastructure/state/store";
 
 /**
  * Application Service for Habit Management
@@ -86,6 +90,22 @@ export class HabitService {
     }
 
     const result = archiveHabit(existing);
+
+    // Delete unallocated moments linked to this habit (allocated ones are kept)
+    const allMoments = moments$.get();
+    for (const moment of Object.values(allMoments)) {
+      if (moment.habitId === habitId && moment.day === null) {
+        moments$[moment.id].delete();
+      }
+    }
+
+    // Delete cycle plans for this habit
+    const allPlans = cyclePlans$.get();
+    for (const plan of Object.values(allPlans)) {
+      if (plan.habitId === habitId) {
+        cyclePlans$[plan.id].delete();
+      }
+    }
 
     // Update store
     habits$[habitId].set(result);

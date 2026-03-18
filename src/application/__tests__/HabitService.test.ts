@@ -1,14 +1,21 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { HabitService } from "../services/HabitService";
-import { habits$ } from "@/infrastructure/state/store";
+import {
+  cyclePlans$,
+  habits$,
+  moments$,
+} from "@/infrastructure/state/store";
 import { Attitude } from "@/domain/value-objects/Attitude";
+import { createMoment } from "@/domain/entities/Moment";
+import { createCyclePlan } from "@/domain/entities/CyclePlan";
 
 describe("HabitService", () => {
   const service = new HabitService();
 
   beforeEach(() => {
-    // Clear habits before each test
     habits$.set({});
+    moments$.set({});
+    cyclePlans$.set({});
   });
 
   describe("createHabit", () => {
@@ -206,6 +213,89 @@ describe("HabitService", () => {
       if ("error" in result) {
         expect(result.error).toContain("not found");
       }
+    });
+
+    it("should delete unallocated moments linked to the habit", () => {
+      const habit = service.createHabit({
+        name: "Running",
+        areaId: "area-1",
+        order: 0,
+      });
+      if ("error" in habit) throw new Error(habit.error);
+
+      // Unallocated moment (deck) — should be deleted
+      const unallocated = createMoment({
+        name: "Running",
+        areaId: "area-1",
+        habitId: habit.id,
+        cycleId: "cycle-1",
+      });
+      if ("error" in unallocated) throw new Error(unallocated.error);
+      moments$[unallocated.id].set(unallocated);
+
+      // Allocated moment (on timeline) — should be kept
+      const allocated = createMoment({
+        name: "Running",
+        areaId: "area-1",
+        habitId: habit.id,
+        cycleId: "cycle-1",
+      });
+      if ("error" in allocated) throw new Error(allocated.error);
+      moments$[allocated.id].set({
+        ...allocated,
+        day: "2026-03-04",
+        phase: "morning" as const,
+        order: 0,
+      });
+
+      // Unrelated moment — should be kept
+      const unrelated = createMoment({
+        name: "Reading",
+        areaId: "area-2",
+        habitId: "other-habit",
+      });
+      if ("error" in unrelated) throw new Error(unrelated.error);
+      moments$[unrelated.id].set(unrelated);
+
+      service.archiveHabit(habit.id);
+
+      const remaining = moments$.get();
+      expect(Object.keys(remaining)).toHaveLength(2);
+      expect(remaining[allocated.id]).toBeDefined();
+      expect(remaining[unrelated.id]).toBeDefined();
+      expect(remaining[unallocated.id]).toBeUndefined();
+    });
+
+    it("should delete cycle plans for the habit", () => {
+      const habit = service.createHabit({
+        name: "Meditation",
+        areaId: "area-1",
+        order: 0,
+      });
+      if ("error" in habit) throw new Error(habit.error);
+
+      const plan = createCyclePlan({
+        cycleId: "cycle-1",
+        habitId: habit.id,
+        budgetedCount: 5,
+      });
+      if ("error" in plan) throw new Error(plan.error);
+      cyclePlans$[plan.id].set(plan);
+
+      // Unrelated plan
+      const otherPlan = createCyclePlan({
+        cycleId: "cycle-1",
+        habitId: "other-habit",
+        budgetedCount: 3,
+      });
+      if ("error" in otherPlan) throw new Error(otherPlan.error);
+      cyclePlans$[otherPlan.id].set(otherPlan);
+
+      service.archiveHabit(habit.id);
+
+      const remaining = cyclePlans$.get();
+      expect(Object.keys(remaining)).toHaveLength(1);
+      expect(remaining[otherPlan.id]).toBeDefined();
     });
   });
 

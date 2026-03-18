@@ -63,6 +63,12 @@ export const cycles$ = observable<Record<string, Cycle>>({});
 export const activeCycleId$ = observable<string | null>(null);
 
 /**
+ * Whether the store has been hydrated from IndexedDB.
+ * Used to avoid rendering stale/empty state before persistence loads.
+ */
+export const storeHydrated$ = observable(false);
+
+/**
  * Cycle plans collection - keyed by cycle plan ID
  * Links habits to cycles with budget counts
  */
