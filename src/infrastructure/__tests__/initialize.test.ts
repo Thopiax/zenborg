@@ -1,180 +1,192 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import 'fake-indexeddb/auto'
-import { initializeStore, clearStore } from '../state/initialize'
-import { activeCycleId$, areas$, cycles$, phaseConfigs$ } from '../state/store'
+import { beforeEach, describe, expect, it } from "vitest";
+import "fake-indexeddb/auto";
+import { clearStore, initializeStore } from "../state/initialize";
+import {
+  activeCycleId$,
+  areas$,
+  cycles$,
+  phaseConfigs$,
+  storeHydrated$,
+} from "../state/store";
 
-describe('Initialize Store', () => {
+describe("Initialize Store", () => {
   beforeEach(() => {
     // Clear store before each test
-    clearStore()
-  })
+    clearStore();
+  });
 
-  describe('initializeStore', () => {
-    it('should NOT create default areas on first run (user creates from templates)', async () => {
-      await initializeStore()
+  describe("initializeStore", () => {
+    it("should NOT create default areas on first run (user creates from templates)", async () => {
+      await initializeStore();
 
-      const areas = areas$.get()
-      const areaValues = Object.values(areas)
+      const areas = areas$.get();
+      const areaValues = Object.values(areas);
 
       // Areas are NOT seeded automatically anymore - users create from templates
-      expect(areaValues).toHaveLength(0)
-    })
+      expect(areaValues).toHaveLength(0);
+    });
 
-    it('should create default phase configurations on first run', async () => {
-      await initializeStore()
+    it("should create default phase configurations on first run", async () => {
+      await initializeStore();
 
-      const phases = phaseConfigs$.get()
-      const phaseValues = Object.values(phases)
+      const phases = phaseConfigs$.get();
+      const phaseValues = Object.values(phases);
 
-      expect(phaseValues).toHaveLength(4)
+      expect(phaseValues).toHaveLength(4);
 
-      const labels = phaseValues.map((p) => p.label)
-      expect(labels).toContain('Morning')
-      expect(labels).toContain('Afternoon')
-      expect(labels).toContain('Evening')
-      expect(labels).toContain('Night')
-    })
+      const labels = phaseValues.map((p) => p.label);
+      expect(labels).toContain("Morning");
+      expect(labels).toContain("Afternoon");
+      expect(labels).toContain("Evening");
+      expect(labels).toContain("Night");
+    });
 
-    it('should create first cycle on first run', async () => {
-      await initializeStore()
+    it("should set storeHydrated$ to true after initialization", async () => {
+      await initializeStore();
 
-      const cyclesObj = cycles$.get()
-      const cycleValues = Object.values(cyclesObj)
+      expect(storeHydrated$.get()).toBe(true);
+    });
 
-      expect(cycleValues).toHaveLength(1)
+    it("should create first cycle on first run", async () => {
+      await initializeStore();
 
-      const firstCycle = cycleValues[0]
-      expect(firstCycle.name).toBe('First Cycle')
-      expect(firstCycle.endDate).toBeNull()
+      const cyclesObj = cycles$.get();
+      const cycleValues = Object.values(cyclesObj);
+
+      expect(cycleValues).toHaveLength(1);
+
+      const firstCycle = cycleValues[0];
+      expect(firstCycle.name).toBe("First Cycle");
+      expect(firstCycle.endDate).toBeNull();
 
       // Verify start date is today
-      const today = new Date().toISOString().split('T')[0]
-      expect(firstCycle.startDate).toBe(today)
+      const today = new Date().toISOString().split("T")[0];
+      expect(firstCycle.startDate).toBe(today);
 
       // Verify it's set as the active cycle
-      expect(activeCycleId$.get()).toBe(firstCycle.id)
-    })
+      expect(activeCycleId$.get()).toBe(firstCycle.id);
+    });
 
-    it('should not overwrite existing data on subsequent runs', async () => {
+    it("should not overwrite existing data on subsequent runs", async () => {
       // First run
-      await initializeStore()
+      await initializeStore();
 
-      const originalAreas = areas$.get()
-      const originalCycles = cycles$.get()
-      const originalPhases = phaseConfigs$.get()
+      const originalAreas = areas$.get();
+      const originalCycles = cycles$.get();
+      const originalPhases = phaseConfigs$.get();
 
       // Second run (simulating app restart)
-      await initializeStore()
+      await initializeStore();
 
       // Data should be identical
-      expect(areas$.get()).toEqual(originalAreas)
-      expect(cycles$.get()).toEqual(originalCycles)
-      expect(phaseConfigs$.get()).toEqual(originalPhases)
-    })
+      expect(areas$.get()).toEqual(originalAreas);
+      expect(cycles$.get()).toEqual(originalCycles);
+      expect(phaseConfigs$.get()).toEqual(originalPhases);
+    });
 
-    it('should skip initialization if data already exists', async () => {
+    it("should skip initialization if data already exists", async () => {
       // First run
-      await initializeStore()
+      await initializeStore();
 
-      const areasCount = Object.keys(areas$.get()).length
-      const cyclesCount = Object.keys(cycles$.get()).length
-      const phasesCount = Object.keys(phaseConfigs$.get()).length
+      const areasCount = Object.keys(areas$.get()).length;
+      const cyclesCount = Object.keys(cycles$.get()).length;
+      const phasesCount = Object.keys(phaseConfigs$.get()).length;
 
       // Second run
-      await initializeStore()
+      await initializeStore();
 
       // Counts should remain the same (no duplicates)
-      expect(Object.keys(areas$.get())).toHaveLength(areasCount)
-      expect(Object.keys(cycles$.get())).toHaveLength(cyclesCount)
-      expect(Object.keys(phaseConfigs$.get())).toHaveLength(phasesCount)
-    })
+      expect(Object.keys(areas$.get())).toHaveLength(areasCount);
+      expect(Object.keys(cycles$.get())).toHaveLength(cyclesCount);
+      expect(Object.keys(phaseConfigs$.get())).toHaveLength(phasesCount);
+    });
 
-    it('should handle partial initialization (areas exist, but not cycles)', async () => {
+    it("should handle partial initialization (areas exist, but not cycles)", async () => {
       // Manually create areas first
-      await initializeStore()
+      await initializeStore();
 
       // Clear only cycles
-      cycles$.set({})
+      cycles$.set({});
 
       // Initialize again
-      await initializeStore()
+      await initializeStore();
 
       // Should have recreated the cycle
-      const cycleValues = Object.values(cycles$.get())
-      expect(cycleValues).toHaveLength(1)
-    })
-  })
+      const cycleValues = Object.values(cycles$.get());
+      expect(cycleValues).toHaveLength(1);
+    });
+  });
 
-  describe('clearStore', () => {
-    it('should clear all data from the store', async () => {
+  describe("clearStore", () => {
+    it("should clear all data from the store", async () => {
       // Initialize first
-      await initializeStore()
+      await initializeStore();
 
       // Verify data exists (cycles and phases, but not areas since they're not seeded)
-      expect(Object.keys(cycles$.get()).length).toBeGreaterThan(0)
-      expect(Object.keys(phaseConfigs$.get()).length).toBeGreaterThan(0)
+      expect(Object.keys(cycles$.get()).length).toBeGreaterThan(0);
+      expect(Object.keys(phaseConfigs$.get()).length).toBeGreaterThan(0);
 
       // Clear
-      clearStore()
+      clearStore();
 
       // Verify all cleared
-      expect(Object.keys(areas$.get())).toHaveLength(0)
-      expect(Object.keys(cycles$.get())).toHaveLength(0)
-      expect(Object.keys(phaseConfigs$.get())).toHaveLength(0)
-    })
-  })
+      expect(Object.keys(areas$.get())).toHaveLength(0);
+      expect(Object.keys(cycles$.get())).toHaveLength(0);
+      expect(Object.keys(phaseConfigs$.get())).toHaveLength(0);
+    });
+  });
 
-  describe('Default Data Validation', () => {
-    it('should NOT seed default areas (template-based creation)', async () => {
-      await initializeStore()
+  describe("Default Data Validation", () => {
+    it("should NOT seed default areas (template-based creation)", async () => {
+      await initializeStore();
 
-      const areaValues = Object.values(areas$.get())
+      const areaValues = Object.values(areas$.get());
 
       // Areas are no longer automatically seeded - empty on first run
-      expect(areaValues).toHaveLength(0)
-    })
+      expect(areaValues).toHaveLength(0);
+    });
 
-    it('should create phase configs with valid time boundaries', async () => {
-      await initializeStore()
+    it("should create phase configs with valid time boundaries", async () => {
+      await initializeStore();
 
-      const phaseValues = Object.values(phaseConfigs$.get())
+      const phaseValues = Object.values(phaseConfigs$.get());
 
       for (const phase of phaseValues) {
         // Check required fields
-        expect(phase.id).toBeDefined()
-        expect(phase.phase).toBeDefined()
-        expect(phase.label).toBeDefined()
-        expect(phase.emoji).toBeDefined()
-        expect(phase.color).toMatch(/^#[0-9a-f]{6}$/)
-        expect(phase.startHour).toBeGreaterThanOrEqual(0)
-        expect(phase.startHour).toBeLessThanOrEqual(23)
-        expect(phase.endHour).toBeGreaterThanOrEqual(0)
-        expect(phase.endHour).toBeLessThanOrEqual(23)
-        expect(phase.order).toBeGreaterThanOrEqual(0)
-        expect(phase.createdAt).toBeDefined()
-        expect(phase.updatedAt).toBeDefined()
+        expect(phase.id).toBeDefined();
+        expect(phase.phase).toBeDefined();
+        expect(phase.label).toBeDefined();
+        expect(phase.emoji).toBeDefined();
+        expect(phase.color).toMatch(/^#[0-9a-f]{6}$/);
+        expect(phase.startHour).toBeGreaterThanOrEqual(0);
+        expect(phase.startHour).toBeLessThanOrEqual(23);
+        expect(phase.endHour).toBeGreaterThanOrEqual(0);
+        expect(phase.endHour).toBeLessThanOrEqual(23);
+        expect(phase.order).toBeGreaterThanOrEqual(0);
+        expect(phase.createdAt).toBeDefined();
+        expect(phase.updatedAt).toBeDefined();
       }
-    })
+    });
 
-    it('should create Night phase as hidden by default', async () => {
-      await initializeStore()
+    it("should create Night phase as hidden by default", async () => {
+      await initializeStore();
 
-      const phaseValues = Object.values(phaseConfigs$.get())
-      const nightPhase = phaseValues.find((p) => p.label === 'Night')
+      const phaseValues = Object.values(phaseConfigs$.get());
+      const nightPhase = phaseValues.find((p) => p.label === "Night");
 
-      expect(nightPhase).toBeDefined()
-      expect(nightPhase?.isVisible).toBe(false)
-    })
+      expect(nightPhase).toBeDefined();
+      expect(nightPhase?.isVisible).toBe(false);
+    });
 
-    it('should create other phases as visible by default', async () => {
-      await initializeStore()
+    it("should create other phases as visible by default", async () => {
+      await initializeStore();
 
-      const phaseValues = Object.values(phaseConfigs$.get())
+      const phaseValues = Object.values(phaseConfigs$.get());
       const visiblePhases = phaseValues.filter(
-        (p) => p.label !== 'Night' && p.isVisible
-      )
+        (p) => p.label !== "Night" && p.isVisible,
+      );
 
-      expect(visiblePhases).toHaveLength(3) // Morning, Afternoon, Evening
-    })
-  })
-})
+      expect(visiblePhases).toHaveLength(3); // Morning, Afternoon, Evening
+    });
+  });
+});

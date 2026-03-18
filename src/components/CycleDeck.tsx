@@ -12,6 +12,7 @@ import {
   areas$,
   deckMomentsByAreaAndHabit$,
   habits$,
+  storeHydrated$,
 } from "@/infrastructure/state/store";
 import {
   cycleDeckCollapsed$,
@@ -121,8 +122,12 @@ export function CycleDeck() {
     },
   });
 
-  // No active cycle → show CycleStarter instead
+  // Wait for store hydration before deciding what to render
+  const isHydrated = useValue(storeHydrated$);
+
+  // No active cycle → show CycleStarter instead (only after hydration)
   if (!activeCycle) {
+    if (!isHydrated) return null;
     return <CycleStarter />;
   }
 
