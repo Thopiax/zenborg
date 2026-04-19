@@ -252,6 +252,8 @@ describe("TrmnlFormatter", () => {
         name: "Barcelona Summer",
         startDate: "2026-02-01",
         endDate: "2026-03-01",
+        intention: null,
+        reflection: null,
         createdAt: "2026-02-01T00:00:00.000Z",
         updatedAt: "2026-02-01T00:00:00.000Z",
       };

@@ -31,6 +31,8 @@ const makeCycle = (id: string) => ({
   name: `Cycle ${id}`,
   startDate: "2026-01-01",
   endDate: "2026-03-31",
+  intention: null,
+  reflection: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });
@@ -149,6 +151,8 @@ describe("CycleService.endCycle", () => {
     name: `Cycle ${id}`,
     startDate,
     endDate: null,
+    intention: null,
+    reflection: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   });
@@ -158,6 +162,8 @@ describe("CycleService.endCycle", () => {
     name: `Cycle ${id}`,
     startDate,
     endDate,
+    intention: null,
+    reflection: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   });
