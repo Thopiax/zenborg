@@ -2,9 +2,14 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Pencil, Plus } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Flag, Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import {
@@ -88,6 +93,27 @@ export function CycleDeck() {
 
   // Create cycle dialog
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // End cycle popover state
+  const [endPopoverOpen, setEndPopoverOpen] = useState(false);
+  const [endDateInput, setEndDateInput] = useState("");
+  const [endCycleError, setEndCycleError] = useState<string | null>(null);
+
+  const resetEndCycleState = () => {
+    setEndPopoverOpen(false);
+    setEndDateInput("");
+    setEndCycleError(null);
+  };
+
+  const handleEndCycle = (explicitEndDate?: string) => {
+    if (!effectiveCycleId) return;
+    const result = cycleService.endCycle(effectiveCycleId, explicitEndDate);
+    if ("error" in result) {
+      setEndCycleError(result.error);
+      return;
+    }
+    resetEndCycleState();
+  };
 
   // Inline editing state for cycle name and dates
   const [editName, setEditName] = useState(effectiveCycle?.name || "");
@@ -242,6 +268,83 @@ export function CycleDeck() {
 
       {/* Right side: action icon buttons */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        {!isCollapsed && effectiveCycle && effectiveCycle.endDate === null && (
+          <Popover
+            open={endPopoverOpen}
+            onOpenChange={(open) => {
+              if (open) {
+                setEndCycleError(null);
+                setEndDateInput("");
+              }
+              setEndPopoverOpen(open);
+            }}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                title="End this cycle"
+                aria-label="End this cycle"
+              >
+                <Flag className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-64 p-3 flex flex-col gap-3 font-mono"
+            >
+              <div>
+                <p className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                  End cycle
+                </p>
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                  Close “{effectiveCycle.name}”. Defaults to today, capped before the next cycle.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleEndCycle()}
+                className="w-full px-3 py-2 rounded-md bg-stone-800 dark:bg-stone-100 text-stone-50 dark:text-stone-900 text-xs font-medium hover:opacity-90 active:scale-95 transition-all"
+              >
+                End today
+              </button>
+              <div className="flex items-center gap-2 text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider">
+                <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
+                or pick a date
+                <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="date"
+                  value={endDateInput}
+                  min={effectiveCycle.startDate}
+                  onChange={(e) => {
+                    setEndDateInput(e.target.value);
+                    setEndCycleError(null);
+                  }}
+                  className="w-full px-2 py-1.5 border border-stone-300 dark:border-stone-600 rounded-md bg-white dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-stone-400"
+                  aria-label="End date"
+                />
+                <button
+                  type="button"
+                  disabled={!endDateInput}
+                  onClick={() => handleEndCycle(endDateInput)}
+                  className="w-full px-3 py-1.5 rounded-md text-xs font-medium border border-stone-300 dark:border-stone-600 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  End on this date
+                </button>
+              </div>
+              {endCycleError && (
+                <p
+                  className="text-xs text-red-600 dark:text-red-400"
+                  role="alert"
+                >
+                  {endCycleError}
+                </p>
+              )}
+            </PopoverContent>
+          </Popover>
+        )}
         {!isCollapsed && (
           <>
             <button

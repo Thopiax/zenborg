@@ -10,7 +10,7 @@ import {
   startOfQuarter,
   startOfWeek,
 } from "date-fns";
-import { toISODate, getTomorrowISO, fromISODate } from "@/lib/dates";
+import { toISODate, getTodayISO, getTomorrowISO, fromISODate } from "@/lib/dates";
 import type { Cycle } from "@/domain/entities/Cycle";
 
 /**
@@ -181,8 +181,9 @@ function calculateEndDateFromStart(
 /**
  * Checks if two date ranges overlap
  *
- * Business Rule: Cycles cannot overlap
- * - A cycle with null endDate is considered ongoing (overlaps with future dates)
+ * Business Rule: Cycles cannot overlap on interior days.
+ * Touching endpoints (one ends the same day another starts) do NOT overlap —
+ * cycles can start on the day the previous cycle ended.
  *
  * @param range1Start - Start date of first range
  * @param range1End - End date of first range (null = ongoing)
@@ -208,9 +209,9 @@ export function doDateRangesOverlap(
   const end1 = fromISODate(range1End);
   const end2 = fromISODate(range2End);
 
-  // Both have end dates: check for overlap
-  // Ranges overlap if: start1 <= end2 AND end1 >= start2
-  return start1 <= end2 && end1 >= start2;
+  // Both have end dates: overlap only on interior days (strict inequality).
+  // start1 === end2 or end1 === start2 means a single touching day, not overlap.
+  return start1 < end2 && end1 > start2;
 }
 
 /**
@@ -246,4 +247,40 @@ export function findOverlappingCycle(
 export function getDayBefore(date: string): string {
   const dateObj = fromISODate(date);
   return toISODate(addDays(dateObj, -1));
+}
+
+/**
+ * Calculates a smart default end date when closing a cycle.
+ *
+ * Returns the earlier of:
+ * - today
+ * - the day before the next cycle's start date (if one exists)
+ *
+ * This ensures the default never creates an overlap with a subsequent cycle.
+ *
+ * @param cycle - The cycle being ended
+ * @param allCycles - All cycles (including the one being ended)
+ * @returns ISO date string for the default end date
+ */
+export function calculateDefaultEndDate(
+  cycle: Cycle,
+  allCycles: Cycle[]
+): string {
+  const cycleStart = fromISODate(cycle.startDate);
+
+  const nextCycle = allCycles
+    .filter((c) => c.id !== cycle.id && fromISODate(c.startDate) > cycleStart)
+    .sort(
+      (a, b) =>
+        fromISODate(a.startDate).getTime() - fromISODate(b.startDate).getTime()
+    )[0];
+
+  const todayISO = getTodayISO();
+
+  if (!nextCycle) {
+    return todayISO;
+  }
+
+  const cap = getDayBefore(nextCycle.startDate);
+  return fromISODate(cap) < fromISODate(todayISO) ? cap : todayISO;
 }

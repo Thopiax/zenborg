@@ -27,6 +27,7 @@ import {
   moments$,
 } from "@/infrastructure/state/store";
 import {
+  calculateDefaultEndDate,
   calculateDefaultStartDate,
   calculateTemplateDates,
   findOverlappingCycle,
@@ -34,7 +35,7 @@ import {
   getDayBefore,
   type TemplateDuration,
 } from "@/domain/services/CycleDateService";
-import { fromISODate } from "@/lib/dates";
+import { formatCycleDateRange, fromISODate } from "@/lib/dates";
 
 // Re-export TemplateDuration for backward compatibility
 export type { TemplateDuration };
@@ -126,8 +127,12 @@ export class CycleService {
     );
 
     if (overlapping) {
+      const range = formatCycleDateRange(
+        overlapping.startDate,
+        overlapping.endDate
+      );
       return {
-        error: `Cycle dates overlap with existing cycle "${overlapping.name}"`,
+        error: `Cycle dates overlap with "${overlapping.name}" (${range})`,
       };
     }
 
@@ -186,8 +191,12 @@ export class CycleService {
       );
 
       if (overlapping) {
+        const range = formatCycleDateRange(
+          overlapping.startDate,
+          overlapping.endDate
+        );
         return {
-          error: `Cycle dates overlap with existing cycle "${overlapping.name}"`,
+          error: `Cycle dates overlap with "${overlapping.name}" (${range})`,
         };
       }
     }
@@ -196,6 +205,28 @@ export class CycleService {
     cycles$[cycleId].set(updatedCycle);
 
     return updatedCycle;
+  }
+
+  /**
+   * Ends an ongoing cycle by setting its end date.
+   *
+   * If endDate is omitted, uses a smart default: the earlier of today and
+   * the day before the next cycle's start date (prevents accidental overlap).
+   *
+   * @param cycleId - ID of cycle to end
+   * @param endDate - Optional explicit end date (ISO string)
+   * @returns Updated cycle or error
+   */
+  endCycle(cycleId: string, endDate?: string): CycleResult {
+    const cycle = cycles$[cycleId].get();
+    if (!cycle) {
+      return { error: `Cycle with ID ${cycleId} not found` };
+    }
+
+    const resolvedEndDate =
+      endDate ?? calculateDefaultEndDate(cycle, Object.values(cycles$.get()));
+
+    return this.updateCycle(cycleId, { endDate: resolvedEndDate });
   }
 
   /**
