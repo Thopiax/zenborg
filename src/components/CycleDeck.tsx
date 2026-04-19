@@ -29,7 +29,6 @@ import { formatCycleSubtitle } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { CycleDeckColumn } from "./CycleDeckColumn";
 import { CycleFormDialog } from "./CycleFormDialog";
-import { CycleStarter } from "./CycleStarter";
 import { CycleStrip } from "./CycleStrip";
 
 /**
@@ -139,10 +138,37 @@ export function CycleDeck() {
   // Wait for store hydration before deciding what to render
   const isHydrated = useValue(storeHydrated$);
 
-  // No active cycle → show CycleStarter instead (only after hydration)
+  // No active cycle → show only the strip (with "+ Plan new cycle") and a
+  // quiet hint. No floating "Cycle Deck" container over an empty space.
   if (!activeCycle) {
     if (!isHydrated) return null;
-    return <CycleStarter />;
+    return (
+      <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
+        <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+        <div className="px-6 py-4 text-center text-xs font-mono text-stone-400 dark:text-stone-500">
+          No active cycle. Plan one above to start budgeting moments.
+        </div>
+        <CycleFormDialog
+          open={createDialogOpen}
+          mode="create"
+          initialStartDate={cycleService.getDefaultStartDate()}
+          onClose={() => setCreateDialogOpen(false)}
+          onSave={(name, templateDuration, startDate, endDate) => {
+            const result = cycleService.planCycle(
+              name,
+              templateDuration,
+              startDate,
+              endDate ?? undefined,
+            );
+            if (!("error" in result)) {
+              cycleService.activateCycle(result.id);
+              cycleDeckSelectedCycleId$.set(result.id);
+            }
+            setCreateDialogOpen(false);
+          }}
+        />
+      </div>
+    );
   }
 
   const handleNameBlur = () => {
