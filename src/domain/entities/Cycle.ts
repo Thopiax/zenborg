@@ -9,6 +9,8 @@ export interface Cycle {
   name: string;
   startDate: string; // ISO date: "2025-01-15"
   endDate: string | null; // null for ongoing cycles
+  intention: string | null; // Why this chapter — set at creation, editable later
+  reflection: string | null; // Populated in harvest when the cycle closes
   createdAt: string;
   updatedAt: string;
 }
@@ -20,6 +22,7 @@ export interface CreateCycleProps {
   name: string;
   startDate: string;
   endDate?: string | null;
+  intention?: string | null;
 }
 
 /**
@@ -29,6 +32,8 @@ export interface UpdateCycleProps {
   name?: string;
   startDate?: string;
   endDate?: string | null;
+  intention?: string | null;
+  reflection?: string | null;
 }
 
 /**
@@ -80,6 +85,8 @@ export function createCycle(props: CreateCycleProps): CycleResult {
     name: trimmedName,
     startDate: props.startDate,
     endDate,
+    intention: props.intention ?? null,
+    reflection: null,
     createdAt: now,
     updatedAt: now,
   };

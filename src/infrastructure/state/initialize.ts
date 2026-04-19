@@ -35,6 +35,7 @@ export async function initializeStore(): Promise<void> {
   // If data exists, run migrations then skip initialization
   if (hasCycles && hasPhaseConfigs) {
     migrateActiveCycleId();
+    migrateCycleIntentionReflection();
     storeHydrated$.set(true);
     return;
   }
@@ -82,6 +83,24 @@ export async function initializeStore(): Promise<void> {
 
   storeHydrated$.set(true);
   console.log("[Zenborg] Initialization complete");
+}
+
+/**
+ * Migration: backfill intention + reflection fields on legacy cycles.
+ * Cycles created before these fields existed persist without them;
+ * we set both to null so the rest of the app can rely on the schema shape.
+ */
+function migrateCycleIntentionReflection(): void {
+  const all = cycles$.get();
+  for (const id of Object.keys(all)) {
+    const cycle = all[id] as { intention?: string | null; reflection?: string | null };
+    if (cycle.intention === undefined) {
+      cycles$[id].intention.set(null);
+    }
+    if (cycle.reflection === undefined) {
+      cycles$[id].reflection.set(null);
+    }
+  }
 }
 
 /**
