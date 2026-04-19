@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { Check, ChevronDown, ChevronUp, Flag, Pencil } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Flag, Pencil, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import {
@@ -25,7 +25,7 @@ import {
   cycleDeckEditMode$,
   cycleDeckSelectedCycleId$,
 } from "@/infrastructure/state/ui-store";
-import { formatCycleSubtitle } from "@/lib/dates";
+import { formatCycleSubtitle, fromISODate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { CycleCalendarDialog } from "./CycleCalendarDialog";
 import { CycleDeckColumn } from "./CycleDeckColumn";
@@ -240,6 +240,17 @@ export function CycleDeck() {
 
       {/* Right side: action icon buttons */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        {!isCollapsed && effectiveCycle && canActivate(effectiveCycle, activeCycle?.id ?? null) && (
+          <button
+            type="button"
+            onClick={() => cycleService.activateCycle(effectiveCycle.id)}
+            className="px-2 py-1 rounded text-xs font-mono font-medium bg-stone-800 dark:bg-stone-100 text-stone-50 dark:text-stone-900 hover:opacity-90 active:scale-95 flex items-center gap-1 transition-all"
+            title="Make this the active cycle"
+          >
+            <Play className="h-3 w-3" />
+            Start
+          </button>
+        )}
         {!isCollapsed && effectiveCycle && (
           <Popover
             open={endPopoverOpen}
@@ -503,5 +514,18 @@ export function CycleDeck() {
       />
     </div>
   );
+}
+
+function canActivate(
+  cycle: { id: string; endDate: string | null },
+  activeId: string | null,
+): boolean {
+  if (cycle.id === activeId) return false;
+  if (cycle.endDate === null) return true; // ongoing
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = fromISODate(cycle.endDate);
+  end.setHours(0, 0, 0, 0);
+  return end >= today;
 }
 
