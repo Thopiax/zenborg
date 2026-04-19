@@ -151,6 +151,7 @@ vi.mock("@/lib/dates", () => ({
   formatCycleSubtitle: vi.fn(() => "ends in 5 days"),
   formatCycleDateRange: vi.fn(() => "Jan 1 – Apr 1"),
   fromISODate: vi.fn((s: string) => new Date(s)),
+  toISODate: vi.fn((d: Date) => d.toISOString().slice(0, 10)),
 }));
 
 vi.mock("@/infrastructure/state/ui-store", () => ({
@@ -171,8 +172,8 @@ vi.mock("@/infrastructure/state/ui-store", () => ({
   },
 }));
 
-vi.mock("../CycleFormDialog", () => ({
-  CycleFormDialog: () => <div data-testid="cycle-form-dialog" />,
+vi.mock("../CycleCalendarDialog", () => ({
+  CycleCalendarDialog: () => <div data-testid="cycle-calendar-dialog" />,
 }));
 
 import { useValue } from "@legendapp/state/react";
