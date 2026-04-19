@@ -150,7 +150,7 @@ const CycleCard = forwardRef<HTMLButtonElement, CycleCardProps>(
         onClick={onClick}
         aria-pressed={isSelected}
         className={cn(
-          "flex-shrink-0 w-48 h-[104px] snap-start rounded-lg px-3 py-2 text-left font-mono transition-all focus:outline-none focus:ring-2 focus:ring-stone-400",
+          "flex-shrink-0 w-48 h-[104px] snap-start rounded-lg px-3 py-2 text-left font-mono transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400",
           isActive &&
             "bg-stone-800 dark:bg-stone-100 text-stone-50 dark:text-stone-900 shadow-sm",
           !isActive && isPast &&

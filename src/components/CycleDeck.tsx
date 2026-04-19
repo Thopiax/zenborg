@@ -109,10 +109,17 @@ export function CycleDeck() {
   );
   const [editEndDate, setEditEndDate] = useState(effectiveCycle?.endDate || "");
 
+  // Inline intention editing — click to open, blur to save.
+  const [intentionEditing, setIntentionEditing] = useState(false);
+  const [intentionDraft, setIntentionDraft] = useState(
+    effectiveCycle?.intention || "",
+  );
+
   // Sync inline edit state when navigating to a different cycle
   const effectiveCycleName = effectiveCycle?.name;
   const effectiveCycleStartDate = effectiveCycle?.startDate;
   const effectiveCycleEndDate = effectiveCycle?.endDate;
+  const effectiveCycleIntention = effectiveCycle?.intention ?? null;
 
   useEffect(() => {
     if (effectiveCycleName !== undefined) {
@@ -122,7 +129,27 @@ export function CycleDeck() {
       setEditStartDate(effectiveCycleStartDate);
     }
     setEditEndDate(effectiveCycleEndDate || "");
-  }, [effectiveCycleName, effectiveCycleStartDate, effectiveCycleEndDate]);
+    setIntentionDraft(effectiveCycleIntention ?? "");
+    setIntentionEditing(false);
+  }, [
+    effectiveCycleName,
+    effectiveCycleStartDate,
+    effectiveCycleEndDate,
+    effectiveCycleIntention,
+  ]);
+
+  const handleIntentionCommit = () => {
+    if (!effectiveCycleId) {
+      setIntentionEditing(false);
+      return;
+    }
+    const trimmed = intentionDraft.trim();
+    const next = trimmed.length > 0 ? trimmed : null;
+    if (next !== (effectiveCycleIntention ?? null)) {
+      cycleService.updateCycle(effectiveCycleId, { intention: next });
+    }
+    setIntentionEditing(false);
+  };
 
   // Setup droppable for the entire deck (to unallocate moments from timeline)
   // Must be called unconditionally before any early returns to satisfy React hooks rules
@@ -374,6 +401,52 @@ export function CycleDeck() {
     </div>
   );
 
+  // Intention row — rendered below header when a cycle is selected.
+  // Click to edit, blur/Enter to save. Shift+Enter inserts newline.
+  const intentionRow = (
+    <div className="px-6 py-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950/40">
+      {intentionEditing ? (
+        <textarea
+          autoFocus
+          value={intentionDraft}
+          onChange={(e) => setIntentionDraft(e.target.value)}
+          onBlur={handleIntentionCommit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleIntentionCommit();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              setIntentionDraft(effectiveCycleIntention ?? "");
+              setIntentionEditing(false);
+            }
+          }}
+          rows={2}
+          placeholder="What is this cycle for?"
+          className="w-full resize-none bg-transparent text-sm font-mono text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600 focus:outline-none"
+          aria-label="Cycle intention"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIntentionEditing(true)}
+          className="w-full text-left text-sm font-mono leading-snug hover:bg-stone-50 dark:hover:bg-stone-900 rounded px-1 -mx-1 py-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
+          title="Set intention"
+        >
+          {effectiveCycleIntention ? (
+            <span className="text-stone-800 dark:text-stone-200 whitespace-pre-wrap">
+              {effectiveCycleIntention}
+            </span>
+          ) : (
+            <span className="text-stone-400 dark:text-stone-500 italic">
+              Set an intention — what is this cycle for?
+            </span>
+          )}
+        </button>
+      )}
+    </div>
+  );
+
   // Empty state — in edit mode, show area columns with ghost cards
   if (allDeckMoments.length === 0 && isEditMode && !isCollapsed) {
     const allHabitsMap = habits$.get();
@@ -395,6 +468,7 @@ export function CycleDeck() {
           <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
         )}
         {header}
+        {!isCollapsed && effectiveCycle && intentionRow}
         <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
           {areasToShow.map((area) => (
             <CycleDeckColumn
@@ -437,6 +511,7 @@ export function CycleDeck() {
           <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
         )}
         {header}
+        {!isCollapsed && effectiveCycle && intentionRow}
         {!isCollapsed && (
           <div
             ref={setNodeRef}
@@ -510,6 +585,7 @@ export function CycleDeck() {
         <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
       )}
       {header}
+      {!isCollapsed && effectiveCycle && intentionRow}
 
       {/* Droppable container for unallocating moments */}
       {!isCollapsed && (
