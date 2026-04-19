@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Flag, Pencil, Plus } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Flag, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import {
@@ -15,6 +15,7 @@ import type { Moment } from "@/domain/entities/Moment";
 import {
   activeCycle$,
   areas$,
+  cycles$,
   deckMomentsByAreaAndHabit$,
   habits$,
   storeHydrated$,
@@ -29,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { CycleDeckColumn } from "./CycleDeckColumn";
 import { CycleFormDialog } from "./CycleFormDialog";
 import { CycleStarter } from "./CycleStarter";
+import { CycleStrip } from "./CycleStrip";
 
 /**
  * CycleDeck - Container for budgeted moments during active cycle
@@ -68,28 +70,14 @@ export function CycleDeck() {
     cycleDeckEditMode$.set(next);
   };
 
-  // Arrow navigation through cycles
-  const cyclesList = cycleService.getCurrentAndFutureCycles();
+  // Resolve which cycle the detail pane below the strip is rendering.
+  // Selection state (ui-store) trumps the active cycle so scrolling the
+  // strip can surface any past/future cycle.
+  const allCyclesMap = useValue(() => cycles$.get());
   const effectiveCycleId = selectedCycleId || activeCycle?.id || null;
-  const effectiveCycle =
-    cyclesList.find((c) => c.id === effectiveCycleId) || null;
-  const currentIndex = effectiveCycle
-    ? cyclesList.findIndex((c) => c.id === effectiveCycle.id)
-    : -1;
-
-  const hasPrev = currentIndex > 0;
-  const hasNext = currentIndex < cyclesList.length - 1;
-
-  const goToPrev = () => {
-    if (hasPrev) cycleDeckSelectedCycleId$.set(cyclesList[currentIndex - 1].id);
-  };
-  const goToNext = () => {
-    if (hasNext) {
-      cycleDeckSelectedCycleId$.set(cyclesList[currentIndex + 1].id);
-    } else {
-      setCreateDialogOpen(true);
-    }
-  };
+  const effectiveCycle = effectiveCycleId
+    ? allCyclesMap[effectiveCycleId] || null
+    : null;
 
   // Create cycle dialog
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -225,44 +213,17 @@ export function CycleDeck() {
             </div>
           </div>
         ) : (
-          /* View mode: ← [name + subtitle] → */
-          <>
-            {!isCollapsed && (
-              <button
-                type="button"
-                onClick={goToPrev}
-                disabled={!hasPrev}
-                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 disabled:opacity-30 disabled:cursor-default transition-colors"
-                aria-label="Previous cycle"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
+          /* View mode: name + subtitle (strip above handles nav) */
+          <div className="min-w-0">
+            <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold truncate leading-tight">
+              {effectiveCycle?.name ?? "Pick a cycle"}
+            </h2>
+            {deckSubtitle && (
+              <p className="text-xs font-mono text-stone-500 dark:text-stone-400 truncate leading-tight">
+                {deckSubtitle}
+              </p>
             )}
-            <div className="min-w-0">
-              <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold truncate leading-tight">
-                {effectiveCycle?.name ?? "Cycle Deck"}
-              </h2>
-              {deckSubtitle && (
-                <p className="text-xs font-mono text-stone-500 dark:text-stone-400 truncate leading-tight">
-                  {deckSubtitle}
-                </p>
-              )}
-            </div>
-            {!isCollapsed && (
-              <button
-                type="button"
-                onClick={goToNext}
-                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-                aria-label={hasNext ? "Next cycle" : "Create new cycle"}
-              >
-                {hasNext ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-              </button>
-            )}
-          </>
+          </div>
         )}
       </div>
 
@@ -405,6 +366,7 @@ export function CycleDeck() {
 
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
+        <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
         {header}
         <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
           {areasToShow.map((area) => (
@@ -444,6 +406,7 @@ export function CycleDeck() {
   if (allDeckMoments.length === 0) {
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
+        <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
         {header}
         {!isCollapsed && (
           <div
@@ -514,6 +477,7 @@ export function CycleDeck() {
 
   return (
     <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
+      <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
       {header}
 
       {/* Droppable container for unallocating moments */}
