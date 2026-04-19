@@ -177,14 +177,14 @@ export const allocatedMoments$ = observable(() => {
 });
 
 /**
- * The currently active cycle.
+ * The currently active cycle — purely derived from cycle dates.
  *
- * Auto-derived: pick the cycle whose date range contains today, preferring
- * the one with the latest startDate when several overlap (nomadic case —
- * Vipassana ongoing + London started later both contain today, London wins).
+ * Rule: pick the cycle whose date range contains today. When several
+ * overlap (e.g. Vipassana ongoing + London started later), the latest
+ * startDate wins. When no cycle contains today, return null.
  *
- * If no cycle contains today, fall back to whatever activeCycleId$ points
- * at so a manually-pinned future cycle can still drive the deck.
+ * There is no manual override. To make a cycle active, move its dates
+ * to cover today (via the calendar creator or the end-date action).
  */
 export const activeCycle$ = observable(() => {
   const cycles = cycles$.get();
@@ -212,11 +212,7 @@ export const activeCycle$ = observable(() => {
     }
   }
 
-  if (best) return best;
-
-  const pinnedId = activeCycleId$.get();
-  if (!pinnedId) return null;
-  return cycles[pinnedId] ?? null;
+  return best;
 });
 
 /**
