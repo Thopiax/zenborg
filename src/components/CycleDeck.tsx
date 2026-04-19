@@ -255,13 +255,13 @@ export function CycleDeck() {
 
       {/* Right side: action icon buttons */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {!isCollapsed && effectiveCycle && effectiveCycle.endDate === null && (
+        {!isCollapsed && effectiveCycle && (
           <Popover
             open={endPopoverOpen}
             onOpenChange={(open) => {
               if (open) {
                 setEndCycleError(null);
-                setEndDateInput("");
+                setEndDateInput(effectiveCycle.endDate ?? "");
               }
               setEndPopoverOpen(open);
             }}
@@ -270,8 +270,8 @@ export function CycleDeck() {
               <button
                 type="button"
                 className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                title="End this cycle"
-                aria-label="End this cycle"
+                title={effectiveCycle.endDate ? "Adjust end date" : "End this cycle"}
+                aria-label={effectiveCycle.endDate ? "Adjust end date" : "End this cycle"}
               >
                 <Flag className="h-3.5 w-3.5" />
               </button>
@@ -282,24 +282,23 @@ export function CycleDeck() {
             >
               <div>
                 <p className="text-xs font-semibold text-stone-700 dark:text-stone-300">
-                  End cycle
+                  {effectiveCycle.endDate ? "Cycle end date" : "End cycle"}
                 </p>
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                  Close “{effectiveCycle.name}”. Defaults to today, capped before the next cycle.
+                  {effectiveCycle.endDate
+                    ? `Adjust when “${effectiveCycle.name}” ended.`
+                    : `Close “${effectiveCycle.name}”. Defaults to today, capped before the next cycle.`}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleEndCycle()}
-                className="w-full px-3 py-2 rounded-md bg-stone-800 dark:bg-stone-100 text-stone-50 dark:text-stone-900 text-xs font-medium hover:opacity-90 active:scale-95 transition-all"
-              >
-                End today
-              </button>
-              <div className="flex items-center gap-2 text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider">
-                <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
-                or pick a date
-                <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
-              </div>
+              {!effectiveCycle.endDate && (
+                <button
+                  type="button"
+                  onClick={() => handleEndCycle()}
+                  className="w-full px-3 py-2 rounded-md bg-stone-800 dark:bg-stone-100 text-stone-50 dark:text-stone-900 text-xs font-medium hover:opacity-90 active:scale-95 transition-all"
+                >
+                  End today
+                </button>
+              )}
               <div className="flex flex-col gap-2">
                 <input
                   type="date"
@@ -318,7 +317,7 @@ export function CycleDeck() {
                   onClick={() => handleEndCycle(endDateInput)}
                   className="w-full px-3 py-1.5 rounded-md text-xs font-medium border border-stone-300 dark:border-stone-600 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                 >
-                  End on this date
+                  {effectiveCycle.endDate ? "Save end date" : "End on this date"}
                 </button>
               </div>
               {endCycleError && (
@@ -392,7 +391,9 @@ export function CycleDeck() {
 
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+        {!isCollapsed && (
+          <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+        )}
         {header}
         <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
           {areasToShow.map((area) => (
@@ -432,7 +433,9 @@ export function CycleDeck() {
   if (allDeckMoments.length === 0) {
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+        {!isCollapsed && (
+          <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+        )}
         {header}
         {!isCollapsed && (
           <div
@@ -503,7 +506,9 @@ export function CycleDeck() {
 
   return (
     <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-      <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+      {!isCollapsed && (
+        <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+      )}
       {header}
 
       {/* Droppable container for unallocating moments */}
