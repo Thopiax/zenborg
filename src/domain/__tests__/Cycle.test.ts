@@ -33,6 +33,30 @@ describe('Cycle', () => {
       }
     })
 
+    it('defaults intention and reflection to null', () => {
+      const result = createCycle({ name: 'Paris', startDate: '2026-03-12' })
+
+      expect(isCycleError(result)).toBe(false)
+      if (!isCycleError(result)) {
+        expect(result.intention).toBeNull()
+        expect(result.reflection).toBeNull()
+      }
+    })
+
+    it('stores intention when provided at creation', () => {
+      const result = createCycle({
+        name: 'Paris',
+        startDate: '2026-03-12',
+        intention: 'Ship the rework; rest in the evenings.',
+      })
+
+      expect(isCycleError(result)).toBe(false)
+      if (!isCycleError(result)) {
+        expect(result.intention).toBe('Ship the rework; rest in the evenings.')
+        expect(result.reflection).toBeNull()
+      }
+    })
+
     it('should reject empty name', () => {
       const result = createCycle({ name: '', startDate: '2025-01-01' })
 

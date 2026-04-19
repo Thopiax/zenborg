@@ -98,7 +98,8 @@ export class CycleService {
     name: string,
     templateDuration?: TemplateDuration,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    intention?: string | null
   ): CycleResult {
     let calculatedStartDate: string;
     let calculatedEndDate: string | null;
@@ -141,6 +142,7 @@ export class CycleService {
       name,
       startDate: calculatedStartDate,
       endDate: calculatedEndDate,
+      intention: intention ?? null,
     });
 
     if ("error" in result) {
@@ -163,7 +165,13 @@ export class CycleService {
    */
   updateCycle(
     cycleId: string,
-    updates: { name?: string; startDate?: string; endDate?: string | null }
+    updates: {
+      name?: string;
+      startDate?: string;
+      endDate?: string | null;
+      intention?: string | null;
+      reflection?: string | null;
+    }
   ): CycleResult {
     const cycle = cycles$[cycleId].get();
     if (!cycle) {
@@ -176,6 +184,8 @@ export class CycleService {
       ...(updates.name !== undefined && { name: updates.name }),
       ...(updates.startDate !== undefined && { startDate: updates.startDate }),
       ...(updates.endDate !== undefined && { endDate: updates.endDate }),
+      ...(updates.intention !== undefined && { intention: updates.intention }),
+      ...(updates.reflection !== undefined && { reflection: updates.reflection }),
       updatedAt: new Date().toISOString(),
     };
 
