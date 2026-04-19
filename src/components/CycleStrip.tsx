@@ -154,9 +154,9 @@ const CycleCard = forwardRef<HTMLButtonElement, CycleCardProps>(
           isActive &&
             "bg-stone-800 dark:bg-stone-100 text-stone-50 dark:text-stone-900 shadow-sm",
           !isActive && isPast &&
-            "bg-stone-100 dark:bg-stone-800/50 text-stone-500 dark:text-stone-500 border border-stone-200 dark:border-stone-700 opacity-70 hover:opacity-100",
+            "bg-stone-100 dark:bg-stone-800/40 text-stone-500 dark:text-stone-500 opacity-70 hover:opacity-100",
           !isActive && !isPast &&
-            "bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 border border-stone-300 dark:border-stone-600 hover:border-stone-400 dark:hover:border-stone-500",
+            "bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700",
           isSelected && !isActive && "ring-2 ring-stone-400 dark:ring-stone-500"
         )}
       >
