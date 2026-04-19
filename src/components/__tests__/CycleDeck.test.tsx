@@ -38,6 +38,8 @@ const testCycle = {
   name: "Barcelona Summer",
   startDate: "2026-01-01",
   endDate: "2026-04-01",
+  intention: null,
+  reflection: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -58,6 +60,10 @@ vi.mock("../MomentStack", () => ({
 
 vi.mock("../CycleStarter", () => ({
   CycleStarter: () => <div data-testid="cycle-starter">CycleStarter</div>,
+}));
+
+vi.mock("../CycleStrip", () => ({
+  CycleStrip: () => <div data-testid="cycle-strip" />,
 }));
 
 vi.mock("../CycleDeckColumn", () => ({
@@ -120,6 +126,7 @@ vi.mock("@/infrastructure/state/store", () => ({
     })),
   },
   activeCycle$: { get: vi.fn(() => null) },
+  cycles$: { get: vi.fn(() => ({ "cycle-1": testCycle })) },
   habits$: {
     get: vi.fn(() => ({})),
   },
@@ -146,6 +153,8 @@ vi.mock("@/application/services/CycleService", () => ({
 
 vi.mock("@/lib/dates", () => ({
   formatCycleSubtitle: vi.fn(() => "ends in 5 days"),
+  formatCycleDateRange: vi.fn(() => "Jan 1 – Apr 1"),
+  fromISODate: vi.fn((s: string) => new Date(s)),
 }));
 
 vi.mock("@/infrastructure/state/ui-store", () => ({
@@ -209,6 +218,8 @@ describe("CycleDeck", () => {
    * 3. cycleDeckCollapsed$ (boolean)
    * 4. cycleDeckEditMode$ (boolean)
    * 5. cycleDeckSelectedCycleId$ (string | null)
+   * 6. allCyclesMap (via selector fn)
+   * 7. storeHydrated$ (boolean)
    * Then child components call useValue(habits$) etc.
    */
   const mockCycleDeckValues = (
@@ -219,19 +230,23 @@ describe("CycleDeck", () => {
     habitsMap: Record<string, unknown> = {},
     selectedCycleId: string | null = null,
   ) => {
+    const allCyclesMap = activeCycle
+      ? { [(activeCycle as { id: string }).id]: activeCycle }
+      : {};
     const values = [
       deckMoments,
       activeCycle,
       isCollapsed,
       isEditMode,
       selectedCycleId,
+      allCyclesMap,
+      true, // storeHydrated$
     ];
     let callIndex = 0;
 
     mockUseValue.mockImplementation(() => {
       const idx = callIndex % values.length;
       callIndex++;
-      // For calls beyond the first 5 (child components), return habitsMap
       if (callIndex > values.length) {
         return habitsMap;
       }
@@ -325,53 +340,7 @@ describe("CycleDeck", () => {
     });
   });
 
-  describe("arrow navigation", () => {
-    it("should show left and right arrow buttons", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle);
-
-      render(<CycleDeck />);
-
-      expect(screen.getByLabelText("Previous cycle")).toBeInTheDocument();
-      expect(
-        screen.getByLabelText(/Next cycle|Create new cycle/),
-      ).toBeInTheDocument();
-    });
-
-    it("should disable left arrow when on first cycle", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle);
-
-      render(<CycleDeck />);
-
-      const prevButton = screen.getByLabelText("Previous cycle");
-      expect(prevButton).toBeDisabled();
-    });
-
-    it("should show + icon when on last cycle", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle);
-
-      render(<CycleDeck />);
-
-      expect(screen.getByLabelText("Create new cycle")).toBeInTheDocument();
-    });
-
+  describe("header", () => {
     it("should show collapse button", () => {
       const deckMoments = {
         "area-1": {
@@ -384,6 +353,20 @@ describe("CycleDeck", () => {
       render(<CycleDeck />);
 
       expect(screen.getByTitle("Collapse cycle deck")).toBeInTheDocument();
+    });
+
+    it("should render CycleStrip above the header", () => {
+      const deckMoments = {
+        "area-1": {
+          "habit-1": [createTestMoment({ id: "1" })],
+        },
+      };
+
+      mockCycleDeckValues(deckMoments, testCycle);
+
+      render(<CycleDeck />);
+
+      expect(screen.getByTestId("cycle-strip")).toBeInTheDocument();
     });
   });
 
@@ -496,20 +479,6 @@ describe("CycleDeck", () => {
       expect(screen.getByLabelText("End date")).toBeInTheDocument();
     });
 
-    it("should hide arrow navigation during edit mode", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle, false, true);
-
-      render(<CycleDeck />);
-
-      expect(screen.queryByLabelText("Previous cycle")).toBeNull();
-      expect(screen.queryByLabelText(/Next cycle|Create new cycle/)).toBeNull();
-    });
   });
 
   describe("empty state in edit mode", () => {
