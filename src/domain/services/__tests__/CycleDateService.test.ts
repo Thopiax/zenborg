@@ -15,6 +15,8 @@ const makeCycle = (
   name: `Cycle ${id}`,
   startDate,
   endDate,
+  intention: null,
+  reflection: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 });
