@@ -177,13 +177,46 @@ export const allocatedMoments$ = observable(() => {
 });
 
 /**
- * The currently active cycle (only one can be active at a time)
- * Computed from activeCycleId$ and cycles$ - O(1) lookup
+ * The currently active cycle.
+ *
+ * Auto-derived: pick the cycle whose date range contains today, preferring
+ * the one with the latest startDate when several overlap (nomadic case —
+ * Vipassana ongoing + London started later both contain today, London wins).
+ *
+ * If no cycle contains today, fall back to whatever activeCycleId$ points
+ * at so a manually-pinned future cycle can still drive the deck.
  */
 export const activeCycle$ = observable(() => {
-  const id = activeCycleId$.get();
-  if (!id) return null;
-  return cycles$[id]?.get() ?? null;
+  const cycles = cycles$.get();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayMs = today.getTime();
+
+  let best: (typeof cycles)[string] | null = null;
+  let bestStartMs = -Infinity;
+
+  for (const cycle of Object.values(cycles)) {
+    const start = new Date(cycle.startDate);
+    start.setHours(0, 0, 0, 0);
+    if (start.getTime() > todayMs) continue;
+
+    if (cycle.endDate !== null) {
+      const end = new Date(cycle.endDate);
+      end.setHours(0, 0, 0, 0);
+      if (end.getTime() < todayMs) continue;
+    }
+
+    if (start.getTime() > bestStartMs) {
+      best = cycle;
+      bestStartMs = start.getTime();
+    }
+  }
+
+  if (best) return best;
+
+  const pinnedId = activeCycleId$.get();
+  if (!pinnedId) return null;
+  return cycles[pinnedId] ?? null;
 });
 
 /**

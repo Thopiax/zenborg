@@ -264,8 +264,13 @@ describe('Store', () => {
       expect(active?.name).toBe('Q2 2025')
     })
 
-    it('should return null when no cycle is active', () => {
-      const cycle = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
+    it('should return null when no cycle contains today and none is pinned', () => {
+      // Past cycle only — does not contain today, derivation skips it.
+      const cycle = createCycle({
+        name: 'Old cycle',
+        startDate: '2020-01-01',
+        endDate: '2020-12-31',
+      })
       if ('error' in cycle) throw new Error(cycle.error)
 
       cycles$[cycle.id].set(cycle)
