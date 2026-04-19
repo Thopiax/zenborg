@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Phase } from "@/domain/value-objects/Phase";
 import {
   activeCycleId$,
@@ -120,5 +120,105 @@ describe("CycleService.budgetHabitToCycle (incremental materialize)", () => {
       (m) => m.day === null && m.habitId === "habit-1",
     );
     expect(unallocated).toHaveLength(0);
+  });
+});
+
+describe("CycleService.endCycle", () => {
+  let service: CycleService;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-19T12:00:00.000Z"));
+
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    habits$.set({});
+
+    service = new CycleService();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const makeOngoingCycle = (id: string, startDate: string) => ({
+    id,
+    name: `Cycle ${id}`,
+    startDate,
+    endDate: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+
+  const makeFiniteCycle = (id: string, startDate: string, endDate: string) => ({
+    id,
+    name: `Cycle ${id}`,
+    startDate,
+    endDate,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+
+  it("returns an error when the cycle does not exist", () => {
+    const result = service.endCycle("nonexistent");
+    expect("error" in result).toBe(true);
+  });
+
+  it("defaults endDate to today when no next cycle exists", () => {
+    cycles$["c1"].set(makeOngoingCycle("c1", "2026-03-31"));
+
+    const result = service.endCycle("c1");
+
+    expect("error" in result).toBe(false);
+    expect(cycles$["c1"].endDate.get()).toBe("2026-04-19");
+  });
+
+  it("defaults endDate to day before next cycle when next cycle is inside today", () => {
+    cycles$["vipassana"].set(makeOngoingCycle("vipassana", "2026-03-31"));
+    cycles$["paris"].set(
+      makeFiniteCycle("paris", "2026-04-11", "2026-04-16")
+    );
+
+    const result = service.endCycle("vipassana");
+
+    expect("error" in result).toBe(false);
+    expect(cycles$["vipassana"].endDate.get()).toBe("2026-04-10");
+  });
+
+  it("uses an explicit endDate when provided", () => {
+    cycles$["c1"].set(makeOngoingCycle("c1", "2026-03-31"));
+
+    const result = service.endCycle("c1", "2026-04-05");
+
+    expect("error" in result).toBe(false);
+    expect(cycles$["c1"].endDate.get()).toBe("2026-04-05");
+  });
+
+  it("surfaces a descriptive error when the chosen endDate overlaps", () => {
+    cycles$["vipassana"].set(makeOngoingCycle("vipassana", "2026-03-31"));
+    cycles$["paris"].set(
+      makeFiniteCycle("paris", "2026-04-11", "2026-04-16")
+    );
+
+    const result = service.endCycle("vipassana", "2026-04-19");
+
+    expect("error" in result).toBe(true);
+    if ("error" in result) {
+      expect(result.error).toMatch(/Paris/i);
+      expect(result.error).toMatch(/Apr/);
+    }
+  });
+
+  it("allows ending exactly at the next cycle's start date (touching endpoint)", () => {
+    cycles$["a"].set(makeOngoingCycle("a", "2026-03-31"));
+    cycles$["b"].set(makeFiniteCycle("b", "2026-04-11", "2026-04-16"));
+
+    const result = service.endCycle("a", "2026-04-11");
+
+    expect("error" in result).toBe(false);
+    expect(cycles$["a"].endDate.get()).toBe("2026-04-11");
   });
 });
