@@ -175,15 +175,8 @@ export function CycleCalendarDialog({ open, onClose }: CycleCalendarDialogProps)
       return;
     }
 
-    // If the new cycle covers today, make it active. Otherwise leave it
-    // as a planned future cycle the user can activate later.
-    const todayStr = toISODate(new Date());
-    if (
-      promptRange.startDate <= todayStr &&
-      promptRange.endDate >= todayStr
-    ) {
-      cycleService.activateCycle(result.id);
-    }
+    // Active cycle is derived from dates — no explicit activate step.
+    // A cycle whose range covers today becomes active automatically.
     cycleDeckSelectedCycleId$.set(result.id);
     setPromptRange(null);
     setDragStart(null);
