@@ -58,10 +58,6 @@ vi.mock("../MomentStack", () => ({
   ),
 }));
 
-vi.mock("../CycleStarter", () => ({
-  CycleStarter: () => <div data-testid="cycle-starter">CycleStarter</div>,
-}));
-
 vi.mock("../CycleStrip", () => ({
   CycleStrip: () => <div data-testid="cycle-strip" />,
 }));
@@ -255,12 +251,13 @@ describe("CycleDeck", () => {
   };
 
   describe("no active cycle", () => {
-    it("should render CycleStarter when no active cycle", () => {
+    it("renders the strip and a quiet hint when no cycle is active", () => {
       mockCycleDeckValues({}, null);
 
       render(<CycleDeck />);
 
-      expect(screen.getByTestId("cycle-starter")).toBeInTheDocument();
+      expect(screen.getByTestId("cycle-strip")).toBeInTheDocument();
+      expect(screen.getByText(/No active cycle/i)).toBeInTheDocument();
     });
   });
 
