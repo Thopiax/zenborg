@@ -45,6 +45,38 @@ export const CustomMetricSchema = z.object({
 });
 export type CustomMetric = z.infer<typeof CustomMetricSchema>;
 
+export const RHYTHM_PERIODS = [
+  'weekly',
+  'biweekly',
+  'monthly',
+  'quarterly',
+  'annually',
+] as const;
+export const RhythmPeriodSchema = z.enum(RHYTHM_PERIODS);
+export type RhythmPeriod = z.infer<typeof RhythmPeriodSchema>;
+
+export const RhythmSchema = z.object({
+  period: RhythmPeriodSchema,
+  count: z.number().int().positive(),
+});
+export type Rhythm = z.infer<typeof RhythmSchema>;
+
+export const PERIOD_DAYS: Record<RhythmPeriod, number> = {
+  weekly: 7,
+  biweekly: 14,
+  monthly: 30,
+  quarterly: 90,
+  annually: 365,
+};
+
+export function rhythmToCycleBudget(r: Rhythm, cycleDays: number): number {
+  return Math.round((r.count * cycleDays) / PERIOD_DAYS[r.period]);
+}
+
+export function rhythmSilenceThresholdDays(r: Rhythm): number {
+  return PERIOD_DAYS[r.period] / r.count;
+}
+
 export interface Area {
   id: string;
   name: string;
@@ -71,6 +103,7 @@ export interface Habit {
   order: number;
   description?: string;
   guidance?: string;
+  rhythm?: Rhythm;
   createdAt: string;
   updatedAt: string;
 }
@@ -91,6 +124,7 @@ export interface CyclePlan {
   cycleId: string;
   habitId: string;
   budgetedCount: number;
+  rhythmOverride?: Rhythm;
   createdAt: string;
   updatedAt: string;
 }
