@@ -19,7 +19,7 @@ const BUDDING_PERIOD_COUNT = 3;
  * by a day in negative UTC offsets at day boundaries. Matches the domain
  * side's `fromISODate` behavior from `src/lib/dates.ts`.
  */
-function parseVaultDay(day: string): Date {
+export function parseVaultDay(day: string): Date {
   return new Date(`${day}T00:00:00`);
 }
 
