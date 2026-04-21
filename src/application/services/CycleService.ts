@@ -35,7 +35,12 @@ import {
   getDayBefore,
   type TemplateDuration,
 } from "@/domain/services/CycleDateService";
+import {
+  rhythmToCycleBudget,
+  type Rhythm,
+} from "@/domain/value-objects/Rhythm";
 import { formatCycleDateRange, fromISODate } from "@/lib/dates";
+import { differenceInCalendarDays } from "date-fns";
 
 // Re-export TemplateDuration for backward compatibility
 export type { TemplateDuration };
@@ -454,6 +459,73 @@ export class CycleService {
     this.materializeCyclePlanMoments(plan.id);
 
     return plan;
+  }
+
+  /**
+   * Budget a habit into a cycle with optional rhythm override.
+   *
+   * Precedence for budget count:
+   *   1. `options.count` (explicit override) — always wins
+   *   2. `options.rhythmOverride` with derived count (cycle-specific rhythm)
+   *   3. `habit.rhythm` with derived count
+   *   4. Otherwise: error (no count information)
+   *
+   * `rhythmOverride` is stored on the CyclePlan regardless of whether count is
+   * also explicit, because rhythmOverride independently drives health and
+   * whispers for that cycle.
+   */
+  budgetHabitToCycleWithOptions(
+    cycleId: string,
+    habitId: string,
+    options: { count?: number; rhythmOverride?: Rhythm }
+  ): CyclePlanResult {
+    const cycle = cycles$[cycleId].get();
+    if (!cycle) {
+      return { error: `Cycle with ID ${cycleId} not found` };
+    }
+
+    const habit = habits$[habitId].get();
+    if (!habit) {
+      return { error: `Habit with ID ${habitId} not found` };
+    }
+
+    const effectiveRhythm: Rhythm | null =
+      options.rhythmOverride ?? habit.rhythm ?? null;
+
+    let count = options.count;
+    if (count === undefined) {
+      if (effectiveRhythm === null) {
+        return {
+          error:
+            "Cannot derive budget: no explicit count and no rhythm on habit or override",
+        };
+      }
+      const cycleDays = this.computeCycleDays(cycle);
+      count = rhythmToCycleBudget(effectiveRhythm, cycleDays);
+    }
+
+    const result = this.budgetHabitToCycle(cycleId, habitId, count);
+    if ("error" in result) {
+      return result;
+    }
+
+    if (options.rhythmOverride !== undefined) {
+      const updated: CyclePlan = {
+        ...result,
+        rhythmOverride: options.rhythmOverride,
+        updatedAt: new Date().toISOString(),
+      };
+      cyclePlans$[updated.id].set(updated);
+      return updated;
+    }
+
+    return result;
+  }
+
+  private computeCycleDays(cycle: Cycle): number {
+    const start = fromISODate(cycle.startDate);
+    const end = cycle.endDate ? fromISODate(cycle.endDate) : new Date();
+    return Math.max(1, differenceInCalendarDays(end, start) + 1);
   }
 
   /**

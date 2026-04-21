@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { rhythmToCycleBudget, type Rhythm } from "@/domain/value-objects/Rhythm";
 import {
   activeCycleId$,
   cyclePlans$,
@@ -226,5 +227,84 @@ describe("CycleService.endCycle", () => {
 
     expect("error" in result).toBe(false);
     expect(cycles$["a"].endDate.get()).toBe("2026-04-11");
+  });
+});
+
+describe("CycleService.budgetHabitToCycleWithOptions — rhythm derivation", () => {
+  let service: CycleService;
+
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    habits$.set({});
+    // 28-day cycle: 2026-02-01 .. 2026-02-28 inclusive
+    cycles$["cycle-1"].set({
+      ...makeCycle("cycle-1"),
+      startDate: "2026-02-01",
+      endDate: "2026-02-28",
+    });
+    activeCycleId$.set("cycle-1");
+    service = new CycleService();
+  });
+
+  it("derives count from habit rhythm when count omitted", () => {
+    const rhythm: Rhythm = { period: "weekly", count: 3 };
+    habits$["habit-1"].set({ ...makeHabit("habit-1"), rhythm });
+
+    const result = service.budgetHabitToCycleWithOptions(
+      "cycle-1",
+      "habit-1",
+      {}
+    );
+
+    expect("error" in result).toBe(false);
+    // rhythmToCycleBudget({weekly, 3}, 28) = round(3 * 28 / 7) = 12
+    expect(rhythmToCycleBudget(rhythm, 28)).toBe(12);
+    const allMoments = Object.values(moments$.get()).filter(
+      (m) => m.cyclePlanId !== null
+    );
+    expect(allMoments).toHaveLength(12);
+  });
+
+  it("uses explicit count when both rhythm and count given", () => {
+    habits$["habit-1"].set({
+      ...makeHabit("habit-1"),
+      rhythm: { period: "weekly", count: 3 },
+    });
+
+    service.budgetHabitToCycleWithOptions("cycle-1", "habit-1", { count: 5 });
+
+    const planMoments = Object.values(moments$.get()).filter(
+      (m) => m.cyclePlanId !== null
+    );
+    expect(planMoments).toHaveLength(5);
+  });
+
+  it("stores rhythmOverride on the CyclePlan", () => {
+    habits$["habit-1"].set(makeHabit("habit-1"));
+    const override: Rhythm = { period: "monthly", count: 2 };
+
+    const result = service.budgetHabitToCycleWithOptions(
+      "cycle-1",
+      "habit-1",
+      { rhythmOverride: override }
+    );
+
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.rhythmOverride).toEqual(override);
+  });
+
+  it("errors when neither count, rhythm, nor override are supplied", () => {
+    habits$["habit-1"].set(makeHabit("habit-1"));
+    const result = service.budgetHabitToCycleWithOptions(
+      "cycle-1",
+      "habit-1",
+      {}
+    );
+    expect("error" in result).toBe(true);
   });
 });
