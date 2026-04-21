@@ -8,6 +8,7 @@ import {
   rhythmSilenceThresholdDays,
   type Rhythm,
 } from "@/domain/value-objects/Rhythm";
+import { fromISODate } from "@/lib/dates";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const BUDDING_PERIOD_COUNT = 3;
@@ -98,11 +99,11 @@ export class HabitHealthService {
     return countInPeriod + tolerance >= expectedByNow ? "blooming" : "wilting";
   }
 
-  private latestAllocationDate(habitMoments: Moment[]): Date | null {
+  public latestAllocationDate(habitMoments: Moment[]): Date | null {
     let latest: Date | null = null;
     for (const m of habitMoments) {
       if (m.day === null) continue;
-      const d = new Date(m.day);
+      const d = fromISODate(m.day);
       if (latest === null || d > latest) latest = d;
     }
     return latest;
