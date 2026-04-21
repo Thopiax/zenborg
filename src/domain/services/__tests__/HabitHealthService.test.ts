@@ -210,4 +210,27 @@ describe("HabitHealthService — PUSHING", () => {
     // 0 allocations in last 7 days, expect wilting
     expect(service.computeHealth(habit, null, [], now)).toBe("wilting");
   });
+
+  it("is 'unstated' when PUSHING has no rhythm (migration safety)", () => {
+    const habit = baseHabit({ attitude: Attitude.PUSHING });
+    expect(service.computeHealth(habit, null, [], new Date())).toBe("unstated");
+  });
+});
+
+describe("HabitHealthService — migration safety (pre-rhythm habits)", () => {
+  it("BEGINNING habit without rhythm never reports wilting", () => {
+    const habit = baseHabit({ attitude: Attitude.BEGINNING });
+    const result = service.computeHealth(habit, null, [], new Date());
+    expect(result).not.toBe("wilting");
+  });
+
+  it("KEEPING habit without rhythm stays unstated (not wilting)", () => {
+    const habit = baseHabit({ attitude: Attitude.KEEPING });
+    expect(service.computeHealth(habit, null, [], new Date())).toBe("unstated");
+  });
+
+  it("BUILDING habit without rhythm stays unstated (not wilting)", () => {
+    const habit = baseHabit({ attitude: Attitude.BUILDING });
+    expect(service.computeHealth(habit, null, [], new Date())).toBe("unstated");
+  });
 });
