@@ -1,3 +1,5 @@
+import type { Rhythm } from "../value-objects/Rhythm";
+
 /**
  * CyclePlan - Budget allocation linking a habit to a cycle
  *
@@ -14,6 +16,7 @@ export interface CyclePlan {
   cycleId: string; // FK to Cycle
   habitId: string; // FK to Habit
   budgetedCount: number; // e.g., 6 for "6 Running cards"
+  rhythmOverride?: Rhythm;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +33,7 @@ export interface CreateCyclePlanProps {
   cycleId: string;
   habitId: string;
   budgetedCount: number;
+  rhythmOverride?: Rhythm;
 }
 
 /**
@@ -41,7 +45,7 @@ export interface CreateCyclePlanProps {
 export function createCyclePlan(
   props: CreateCyclePlanProps
 ): CyclePlanResult {
-  const { cycleId, habitId, budgetedCount } = props;
+  const { cycleId, habitId, budgetedCount, rhythmOverride } = props;
 
   if (!cycleId || !cycleId.trim()) {
     return { error: "Cycle ID cannot be empty" };
@@ -66,6 +70,7 @@ export function createCyclePlan(
     cycleId: cycleId.trim(),
     habitId: habitId.trim(),
     budgetedCount,
+    ...(rhythmOverride ? { rhythmOverride } : {}),
     createdAt: now,
     updatedAt: now,
   };
