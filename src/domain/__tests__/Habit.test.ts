@@ -4,9 +4,11 @@ import {
   updateHabit,
   archiveHabit,
   unarchiveHabit,
+  isHabitError,
   type Habit,
 } from "../entities/Habit";
 import { Attitude } from "../value-objects/Attitude";
+import type { Rhythm } from "@/domain/value-objects/Rhythm";
 
 describe("Habit", () => {
   describe("createHabit", () => {
@@ -227,5 +229,55 @@ describe("Habit", () => {
       expect(unarchived.isArchived).toBe(false);
       expect(unarchived.updatedAt).toBeDefined();
     });
+  });
+});
+
+describe("Habit rhythm field", () => {
+  it("createHabit accepts an optional rhythm", () => {
+    const rhythm: Rhythm = { period: "weekly", count: 3 };
+    const result = createHabit({
+      name: "running",
+      areaId: "area-1",
+      order: 0,
+      rhythm,
+    });
+    if (isHabitError(result)) throw new Error(result.error);
+    expect(result.rhythm).toEqual(rhythm);
+  });
+
+  it("createHabit defaults rhythm to undefined", () => {
+    const result = createHabit({
+      name: "coffee",
+      areaId: "area-1",
+      order: 0,
+    });
+    if (isHabitError(result)) throw new Error(result.error);
+    expect(result.rhythm).toBeUndefined();
+  });
+
+  it("updateHabit can set rhythm", () => {
+    const created = createHabit({
+      name: "running",
+      areaId: "area-1",
+      order: 0,
+    });
+    if (isHabitError(created)) throw new Error(created.error);
+    const rhythm: Rhythm = { period: "monthly", count: 2 };
+    const updated = updateHabit(created, { rhythm });
+    if (isHabitError(updated)) throw new Error(updated.error);
+    expect(updated.rhythm).toEqual(rhythm);
+  });
+
+  it("updateHabit can clear rhythm with undefined", () => {
+    const created = createHabit({
+      name: "running",
+      areaId: "area-1",
+      order: 0,
+      rhythm: { period: "weekly", count: 3 },
+    });
+    if (isHabitError(created)) throw new Error(created.error);
+    const updated = updateHabit(created, { rhythm: undefined });
+    if (isHabitError(updated)) throw new Error(updated.error);
+    expect(updated.rhythm).toBeUndefined();
   });
 });
