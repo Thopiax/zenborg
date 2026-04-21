@@ -51,7 +51,7 @@ import {
   requireCycle,
   validateOneToThreeWords,
 } from './validation.js';
-import { computeHealth, daysSinceLast, resolveRhythm } from './health.js';
+import { computeHealth, daysSinceLast, parseVaultDay, resolveRhythm } from './health.js';
 
 // ────────────────────────────────────────────────────────────────────────
 // Boot
@@ -573,8 +573,8 @@ server.tool(
     const cycle = cycles[cycleId];
     if (!cycle) return err(`Cycle not found: ${cycleId}`);
 
-    const start = new Date(cycle.startDate);
-    const end = cycle.endDate ? new Date(cycle.endDate) : new Date();
+    const start = parseVaultDay(cycle.startDate);
+    const end = cycle.endDate ? parseVaultDay(cycle.endDate) : new Date();
     const cycleDays = Math.max(
       1,
       Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1,
@@ -655,8 +655,8 @@ server.tool(
     const unplannedMoments = cycleMoments.filter(
       (m) => m.cyclePlanId === null,
     );
-    const start = new Date(cycle.startDate);
-    const end = cycle.endDate ? new Date(cycle.endDate) : new Date();
+    const start = parseVaultDay(cycle.startDate);
+    const end = cycle.endDate ? parseVaultDay(cycle.endDate) : new Date();
 
     const reviewHabits: Array<Record<string, unknown>> = [];
     const plansForCycle = Object.values(cyclePlans).filter(
@@ -670,7 +670,7 @@ server.tool(
         (m) => m.habitId === habit.id && m.day !== null,
       );
       const dates = allocated
-        .map((m) => (m.day ? new Date(m.day) : null))
+        .map((m) => (m.day ? parseVaultDay(m.day) : null))
         .filter((d): d is Date => d !== null)
         .sort((a, b) => a.getTime() - b.getTime());
 
@@ -686,7 +686,7 @@ server.tool(
       }
 
       const priorMoments = momentsArr.filter(
-        (m) => m.day !== null && new Date(m.day) < start,
+        (m) => m.day !== null && parseVaultDay(m.day) < start,
       );
       const startHealth = computeHealth(habit, plan, priorMoments, start);
       const endHealth = computeHealth(habit, plan, momentsArr, end);
@@ -1002,8 +1002,8 @@ server.tool(
           'Cannot derive budget: no explicit count and no rhythm on habit or override',
         );
       }
-      const start = new Date(cycle.startDate);
-      const end = cycle.endDate ? new Date(cycle.endDate) : new Date();
+      const start = parseVaultDay(cycle.startDate);
+      const end = cycle.endDate ? parseVaultDay(cycle.endDate) : new Date();
       const cycleDays = Math.max(
         1,
         Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1,

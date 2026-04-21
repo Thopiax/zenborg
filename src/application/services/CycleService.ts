@@ -685,10 +685,7 @@ export class CycleService {
 
       let longestGap: number | null = null;
       for (let i = 1; i < dates.length; i++) {
-        const gap = Math.floor(
-          (dates[i].getTime() - dates[i - 1].getTime()) /
-            (24 * 60 * 60 * 1000)
-        );
+        const gap = differenceInCalendarDays(dates[i], dates[i - 1]);
         if (longestGap === null || gap > longestGap) longestGap = gap;
       }
 
