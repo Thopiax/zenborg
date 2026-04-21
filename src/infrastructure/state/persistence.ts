@@ -1,17 +1,36 @@
 /**
- * Client-side IndexedDB persistence configuration
+ * Client-side persistence configuration.
  *
- * This file handles the persistence setup for Legend State observables.
- * It MUST only be imported and run on the client side (not during SSR).
+ * Two modes, chosen at runtime:
+ *
+ *   Tauri desktop →  vault-synced: each domain collection lives at
+ *                    $HOME/.zenborg/{collection}.json. IndexedDB is a hot
+ *                    runtime cache. Vault is source of truth across sessions
+ *                    and devices.
+ *
+ *   Web browser   →  IDB-only: same layout as before the vault migration.
+ *                    No vault. IndexedDB is both cache and truth.
+ *
+ * UI preferences (activeCycleId, lastUsedAreaId, trmnlSettings) always go
+ * to localStorage regardless of runtime — they're per-device, not per-vault.
  */
 
 import { observablePersistIndexedDB } from "@legendapp/state/persist-plugins/indexeddb";
 import { ObservablePersistLocalStorage } from "@legendapp/state/persist-plugins/local-storage";
 import { configureSynced, syncObservable } from "@legendapp/state/sync";
+import type { Area } from "@/domain/entities/Area";
+import type { Cycle } from "@/domain/entities/Cycle";
+import type { CyclePlan } from "@/domain/entities/CyclePlan";
+import type { Habit } from "@/domain/entities/Habit";
+import type { MetricLog } from "@/domain/entities/MetricLog";
+import type { Moment } from "@/domain/entities/Moment";
+import type { PhaseConfig } from "@/domain/value-objects/Phase";
+import { isTauri } from "../vault/is-tauri";
+import { syncedVaultCollection } from "../vault/synced-vault";
+import { trmnlSettings$ } from "./integration-store";
 import {
   activeCycleId$,
   areas$,
-  crystallizedRoutines$,
   cyclePlans$,
   cycles$,
   habits$,
@@ -19,174 +38,134 @@ import {
   moments$,
   phaseConfigs$,
 } from "./store";
-import { trmnlSettings$ } from "./integration-store";
 import { lastUsedAreaId$ } from "./ui-store";
 
-/**
- * Flag to ensure persistence is only configured once
- */
 let persistenceConfigured = false;
 
-/**
- * Configure IndexedDB persistence for all observables
- *
- * This function should be called once on the client side, typically
- * during app initialization in a useEffect hook.
- */
 export function configurePersistence(): void {
-  // Only configure once
   if (persistenceConfigured) {
     return;
   }
 
-  // Only run in browser environment
   if (typeof window === "undefined") {
-    console.warn(
-      "[Zenborg] Persistence configuration skipped (not in browser)"
-    );
+    console.warn("[Zenborg] Persistence skipped (not in browser)");
     return;
   }
 
   try {
-    // ========================================================================
-    // Domain State - IndexedDB (structured data, large storage)
-    // ========================================================================
-    const persistIndexedDBOptions = configureSynced({
-      persist: {
-        plugin: observablePersistIndexedDB({
-          databaseName: "zenborg",
-          version: 6, // Removed activeCycleId table (primitive, not a record)
-          tableNames: [
-            "moments",
-            "areas",
-            "habits",
-            "cycles",
-            "cyclePlans",
-            "phaseConfigs",
-            "crystallizedRoutines",
-            "metricLogs",
-          ],
-        }),
-      },
-    });
-
-    // ========================================================================
-    // UI State - localStorage (simple key-value, synchronous)
-    // ========================================================================
-    const persistLocalStorageOptions = configureSynced({
-      persist: {
-        plugin: ObservablePersistLocalStorage,
-      },
-    });
-
-    // ========================================================================
-    // Sync Domain Entities to IndexedDB
-    // ========================================================================
-    syncObservable(
-      moments$,
-      persistIndexedDBOptions({
-        persist: {
-          name: "moments",
-        },
-      })
-    );
-
-    syncObservable(
-      areas$,
-      persistIndexedDBOptions({
-        persist: {
-          name: "areas",
-        },
-      })
-    );
-
-    syncObservable(
-      habits$,
-      persistIndexedDBOptions({
-        persist: {
-          name: "habits",
-        },
-      })
-    );
-
-    syncObservable(
-      cycles$,
-      persistIndexedDBOptions({
-        persist: {
-          name: "cycles",
-        },
-      })
-    );
-
-    syncObservable(
-      cyclePlans$,
-      persistIndexedDBOptions({
-        persist: {
-          name: "cyclePlans",
-        },
-      })
-    );
-
-    syncObservable(
-      phaseConfigs$,
-      persistIndexedDBOptions({
-        persist: {
-          name: "phaseConfigs",
-        },
-      })
-    );
-
-    syncObservable(
-      crystallizedRoutines$,
-      persistIndexedDBOptions({
-        persist: {
-          name: "crystallizedRoutines",
-        },
-      })
-    );
-
-    syncObservable(
-      metricLogs$,
-      persistIndexedDBOptions({
-        persist: {
-          name: "metricLogs",
-        },
-      })
-    );
-
-    // ========================================================================
-    // Sync UI Preferences to localStorage
-    // ========================================================================
-    syncObservable(
-      activeCycleId$,
-      persistLocalStorageOptions({
-        persist: {
-          name: "zenborg_activeCycleId",
-        },
-      })
-    );
-
-    syncObservable(
-      lastUsedAreaId$,
-      persistLocalStorageOptions({
-        persist: {
-          name: "zenborg_lastUsedAreaId",
-        },
-      })
-    );
-
-    syncObservable(
-      trmnlSettings$,
-      persistLocalStorageOptions({
-        persist: {
-          name: "zenborg_trmnlSettings",
-        },
-      })
-    );
+    if (isTauri()) {
+      configureVaultSync();
+    } else {
+      configureIdbOnly();
+    }
+    configureUiPreferences();
 
     persistenceConfigured = true;
-    console.log("[Zenborg] IndexedDB persistence configured");
+    console.log(
+      `[Zenborg] Persistence configured (${isTauri() ? "vault" : "idb-only"})`
+    );
   } catch (error) {
     console.error("[Zenborg] Failed to configure persistence:", error);
   }
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Vault mode (Tauri)
+// ────────────────────────────────────────────────────────────────────────
+
+function configureVaultSync(): void {
+  syncObservable(moments$, syncedVaultCollection<Moment>("moments"));
+  syncObservable(areas$, syncedVaultCollection<Area>("areas"));
+  syncObservable(habits$, syncedVaultCollection<Habit>("habits"));
+  syncObservable(cycles$, syncedVaultCollection<Cycle>("cycles"));
+  syncObservable(cyclePlans$, syncedVaultCollection<CyclePlan>("cyclePlans"));
+  syncObservable(
+    phaseConfigs$,
+    syncedVaultCollection<PhaseConfig>("phaseConfigs")
+  );
+  syncObservable(metricLogs$, syncedVaultCollection<MetricLog>("metricLogs"));
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// IDB-only mode (Web)
+// ────────────────────────────────────────────────────────────────────────
+
+function configureIdbOnly(): void {
+  const persistIndexedDBOptions = configureSynced({
+    persist: {
+      plugin: observablePersistIndexedDB({
+        databaseName: "zenborg",
+        version: 7,
+        tableNames: [
+          "moments",
+          "areas",
+          "habits",
+          "cycles",
+          "cyclePlans",
+          "phaseConfigs",
+          "metricLogs",
+        ],
+      }),
+    },
+  });
+
+  syncObservable(
+    moments$,
+    persistIndexedDBOptions({ persist: { name: "moments" } })
+  );
+  syncObservable(
+    areas$,
+    persistIndexedDBOptions({ persist: { name: "areas" } })
+  );
+  syncObservable(
+    habits$,
+    persistIndexedDBOptions({ persist: { name: "habits" } })
+  );
+  syncObservable(
+    cycles$,
+    persistIndexedDBOptions({ persist: { name: "cycles" } })
+  );
+  syncObservable(
+    cyclePlans$,
+    persistIndexedDBOptions({ persist: { name: "cyclePlans" } })
+  );
+  syncObservable(
+    phaseConfigs$,
+    persistIndexedDBOptions({ persist: { name: "phaseConfigs" } })
+  );
+  syncObservable(
+    metricLogs$,
+    persistIndexedDBOptions({ persist: { name: "metricLogs" } })
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// UI preferences — always localStorage (per-device)
+// ────────────────────────────────────────────────────────────────────────
+
+function configureUiPreferences(): void {
+  const persistLocalStorageOptions = configureSynced({
+    persist: {
+      plugin: ObservablePersistLocalStorage,
+    },
+  });
+
+  syncObservable(
+    activeCycleId$,
+    persistLocalStorageOptions({
+      persist: { name: "zenborg_activeCycleId" },
+    })
+  );
+  syncObservable(
+    lastUsedAreaId$,
+    persistLocalStorageOptions({
+      persist: { name: "zenborg_lastUsedAreaId" },
+    })
+  );
+  syncObservable(
+    trmnlSettings$,
+    persistLocalStorageOptions({
+      persist: { name: "zenborg_trmnlSettings" },
+    })
+  );
 }

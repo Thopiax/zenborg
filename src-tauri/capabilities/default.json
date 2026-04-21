@@ -9,6 +9,33 @@
     "core:default",
     "log:default",
     "updater:default",
-    "process:default"
+    "process:default",
+    "dialog:default",
+    "notification:default",
+    "store:default",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-save",
+    "store:allow-load",
+    "store:allow-entries",
+    "store:allow-delete",
+    "global-shortcut:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
+    "fs:default",
+    "fs:allow-exists",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-remove",
+    "fs:allow-mkdir",
+    "fs:allow-read-dir",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$HOME/.zenborg" },
+        { "path": "$HOME/.zenborg/**" }
+      ]
+    }
   ]
 }

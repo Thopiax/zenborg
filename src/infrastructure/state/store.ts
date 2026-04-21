@@ -1,6 +1,5 @@
 import { observable } from "@legendapp/state";
 import type { Area } from "@/domain/entities/Area";
-import type { CrystallizedRoutine } from "@/domain/entities/CrystallizedRoutine";
 import type { Cycle } from "@/domain/entities/Cycle";
 import type { CyclePlan } from "@/domain/entities/CyclePlan";
 import type { Habit } from "@/domain/entities/Habit";
@@ -78,14 +77,6 @@ export const cyclePlans$ = observable<Record<string, CyclePlan>>({});
  * Phase configurations collection - keyed by config ID
  */
 export const phaseConfigs$ = observable<Record<string, PhaseConfig>>({});
-
-/**
- * Crystallized routines collection - keyed by routine ID
- * Moments that have graduated to "being" attitude
- */
-export const crystallizedRoutines$ = observable<
-  Record<string, CrystallizedRoutine>
->({});
 
 /**
  * Metric logs collection - keyed by log ID
@@ -637,7 +628,7 @@ export const deckMomentsByAreaAndHabit$ = observable(() => {
 
 /**
  * Reset all data to initial state
- * WARNING: This permanently deletes all moments, areas, habits, cycles, crystallized routines, metric logs, and settings
+ * WARNING: This permanently deletes all moments, areas, habits, cycles, metric logs, and settings
  */
 export function resetDatabase() {
   console.log("[resetDatabase] Resetting all data...");
@@ -650,7 +641,6 @@ export function resetDatabase() {
   activeCycleId$.set(null);
   cyclePlans$.set({});
   phaseConfigs$.set({});
-  crystallizedRoutines$.set({});
   metricLogs$.set({});
 
   console.log("[resetDatabase] Database reset complete");

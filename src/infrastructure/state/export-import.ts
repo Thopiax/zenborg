@@ -14,7 +14,6 @@ import {
   cycles$,
   cyclePlans$,
   phaseConfigs$,
-  crystallizedRoutines$,
   metricLogs$
 } from "./store";
 
@@ -22,7 +21,7 @@ import {
  * Export all garden data to JSON file
  *
  * Downloads a JSON file containing all moments, areas, habits, cycles, cycle plans,
- * phase configs, crystallized routines, and metric logs.
+ * phase configs, and metric logs.
  * File is named "zenborg-export-{date}.json" by default.
  *
  * @param filename - Optional custom filename
@@ -34,7 +33,6 @@ export function exportGardenData(filename?: string): void {
   const cycles = cycles$.get();
   const cyclePlans = cyclePlans$.get();
   const phaseConfigs = phaseConfigs$.get();
-  const crystallizedRoutines = crystallizedRoutines$.get();
   const metricLogs = metricLogs$.get();
 
   const exportedData = exportData(
@@ -44,7 +42,6 @@ export function exportGardenData(filename?: string): void {
     cycles,
     cyclePlans,
     phaseConfigs,
-    crystallizedRoutines,
     metricLogs
   );
 
@@ -64,8 +61,6 @@ export function exportGardenData(filename?: string): void {
     "cycle plans,",
     exportedData.metadata.totalPhaseConfigs,
     "phase configs,",
-    exportedData.metadata.totalCrystallizedRoutines,
-    "crystallized routines,",
     exportedData.metadata.totalMetricLogs,
     "metric logs"
   );
@@ -117,7 +112,6 @@ export async function importGardenData(
     cycles: cycles$.get(),
     cyclePlans: cyclePlans$.get(),
     phaseConfigs: phaseConfigs$.get(),
-    crystallizedRoutines: crystallizedRoutines$.get(),
     metricLogs: metricLogs$.get(),
   };
 
@@ -129,7 +123,6 @@ export async function importGardenData(
     cycles,
     cyclePlans,
     phaseConfigs,
-    crystallizedRoutines,
     metricLogs,
     result
   } = importDataWithStrategy(fileData, strategy, currentData);
@@ -141,7 +134,6 @@ export async function importGardenData(
   cycles$.set(cycles);
   cyclePlans$.set(cyclePlans);
   phaseConfigs$.set(phaseConfigs);
-  crystallizedRoutines$.set(crystallizedRoutines);
   metricLogs$.set(metricLogs);
 
   console.log("[importGardenData] Import complete:", result);

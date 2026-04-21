@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "zenborg": {
+      "command": "pnpm",
+      "args": [
+        "--silent",
+        "-C",
+        "./mcp-server",
+        "start",
+        "--vault",
+        "${HOME}/.zenborg"
+      ]
+    }
+  }
+}

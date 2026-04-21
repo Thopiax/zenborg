@@ -13,12 +13,14 @@ export interface Habit {
   readonly id: string;
   name: string; // 1-3 words
   areaId: string; // FK to Area (required parent)
-  attitude: Attitude | null; // Override Area's attitude if set
+  attitude: Attitude | null; // Override Area's attitude if set. BEING = crystallized (off-timeline).
   phase: Phase | null; // Default phase preference for this habit
   tags: string[]; // Attributes for filtering (e.g., "cardio", "outdoor")
   emoji: string | null; // Optional override of Area emoji
   isArchived: boolean; // Soft delete
   order: number; // Display order within attitude section
+  description?: string; // Free-form prose describing the habit (capped at HABIT_DESCRIPTION_MAX_CHARS)
+  guidance?: string; // Practitioner-facing guidance for the habit
   createdAt: string;
   updatedAt: string;
 }
@@ -39,7 +41,16 @@ export interface CreateHabitProps {
   phase?: Phase | null;
   tags?: string[];
   emoji?: string | null;
+  description?: string;
+  guidance?: string;
 }
+
+/**
+ * Maximum character length for Habit.description.
+ * The 3-word `name` constraint is the core invariant; description is prose
+ * context. Cap prevents description from eroding name's role.
+ */
+export const HABIT_DESCRIPTION_MAX_CHARS = 2000;
 
 /**
  * Props for updating a habit
@@ -86,6 +97,8 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     phase = null,
     tags = [],
     emoji = null,
+    description,
+    guidance,
   } = props;
 
   const validation = validateHabitName(name);
@@ -106,6 +119,14 @@ export function createHabit(props: CreateHabitProps): HabitResult {
   const normalizedTags = (tags?.map(normalizeTag).filter(Boolean) ??
     []) as string[];
 
+  const trimmedDescription = description?.trim();
+  if (trimmedDescription && trimmedDescription.length > HABIT_DESCRIPTION_MAX_CHARS) {
+    return {
+      error: `Habit description cannot exceed ${HABIT_DESCRIPTION_MAX_CHARS} characters`,
+    };
+  }
+  const trimmedGuidance = guidance?.trim();
+
   return {
     id: crypto.randomUUID(),
     name: name.trim(),
@@ -116,6 +137,8 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     emoji: emoji ? emoji.trim() : null,
     isArchived: false,
     order,
+    ...(trimmedDescription ? { description: trimmedDescription } : {}),
+    ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -137,6 +160,15 @@ export function updateHabit(
 
   if (updates.order !== undefined && updates.order < 0) {
     return { error: "Order must be non-negative" };
+  }
+
+  if (
+    updates.description !== undefined &&
+    updates.description.trim().length > HABIT_DESCRIPTION_MAX_CHARS
+  ) {
+    return {
+      error: `Habit description cannot exceed ${HABIT_DESCRIPTION_MAX_CHARS} characters`,
+    };
   }
 
   const emoji = updates.emoji?.trim() ?? habit.emoji;

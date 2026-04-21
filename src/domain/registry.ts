@@ -13,7 +13,6 @@
  */
 
 import type { Area } from "./entities/Area";
-import type { CrystallizedRoutine } from "./entities/CrystallizedRoutine";
 import type { Cycle } from "./entities/Cycle";
 import type { CyclePlan } from "./entities/CyclePlan";
 import type { Habit } from "./entities/Habit";
@@ -38,7 +37,6 @@ export interface DomainModelRegistry {
   cycles: Record<string, Cycle>;
   cyclePlans: Record<string, CyclePlan>;
   phaseConfigs: Record<string, PhaseConfig>;
-  crystallizedRoutines: Record<string, CrystallizedRoutine>;
   metricLogs: Record<string, MetricLog>;
 }
 
@@ -53,7 +51,6 @@ export const EXPORTABLE_MODELS = [
   "cycles",
   "cyclePlans",
   "phaseConfigs",
-  "crystallizedRoutines",
   "metricLogs",
 ] as const;
 
@@ -110,11 +107,6 @@ export const COLLECTION_METADATA: Record<
     displayName: "Phase Configurations",
     singularName: "Phase Config",
     description: "Time-of-day phase settings",
-  },
-  crystallizedRoutines: {
-    displayName: "Crystallized Routines",
-    singularName: "Crystallized Routine",
-    description: "Automatic practices (graduated moments)",
   },
   metricLogs: {
     displayName: "Metric Logs",
