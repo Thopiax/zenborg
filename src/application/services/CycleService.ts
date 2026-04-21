@@ -42,7 +42,7 @@ import {
 import { Attitude } from "@/domain/value-objects/Attitude";
 import { habitHealthService } from "@/domain/services/HabitHealthService";
 import type { Health } from "@/domain/value-objects/Health";
-import { formatCycleDateRange, fromISODate } from "@/lib/dates";
+import { formatCycleDateRange, fromISODate, toISODate } from "@/lib/dates";
 import { differenceInCalendarDays } from "date-fns";
 
 // Re-export TemplateDuration for backward compatibility
@@ -63,6 +63,31 @@ export interface CyclePlanningProposal {
   reason: CyclePlanningProposalReason;
   currentHealth: Health;
   daysSinceLast: number | null;
+}
+
+export interface CycleReviewHabit {
+  habitId: string;
+  habitName: string;
+  areaId: string;
+  attitude: Attitude | null;
+  rhythmSnapshot: Rhythm | null;
+  budgetedCount: number | null;
+  actualCount: number;
+  startHealth: Health;
+  endHealth: Health;
+  firstAllocation: string | null;
+  lastAllocation: string | null;
+  longestGapDays: number | null;
+}
+
+export interface CycleReview {
+  cycleId: string;
+  cycleName: string;
+  startDate: string;
+  endDate: string | null;
+  habits: CycleReviewHabit[];
+  unplannedMoments: Moment[];
+  totalMoments: number;
 }
 
 /**
@@ -621,6 +646,93 @@ export class CycleService {
     }
 
     return proposals;
+  }
+
+  /**
+   * Review of a cycle — descriptive, no scores, no aggregate grades.
+   * Observational mirror for reflection. Plan and review are separate acts.
+   */
+  getCycleReview(cycleId: string): CycleReview | null {
+    const cycle = cycles$[cycleId].get();
+    if (!cycle) return null;
+
+    const allMoments = Object.values(moments$.get());
+    const allPlans = Object.values(cyclePlans$.get());
+    const cyclePlansForCycle = allPlans.filter((p) => p.cycleId === cycleId);
+    const cycleMoments = allMoments.filter((m) => m.cycleId === cycleId);
+    const unplannedMoments = cycleMoments.filter(
+      (m) => m.cyclePlanId === null
+    );
+    const startDate = fromISODate(cycle.startDate);
+    const endDate = cycle.endDate ? fromISODate(cycle.endDate) : new Date();
+
+    const habits: CycleReviewHabit[] = [];
+    for (const plan of cyclePlansForCycle) {
+      const habit = habits$[plan.habitId].get();
+      if (!habit) continue;
+
+      const momentsForHabit = cycleMoments.filter(
+        (m) => m.habitId === habit.id
+      );
+      const allocatedMoments = momentsForHabit.filter((m) => m.day !== null);
+      const dates = allocatedMoments
+        .map((m) => (m.day ? fromISODate(m.day) : null))
+        .filter((d): d is Date => d !== null)
+        .sort((a, b) => a.getTime() - b.getTime());
+
+      const first = dates[0] ?? null;
+      const last = dates[dates.length - 1] ?? null;
+
+      let longestGap: number | null = null;
+      for (let i = 1; i < dates.length; i++) {
+        const gap = Math.floor(
+          (dates[i].getTime() - dates[i - 1].getTime()) /
+            (24 * 60 * 60 * 1000)
+        );
+        if (longestGap === null || gap > longestGap) longestGap = gap;
+      }
+
+      const priorMoments = allMoments.filter(
+        (m) => m.day !== null && fromISODate(m.day) < startDate
+      );
+      const startHealth = habitHealthService.computeHealth(
+        habit,
+        plan,
+        priorMoments,
+        startDate
+      );
+      const endHealth = habitHealthService.computeHealth(
+        habit,
+        plan,
+        allMoments,
+        endDate
+      );
+
+      habits.push({
+        habitId: habit.id,
+        habitName: habit.name,
+        areaId: habit.areaId,
+        attitude: habit.attitude,
+        rhythmSnapshot: habitHealthService.resolveRhythm(habit, plan),
+        budgetedCount: plan.budgetedCount,
+        actualCount: allocatedMoments.length,
+        startHealth,
+        endHealth,
+        firstAllocation: first ? toISODate(first) : null,
+        lastAllocation: last ? toISODate(last) : null,
+        longestGapDays: longestGap,
+      });
+    }
+
+    return {
+      cycleId: cycle.id,
+      cycleName: cycle.name,
+      startDate: cycle.startDate,
+      endDate: cycle.endDate,
+      habits,
+      unplannedMoments,
+      totalMoments: cycleMoments.length,
+    };
   }
 
   private computeDaysSinceLastAllocation(
