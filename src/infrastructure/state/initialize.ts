@@ -1,8 +1,19 @@
 import { createCycle, isDateInCycle } from "@/domain/entities/Cycle";
 import { getDefaultPhaseConfigs } from "@/domain/value-objects/Phase";
+import { seedVaultFromCacheIfNeeded } from "../vault/synced-vault";
 import { configurePersistence } from "./persistence";
 import { selectionState$ } from "./selection";
-import { activeCycleId$, areas$, cycles$, moments$, phaseConfigs$, storeHydrated$ } from "./store";
+import {
+  activeCycleId$,
+  areas$,
+  cyclePlans$,
+  cycles$,
+  habits$,
+  metricLogs$,
+  moments$,
+  phaseConfigs$,
+  storeHydrated$,
+} from "./store";
 
 /**
  * Initializes the application state on first run
@@ -26,6 +37,19 @@ export async function initializeStore(): Promise<void> {
 
   // Small delay to allow IndexedDB to load existing data
   await new Promise((resolve) => setTimeout(resolve, 200));
+
+  // If running in Tauri and vault files are missing but IDB has data
+  // (e.g. after an upgrade that introduced the vault), copy cache → vault
+  // so the next synced.get() finds a file instead of treating it as empty.
+  await seedVaultFromCacheIfNeeded([
+    ["moments", moments$ as never],
+    ["areas", areas$ as never],
+    ["habits", habits$ as never],
+    ["cycles", cycles$ as never],
+    ["cyclePlans", cyclePlans$ as never],
+    ["phaseConfigs", phaseConfigs$ as never],
+    ["metricLogs", metricLogs$ as never],
+  ]);
 
   // Check if data already exists (not first run)
   // NOTE: We don't check areas since they're not seeded anymore
