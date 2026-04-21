@@ -4,7 +4,10 @@ import { useValue } from "@legendapp/state/react";
 import { ChevronUp, X } from "lucide-react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
+import { useHabitHealth } from "@/hooks/useHabitHealth";
 import { habits$ } from "@/infrastructure/state/store";
+import { healthEmojiClass } from "@/lib/health-style";
+import { cn } from "@/lib/utils";
 
 /**
  * GhostHabitCard - Dashed card for unbudgeted habits in edit mode
@@ -22,6 +25,7 @@ export function GhostHabitCard({ habitId, area, cycleId }: GhostHabitCardProps) 
   const allHabits = useValue(habits$);
   const habit = allHabits[habitId];
   const cycleService = new CycleService();
+  const health = useHabitHealth(habitId);
 
   if (!habit) return null;
 
@@ -40,7 +44,11 @@ export function GhostHabitCard({ habitId, area, cycleId }: GhostHabitCardProps) 
           className="rounded-lg border-2 border-dashed p-3 min-h-[64px] flex items-center gap-2"
           style={{ borderColor: area.color }}
         >
-          {habit.emoji && <span className="text-sm">{habit.emoji}</span>}
+          {habit.emoji && (
+            <span className={cn("text-sm", healthEmojiClass(health))}>
+              {habit.emoji}
+            </span>
+          )}
           <span className="text-sm font-mono font-medium text-stone-500 dark:text-stone-400 truncate">
             {habit.name}
           </span>

@@ -3,10 +3,12 @@
 import { use$ } from "@legendapp/state/react";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
+import { useHabitHealth } from "@/hooks/useHabitHealth";
 import { useSelection } from "@/hooks/useSelection";
 import { phaseConfigs$ } from "@/infrastructure/state/store";
 import { openMomentFormEdit } from "@/infrastructure/state/ui-store";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
+import { healthEmojiClass } from "@/lib/health-style";
 import { cn } from "@/lib/utils";
 
 interface MomentCardProps {
@@ -53,6 +55,9 @@ export function MomentCard({
   const allPhaseConfigs = use$(phaseConfigs$);
 
   const isSelected = isSelectedMoment(moment.id);
+
+  // Health-based emoji treatment (opacity) — "unstated" when no habit link
+  const health = useHabitHealth(moment.habitId ?? "");
 
   const handleClick = (e: React.MouseEvent) => {
     // Shift + click → Range selection (if contextMomentIds provided)
@@ -124,7 +129,13 @@ export function MomentCard({
       <div className="flex flex-row items-baseline gap-2 h-full">
         {/* Emoji - optional, no fallback */}
         {moment.emoji && (
-          <span className={cn("mr-2 text-lg", textColors.primary)}>
+          <span
+            className={cn(
+              "mr-2 text-lg",
+              textColors.primary,
+              healthEmojiClass(health)
+            )}
+          >
             {moment.emoji}
           </span>
         )}
