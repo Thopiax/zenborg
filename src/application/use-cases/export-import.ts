@@ -16,7 +16,6 @@
  */
 
 import type { Area } from "@/domain/entities/Area";
-import type { CrystallizedRoutine } from "@/domain/entities/CrystallizedRoutine";
 import type { Cycle } from "@/domain/entities/Cycle";
 import type { CyclePlan } from "@/domain/entities/CyclePlan";
 import type { Habit } from "@/domain/entities/Habit";
@@ -45,7 +44,6 @@ export interface ZenborgExportData {
     totalCycles: number;
     totalCyclePlans: number;
     totalPhaseConfigs: number;
-    totalCrystallizedRoutines: number;
     totalMetricLogs: number;
   };
 }
@@ -54,7 +52,7 @@ export interface ZenborgExportData {
  * Current schema version
  * Increment when making breaking changes to the export format
  */
-export const EXPORT_SCHEMA_VERSION = "1.0.0";
+export const EXPORT_SCHEMA_VERSION = "1.1.0";
 
 /**
  * Export all data to JSON format
@@ -65,7 +63,6 @@ export const EXPORT_SCHEMA_VERSION = "1.0.0";
  * @param cycles - All cycles
  * @param cyclePlans - All cycle plans
  * @param phaseConfigs - All phase configurations
- * @param crystallizedRoutines - All crystallized routines
  * @param metricLogs - All metric logs
  * @returns Exportable data structure
  */
@@ -76,7 +73,6 @@ export function exportData(
   cycles: Record<string, Cycle>,
   cyclePlans: Record<string, CyclePlan>,
   phaseConfigs: Record<string, PhaseConfig>,
-  crystallizedRoutines: Record<string, CrystallizedRoutine>,
   metricLogs: Record<string, MetricLog>
 ): ZenborgExportData {
   return {
@@ -89,7 +85,6 @@ export function exportData(
       cycles,
       cyclePlans,
       phaseConfigs,
-      crystallizedRoutines,
       metricLogs,
     },
     metadata: {
@@ -99,7 +94,6 @@ export function exportData(
       totalCycles: Object.keys(cycles).length,
       totalCyclePlans: Object.keys(cyclePlans).length,
       totalPhaseConfigs: Object.keys(phaseConfigs).length,
-      totalCrystallizedRoutines: Object.keys(crystallizedRoutines).length,
       totalMetricLogs: Object.keys(metricLogs).length,
     },
   };
@@ -154,7 +148,6 @@ export function validateImportData(data: unknown): ImportValidationResult {
     cycles,
     cyclePlans,
     phaseConfigs,
-    crystallizedRoutines,
     metricLogs,
   } = exportData.data;
 
@@ -184,12 +177,17 @@ export function validateImportData(data: unknown): ImportValidationResult {
     warnings.push("Missing cyclePlans data - will import as empty");
   }
 
-  if (!crystallizedRoutines || typeof crystallizedRoutines !== "object") {
-    warnings.push("Missing crystallizedRoutines data - will import as empty");
-  }
-
   if (!metricLogs || typeof metricLogs !== "object") {
     warnings.push("Missing metricLogs data - will import as empty");
+  }
+
+  // Legacy fields — dropped silently at import, warned here for transparency.
+  if (
+    "crystallizedRoutines" in (exportData.data as unknown as Record<string, unknown>)
+  ) {
+    warnings.push(
+      "Legacy field 'crystallizedRoutines' will be ignored (removed in schema 1.1.0)"
+    );
   }
 
   // Check version compatibility
@@ -238,7 +236,6 @@ export interface ImportResult {
     cycles: number;
     cyclePlans: number;
     phaseConfigs: number;
-    crystallizedRoutines: number;
     metricLogs: number;
   };
   conflicts?: {
@@ -248,7 +245,6 @@ export interface ImportResult {
     cycles: string[];
     cyclePlans: string[];
     phaseConfigs: string[];
-    crystallizedRoutines: string[];
     metricLogs: string[];
   };
 }
@@ -276,7 +272,6 @@ export function importDataWithStrategy(
     cycles: importData.data.cycles || {},
     cyclePlans: importData.data.cyclePlans || {},
     phaseConfigs: importData.data.phaseConfigs || {},
-    crystallizedRoutines: importData.data.crystallizedRoutines || {},
     metricLogs: importData.data.metricLogs || {},
   };
 
@@ -294,8 +289,6 @@ export function importDataWithStrategy(
           cycles: Object.keys(safeImportData.cycles).length,
           cyclePlans: Object.keys(safeImportData.cyclePlans).length,
           phaseConfigs: Object.keys(safeImportData.phaseConfigs).length,
-          crystallizedRoutines: Object.keys(safeImportData.crystallizedRoutines)
-            .length,
           metricLogs: Object.keys(safeImportData.metricLogs).length,
         },
       },
@@ -310,7 +303,6 @@ export function importDataWithStrategy(
     cycles: [] as string[],
     cyclePlans: [] as string[],
     phaseConfigs: [] as string[],
-    crystallizedRoutines: [] as string[],
     metricLogs: [] as string[],
   };
 
@@ -368,17 +360,6 @@ export function importDataWithStrategy(
     mergedPhaseConfigs[id] = config;
   }
 
-  // Merge crystallized routines
-  const mergedCrystallizedRoutines = { ...currentData.crystallizedRoutines };
-  for (const [id, routine] of Object.entries(
-    safeImportData.crystallizedRoutines
-  )) {
-    if (mergedCrystallizedRoutines[id]) {
-      conflicts.crystallizedRoutines.push(id);
-    }
-    mergedCrystallizedRoutines[id] = routine;
-  }
-
   // Merge metric logs
   const mergedMetricLogs = { ...currentData.metricLogs };
   for (const [id, log] of Object.entries(safeImportData.metricLogs)) {
@@ -395,7 +376,6 @@ export function importDataWithStrategy(
     conflicts.cycles.length +
     conflicts.cyclePlans.length +
     conflicts.phaseConfigs.length +
-    conflicts.crystallizedRoutines.length +
     conflicts.metricLogs.length;
 
   return {
@@ -405,7 +385,6 @@ export function importDataWithStrategy(
     cycles: mergedCycles,
     cyclePlans: mergedCyclePlans,
     phaseConfigs: mergedPhaseConfigs,
-    crystallizedRoutines: mergedCrystallizedRoutines,
     metricLogs: mergedMetricLogs,
     result: {
       success: true,
@@ -420,8 +399,6 @@ export function importDataWithStrategy(
         cycles: Object.keys(safeImportData.cycles).length,
         cyclePlans: Object.keys(safeImportData.cyclePlans).length,
         phaseConfigs: Object.keys(safeImportData.phaseConfigs).length,
-        crystallizedRoutines: Object.keys(safeImportData.crystallizedRoutines)
-          .length,
         metricLogs: Object.keys(safeImportData.metricLogs).length,
       },
       conflicts: totalConflicts > 0 ? conflicts : undefined,
