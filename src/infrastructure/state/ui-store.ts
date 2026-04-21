@@ -2,6 +2,7 @@ import { observable } from "@legendapp/state";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
+import type { Rhythm } from "@/domain/value-objects/Rhythm";
 
 /**
  * UI State Store - Transient application state
@@ -219,6 +220,7 @@ export interface HabitFormState {
   attitude: Attitude | null;
   phase: Phase | null;
   tags: string[];
+  rhythm: Rhythm | null;
   /** For edit mode: the habit ID being edited */
   editingHabitId: string | null;
 }
@@ -232,6 +234,7 @@ export const habitFormState$ = observable<HabitFormState>({
   attitude: null,
   phase: null,
   tags: [],
+  rhythm: null,
   editingHabitId: null,
 });
 
@@ -255,6 +258,7 @@ export function openHabitFormCreate(params?: {
     attitude: params?.attitude ?? null,
     phase: params?.phase ?? null,
     tags: [],
+    rhythm: null,
     editingHabitId: null,
   });
 }
@@ -271,6 +275,7 @@ export function openHabitFormEdit(
     attitude: Attitude | null;
     phase: Phase | null;
     tags: string[];
+    rhythm?: Rhythm | null;
   },
 ) {
   habitFormState$.set({
@@ -282,6 +287,7 @@ export function openHabitFormEdit(
     attitude: habit.attitude,
     phase: habit.phase,
     tags: habit.tags || [],
+    rhythm: habit.rhythm ?? null,
     editingHabitId: habitId,
   });
 }
@@ -299,6 +305,7 @@ export function closeHabitForm() {
     attitude: null,
     phase: null,
     tags: [],
+    rhythm: null,
     editingHabitId: null,
   });
 }

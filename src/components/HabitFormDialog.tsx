@@ -7,6 +7,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
 import { AttitudeSelector } from "@/components/AttitudeSelector";
 import { PhaseSelector } from "@/components/PhaseSelector";
+import { RhythmSelector } from "@/components/RhythmSelector";
 import { TaggedNameInput } from "@/components/TaggedNameInput";
 import {
   Dialog,
@@ -78,6 +79,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     attitude,
     phase,
     tags,
+    rhythm,
     editingHabitId,
   } = formState;
 
@@ -201,6 +203,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       attitude,
       phase,
       tags: finalTags,
+      rhythm: rhythm ?? undefined,
     });
 
     closeHabitForm();
@@ -467,6 +470,14 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                 }
               />
             )}
+          </div>
+
+          {/* Rhythm selector */}
+          <div className="mt-4">
+            <RhythmSelector
+              value={rhythm}
+              onChange={(newRhythm) => habitFormState$.rhythm.set(newRhythm)}
+            />
           </div>
         </div>
 
