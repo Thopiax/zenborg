@@ -8,6 +8,7 @@ import { AreaColumnSubtoolbar } from "@/components/AreaColumnSubtoolbar";
 import { PlanHabitsList } from "@/components/PlanHabitsList";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
+import { useAreaHasWilting } from "@/hooks/useAreaHasWilting";
 import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,9 @@ export function AreaBoardColumn({
     },
   });
 
+  // Ambient wilting signal — subtle tone shift when any habit is wilting
+  const hasWilting = useAreaHasWilting(area.id);
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -74,6 +78,7 @@ export function AreaBoardColumn({
         "flex flex-col snap-start rounded-lg",
         columnWidth.scrollableClassName,
         isOver && "ring-2 ring-stone-400 dark:ring-stone-500 bg-stone-50 dark:bg-stone-800/50",
+        hasWilting && "opacity-95",
       )}
     >
       {/* Draggable Header (drag handle for area reorder) */}
