@@ -5,8 +5,9 @@ import {
   downloadExportFile,
   readImportFile,
   type ImportStrategy,
-  type ZenborgExportData,
 } from "@/application/use-cases/export-import";
+import { writeCollection } from "../vault/adapter";
+import { isTauri } from "../vault/is-tauri";
 import {
   moments$,
   areas$,
@@ -127,7 +128,25 @@ export async function importGardenData(
     result
   } = importDataWithStrategy(fileData, strategy, currentData);
 
-  // Update state
+  // Tauri: bypass Legend State entirely. A pending synced.get() from boot
+  // can resolve with an empty vault AFTER our observable.set() and wipe
+  // the import. Writing directly to vault + reload sidesteps the race.
+  if (isTauri()) {
+    await writeCollection("moments", moments);
+    await writeCollection("areas", areas);
+    await writeCollection("habits", habits);
+    await writeCollection("cycles", cycles);
+    await writeCollection("cyclePlans", cyclePlans);
+    await writeCollection("phaseConfigs", phaseConfigs);
+    await writeCollection("metricLogs", metricLogs);
+    console.log("[importGardenData] Vault written, reloading to rehydrate");
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+    return { success: result.success, message: result.message };
+  }
+
+  // Web (IDB-only): direct observable updates are safe — no vault race.
   moments$.set(moments);
   areas$.set(areas);
   habits$.set(habits);
