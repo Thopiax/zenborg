@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Attitude } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { rhythmToCycleBudget, type Rhythm } from "@/domain/value-objects/Rhythm";
 import {
@@ -306,5 +307,75 @@ describe("CycleService.budgetHabitToCycleWithOptions — rhythm derivation", () 
       {}
     );
     expect("error" in result).toBe(true);
+  });
+});
+
+describe("CycleService.getCyclePlanningProposals", () => {
+  let service: CycleService;
+
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    habits$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    // 28-day cycle
+    cycles$["cycle-1"].set({
+      ...makeCycle("cycle-1"),
+      startDate: "2026-02-01",
+      endDate: "2026-02-28",
+    });
+    activeCycleId$.set("cycle-1");
+    service = new CycleService();
+  });
+
+  it("includes KEEPING habits with rhythm (wilting or on-rhythm)", () => {
+    habits$["h-keep"].set({
+      ...makeHabit("h-keep"),
+      attitude: Attitude.KEEPING,
+      rhythm: { period: "monthly", count: 1 },
+    });
+    const proposals = service.getCyclePlanningProposals("cycle-1");
+    const row = proposals.find((p) => p.habitId === "h-keep");
+    expect(row).toBeDefined();
+    expect(row?.reason === "wilting" || row?.reason === "on-rhythm").toBe(true);
+  });
+
+  it("includes BUILDING habits with rhythm", () => {
+    habits$["h-build"].set({
+      ...makeHabit("h-build"),
+      attitude: Attitude.BUILDING,
+      rhythm: { period: "weekly", count: 3 },
+    });
+    const proposals = service.getCyclePlanningProposals("cycle-1");
+    expect(proposals.find((p) => p.habitId === "h-build")).toBeDefined();
+  });
+
+  it("excludes BEING habits", () => {
+    habits$["h-being"].set({
+      ...makeHabit("h-being"),
+      attitude: Attitude.BEING,
+    });
+    const proposals = service.getCyclePlanningProposals("cycle-1");
+    expect(proposals.find((p) => p.habitId === "h-being")).toBeUndefined();
+  });
+
+  it("excludes habits without an attitude", () => {
+    habits$["h-none"].set(makeHabit("h-none")); // attitude=null
+    const proposals = service.getCyclePlanningProposals("cycle-1");
+    expect(proposals.find((p) => p.habitId === "h-none")).toBeUndefined();
+  });
+
+  it("suggestedCount equals rhythmToCycleBudget for 28-day cycle", () => {
+    habits$["h-build"].set({
+      ...makeHabit("h-build"),
+      attitude: Attitude.BUILDING,
+      rhythm: { period: "weekly", count: 3 },
+    });
+    const proposals = service.getCyclePlanningProposals("cycle-1");
+    const row = proposals.find((p) => p.habitId === "h-build")!;
+    // weekly × 3 over 28 days = 12
+    expect(row.suggestedCount).toBe(12);
   });
 });
