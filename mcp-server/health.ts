@@ -13,6 +13,16 @@ export type Health =
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const BUDDING_PERIOD_COUNT = 3;
 
+/**
+ * Parse a YYYY-MM-DD vault date string as local midnight.
+ * Using bare `new Date(dayString)` would parse as UTC midnight, which drifts
+ * by a day in negative UTC offsets at day boundaries. Matches the domain
+ * side's `fromISODate` behavior from `src/lib/dates.ts`.
+ */
+function parseVaultDay(day: string): Date {
+  return new Date(`${day}T00:00:00`);
+}
+
 export function resolveRhythm(
   habit: Habit,
   plan: CyclePlan | null,
@@ -57,7 +67,7 @@ export function computeHealth(
     const periodStart = new Date(now.getTime() - periodDays * MS_PER_DAY);
     const countInPeriod = habitMoments.filter((m) => {
       if (m.day === null) return false;
-      return new Date(m.day).getTime() >= periodStart.getTime();
+      return parseVaultDay(m.day).getTime() >= periodStart.getTime();
     }).length;
     const daysElapsed = Math.min(periodDays, daysSinceUpdate);
     const expected = rhythm.count * (daysElapsed / periodDays);
@@ -72,7 +82,7 @@ function latestAllocationDate(moments: Moment[]): Date | null {
   let latest: Date | null = null;
   for (const m of moments) {
     if (m.day === null) continue;
-    const d = new Date(m.day);
+    const d = parseVaultDay(m.day);
     if (latest === null || d > latest) latest = d;
   }
   return latest;
