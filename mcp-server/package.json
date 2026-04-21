@@ -1,14 +1,16 @@
 {
   "name": "zenborg-mcp",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx index.ts"
+    "start": "tsx index.ts",
+    "build": "tsc --outDir dist && echo '{\"type\":\"module\"}' > dist/package.json",
+    "typecheck": "tsc --noEmit",
+    "smoke": "pnpm build && node smoke-test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
-    "yaml": "^2.8.2",
     "zod": "^3.25.0"
   },
   "devDependencies": {
