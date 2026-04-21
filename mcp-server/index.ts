@@ -21,6 +21,7 @@ import {
   logVaultBanner,
   readCollection,
   resolveVault,
+  rhythmToCycleBudget,
   writeCollection,
   type Area,
   type Cycle,
@@ -720,35 +721,66 @@ server.tool(
 
 server.tool(
   'budget_habit_to_cycle',
-  'Upsert a cycle plan: allocate N moments of a habit to a cycle. If a plan for (cycleId, habitId) already exists, updates its budgetedCount.',
+  'Upsert a cycle plan: allocate N moments of a habit to a cycle. If count is omitted, derives it from rhythmOverride ?? habit.rhythm across the cycle length. If a plan for (cycleId, habitId) already exists, updates its budgetedCount.',
   {
     cycleId: z.string(),
     habitId: z.string(),
-    count: z.number().int().nonnegative(),
+    count: z.number().int().nonnegative().optional(),
+    rhythmOverride: RhythmSchema.optional(),
   },
-  async ({ cycleId, habitId, count }): Promise<ToolResult> => {
+  async ({ cycleId, habitId, count, rhythmOverride }): Promise<ToolResult> => {
     const cycles = readCollection(VAULT_ROOT, 'cycles');
     const cycleCheck = requireCycle(cycles, cycleId);
     if (typeof cycleCheck === 'string') return err(cycleCheck);
+    const cycle = cycleCheck;
 
     const habits = readCollection(VAULT_ROOT, 'habits');
     const habitCheck = requireActiveHabit(habits, habitId);
     if (typeof habitCheck === 'string') return err(habitCheck);
+    const habit = habitCheck;
+
+    const effectiveRhythm: Rhythm | null =
+      rhythmOverride ?? habit.rhythm ?? null;
+
+    let resolvedCount: number;
+    if (count !== undefined) {
+      resolvedCount = count;
+    } else {
+      if (!effectiveRhythm) {
+        return err(
+          'Cannot derive budget: no explicit count and no rhythm on habit or override',
+        );
+      }
+      const start = new Date(cycle.startDate);
+      const end = cycle.endDate ? new Date(cycle.endDate) : new Date();
+      const cycleDays = Math.max(
+        1,
+        Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1,
+      );
+      resolvedCount = rhythmToCycleBudget(effectiveRhythm, cycleDays);
+    }
 
     const plans = readCollection(VAULT_ROOT, 'cyclePlans');
     const existing = findCyclePlan(plans, cycleId, habitId);
     const now = nowIso();
     const plan: CyclePlan = existing
-      ? { ...existing, budgetedCount: count, updatedAt: now }
+      ? { ...existing, budgetedCount: resolvedCount, updatedAt: now }
       : {
           id: crypto.randomUUID(),
           cycleId,
           habitId,
-          budgetedCount: count,
+          budgetedCount: resolvedCount,
           createdAt: now,
           updatedAt: now,
         };
     plans[plan.id] = plan;
+
+    if (rhythmOverride !== undefined) {
+      plan.rhythmOverride = rhythmOverride;
+      plan.updatedAt = nowIso();
+      plans[plan.id] = plan;
+    }
+
     writeCollection(VAULT_ROOT, 'cyclePlans', plans);
     return ok({ upserted: plan });
   },
