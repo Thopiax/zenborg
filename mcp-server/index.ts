@@ -51,6 +51,7 @@ import {
   requireCycle,
   validateOneToThreeWords,
 } from './validation.js';
+import { computeHealth, daysSinceLast, resolveRhythm } from './health.js';
 
 // ────────────────────────────────────────────────────────────────────────
 // Boot
@@ -465,6 +466,256 @@ server.tool(
     habits[id] = { ...habit, isArchived: false, updatedAt: nowIso() };
     writeCollection(VAULT_ROOT, 'habits', habits);
     return ok({ unarchived: id });
+  },
+);
+
+server.tool(
+  'get_habit_health',
+  'Compute health, effective rhythm, and days-since-last-allocation for a habit.',
+  { habitId: z.string() },
+  async ({ habitId }): Promise<ToolResult> => {
+    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habit = habits[habitId];
+    if (!habit) return err(`Habit not found: ${habitId}`);
+
+    const cyclePlans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const moments = readCollection(VAULT_ROOT, 'moments');
+
+    const now = new Date();
+    const isoToday = now.toISOString().slice(0, 10);
+
+    const activePlan =
+      Object.values(cyclePlans).find((p) => {
+        if (p.habitId !== habitId) return false;
+        const c = cycles[p.cycleId];
+        if (!c) return false;
+        return (
+          c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday)
+        );
+      }) ?? null;
+
+    const momentsArr = Object.values(moments);
+    const health = computeHealth(habit, activePlan, momentsArr, now);
+
+    return ok({
+      habitId,
+      health,
+      rhythm: resolveRhythm(habit, activePlan),
+      daysSinceLast: daysSinceLast(habitId, momentsArr, now),
+    });
+  },
+);
+
+server.tool(
+  'list_wilting_habits',
+  'List habits whose current health is "wilting". Optionally filter by areaId or attitude.',
+  {
+    areaId: z.string().optional(),
+    attitude: AttitudeSchema.optional(),
+  },
+  async ({ areaId, attitude }): Promise<ToolResult> => {
+    const habits = readCollection(VAULT_ROOT, 'habits');
+    const cyclePlans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const moments = readCollection(VAULT_ROOT, 'moments');
+    const momentsArr = Object.values(moments);
+    const now = new Date();
+    const isoToday = now.toISOString().slice(0, 10);
+
+    const results: Array<{
+      habitId: string;
+      habitName: string;
+      areaId: string;
+      attitude: Habit['attitude'];
+      rhythm: ReturnType<typeof resolveRhythm>;
+      daysSinceLast: number | null;
+    }> = [];
+
+    for (const habit of Object.values(habits)) {
+      if (habit.isArchived) continue;
+      if (areaId && habit.areaId !== areaId) continue;
+      if (attitude && habit.attitude !== attitude) continue;
+
+      const activePlan =
+        Object.values(cyclePlans).find((p) => {
+          if (p.habitId !== habit.id) return false;
+          const c = cycles[p.cycleId];
+          if (!c) return false;
+          return (
+            c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday)
+          );
+        }) ?? null;
+
+      const health = computeHealth(habit, activePlan, momentsArr, now);
+      if (health !== 'wilting') continue;
+
+      results.push({
+        habitId: habit.id,
+        habitName: habit.name,
+        areaId: habit.areaId,
+        attitude: habit.attitude,
+        rhythm: resolveRhythm(habit, activePlan),
+        daysSinceLast: daysSinceLast(habit.id, momentsArr, now),
+      });
+    }
+
+    return ok(results);
+  },
+);
+
+server.tool(
+  'get_cycle_planning_proposals',
+  'Read-only: compute habit proposals for a cycle based on attitude + rhythm + health. Caller decides what to accept.',
+  { cycleId: z.string() },
+  async ({ cycleId }): Promise<ToolResult> => {
+    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycle = cycles[cycleId];
+    if (!cycle) return err(`Cycle not found: ${cycleId}`);
+
+    const start = new Date(cycle.startDate);
+    const end = cycle.endDate ? new Date(cycle.endDate) : new Date();
+    const cycleDays = Math.max(
+      1,
+      Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1,
+    );
+
+    const habits = readCollection(VAULT_ROOT, 'habits');
+    const cyclePlans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const moments = readCollection(VAULT_ROOT, 'moments');
+    const momentsArr = Object.values(moments);
+    const now = new Date();
+
+    const proposals: Array<Record<string, unknown>> = [];
+    for (const habit of Object.values(habits)) {
+      if (habit.isArchived) continue;
+      if (habit.attitude === null) continue;
+      if (habit.attitude === 'BEING') continue;
+
+      const plan =
+        Object.values(cyclePlans).find(
+          (p) => p.cycleId === cycleId && p.habitId === habit.id,
+        ) ?? null;
+      const effectiveRhythm = resolveRhythm(habit, plan);
+      const health = computeHealth(habit, plan, momentsArr, now);
+      const dsl = daysSinceLast(habit.id, momentsArr, now);
+
+      if (habit.attitude === 'BEGINNING') {
+        const count = momentsArr.filter((m) => m.habitId === habit.id).length;
+        if (count >= 5) continue;
+        proposals.push({
+          habitId: habit.id,
+          habitName: habit.name,
+          areaId: habit.areaId,
+          attitude: habit.attitude,
+          suggestedRhythm: effectiveRhythm,
+          suggestedCount: 0,
+          reason: 'beginning',
+          currentHealth: health,
+          daysSinceLast: dsl,
+        });
+        continue;
+      }
+
+      if (!effectiveRhythm) continue;
+
+      const suggestedCount = rhythmToCycleBudget(effectiveRhythm, cycleDays);
+      proposals.push({
+        habitId: habit.id,
+        habitName: habit.name,
+        areaId: habit.areaId,
+        attitude: habit.attitude,
+        suggestedRhythm: effectiveRhythm,
+        suggestedCount,
+        reason: health === 'wilting' ? 'wilting' : 'on-rhythm',
+        currentHealth: health,
+        daysSinceLast: dsl,
+      });
+    }
+
+    return ok(proposals);
+  },
+);
+
+server.tool(
+  'get_cycle_review',
+  'Read-only: descriptive review of a cycle. No aggregate scores. Observational mirror only.',
+  { cycleId: z.string() },
+  async ({ cycleId }): Promise<ToolResult> => {
+    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycle = cycles[cycleId];
+    if (!cycle) return err(`Cycle not found: ${cycleId}`);
+
+    const habitsColl = readCollection(VAULT_ROOT, 'habits');
+    const cyclePlans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const momentsColl = readCollection(VAULT_ROOT, 'moments');
+    const momentsArr = Object.values(momentsColl);
+
+    const cycleMoments = momentsArr.filter((m) => m.cycleId === cycleId);
+    const unplannedMoments = cycleMoments.filter(
+      (m) => m.cyclePlanId === null,
+    );
+    const start = new Date(cycle.startDate);
+    const end = cycle.endDate ? new Date(cycle.endDate) : new Date();
+
+    const reviewHabits: Array<Record<string, unknown>> = [];
+    const plansForCycle = Object.values(cyclePlans).filter(
+      (p) => p.cycleId === cycleId,
+    );
+    for (const plan of plansForCycle) {
+      const habit = habitsColl[plan.habitId];
+      if (!habit) continue;
+
+      const allocated = cycleMoments.filter(
+        (m) => m.habitId === habit.id && m.day !== null,
+      );
+      const dates = allocated
+        .map((m) => (m.day ? new Date(m.day) : null))
+        .filter((d): d is Date => d !== null)
+        .sort((a, b) => a.getTime() - b.getTime());
+
+      const first = dates[0] ?? null;
+      const last = dates[dates.length - 1] ?? null;
+      let longestGap: number | null = null;
+      for (let i = 1; i < dates.length; i++) {
+        const gap = Math.floor(
+          (dates[i].getTime() - dates[i - 1].getTime()) /
+            (24 * 60 * 60 * 1000),
+        );
+        if (longestGap === null || gap > longestGap) longestGap = gap;
+      }
+
+      const priorMoments = momentsArr.filter(
+        (m) => m.day !== null && new Date(m.day) < start,
+      );
+      const startHealth = computeHealth(habit, plan, priorMoments, start);
+      const endHealth = computeHealth(habit, plan, momentsArr, end);
+
+      reviewHabits.push({
+        habitId: habit.id,
+        habitName: habit.name,
+        areaId: habit.areaId,
+        attitude: habit.attitude,
+        rhythmSnapshot: resolveRhythm(habit, plan),
+        budgetedCount: plan.budgetedCount,
+        actualCount: allocated.length,
+        startHealth,
+        endHealth,
+        firstAllocation: first ? first.toISOString().slice(0, 10) : null,
+        lastAllocation: last ? last.toISOString().slice(0, 10) : null,
+        longestGapDays: longestGap,
+      });
+    }
+
+    return ok({
+      cycleId: cycle.id,
+      cycleName: cycle.name,
+      startDate: cycle.startDate,
+      endDate: cycle.endDate,
+      habits: reviewHabits,
+      unplannedMoments,
+      totalMoments: cycleMoments.length,
+    });
   },
 );
 
