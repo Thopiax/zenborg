@@ -17,6 +17,7 @@ import {
   AttitudeSchema,
   CustomMetricSchema,
   PhaseSchema,
+  RhythmSchema,
   logVaultBanner,
   readCollection,
   resolveVault,
@@ -28,6 +29,7 @@ import {
   type Moment,
   type Phase,
   type PhaseConfig,
+  type Rhythm,
 } from './vault.js';
 import {
   areaHasMoments,
@@ -319,6 +321,7 @@ server.tool(
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
+    rhythm: RhythmSchema.optional(),
   },
   async (params): Promise<ToolResult> => {
     const nameError = validateOneToThreeWords(params.name, 'Habit');
@@ -344,6 +347,7 @@ server.tool(
         ? { description: params.description.trim() }
         : {}),
       ...(params.guidance?.trim() ? { guidance: params.guidance.trim() } : {}),
+      ...(params.rhythm ? { rhythm: params.rhythm } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -367,6 +371,7 @@ server.tool(
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
+    rhythm: RhythmSchema.nullable().optional(),
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
@@ -406,6 +411,13 @@ server.tool(
         : {}),
       updatedAt: nowIso(),
     };
+    if ('rhythm' in updates) {
+      if (updates.rhythm === null) {
+        delete next.rhythm;
+      } else if (updates.rhythm !== undefined) {
+        next.rhythm = updates.rhythm;
+      }
+    }
     habits[id] = next;
     writeCollection(VAULT_ROOT, 'habits', habits);
     return ok({ updated: next });
