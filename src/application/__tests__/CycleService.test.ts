@@ -379,3 +379,153 @@ describe("CycleService.getCyclePlanningProposals", () => {
     expect(row.suggestedCount).toBe(12);
   });
 });
+
+describe("CycleService.getCycleReview", () => {
+  let service: CycleService;
+
+  const makeBaseMoment = (id: string) => ({
+    id,
+    name: `moment-${id}`,
+    areaId: "area-1",
+    habitId: null as string | null,
+    cycleId: "cycle-1" as string | null,
+    cyclePlanId: null as string | null,
+    phase: "MORNING" as Phase,
+    day: null as string | null,
+    order: 0,
+    emoji: null,
+    tags: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const makeMoment = (
+    id: string,
+    overrides: Partial<ReturnType<typeof makeBaseMoment>> = {}
+  ) => ({
+    ...makeBaseMoment(id),
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    habits$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    cycles$["cycle-1"].set({
+      ...makeCycle("cycle-1"),
+      startDate: "2026-02-01",
+      endDate: "2026-02-28",
+    });
+    activeCycleId$.set("cycle-1");
+    habits$["habit-1"].set(makeHabit("habit-1"));
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "cycle-1",
+      habitId: "habit-1",
+      budgetedCount: 3,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    service = new CycleService();
+  });
+
+  it("returns per-habit actualCount equal to allocated moments", () => {
+    moments$["m1"].set(
+      makeMoment("m1", {
+        habitId: "habit-1",
+        cyclePlanId: "plan-1",
+        day: "2026-02-05",
+      })
+    );
+    moments$["m2"].set(
+      makeMoment("m2", {
+        habitId: "habit-1",
+        cyclePlanId: "plan-1",
+        day: "2026-02-10",
+      })
+    );
+    moments$["m3"].set(
+      makeMoment("m3", {
+        habitId: "habit-1",
+        cyclePlanId: "plan-1",
+        day: "2026-02-20",
+      })
+    );
+
+    const review = service.getCycleReview("cycle-1");
+    expect(review).not.toBeNull();
+    expect(review!.habits[0].actualCount).toBe(3);
+  });
+
+  it("returns unplannedMoments for moments without cyclePlanId", () => {
+    moments$["m1"].set(
+      makeMoment("m1", {
+        habitId: "habit-1",
+        cyclePlanId: "plan-1",
+        day: "2026-02-05",
+      })
+    );
+    moments$["m2"].set(
+      makeMoment("m2", {
+        habitId: "habit-1",
+        cyclePlanId: null,
+        day: "2026-02-10",
+      })
+    );
+
+    const review = service.getCycleReview("cycle-1");
+    expect(review!.unplannedMoments).toHaveLength(1);
+    expect(review!.unplannedMoments[0].id).toBe("m2");
+  });
+
+  it("includes firstAllocation and lastAllocation", () => {
+    moments$["m1"].set(
+      makeMoment("m1", {
+        habitId: "habit-1",
+        cyclePlanId: "plan-1",
+        day: "2026-02-05",
+      })
+    );
+    moments$["m2"].set(
+      makeMoment("m2", {
+        habitId: "habit-1",
+        cyclePlanId: "plan-1",
+        day: "2026-02-25",
+      })
+    );
+
+    const review = service.getCycleReview("cycle-1");
+    expect(review!.habits[0].firstAllocation).toBe("2026-02-05");
+    expect(review!.habits[0].lastAllocation).toBe("2026-02-25");
+  });
+
+  it("includes longestGapDays", () => {
+    moments$["m1"].set(
+      makeMoment("m1", {
+        habitId: "habit-1",
+        cyclePlanId: "plan-1",
+        day: "2026-02-01",
+      })
+    );
+    moments$["m2"].set(
+      makeMoment("m2", {
+        habitId: "habit-1",
+        cyclePlanId: "plan-1",
+        day: "2026-02-05",
+      })
+    );
+    moments$["m3"].set(
+      makeMoment("m3", {
+        habitId: "habit-1",
+        cyclePlanId: "plan-1",
+        day: "2026-02-20",
+      })
+    );
+
+    const review = service.getCycleReview("cycle-1");
+    expect(review!.habits[0].longestGapDays).toBe(15);
+  });
+});
