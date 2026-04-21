@@ -4,7 +4,7 @@ import { use$ } from "@legendapp/state/react";
 import { habitHealthService } from "@/domain/services/HabitHealthService";
 import type { Health } from "@/domain/value-objects/Health";
 import {
-  activeCycle$,
+  activeCycleId$,
   cyclePlans$,
   habits$,
   moments$,
@@ -18,13 +18,13 @@ export function useHabitHealth(habitId: string): Health {
   const habit = use$(habits$[habitId]);
   const allMoments = use$(moments$);
   const allPlans = use$(cyclePlans$);
-  const activeCycle = use$(activeCycle$);
+  const activeCycleId = use$(activeCycleId$);
 
   if (!habit) return "unstated";
 
-  const plan = activeCycle
+  const plan = activeCycleId
     ? (Object.values(allPlans).find(
-        (p) => p.cycleId === activeCycle.id && p.habitId === habitId
+        (p) => p.cycleId === activeCycleId && p.habitId === habitId
       ) ?? null)
     : null;
 

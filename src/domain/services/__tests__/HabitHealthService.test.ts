@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { HabitHealthService } from "../HabitHealthService";
 import { Attitude } from "@/domain/value-objects/Attitude";
+import { Phase } from "@/domain/value-objects/Phase";
 import type { Habit } from "@/domain/entities/Habit";
 import type { CyclePlan } from "@/domain/entities/CyclePlan";
 import type { Moment } from "@/domain/entities/Moment";
@@ -37,7 +38,7 @@ const allocatedMoment = (
   habitId,
   cycleId: null,
   cyclePlanId: null,
-  phase: "MORNING",
+  phase: Phase.MORNING,
   day: DAY(day),
   order: 0,
   tags: null,
