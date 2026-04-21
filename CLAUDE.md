@@ -6,12 +6,9 @@
 
 Zenborg is a **local-first web application** for conscious attention allocation. Not a task manager. Not a habit tracker. Not a calendar.
 
-**Core Philosophy**:
-- **Orchestration, not elimination**: Accept distractions, budget for them
-- **Consciousness as currency**: Allocate attention, not time
-- **Presence over outcomes**: No "done" buttons, no completion tracking
+**Principles:** see [`docs/principles.md`](docs/principles.md) for the canonical reference. Zenborg inherits the **equanimi.tech** three-layer pyramid: Sovereignty → Awareness → Equanimity. The nine principles (Local-First Ownership, Holistic Control, Modification Rights, Peripheral Presence, Attentional Granularity, Bounded Experiences, Strategic Friction, Fade-by-Design, Downstream Allocation) constrain every design decision. When in doubt, read `docs/principles.md` before building.
 
-**The Question**: "Where will I place my consciousness today?"
+**The Question:** "Where will I place my consciousness today?"
 
 ---
 
@@ -433,24 +430,34 @@ Introspective: #6b7280 (gray)
 
 ---
 
-## Non-Goals (What This Is NOT)
+## Red Lines and Non-Goals
 
-**MVP explicitly excludes**:
-- ❌ Task management (no subtasks, no dependencies)
-- ❌ Time tracking (no duration, no timers)
-- ❌ Habit tracking (no streaks, no completion percentages)
-- ❌ Metrics/analytics (no dashboards, no charts)
-- ❌ Notifications/reminders (calm tech, not nagging tech)
-- ❌ Collaboration (single-user only)
-- ❌ Attachments/URLs (3 words is the interface)
-- ❌ Calendar sync (Phase 3+ only)
-- ❌ Mobile native apps (PWA is sufficient)
+Full treatment in [`docs/principles.md`](docs/principles.md). Quick reference:
 
-**Design Constraints**:
+**Red lines (violate the pyramid — never build):**
+- No completion checkboxes, "done" animations, streak counts, or completion %
+- No push notifications, email reminders, badges, red dots, modal alerts
+- No algorithmic curation of what the user sees
+- No performance ranking, leaderboards, comparative scoring
+- No advertising or engagement-based revenue
+- No dark patterns, forced updates, or account-gated features
+
+**Permitted that may surprise (not red lines):**
+- Counting allocations ("3rd time" = information, not score)
+- History and neutral feedback ("2 days ago")
+- Passive surfaces (whispers lane, dormancy indicators) — user visits, surface doesn't visit user
+- Cadence awareness used internally to drive whispers (never displayed as score)
+- Visual chips on cards (attitude, area color) — ambient, not demanding
+
+**Non-goals (scope, not ethos — may arrive in later phases):**
+- Calendar sync (Phase 3+)
+- Multi-user collaboration
+- Mobile native apps (PWA for now)
+- Attachments / URLs / long-form notes
+
+**UI-level constraints:**
 - No modals (flat UI, inline editing)
-- No outcomes (orchestration, not task completion)
-- No quantification (presence, not performance)
-- Boring by design (mindful tech is intentionally calm)
+- Monochromatic base; color is reserved for area attribution
 
 ---
 
@@ -507,24 +514,17 @@ npm run start
 
 ---
 
-## Project Philosophy (From Attend System)
+## Origin (Attend System)
 
-This project is the digital evolution of a physical whiteboard system using magnets. Key insights:
+Zenborg is the digital evolution of a physical whiteboard + magnets system. The philosophical distillation lives in [`docs/principles.md`](docs/principles.md). Original quotes worth preserving as compass:
 
-**Orchestration, Not Elimination**:
 > "It is not about eliminating distractions from my life. Accept them, make some room for them to avoid them growing too much."
-
-**Consciousness as Currency**:
+>
 > "I'm not budgeting hours; I'm allocating attention. The difference changes everything."
-
-**No Metrics, Only Presence**:
-> "The system measures through presence, not performance. Did I consciously allocate my attention today? That's the only metric that matters."
-
-**Physical Constraints → Digital Liberation**:
+>
 > "Three items maximum per phase. This isn't limitation; it's liberation."
-
-**Mindful Tech is Boring**:
-> "Mindful tech comes at a cost: it's boring. It's not meant to be exciting, intriguing. It's meant to hide the digital tech behind a wall - away from our attention."
+>
+> "Mindful tech comes at a cost: it's boring. It's not meant to be exciting, intriguing. It's meant to hide the digital tech behind a wall — away from our attention."
 
 ---
 
