@@ -51,8 +51,7 @@ export type { TemplateDuration };
 export type CyclePlanningProposalReason =
   | "wilting"
   | "on-rhythm"
-  | "beginning"
-  | "new-habit";
+  | "beginning";
 
 export interface CyclePlanningProposal {
   habitId: string;
@@ -629,13 +628,8 @@ export class CycleService {
     moments: Moment[],
     now: Date
   ): number | null {
-    let latest: Date | null = null;
-    for (const m of moments) {
-      if (m.habitId !== habitId) continue;
-      if (m.day === null) continue;
-      const d = new Date(m.day);
-      if (latest === null || d > latest) latest = d;
-    }
+    const habitMoments = moments.filter((m) => m.habitId === habitId);
+    const latest = habitHealthService.latestAllocationDate(habitMoments);
     if (latest === null) return null;
     const ms = now.getTime() - latest.getTime();
     return Math.floor(ms / (24 * 60 * 60 * 1000));
