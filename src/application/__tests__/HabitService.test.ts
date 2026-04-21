@@ -6,6 +6,7 @@ import {
   moments$,
 } from "@/infrastructure/state/store";
 import { Attitude } from "@/domain/value-objects/Attitude";
+import { Phase } from "@/domain/value-objects/Phase";
 import { createMoment } from "@/domain/entities/Moment";
 import { createCyclePlan } from "@/domain/entities/CyclePlan";
 
@@ -244,7 +245,7 @@ describe("HabitService", () => {
       moments$[allocated.id].set({
         ...allocated,
         day: "2026-03-04",
-        phase: "morning" as const,
+        phase: Phase.MORNING,
         order: 0,
       });
 

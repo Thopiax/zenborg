@@ -42,6 +42,7 @@ import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
 import { isTauri } from "@/lib/tauri-utils";
 import { ConfirmableAction } from "./ConfirmableAction";
 import { TrmnlSettingsSection } from "./TrmnlSettingsSection";
+import { VaultStatusSection } from "./VaultStatusSection";
 
 interface SettingsDrawerProps {
   open: boolean;
@@ -231,6 +232,9 @@ export const SettingsDrawer = observer(function SettingsDrawer({
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-3 px-2">
+                  {/* Vault status (Tauri only — self-hides in web mode) */}
+                  <VaultStatusSection />
+
                   {/* Export Button */}
                   <button
                     type="button"
