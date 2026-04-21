@@ -5,6 +5,45 @@
 
 ---
 
+## Agent Read/Write Boundary
+
+Zenborg MCP tools split into **read-side** (safe for an agent to call freely
+while exploring) and **write-side** (require explicit user authorization
+before the agent commits).
+
+### Read-side (propose freely)
+
+- `list_areas`, `list_habits`, `list_cycles`, `list_moments`, `list_cycle_plans`, `list_phase_configs`
+- `get_area`, `get_habit`, `get_cycle`, `get_moment`, `get_cycle_plan`
+- `get_habit_health`
+- `list_wilting_habits`
+- `get_cycle_planning_proposals`
+- `get_cycle_review`
+
+### Write-side (commit only with explicit user consent)
+
+- `create_habit`, `update_habit`, `archive_habit`, `unarchive_habit`
+- `create_area`, `update_area`, `archive_area`, `unarchive_area`, `delete_area`
+- `create_moment`, `update_moment`, `delete_moment`
+- `allocate_moment`, `unallocate_moment`, `allocate_moment_from_deck`
+- `spawn_spontaneous_from_habit`, `create_standalone_moment`
+- `plan_cycle`, `quick_create_cycle`, `update_cycle`, `end_cycle`, `delete_cycle`
+- `budget_habit_to_cycle`, `increment_habit_budget`, `decrement_habit_budget`, `remove_habit_from_deck`
+- `update_phase_config`
+
+### Attitude-driven planning
+
+At cycle planning time, call `get_cycle_planning_proposals` to surface what
+rhythm + health signals suggest. Never call `budget_habit_to_cycle` or
+`plan_cycle` without the user confirming which proposals to accept. The
+agent's role is to show the garden's state; the user decides what to tend.
+
+Plan and review are distinct acts. `get_cycle_planning_proposals` does NOT
+take review context as input — review is backward-looking reflection, plan
+is forward-looking intention. Chain them only at the user's direction.
+
+---
+
 ## Scope (Shape-Up)
 
 ### Must-have — v0.3
