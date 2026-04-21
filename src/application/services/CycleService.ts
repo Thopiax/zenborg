@@ -39,11 +39,32 @@ import {
   rhythmToCycleBudget,
   type Rhythm,
 } from "@/domain/value-objects/Rhythm";
+import { Attitude } from "@/domain/value-objects/Attitude";
+import { habitHealthService } from "@/domain/services/HabitHealthService";
+import type { Health } from "@/domain/value-objects/Health";
 import { formatCycleDateRange, fromISODate } from "@/lib/dates";
 import { differenceInCalendarDays } from "date-fns";
 
 // Re-export TemplateDuration for backward compatibility
 export type { TemplateDuration };
+
+export type CyclePlanningProposalReason =
+  | "wilting"
+  | "on-rhythm"
+  | "beginning"
+  | "new-habit";
+
+export interface CyclePlanningProposal {
+  habitId: string;
+  habitName: string;
+  areaId: string;
+  attitude: Attitude | null;
+  suggestedRhythm: Rhythm | null;
+  suggestedCount: number;
+  reason: CyclePlanningProposalReason;
+  currentHealth: Health;
+  daysSinceLast: number | null;
+}
 
 /**
  * Application Service for Cycle Management
@@ -520,6 +541,104 @@ export class CycleService {
     }
 
     return result;
+  }
+
+  /**
+   * Compute cycle planning proposals — which habits the system suggests
+   * budgeting into this cycle, based on attitude + rhythm + current health.
+   *
+   * Read-only; does NOT commit anything. Caller (UI or MCP agent) decides
+   * which proposals to accept.
+   */
+  getCyclePlanningProposals(cycleId: string): CyclePlanningProposal[] {
+    const cycle = cycles$[cycleId].get();
+    if (!cycle) return [];
+
+    const allHabits = Object.values(habits$.get()).filter((h) => !h.isArchived);
+    const allMoments = Object.values(moments$.get());
+    const allPlans = Object.values(cyclePlans$.get());
+    const cycleDays = this.computeCycleDays(cycle);
+    const now = new Date();
+
+    const proposals: CyclePlanningProposal[] = [];
+
+    for (const habit of allHabits) {
+      if (habit.attitude === null) continue;
+      if (habit.attitude === Attitude.BEING) continue;
+
+      const plan =
+        allPlans.find(
+          (p) => p.cycleId === cycleId && p.habitId === habit.id
+        ) ?? null;
+
+      const effectiveRhythm = habitHealthService.resolveRhythm(habit, plan);
+      const currentHealth = habitHealthService.computeHealth(
+        habit,
+        plan,
+        allMoments,
+        now
+      );
+
+      const daysSinceLast = this.computeDaysSinceLastAllocation(
+        habit.id,
+        allMoments,
+        now
+      );
+
+      if (habit.attitude === Attitude.BEGINNING) {
+        const count = allMoments.filter((m) => m.habitId === habit.id).length;
+        if (count >= 5) continue;
+        proposals.push({
+          habitId: habit.id,
+          habitName: habit.name,
+          areaId: habit.areaId,
+          attitude: habit.attitude,
+          suggestedRhythm: effectiveRhythm,
+          suggestedCount: 0,
+          reason: "beginning",
+          currentHealth,
+          daysSinceLast,
+        });
+        continue;
+      }
+
+      if (effectiveRhythm === null) continue;
+
+      const suggestedCount = rhythmToCycleBudget(effectiveRhythm, cycleDays);
+      const reason: CyclePlanningProposalReason =
+        currentHealth === "wilting" ? "wilting" : "on-rhythm";
+
+      proposals.push({
+        habitId: habit.id,
+        habitName: habit.name,
+        areaId: habit.areaId,
+        attitude: habit.attitude,
+        suggestedRhythm: effectiveRhythm,
+        suggestedCount,
+        reason,
+        currentHealth,
+        daysSinceLast,
+      });
+    }
+
+    return proposals;
+  }
+
+  private computeDaysSinceLastAllocation(
+    habitId: string,
+    moments: Moment[],
+    now: Date
+  ): number | null {
+    let latest: Date | null = null;
+    for (const m of moments) {
+      if (m.habitId !== habitId) continue;
+      if (m.day === null) continue;
+      const d = new Date(m.day);
+      if (latest === null || d > latest) latest = d;
+    }
+    if (latest === null) return null;
+    const ms = now.getTime() - latest.getTime();
+    return Math.floor(ms / (24 * 60 * 60 * 1000));
   }
 
   private computeCycleDays(cycle: Cycle): number {
