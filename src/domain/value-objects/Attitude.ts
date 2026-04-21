@@ -22,7 +22,7 @@ export enum Attitude {
   BUILDING = "BUILDING",
   /** Focused progression, specific goals - shows custom metrics */
   PUSHING = "PUSHING",
-  /** Integrated, automatic, part of identity - moves to crystallized routines */
+  /** Integrated, automatic, part of identity - crystallized off-timeline */
   BEING = "BEING",
 }
 
@@ -89,7 +89,7 @@ export const ATTITUDE_METADATA: Record<
   [Attitude.BEING]: {
     label: "Being",
     description: "Integrated, automatic, part of identity",
-    shows: "Moves to Crystallized Routines",
+    shows: "Crystallized — lives off the timeline",
     icon: "◉",
     hotkey: "5",
     className: "font-mono text-stone-700 dark:text-stone-300",
