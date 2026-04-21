@@ -1,6 +1,7 @@
 import { normalizeTag } from "@/domain/services/TagService";
 import type { Attitude } from "../value-objects/Attitude";
 import type { Phase } from "../value-objects/Phase";
+import type { Rhythm } from "../value-objects/Rhythm";
 
 /**
  * Habit - Recurring moment template
@@ -21,6 +22,7 @@ export interface Habit {
   order: number; // Display order within attitude section
   description?: string; // Free-form prose describing the habit (capped at HABIT_DESCRIPTION_MAX_CHARS)
   guidance?: string; // Practitioner-facing guidance for the habit
+  rhythm?: Rhythm; // Optional declared cadence (count per period)
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +45,7 @@ export interface CreateHabitProps {
   emoji?: string | null;
   description?: string;
   guidance?: string;
+  rhythm?: Rhythm;
 }
 
 /**
@@ -99,6 +102,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     emoji = null,
     description,
     guidance,
+    rhythm,
   } = props;
 
   const validation = validateHabitName(name);
@@ -139,6 +143,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     order,
     ...(trimmedDescription ? { description: trimmedDescription } : {}),
     ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
+    ...(rhythm ? { rhythm } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -177,7 +182,7 @@ export function updateHabit(
     habit.tags ??
     []) as string[];
 
-  return {
+  const merged: Habit = {
     ...habit,
     ...updates,
     name: updates.name ? updates.name.trim() : habit.name,
@@ -185,6 +190,10 @@ export function updateHabit(
     emoji,
     updatedAt: new Date().toISOString(),
   };
+  if ("rhythm" in updates && updates.rhythm === undefined) {
+    delete merged.rhythm;
+  }
+  return merged;
 }
 
 /**
