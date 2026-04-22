@@ -54,7 +54,7 @@ export function HabitAutocompleteInline({
   const allHabits = use$(habits$);
   const allAreas = use$(areas$);
 
-  const habitsArray = Object.values(allHabits);
+  const habitsArray = Object.values(allHabits).filter((h) => !h.isArchived);
 
   // Get filtered suggestions with optional "Create standalone" option
   const suggestions = useMemo(() => {
@@ -72,30 +72,42 @@ export function HabitAutocompleteInline({
 
     const lowerSearch = trimmedSearch.toLowerCase();
 
-    // Categorize matches by quality
-    const exactMatches: Habit[] = [];
-    const prefixMatches: Habit[] = [];
-    const containsMatches: Habit[] = [];
+    // Categorize matches by quality. Name matches outrank alias matches
+    // within each tier so the primary label wins ties.
+    const exactName: Habit[] = [];
+    const exactAlias: Habit[] = [];
+    const prefixName: Habit[] = [];
+    const prefixAlias: Habit[] = [];
+    const containsName: Habit[] = [];
+    const containsAlias: Habit[] = [];
     const fuzzyMatches: Habit[] = [];
 
-    // First pass: exact, prefix, and contains matches
     for (const habit of habitsArray) {
       const lowerName = habit.name.toLowerCase();
+      const lowerAliases = habit.aliases?.map((a) => a.toLowerCase()) ?? [];
 
       if (lowerName === lowerSearch) {
-        exactMatches.push(habit);
+        exactName.push(habit);
+      } else if (lowerAliases.some((a) => a === lowerSearch)) {
+        exactAlias.push(habit);
       } else if (lowerName.startsWith(lowerSearch)) {
-        prefixMatches.push(habit);
+        prefixName.push(habit);
+      } else if (lowerAliases.some((a) => a.startsWith(lowerSearch))) {
+        prefixAlias.push(habit);
       } else if (lowerName.includes(lowerSearch)) {
-        containsMatches.push(habit);
+        containsName.push(habit);
+      } else if (lowerAliases.some((a) => a.includes(lowerSearch))) {
+        containsAlias.push(habit);
       }
     }
 
-    // Second pass: fuzzy matches for remaining habits
     const searchedHabits = new Set([
-      ...exactMatches.map((h) => h.id),
-      ...prefixMatches.map((h) => h.id),
-      ...containsMatches.map((h) => h.id),
+      ...exactName.map((h) => h.id),
+      ...exactAlias.map((h) => h.id),
+      ...prefixName.map((h) => h.id),
+      ...prefixAlias.map((h) => h.id),
+      ...containsName.map((h) => h.id),
+      ...containsAlias.map((h) => h.id),
     ]);
     const remainingHabits = habitsArray.filter(
       (habit) => !searchedHabits.has(habit.id),
@@ -103,7 +115,7 @@ export function HabitAutocompleteInline({
 
     if (remainingHabits.length > 0) {
       const fuseSubset = new Fuse(remainingHabits, {
-        keys: ["name"],
+        keys: ["name", "aliases"],
         threshold: 0.4,
         distance: 100,
         includeScore: true,
@@ -112,11 +124,13 @@ export function HabitAutocompleteInline({
       fuzzyMatches.push(...fuzzyResults.map((result) => result.item));
     }
 
-    // Combine all matches in priority order
     const allMatches = [
-      ...exactMatches,
-      ...prefixMatches,
-      ...containsMatches,
+      ...exactName,
+      ...exactAlias,
+      ...prefixName,
+      ...prefixAlias,
+      ...containsName,
+      ...containsAlias,
       ...fuzzyMatches,
     ];
     const matches = allMatches.slice(0, maxSuggestions);
