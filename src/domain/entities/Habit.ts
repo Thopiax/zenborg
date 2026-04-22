@@ -17,6 +17,7 @@ export interface Habit {
   attitude: Attitude | null; // Override Area's attitude if set. BEING = crystallized (off-timeline).
   phase: Phase | null; // Default phase preference for this habit
   tags: string[]; // Attributes for filtering (e.g., "cardio", "outdoor")
+  aliases?: string[]; // Alternate names (nicknames, full names) — participate in search
   emoji: string | null; // Optional override of Area emoji
   isArchived: boolean; // Soft delete
   order: number; // Display order within attitude section
@@ -25,6 +26,32 @@ export interface Habit {
   rhythm?: Rhythm; // Optional declared cadence (count per period)
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Normalizes an aliases list: trims each entry, filters empty strings,
+ * drops any alias case-insensitively equal to the habit name, and
+ * de-duplicates case-insensitively while preserving the original casing
+ * of the first occurrence.
+ */
+export function normalizeAliases(
+  aliases: string[] | undefined,
+  name: string
+): string[] {
+  if (!aliases) return [];
+  const lowerName = name.trim().toLowerCase();
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of aliases) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const lower = trimmed.toLowerCase();
+    if (lower === lowerName) continue;
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    out.push(trimmed);
+  }
+  return out;
 }
 
 /**
@@ -42,6 +69,7 @@ export interface CreateHabitProps {
   attitude?: Attitude | null;
   phase?: Phase | null;
   tags?: string[];
+  aliases?: string[];
   emoji?: string | null;
   description?: string;
   guidance?: string;
@@ -99,6 +127,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     attitude = null,
     phase = null,
     tags = [],
+    aliases,
     emoji = null,
     description,
     guidance,
@@ -123,6 +152,8 @@ export function createHabit(props: CreateHabitProps): HabitResult {
   const normalizedTags = (tags?.map(normalizeTag).filter(Boolean) ??
     []) as string[];
 
+  const normalizedAliases = normalizeAliases(aliases, name);
+
   const trimmedDescription = description?.trim();
   if (trimmedDescription && trimmedDescription.length > HABIT_DESCRIPTION_MAX_CHARS) {
     return {
@@ -141,6 +172,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     emoji: emoji ? emoji.trim() : null,
     isArchived: false,
     order,
+    ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
     ...(trimmedDescription ? { description: trimmedDescription } : {}),
     ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
     ...(rhythm ? { rhythm } : {}),
@@ -182,16 +214,35 @@ export function updateHabit(
     habit.tags ??
     []) as string[];
 
+  const nextName = updates.name ? updates.name.trim() : habit.name;
+
   const merged: Habit = {
     ...habit,
     ...updates,
-    name: updates.name ? updates.name.trim() : habit.name,
+    name: nextName,
     tags: normalizedTags,
     emoji,
     updatedAt: new Date().toISOString(),
   };
   if ("rhythm" in updates && updates.rhythm === undefined) {
     delete merged.rhythm;
+  }
+  if ("aliases" in updates) {
+    const normalizedAliases = normalizeAliases(updates.aliases, nextName);
+    if (normalizedAliases.length === 0) {
+      delete merged.aliases;
+    } else {
+      merged.aliases = normalizedAliases;
+    }
+  } else if (habit.aliases && updates.name) {
+    // Name changed but aliases untouched — re-normalize so alias matching
+    // the new name gets dropped.
+    const renormalized = normalizeAliases(habit.aliases, nextName);
+    if (renormalized.length === 0) {
+      delete merged.aliases;
+    } else {
+      merged.aliases = renormalized;
+    }
   }
   return merged;
 }

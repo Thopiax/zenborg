@@ -232,6 +232,74 @@ describe("Habit", () => {
   });
 });
 
+describe("Habit aliases", () => {
+  it("createHabit stores normalized aliases", () => {
+    const result = createHabit({
+      name: "Duchi",
+      areaId: "area-1",
+      order: 0,
+      aliases: ["Lorenzo", "  Lorenzino ", "lorenzo"],
+    });
+    if (isHabitError(result)) throw new Error(result.error);
+    // de-duped case-insensitively, preserves first casing
+    expect(result.aliases).toEqual(["Lorenzo", "Lorenzino"]);
+  });
+
+  it("createHabit drops aliases equal to name", () => {
+    const result = createHabit({
+      name: "Duchi",
+      areaId: "area-1",
+      order: 0,
+      aliases: ["duchi", "Lorenzo"],
+    });
+    if (isHabitError(result)) throw new Error(result.error);
+    expect(result.aliases).toEqual(["Lorenzo"]);
+  });
+
+  it("createHabit omits aliases key when list is empty or all dropped", () => {
+    const result = createHabit({
+      name: "Duchi",
+      areaId: "area-1",
+      order: 0,
+      aliases: ["", "  ", "duchi"],
+    });
+    if (isHabitError(result)) throw new Error(result.error);
+    expect(result.aliases).toBeUndefined();
+  });
+
+  it("updateHabit can set and clear aliases", () => {
+    const created = createHabit({
+      name: "Duchi",
+      areaId: "area-1",
+      order: 0,
+    });
+    if (isHabitError(created)) throw new Error(created.error);
+
+    const withAliases = updateHabit(created, { aliases: ["Lorenzo"] });
+    if (isHabitError(withAliases)) throw new Error(withAliases.error);
+    expect(withAliases.aliases).toEqual(["Lorenzo"]);
+
+    const cleared = updateHabit(withAliases, { aliases: [] });
+    if (isHabitError(cleared)) throw new Error(cleared.error);
+    expect(cleared.aliases).toBeUndefined();
+  });
+
+  it("updateHabit renormalizes aliases against a new name", () => {
+    const created = createHabit({
+      name: "Duchi",
+      areaId: "area-1",
+      order: 0,
+      aliases: ["Lorenzo"],
+    });
+    if (isHabitError(created)) throw new Error(created.error);
+
+    const renamed = updateHabit(created, { name: "Lorenzo" });
+    if (isHabitError(renamed)) throw new Error(renamed.error);
+    // alias "Lorenzo" now matches name → dropped
+    expect(renamed.aliases).toBeUndefined();
+  });
+});
+
 describe("Habit rhythm field", () => {
   it("createHabit accepts an optional rhythm", () => {
     const rhythm: Rhythm = { period: "weekly", count: 3 };

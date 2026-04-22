@@ -38,6 +38,7 @@ import {
   computeCycleCascade,
   computeHabitCascade,
   findAreaByIdOrName,
+  normalizeAliases,
   findCycleByIdOrName,
   findCyclePlan,
   findHabitByIdOrName,
@@ -320,6 +321,7 @@ server.tool(
     attitude: AttitudeSchema.nullable().optional(),
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
+    aliases: z.array(z.string()).optional(),
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
@@ -335,6 +337,7 @@ server.tool(
 
     const habits = readCollection(VAULT_ROOT, 'habits');
     const now = nowIso();
+    const normalizedAliases = normalizeAliases(params.aliases, params.name);
     const habit: Habit = {
       id: crypto.randomUUID(),
       name: params.name.trim(),
@@ -345,6 +348,7 @@ server.tool(
       emoji: params.emoji ? params.emoji.trim() : null,
       isArchived: false,
       order: params.order,
+      ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
       ...(params.description?.trim()
         ? { description: params.description.trim() }
         : {}),
@@ -370,6 +374,7 @@ server.tool(
     attitude: AttitudeSchema.nullable().optional(),
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
+    aliases: z.array(z.string()).nullable().optional(),
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
@@ -392,9 +397,11 @@ server.tool(
       if (typeof areaCheck === 'string') return err(areaCheck);
     }
 
+    const nextName = updates.name !== undefined ? updates.name.trim() : habit.name;
+
     const next: Habit = {
       ...habit,
-      ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
+      ...(updates.name !== undefined ? { name: nextName } : {}),
       ...(updates.areaId !== undefined ? { areaId: updates.areaId } : {}),
       ...(updates.order !== undefined ? { order: updates.order } : {}),
       ...('attitude' in updates ? { attitude: updates.attitude ?? null } : {}),
@@ -418,6 +425,24 @@ server.tool(
         delete next.rhythm;
       } else if (updates.rhythm !== undefined) {
         next.rhythm = updates.rhythm;
+      }
+    }
+    if ('aliases' in updates) {
+      const list = updates.aliases === null ? [] : updates.aliases;
+      const normalized = normalizeAliases(list, nextName);
+      if (normalized.length === 0) {
+        delete next.aliases;
+      } else {
+        next.aliases = normalized;
+      }
+    } else if (updates.name !== undefined && habit.aliases) {
+      // Name changed but aliases untouched — re-normalize so an alias that
+      // now collides with the new name gets dropped.
+      const renormalized = normalizeAliases(habit.aliases, nextName);
+      if (renormalized.length === 0) {
+        delete next.aliases;
+      } else {
+        next.aliases = renormalized;
       }
     }
     habits[id] = next;
