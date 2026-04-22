@@ -98,6 +98,7 @@ export interface Habit {
   attitude: Attitude | null;
   phase: Phase | null;
   tags: string[];
+  aliases?: string[];
   emoji: string | null;
   isArchived: boolean;
   order: number;

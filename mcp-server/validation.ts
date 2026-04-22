@@ -64,6 +64,31 @@ export function normalizeTags(tags: readonly string[] | undefined): string[] {
   return Array.from(new Set(normalized));
 }
 
+/**
+ * Normalizes habit aliases: trims, drops empties, drops any alias
+ * case-insensitively equal to the habit name, dedupes case-insensitively,
+ * and preserves the original casing of the first occurrence.
+ */
+export function normalizeAliases(
+  aliases: readonly string[] | undefined,
+  name: string,
+): string[] {
+  if (!aliases) return [];
+  const lowerName = name.trim().toLowerCase();
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of aliases) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const lower = trimmed.toLowerCase();
+    if (lower === lowerName) continue;
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    out.push(trimmed);
+  }
+  return out;
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Phase cap (max 3 per day/phase)
 // TODO(moment-cap): Rafa flagged this will evolve. When the domain loosens

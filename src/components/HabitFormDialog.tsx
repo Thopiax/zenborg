@@ -1,7 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { Clock, Trash2 } from "lucide-react";
+import { AtSign, Clock, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
@@ -79,6 +79,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     attitude,
     phase,
     tags,
+    aliases,
     rhythm,
     editingHabitId,
   } = formState;
@@ -88,6 +89,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   const [areaSelectorOpen, setAreaSelectorOpen] = useState(false);
   const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
   const [phaseSelectorOpen, setPhaseSelectorOpen] = useState(false);
+  const [aliasesSelectorOpen, setAliasesSelectorOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
 
@@ -130,7 +132,8 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     !emojiPickerOpen &&
     !taggedField.isAutocompleteOpen &&
     !attitudeSelectorOpen &&
-    !phaseSelectorOpen;
+    !phaseSelectorOpen &&
+    !aliasesSelectorOpen;
 
   // Reset local UI state when dialog opens
   useEffect(() => {
@@ -142,6 +145,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       setEmojiPickerOpen(false);
       setAttitudeSelectorOpen(false);
       setPhaseSelectorOpen(false);
+      setAliasesSelectorOpen(false);
     }
   }, [open]);
 
@@ -203,6 +207,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       attitude,
       phase,
       tags: finalTags,
+      aliases,
       rhythm: rhythm ?? undefined,
     });
 
@@ -361,6 +366,32 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
 
           {/* Selected values shown as full-width buttons */}
           <div className="flex flex-col gap-3">
+            {/* Aliases - Show as button if any set */}
+            {aliases.length > 0 && (
+              <AliasesSelector
+                open={aliasesSelectorOpen}
+                value={aliases}
+                onChange={(next) => habitFormState$.aliases.set(next)}
+                onOpen={() => setAliasesSelectorOpen(true)}
+                onClose={() => setAliasesSelectorOpen(false)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                  >
+                    <AtSign className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                    <span className="font-mono text-sm flex-1 text-left truncate">
+                      {aliases.join(", ")}
+                    </span>
+                    <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                      L
+                    </kbd>
+                  </button>
+                }
+              />
+            )}
+
             {/* Attitude Selector - Show as button if selected */}
             {attitude && (
               <AttitudeSelector
@@ -425,6 +456,27 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
 
           {/* Subtle wrapped row for empty selectors */}
           <div className="flex flex-wrap gap-3 items-center mt-8 mb-2">
+            {/* Aliases - subtle label if none */}
+            {aliases.length === 0 && (
+              <AliasesSelector
+                open={aliasesSelectorOpen}
+                value={aliases}
+                onChange={(next) => habitFormState$.aliases.set(next)}
+                onOpen={() => setAliasesSelectorOpen(true)}
+                onClose={() => setAliasesSelectorOpen(false)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                  >
+                    <AtSign className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    <span className="text-xs font-mono">no aliases</span>
+                  </button>
+                }
+              />
+            )}
+
             {/* Attitude - subtle label if not selected */}
             {!attitude && (
               <AttitudeSelector
@@ -519,5 +571,130 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface AliasesSelectorProps {
+  open: boolean;
+  value: string[];
+  onChange: (next: string[]) => void;
+  onOpen: () => void;
+  onClose: () => void;
+  trigger: React.ReactNode;
+  collisionBoundary?: Element | null | Array<Element | null>;
+}
+
+function AliasesSelector({
+  open,
+  value,
+  onChange,
+  onOpen,
+  onClose,
+  trigger,
+  collisionBoundary,
+}: AliasesSelectorProps) {
+  const [draft, setDraft] = useState("");
+
+  const commitDraft = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      setDraft("");
+      return;
+    }
+    const lower = trimmed.toLowerCase();
+    if (value.some((a) => a.toLowerCase() === lower)) {
+      setDraft("");
+      return;
+    }
+    onChange([...value, trimmed]);
+    setDraft("");
+  };
+
+  const removeAt = (index: number) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (isOpen) {
+          onOpen();
+        } else {
+          commitDraft();
+          onClose();
+        }
+      }}
+    >
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-80 p-3 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm"
+        collisionBoundary={collisionBoundary}
+        side="bottom"
+        sideOffset={4}
+        onEscapeKeyDown={(e) => {
+          // Escape discards the in-progress draft rather than committing it.
+          e.preventDefault();
+          setDraft("");
+          onClose();
+        }}
+      >
+        <div className="flex items-center gap-1.5 mb-2">
+          <AtSign className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />
+          <span className="text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
+            Aliases
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5 items-center border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1.5 focus-within:border-stone-400 dark:focus-within:border-stone-500">
+          {value.map((alias, index) => (
+            <span
+              key={`${alias}-${index}`}
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-xs font-mono text-stone-700 dark:text-stone-300"
+            >
+              {alias}
+              <button
+                type="button"
+                onClick={() => removeAt(index)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                aria-label={`Remove alias ${alias}`}
+              >
+                <X className="w-3 h-3" strokeWidth={2} />
+              </button>
+            </span>
+          ))}
+          <input
+            type="text"
+            value={draft}
+            autoFocus
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === ",") {
+                e.preventDefault();
+                e.stopPropagation();
+                // Block react-hotkeys-hook's document-level handler from
+                // also firing the form-wide Enter-to-save binding.
+                e.nativeEvent.stopImmediatePropagation();
+                commitDraft();
+              } else if (
+                e.key === "Backspace" &&
+                draft === "" &&
+                value.length > 0
+              ) {
+                e.preventDefault();
+                removeAt(value.length - 1);
+              }
+            }}
+            placeholder={value.length === 0 ? "Add alias…" : ""}
+            className="flex-1 min-w-[80px] bg-transparent text-xs font-mono text-stone-700 dark:text-stone-300 placeholder:text-stone-400 focus:outline-none"
+          />
+        </div>
+
+        <p className="mt-2 text-[11px] font-mono text-stone-400 dark:text-stone-500">
+          Enter to add. Alternate names that match when searching.
+        </p>
+      </PopoverContent>
+    </Popover>
   );
 }
