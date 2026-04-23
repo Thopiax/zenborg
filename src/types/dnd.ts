@@ -19,11 +19,22 @@ export type DropTargetType =
   | "cycle-deck";
 
 /**
- * Data attached to draggable moments
+ * Data attached to draggable items.
+ *
+ * Two variants:
+ *  - A concrete Moment being dragged (from timeline or from the cycle deck
+ *    in the legacy "materialized deck moment" paradigm — kept for allocated
+ *    moments dragged back onto the deck).
+ *  - A virtual deck card representing a plan ghost slot (new derive paradigm).
+ *    These carry `type: "deck-card"` plus `cycleId` + `habitId`; dropping one
+ *    on a timeline slot calls `CycleService.allocateFromPlan(...)`.
  */
 export interface DraggableData {
-  momentId: string;
-  sourceType: DragSourceType;
+  type?: "deck-card";
+  momentId?: string;
+  cycleId?: string;
+  habitId?: string;
+  sourceType?: DragSourceType;
   sourceDay?: string; // ISO date, undefined if from cycle deck
   sourcePhase?: Phase; // undefined if from cycle deck
   sourceOrder?: number; // 0-2, undefined if from cycle deck

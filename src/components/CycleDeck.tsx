@@ -3,7 +3,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
 import { Check, ChevronDown, ChevronUp, Flag, Pencil } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import {
   Popover,
@@ -11,13 +11,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
 import {
   activeCycle$,
   areas$,
+  cyclePlans$,
   cycles$,
-  deckMomentsByAreaAndHabit$,
   habits$,
+  moments$,
   storeHydrated$,
 } from "@/infrastructure/state/store";
 import {
@@ -25,6 +25,10 @@ import {
   cycleDeckEditMode$,
   cycleDeckSelectedCycleId$,
 } from "@/infrastructure/state/ui-store";
+import {
+  computeVirtualDeckCards,
+  type VirtualDeckCard,
+} from "@/infrastructure/state/virtualDeckCards";
 import { formatCycleSubtitle } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { CycleCalendarDialog } from "./CycleCalendarDialog";
@@ -32,33 +36,34 @@ import { CycleDeckColumn } from "./CycleDeckColumn";
 import { CycleStrip } from "./CycleStrip";
 
 /**
- * CycleDeck - Container for budgeted moments during active cycle
+ * CycleDeck - Container for virtual deck cards derived from cycle plans.
+ *
+ * Derive paradigm: the deck is a computed view of `cyclePlans$`.
+ * Each plan contributes `budgetedCount - allocatedCount` ghost cards.
+ * Dragging a ghost onto a timeline slot calls `allocateFromPlan`, which
+ * materializes a new Moment. Dragging an allocated moment back onto the deck
+ * calls `unallocateMoment`, which deletes the moment row.
  *
  * Features:
- * - Arrow navigation (← name →) through current and future cycles
- * - Double-click header to collapse/expand
- * - Inline edit mode: editable name + date inputs, count controls, ghost cards
- * - Labeled text buttons (Edit/Done/Show All)
- * - CycleStarter shown when no cycle is active
- *
- * Design:
- * - Stone monochrome base
- * - Area colors for headers
- * - Grouped by area automatically (no grouping options)
+ *  - Strip-based cycle navigation (past, current, future cycles)
+ *  - Double-click header to collapse/expand
+ *  - Inline edit mode: editable name + date inputs, budget controls, ghost cards
+ *  - CycleStarter shown when no cycle is active
  */
 export function CycleDeck() {
   const cycleService = new CycleService();
-  const deckMoments = useValue(() => deckMomentsByAreaAndHabit$.get());
 
-  // Get the active cycle (via activeCycleId$) - reactive!
+  // Reactive reads — order matters for test mocks
   const activeCycle = useValue(() => activeCycle$.get());
-
-  // Collapse state — shared with the `p` hotkey in view-commands
   const isCollapsed = useValue(cycleDeckCollapsed$);
-
-  // Edit mode state
   const isEditMode = useValue(cycleDeckEditMode$);
   const selectedCycleId = useValue(cycleDeckSelectedCycleId$);
+  const allCyclesMap = useValue(() => cycles$.get());
+  const plansMap = useValue(() => cyclePlans$.get());
+  const habitsMap = useValue(() => habits$.get());
+  const areasMap = useValue(() => areas$.get());
+  const momentsMap = useValue(() => moments$.get());
+  const isHydrated = useValue(storeHydrated$);
 
   const toggleCollapsed = () =>
     cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
@@ -72,7 +77,6 @@ export function CycleDeck() {
   // Resolve which cycle the detail pane below the strip is rendering.
   // Selection state (ui-store) trumps the active cycle so scrolling the
   // strip can surface any past/future cycle.
-  const allCyclesMap = useValue(() => cycles$.get());
   const effectiveCycleId = selectedCycleId || activeCycle?.id || null;
   const effectiveCycle = effectiveCycleId
     ? allCyclesMap[effectiveCycleId] || null
@@ -135,8 +139,31 @@ export function CycleDeck() {
     },
   });
 
-  // Wait for store hydration before deciding what to render
-  const isHydrated = useValue(storeHydrated$);
+  // Derive virtual deck cards for the effective cycle, grouped by area.
+  const areasWithCards = useMemo<
+    Array<{ area: Area; cards: VirtualDeckCard[] }>
+  >(() => {
+    if (!effectiveCycleId) return [];
+    const cards = computeVirtualDeckCards({
+      cycleId: effectiveCycleId,
+      plans: Object.values(plansMap),
+      habits: Object.values(habitsMap),
+      areas: Object.values(areasMap),
+      moments: Object.values(momentsMap),
+    });
+
+    const byArea = new Map<string, VirtualDeckCard[]>();
+    for (const card of cards) {
+      const list = byArea.get(card.habit.areaId) ?? [];
+      list.push(card);
+      byArea.set(card.habit.areaId, list);
+    }
+
+    return Array.from(byArea.entries())
+      .map(([areaId, list]) => ({ area: areasMap[areaId], cards: list }))
+      .filter(({ area }) => Boolean(area))
+      .sort((a, b) => a.area.order - b.area.order);
+  }, [effectiveCycleId, plansMap, habitsMap, areasMap, momentsMap]);
 
   // No active cycle → show only the strip (with "+ Plan new cycle") and a
   // quiet hint. No floating "Cycle Deck" container over an empty space.
@@ -169,9 +196,8 @@ export function CycleDeck() {
     });
   };
 
-  // Get all budgeted moments for current cycle (using store's computed selector)
-  const allDeckMoments = Object.values(deckMoments).flatMap((areaHabits) =>
-    Object.values(areaHabits).flat(),
+  const hasAnyCards = areasWithCards.some(({ cards }) =>
+    cards.some((c) => c.ghosts > 0 || c.plan.budgetedCount > 0),
   );
 
   // Subtitle for view mode
@@ -212,7 +238,7 @@ export function CycleDeck() {
                 className="bg-transparent border-b border-stone-300 dark:border-stone-600 focus:border-stone-500 outline-none px-0 py-0 text-xs font-mono text-stone-600 dark:text-stone-400"
                 aria-label="Start date"
               />
-              <span className="text-stone-400">{"\u2192"}</span>
+              <span className="text-stone-400">{"→"}</span>
               <input
                 type="date"
                 value={editEndDate}
@@ -343,14 +369,14 @@ export function CycleDeck() {
 
   // Helper to render area columns content
   const renderColumns = (
-    areasWithMoments: { area: Area; habits: Record<string, Moment[]> }[],
+    list: Array<{ area: Area; cards: VirtualDeckCard[] }>,
   ) => (
     <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
-      {areasWithMoments.map(({ area, habits }) => (
+      {list.map(({ area, cards }) => (
         <CycleDeckColumn
           key={area.id}
           area={area}
-          habitMoments={habits}
+          cards={cards}
           isEditMode={isEditMode}
           showAllHabits={isEditMode}
           cycleId={cycleId ?? ""}
@@ -359,20 +385,41 @@ export function CycleDeck() {
     </div>
   );
 
-  // Empty state — in edit mode, show area columns with ghost cards
-  if (allDeckMoments.length === 0 && isEditMode && !isCollapsed) {
-    const allHabitsMap = habits$.get();
-    const allAreasMap = areas$.get();
+  // In edit mode, also include areas that have habits but no plans yet,
+  // so the user can ghost-add them to the budget.
+  const allAreasForEdit = (() => {
+    if (!isEditMode) return areasWithCards;
 
+    const budgetedAreaIds = new Set(areasWithCards.map(({ area }) => area.id));
+
+    const extraAreas = Object.values(areasMap)
+      .filter(
+        (a) =>
+          !budgetedAreaIds.has(a.id) &&
+          Object.values(habitsMap).some(
+            (h) => h.areaId === a.id && !h.isArchived,
+          ),
+      )
+      .sort((a, b) => a.order - b.order)
+      .map((area) => ({ area, cards: [] as VirtualDeckCard[] }));
+
+    return [...areasWithCards, ...extraAreas].sort(
+      (a, b) => a.area.order - b.area.order,
+    );
+  })();
+
+  // Empty state — in edit mode, show area columns with ghost cards
+  if (!hasAnyCards && isEditMode && !isCollapsed) {
     const areaIdsWithHabits = new Set(
-      Object.values(allHabitsMap)
+      Object.values(habitsMap)
         .filter((h) => !h.isArchived)
         .map((h) => h.areaId),
     );
 
-    const areasToShow = Object.values(allAreasMap)
+    const areasToShow = Object.values(areasMap)
       .filter((a) => areaIdsWithHabits.has(a.id))
-      .sort((a, b) => a.order - b.order);
+      .sort((a, b) => a.order - b.order)
+      .map((area) => ({ area, cards: [] as VirtualDeckCard[] }));
 
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
@@ -380,18 +427,7 @@ export function CycleDeck() {
           <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
         )}
         {header}
-        <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
-          {areasToShow.map((area) => (
-            <CycleDeckColumn
-              key={area.id}
-              area={area}
-              habitMoments={{}}
-              isEditMode={true}
-              showAllHabits={true}
-              cycleId={effectiveCycleId ?? ""}
-            />
-          ))}
-        </div>
+        {renderColumns(areasToShow)}
         <CycleCalendarDialog
           open={createDialogOpen}
           onClose={() => setCreateDialogOpen(false)}
@@ -401,7 +437,7 @@ export function CycleDeck() {
   }
 
   // Empty state — read-only mode
-  if (allDeckMoments.length === 0) {
+  if (!hasAnyCards) {
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
         {!isCollapsed && (
@@ -434,33 +470,6 @@ export function CycleDeck() {
     );
   }
 
-  // Get areas with moments using application service
-  const areasWithMoments = cycleService.getAreasWithDeckMoments(deckMoments);
-
-  // In edit mode, include all areas that have habits (not just budgeted ones)
-  const allAreasForEdit = (() => {
-    if (!isEditMode) return areasWithMoments;
-
-    const allHabitsMap = habits$.get();
-    const allAreasMap = areas$.get();
-    const budgetedAreaIds = new Set(areasWithMoments.map(({ area }) => area.id));
-
-    const areasWithHabits = Object.values(allAreasMap)
-      .filter(
-        (a) =>
-          !budgetedAreaIds.has(a.id) &&
-          Object.values(allHabitsMap).some(
-            (h) => h.areaId === a.id && !h.isArchived,
-          ),
-      )
-      .sort((a, b) => a.order - b.order)
-      .map((area) => ({ area, habits: {} as Record<string, Moment[]> }));
-
-    return [...areasWithMoments, ...areasWithHabits].sort(
-      (a, b) => a.area.order - b.area.order,
-    );
-  })();
-
   return (
     <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
       {!isCollapsed && (
@@ -492,8 +501,8 @@ export function CycleDeck() {
             </div>
           )}
 
-          {/* Horizontal scrollable columns (matching CycleDeckBuilder) */}
-          {renderColumns(isEditMode ? allAreasForEdit : areasWithMoments)}
+          {/* Horizontal scrollable columns */}
+          {renderColumns(isEditMode ? allAreasForEdit : areasWithCards)}
         </div>
       )}
 
@@ -504,5 +513,3 @@ export function CycleDeck() {
     </div>
   );
 }
-
-
