@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Attitude } from "@/domain/value-objects/Attitude";
-import type { Phase } from "@/domain/value-objects/Phase";
+import { Phase } from "@/domain/value-objects/Phase";
 import { rhythmToCycleBudget, type Rhythm } from "@/domain/value-objects/Rhythm";
 import {
   activeCycleId$,
@@ -94,7 +94,7 @@ describe("CycleService.budgetHabitToCycle (plan-only, derive paradigm)", () => {
       cycleId: "cycle-1",
       cyclePlanId: Object.values(cyclePlans$.get())[0].id,
       day: "2026-02-01",
-      phase: "morning" as Phase,
+      phase: Phase.MORNING,
       order: 0,
       tags: [],
       emoji: null,
@@ -123,7 +123,7 @@ describe("CycleService.budgetHabitToCycle (plan-only, derive paradigm)", () => {
       cycleId: "cycle-1",
       cyclePlanId: Object.values(cyclePlans$.get())[0].id,
       day: "2026-02-01",
-      phase: "morning" as Phase,
+      phase: Phase.MORNING,
       order: 0,
       tags: [],
       emoji: null,
@@ -410,7 +410,7 @@ describe("CycleService.getCycleReview", () => {
     habitId: null as string | null,
     cycleId: "cycle-1" as string | null,
     cyclePlanId: null as string | null,
-    phase: "MORNING" as Phase,
+    phase: Phase.MORNING as Phase,
     day: null as string | null,
     order: 0,
     emoji: null,
@@ -591,7 +591,7 @@ describe("CycleService.countAllocatedForPlan", () => {
       cycleId: "c-1",
       cyclePlanId: "plan-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
       order: 0,
       tags: [],
       emoji: null,
@@ -660,7 +660,7 @@ describe("CycleService.allocateFromPlan", () => {
       cycleId: "c-1",
       habitId: "h-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
     });
     expect(result).toEqual({
       error: expect.stringContaining("No budget"),
@@ -681,7 +681,7 @@ describe("CycleService.allocateFromPlan", () => {
       cycleId: "c-1",
       habitId: "h-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
     });
     expect("error" in result).toBe(false);
     if ("error" in result) return;
@@ -706,14 +706,14 @@ describe("CycleService.allocateFromPlan", () => {
       cycleId: "c-1",
       habitId: "h-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
     });
     expect("error" in first).toBe(false);
     const second = service.allocateFromPlan({
       cycleId: "c-1",
       habitId: "h-1",
       day: "2026-04-25",
-      phase: "MORNING",
+      phase: Phase.MORNING,
     });
     expect(second).toEqual({
       error: expect.stringContaining("Over budget"),
@@ -739,7 +739,7 @@ describe("CycleService.allocateFromPlan", () => {
         cycleId: "c-1",
         cyclePlanId: null,
         day: "2026-04-24",
-        phase: "MORNING",
+        phase: Phase.MORNING,
         order: i,
         tags: [],
         emoji: null,
@@ -751,7 +751,7 @@ describe("CycleService.allocateFromPlan", () => {
       cycleId: "c-1",
       habitId: "h-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
     });
     expect(result).toEqual({ error: expect.stringContaining("Slot") });
   });
@@ -770,7 +770,7 @@ describe("CycleService.allocateFromPlan", () => {
       cycleId: "c-1",
       habitId: "h-1",
       day: "2026-06-01",
-      phase: "MORNING",
+      phase: Phase.MORNING,
     });
     expect(result).toEqual({ error: expect.stringContaining("outside") });
   });
@@ -790,7 +790,7 @@ describe("CycleService.allocateFromPlan", () => {
       cycleId: "c-1",
       habitId: "h-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
     });
     expect(result).toEqual({
       error: expect.stringContaining("archived"),
@@ -818,7 +818,7 @@ describe("CycleService.unallocateMoment", () => {
       cycleId: "c-1",
       cyclePlanId: "plan-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
       order: 0,
       tags: [],
       emoji: null,
@@ -847,7 +847,7 @@ describe("CycleService.unallocateMoment", () => {
       cycleId: "c-1",
       cyclePlanId: null,
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
       order: 0,
       tags: [],
       emoji: null,
@@ -903,7 +903,7 @@ describe("CycleService.reconcileLegacyDeckMoments", () => {
       cycleId: "c-1",
       cyclePlanId: "plan-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
       order: 0,
       tags: [],
       emoji: null,
@@ -984,7 +984,7 @@ describe("CycleService.decrementHabitBudget (floored at allocatedCount)", () => 
       cycleId: "c-1",
       cyclePlanId: "plan-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
       order: 0,
       tags: [],
       emoji: null,
@@ -999,7 +999,7 @@ describe("CycleService.decrementHabitBudget (floored at allocatedCount)", () => 
       cycleId: "c-1",
       cyclePlanId: "plan-1",
       day: "2026-04-25",
-      phase: "MORNING",
+      phase: Phase.MORNING,
       order: 0,
       tags: [],
       emoji: null,
@@ -1030,7 +1030,7 @@ describe("CycleService.decrementHabitBudget (floored at allocatedCount)", () => 
       cycleId: "c-1",
       cyclePlanId: "plan-1",
       day: "2026-04-24",
-      phase: "MORNING",
+      phase: Phase.MORNING,
       order: 0,
       tags: [],
       emoji: null,
