@@ -71,7 +71,7 @@ describe("Moment", () => {
       expect(isMomentError(result)).toBe(false);
       if (!isMomentError(result)) {
         expect(result.id).toBeDefined();
-        expect(result.name).toBe("Morning Run");
+        expect(result.name).toBe("morning run");
         expect(result.areaId).toBe("area-1");
         expect(result.phase).toBeNull();
         expect(result.day).toBeNull();
@@ -107,7 +107,7 @@ describe("Moment", () => {
 
       expect(isMomentError(result)).toBe(false);
       if (!isMomentError(result)) {
-        expect(result.name).toBe("Running");
+        expect(result.name).toBe("running");
       }
     });
 
@@ -210,7 +210,7 @@ describe("Moment", () => {
 
         expect(isMomentError(updated)).toBe(false);
         if (!isMomentError(updated)) {
-          expect(updated.name).toBe("Morning Jog");
+          expect(updated.name).toBe("morning jog");
           expect(updated.updatedAt).toBeDefined();
         }
       }
