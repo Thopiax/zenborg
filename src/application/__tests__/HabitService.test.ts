@@ -216,7 +216,7 @@ describe("HabitService", () => {
       }
     });
 
-    it("should delete unallocated moments linked to the habit", () => {
+    it("should preserve all moments linked to the habit (derive paradigm)", () => {
       const habit = service.createHabit({
         name: "Running",
         areaId: "area-1",
@@ -224,7 +224,8 @@ describe("HabitService", () => {
       });
       if ("error" in habit) throw new Error(habit.error);
 
-      // Unallocated moment (deck) — should be deleted
+      // Unallocated moment — under derive paradigm these shouldn't normally
+      // exist (deck is virtual), but legacy records must not be cascaded.
       const unallocated = createMoment({
         name: "Running",
         areaId: "area-1",
@@ -234,7 +235,7 @@ describe("HabitService", () => {
       if ("error" in unallocated) throw new Error(unallocated.error);
       moments$[unallocated.id].set(unallocated);
 
-      // Allocated moment (on timeline) — should be kept
+      // Allocated moment (on timeline) — must be kept (historical record)
       const allocated = createMoment({
         name: "Running",
         areaId: "area-1",
@@ -261,10 +262,10 @@ describe("HabitService", () => {
       service.archiveHabit(habit.id);
 
       const remaining = moments$.get();
-      expect(Object.keys(remaining)).toHaveLength(2);
+      expect(Object.keys(remaining)).toHaveLength(3);
       expect(remaining[allocated.id]).toBeDefined();
       expect(remaining[unrelated.id]).toBeDefined();
-      expect(remaining[unallocated.id]).toBeUndefined();
+      expect(remaining[unallocated.id]).toBeDefined();
     });
 
     it("should delete cycle plans for the habit", () => {
@@ -297,6 +298,52 @@ describe("HabitService", () => {
       const remaining = cyclePlans$.get();
       expect(Object.keys(remaining)).toHaveLength(1);
       expect(remaining[otherPlan.id]).toBeDefined();
+    });
+  });
+
+  describe("archiveHabit (derive paradigm)", () => {
+    it("deletes plans but preserves allocated moments (orphan via habitId)", () => {
+      const habitService = new HabitService();
+      habits$["h-1"].set({
+        id: "h-1",
+        name: "fiction",
+        areaId: "a-1",
+        attitude: null,
+        phase: null,
+        tags: [],
+        emoji: null,
+        isArchived: false,
+        order: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      cyclePlans$["plan-1"].set({
+        id: "plan-1",
+        cycleId: "c-1",
+        habitId: "h-1",
+        budgetedCount: 2,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      moments$["m-allocated"].set({
+        id: "m-allocated",
+        name: "fiction",
+        areaId: "a-1",
+        habitId: "h-1",
+        cycleId: "c-1",
+        cyclePlanId: "plan-1",
+        day: "2026-04-24",
+        phase: Phase.MORNING,
+        order: 0,
+        tags: [],
+        emoji: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      habitService.archiveHabit("h-1");
+      expect(habits$["h-1"].get()?.isArchived).toBe(true);
+      expect(cyclePlans$["plan-1"].get()).toBeUndefined();
+      expect(moments$["m-allocated"].get()?.id).toBe("m-allocated");
     });
   });
 
