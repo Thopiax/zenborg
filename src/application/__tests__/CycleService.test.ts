@@ -911,3 +911,115 @@ describe("CycleService.reconcileLegacyDeckMoments", () => {
     expect(moments$["spontaneous"].get()?.id).toBe("spontaneous");
   });
 });
+
+describe("CycleService.decrementHabitBudget (floored at allocatedCount)", () => {
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    habits$.set({});
+
+    cycles$["c-1"].set({
+      id: "c-1",
+      name: "Cycle",
+      startDate: "2026-04-23",
+      endDate: "2026-05-06",
+      intention: null,
+      reflection: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    habits$["h-1"].set({
+      id: "h-1",
+      name: "fiction",
+      areaId: "a-1",
+      attitude: null,
+      phase: null,
+      tags: [],
+      emoji: null,
+      isArchived: false,
+      order: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
+  it("no-ops when decrement would dip below allocatedCount", () => {
+    const service = new CycleService();
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 2,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    moments$["m-1"].set({
+      id: "m-1",
+      name: "fiction",
+      areaId: "a-1",
+      habitId: "h-1",
+      cycleId: "c-1",
+      cyclePlanId: "plan-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    moments$["m-2"].set({
+      id: "m-2",
+      name: "fiction",
+      areaId: "a-1",
+      habitId: "h-1",
+      cycleId: "c-1",
+      cyclePlanId: "plan-1",
+      day: "2026-04-25",
+      phase: "MORNING",
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const result = service.decrementHabitBudget("c-1", "h-1");
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.budgetedCount).toBe(2); // unchanged
+  });
+
+  it("decrements when allocatedCount leaves headroom", () => {
+    const service = new CycleService();
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 4,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    moments$["m-1"].set({
+      id: "m-1",
+      name: "fiction",
+      areaId: "a-1",
+      habitId: "h-1",
+      cycleId: "c-1",
+      cyclePlanId: "plan-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const result = service.decrementHabitBudget("c-1", "h-1");
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.budgetedCount).toBe(3);
+  });
+});
