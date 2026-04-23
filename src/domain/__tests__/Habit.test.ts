@@ -22,7 +22,7 @@ describe("Habit", () => {
       if ("error" in habit) throw new Error(habit.error);
 
       expect(habit.id).toBeDefined();
-      expect(habit.name).toBe("Running");
+      expect(habit.name).toBe("running");
       expect(habit.areaId).toBe("area-123");
       expect(habit.attitude).toBeNull();
       expect(habit.tags).toEqual([]);
@@ -133,7 +133,7 @@ describe("Habit", () => {
 
       if ("error" in updated) throw new Error(updated.error);
 
-      expect(updated.name).toBe("Jogging");
+      expect(updated.name).toBe("jogging");
       expect(updated.updatedAt).toBeDefined();
     });
 

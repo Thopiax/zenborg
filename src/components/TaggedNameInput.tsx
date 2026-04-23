@@ -66,7 +66,7 @@ export function TaggedNameInput({
             value={field.displayValue}
             onChange={(e) =>
               field.setDisplayValue(
-                e.target.value,
+                e.target.value.toLowerCase(),
                 e.target.selectionStart || 0
               )
             }
