@@ -960,17 +960,20 @@ export class CycleService {
   }
 
   /**
-   * Decrements the budget for a habit in a cycle by 1.
-   * Only removes unallocated (deck) moments — allocated moments survive.
-   * No-op if there are no unallocated moments left to remove.
+   * Decrements the budget by 1, floored at the number of already-allocated
+   * moments. No-op (returns the current plan unchanged) when the floor is
+   * already reached — allocated work is sunk cost and survives.
    */
   decrementHabitBudget(cycleId: string, habitId: string): CyclePlanResult {
-    const deckCount = this.countDeckMomentsForHabitInCycle(cycleId, habitId);
-    if (deckCount <= 1) {
-      return { error: "Cannot decrement below 1 deck moment" };
+    const plan = this.findCyclePlan(cycleId, habitId);
+    if (!plan) {
+      return { error: `No plan for cycle ${cycleId}, habit ${habitId}` };
     }
-    const currentTotal = this.countMomentsForHabitInCycle(cycleId, habitId);
-    return this.budgetHabitToCycle(cycleId, habitId, currentTotal - 1);
+    const allocated = this.countAllocatedForPlan(plan.id);
+    if (plan.budgetedCount - 1 < allocated) {
+      return plan; // floor reached; no-op
+    }
+    return this.budgetHabitToCycle(cycleId, habitId, plan.budgetedCount - 1);
   }
 
   /**
