@@ -10,6 +10,7 @@ import {
   getCurrentPhase,
 } from "@/domain/value-objects/Phase";
 import { getCurrentHour } from "@/lib/dates";
+import { readMeta, writeMeta } from "@/infrastructure/vault/meta-repository";
 import { cycleDeckSelectedCycleId$ } from "./ui-store";
 
 /**
@@ -625,6 +626,36 @@ export const deckMomentsByAreaAndHabit$ = observable(() => {
 // ============================================================================
 // Database Management
 // ============================================================================
+
+/**
+ * One-shot boot migration for the derive-deck paradigm.
+ *
+ * On first boot after the migration:
+ *  - reads the `zenborg:meta` flag `migrations.derivedDeck`
+ *  - if false, runs `CycleService.reconcileLegacyDeckMoments()` which deletes
+ *    leftover unallocated plan-linked moments from the old
+ *    materialize-on-budget paradigm
+ *  - flips the flag so subsequent boots are no-ops
+ *
+ * Uses a dynamic import of `CycleService` to avoid the
+ * store → CycleService → store circular import.
+ */
+export async function runBootReconciler(): Promise<void> {
+  const meta = readMeta();
+  if (meta.migrations.derivedDeck) return;
+
+  const { CycleService } = await import(
+    "@/application/services/CycleService"
+  );
+  const service = new CycleService();
+  const { deleted } = service.reconcileLegacyDeckMoments();
+  if (deleted > 0) {
+    console.log(`[migration] reconciled ${deleted} legacy deck moment(s)`);
+  }
+
+  meta.migrations.derivedDeck = true;
+  writeMeta(meta);
+}
 
 /**
  * Reset all data to initial state

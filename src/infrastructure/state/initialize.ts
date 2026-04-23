@@ -12,6 +12,7 @@ import {
   metricLogs$,
   moments$,
   phaseConfigs$,
+  runBootReconciler,
   storeHydrated$,
 } from "./store";
 
@@ -61,6 +62,7 @@ export async function initializeStore(): Promise<void> {
     migrateActiveCycleId();
     migrateCycleIntentionReflection();
     storeHydrated$.set(true);
+    await runBootReconciler();
     return;
   }
 
@@ -106,6 +108,7 @@ export async function initializeStore(): Promise<void> {
   }
 
   storeHydrated$.set(true);
+  await runBootReconciler();
   console.log("[Zenborg] Initialization complete");
 }
 

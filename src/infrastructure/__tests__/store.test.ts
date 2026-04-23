@@ -1,3 +1,5 @@
+// @vitest-environment happy-dom
+
 import { describe, it, expect, beforeEach } from 'vitest'
 import 'fake-indexeddb/auto'
 import { createMoment } from '@/domain/entities/Moment'
@@ -5,6 +7,12 @@ import { createArea } from '@/domain/entities/Area'
 import { createCycle } from '@/domain/entities/Cycle'
 import { Phase } from '@/domain/value-objects/Phase'
 import { createHabit } from '@/domain/entities/Habit'
+import { defaultMeta } from '@/domain/entities/Meta'
+import {
+  clearMetaCache,
+  readMeta,
+  writeMeta,
+} from '@/infrastructure/vault/meta-repository'
 import {
   moments$,
   areas$,
@@ -19,6 +27,7 @@ import {
   momentsByDay$,
   momentsByDayAndPhase$,
   deckMomentsByAreaAndHabit$,
+  runBootReconciler,
 } from '../state/store'
 
 describe('Store', () => {
@@ -394,6 +403,58 @@ describe('Store', () => {
       expect(byDayAndPhase['2025-01-15'][Phase.MORNING]).toHaveLength(1)
       expect(byDayAndPhase['2025-01-15'][Phase.AFTERNOON]).toHaveLength(1)
       expect(byDayAndPhase['2025-01-15'][Phase.MORNING][0].id).toBe(moment1.id)
+    })
+  })
+
+  describe('boot reconciler', () => {
+    beforeEach(() => {
+      moments$.set({})
+      localStorage.clear()
+      clearMetaCache()
+    })
+
+    it('deletes legacy deck moments + sets migration flag on first boot', async () => {
+      moments$['legacy'].set({
+        id: 'legacy',
+        name: 'fiction',
+        areaId: 'a-1',
+        habitId: 'h-1',
+        cycleId: 'c-1',
+        cyclePlanId: 'plan-1',
+        day: null,
+        phase: null,
+        order: 0,
+        tags: [],
+        emoji: null,
+        createdAt: '',
+        updatedAt: '',
+      })
+      await runBootReconciler()
+      expect(moments$['legacy'].get()).toBeUndefined()
+      expect(readMeta().migrations.derivedDeck).toBe(true)
+    })
+
+    it('is a no-op on subsequent boots', async () => {
+      const meta = defaultMeta()
+      meta.migrations.derivedDeck = true
+      writeMeta(meta)
+      moments$['sneaky-legacy'].set({
+        id: 'sneaky-legacy',
+        name: 'fiction',
+        areaId: 'a-1',
+        habitId: 'h-1',
+        cycleId: 'c-1',
+        cyclePlanId: 'plan-1',
+        day: null,
+        phase: null,
+        order: 0,
+        tags: [],
+        emoji: null,
+        createdAt: '',
+        updatedAt: '',
+      })
+      await runBootReconciler()
+      expect(moments$['sneaky-legacy'].get()?.id).toBe('sneaky-legacy')
     })
   })
 })
