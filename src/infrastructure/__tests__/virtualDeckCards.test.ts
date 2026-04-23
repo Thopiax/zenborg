@@ -5,6 +5,7 @@ import { computeVirtualDeckCards } from "../state/virtualDeckCards";
 import type { Habit } from "@/domain/entities/Habit";
 import type { CyclePlan } from "@/domain/entities/CyclePlan";
 import type { Moment } from "@/domain/entities/Moment";
+import { Phase } from "@/domain/value-objects/Phase";
 import type { Area } from "@/domain/entities/Area";
 
 const area = (id: string, order: number): Area => ({
@@ -61,7 +62,7 @@ const allocatedMoment = (
   cycleId: "c",
   cyclePlanId: planId,
   day,
-  phase: "MORNING",
+  phase: Phase.MORNING,
   order: 0,
   tags: [],
   emoji: null,

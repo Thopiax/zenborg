@@ -25,7 +25,7 @@ before the agent commits).
 - `create_habit`, `update_habit`, `archive_habit`, `unarchive_habit`
 - `create_area`, `update_area`, `archive_area`, `unarchive_area`, `delete_area`
 - `create_moment`, `update_moment`, `delete_moment`
-- `allocate_moment`, `unallocate_moment`, `allocate_moment_from_deck`
+- `allocate_moment`, `unallocate_moment`, `allocate_from_plan`
 - `spawn_spontaneous_from_habit`, `create_standalone_moment`
 - `plan_cycle`, `quick_create_cycle`, `update_cycle`, `end_cycle`, `delete_cycle`
 - `budget_habit_to_cycle`, `increment_habit_budget`, `decrement_habit_budget`, `remove_habit_from_deck`
@@ -52,7 +52,7 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 **Reads** — `list_*` + `get_*` for every collection.
 **Writes** — CRUD for Areas / Habits / Cycles / Moments / CyclePlans.
 **Archive** — archive / unarchive for Areas + Habits (cascade handled).
-**Service orchestration** — `plan_cycle`, `budget_habit_to_cycle`, `allocate_moment_from_deck`, `allocate_moment`, `unallocate_moment`, `spawn_spontaneous_from_habit`, `create_standalone_moment`.
+**Service orchestration** — `plan_cycle`, `budget_habit_to_cycle`, `allocate_from_plan`, `allocate_moment`, `unallocate_moment`, `spawn_spontaneous_from_habit`, `create_standalone_moment`.
 
 ### Should-have — if cheap
 - `PhaseConfig` update (the only mutating op — configs are seeded)
@@ -119,7 +119,7 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 | `delete_moment` | `id` | |
 | `allocate_moment` | `id, day, phase, order?` | Enforce 3-per-(day, phase) cap. |
 | `unallocate_moment` | `id` | |
-| `allocate_moment_from_deck` | `momentId, day, phase, order?` | Deck moment must belong to a cycle. |
+| `allocate_from_plan` | `cycleId, habitId, day, phase` | Materialize a virtual deck card onto a slot. Resolves plan server-side; creates `Moment` with `cyclePlanId` set. |
 | `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags. |
 | `create_standalone_moment` | `name, areaId, day, phase, order?` | Create + allocate in one op. |
 
@@ -192,10 +192,10 @@ Current `mcp-server/index.ts` reads penceive's `vault/areas/<key>.md` + YAML fro
 | # | Question | Call |
 |---|---|---|
 | — | Scope | Must-have + Should-have both in v0.3. |
-| 1 | Cascade confirmation for `archive_habit` | **Silent cascade, return counts.** `{ archived, deletedMoments, deletedPlans }`. |
+| 1 | Cascade confirmation for `archive_habit` | **Silent cascade, return counts.** `{ archived, deletedPlans }` — allocated moments survive (derive paradigm; orphan via `habitId`). |
 | 2 | Vault resolution | **`--vault` → `$ZENBORG_VAULT_DIR` → `~/.zenborg`.** |
 | 3 | Dev vault safety | **Log loudly, trust the human.** Print resolved path + warn if `~/.zenborg-dev` exists but isn't the target. |
-| 4 | Allocation via `update_moment` | **Keep allocation separate.** `allocate_moment` / `unallocate_moment` / `allocate_moment_from_deck` stay their own tool family. |
+| 4 | Allocation via `update_moment` | **Keep allocation separate.** `allocate_moment` / `unallocate_moment` / `allocate_from_plan` stay their own tool family. |
 
 ### Known-evolving invariants
 
