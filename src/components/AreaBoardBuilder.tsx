@@ -9,7 +9,11 @@ import { EmptyAreaColumn } from "@/components/EmptyAreaColumn";
 import { HabitFormDialog } from "@/components/HabitFormDialog";
 import type { Area, UpdateAreaProps } from "@/domain/entities/Area";
 import type { CreateHabitProps, UpdateHabitProps } from "@/domain/entities/Habit";
-import { activeAreas$, activeHabits$ } from "@/infrastructure/state/store";
+import {
+  activeAreas$,
+  activeHabits$,
+  archivedHabits$,
+} from "@/infrastructure/state/store";
 import {
   closeHabitForm,
   habitFormState$,
@@ -23,6 +27,7 @@ export const AreaBoardBuilder = observer(() => {
 
   const areas = use$(activeAreas$);
   const habits = use$(activeHabits$);
+  const archivedHabits = use$(archivedHabits$);
 
   const sortedAreas = [...areas].sort((a, b) => a.order - b.order);
 
@@ -33,6 +38,15 @@ export const AreaBoardBuilder = observer(() => {
       habitsByArea[habit.areaId] = [];
     }
     habitsByArea[habit.areaId].push(habit);
+  }
+
+  // Group archived (resting) habits by area
+  const archivedByArea: Record<string, typeof archivedHabits> = {};
+  for (const habit of archivedHabits) {
+    if (!archivedByArea[habit.areaId]) {
+      archivedByArea[habit.areaId] = [];
+    }
+    archivedByArea[habit.areaId].push(habit);
   }
 
   // Area CRUD
@@ -81,6 +95,13 @@ export const AreaBoardBuilder = observer(() => {
     }
   };
 
+  const handleUnarchiveHabit = (habitId: string) => {
+    const result = habitService.unarchiveHabit(habitId);
+    if ("error" in result) {
+      alert(`Failed to restore habit: ${result.error}`);
+    }
+  };
+
   const handleSaveHabit = (props: CreateHabitProps | UpdateHabitProps) => {
     const formState = habitFormState$.peek();
 
@@ -124,10 +145,12 @@ export const AreaBoardBuilder = observer(() => {
               key={area.id}
               area={area}
               habits={habitsByArea[area.id] || []}
+              archivedHabits={archivedByArea[area.id] || []}
               onUpdateArea={handleUpdateArea}
               onArchiveArea={handleArchiveArea}
               onEditHabit={handleEditHabit}
               onArchiveHabit={handleArchiveHabit}
+              onUnarchiveHabit={handleUnarchiveHabit}
               onCreateHabit={() => handleOpenCreateHabit(area.id)}
             />
           ))}

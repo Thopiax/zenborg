@@ -43,6 +43,16 @@ const PlantPage = observer(() => {
 
     if (activeData?.type === "habit") {
       const pointerCollisions = pointerWithin(args);
+      // Prefer habit-level collisions so in-area reorder resolves to a sibling
+      // habit. Falling back to the enclosing area lets cross-area drops work
+      // when the pointer is in empty column space.
+      const habitCollisions = pointerCollisions.filter((collision: any) => {
+        const data = collision.data?.droppableContainer?.data?.current;
+        return data?.type === "habit";
+      });
+      if (habitCollisions.length > 0) {
+        return habitCollisions;
+      }
       const areaCollisions = pointerCollisions.filter((collision: any) =>
         collision.id.toString().startsWith("area-"),
       );
@@ -130,7 +140,26 @@ const PlantPage = observer(() => {
       return;
     }
 
-    // Case 2: Drag habit to different area
+    // Case 2: Drag habit onto a habit in a different area (cross-area move)
+    if (
+      dragData?.type === "habit" &&
+      dropData?.type === "habit" &&
+      dragData.sourceAreaId !== dropData.sourceAreaId
+    ) {
+      const habitId = dragData.habitId;
+      const targetAreaId = dropData.sourceAreaId;
+      if (habitId && targetAreaId) {
+        const result = habitService.updateHabit(habitId, {
+          areaId: targetAreaId,
+        });
+        if ("error" in result) {
+          alert(`Failed to move habit: ${result.error}`);
+        }
+      }
+      return;
+    }
+
+    // Case 3: Drag habit to empty column space (targets area droppable)
     if (dragData?.type === "habit" && dropData?.targetType === "area") {
       const habitId = dragData.habitId;
       const sourceAreaId = dragData.sourceAreaId;
@@ -147,7 +176,7 @@ const PlantPage = observer(() => {
       return;
     }
 
-    // Case 3: Area reordering
+    // Case 4: Area reordering
     if (
       dragData?.type === "area" &&
       (dropData?.type === "area" || !dropData?.type)

@@ -1,7 +1,6 @@
 "use client";
 
 import { useValue } from "@legendapp/state/react";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import { habits$ } from "@/infrastructure/state/store";
@@ -9,7 +8,7 @@ import type { VirtualDeckCard as VirtualDeckCardData } from "@/infrastructure/st
 import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import { GhostHabitCard } from "./GhostHabitCard";
-import { VirtualDeckCard } from "./VirtualDeckCard";
+import { VirtualDeckStack } from "./VirtualDeckStack";
 
 /**
  * CycleDeckColumn - Single vertical column for an area in the cycle deck.
@@ -89,77 +88,31 @@ export function CycleDeckColumn({
       {/* Column Content */}
       <div className="flex flex-col gap-3 p-4 min-h-[120px] max-h-[400px] overflow-y-auto">
         {cards.map((card) => (
-          <div
+          <VirtualDeckStack
             key={card.plan.id}
-            className="relative"
-            data-testid={`deck-card-group-${card.habit.id}`}
-          >
-            {/* Render one draggable per ghost slot */}
-            <div className="flex flex-col gap-2">
-              {Array.from({ length: card.ghosts }).map((_, slotIndex) => (
-                <VirtualDeckCard
-                  key={`${card.plan.id}-slot-${slotIndex}`}
-                  cycleId={cycleId}
-                  habit={card.habit}
-                  area={area}
-                  slotIndex={slotIndex}
-                />
-              ))}
-            </div>
-
-            {/* Edit-mode controls: budget + / - / remove */}
-            {isEditMode && (
-              <div
-                data-testid={`deck-card-controls-${card.habit.id}`}
-                className="absolute -top-2 -right-2 rounded-md bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 text-xs font-mono font-medium shadow-sm flex items-center gap-0.5 px-1 py-0.5"
-                style={{ zIndex: 2 }}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                {card.plan.budgetedCount === 1 ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      cycleService.removeHabitFromDeck(cycleId, card.habit.id);
-                    }}
-                    className="p-0.5 rounded hover:bg-red-600 dark:hover:bg-red-400 transition-colors"
-                    title="Remove from cycle"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      cycleService.decrementHabitBudget(
-                        cycleId,
-                        card.habit.id,
-                      );
-                    }}
-                    className="p-0.5 rounded hover:bg-stone-700 dark:hover:bg-stone-300 transition-colors"
-                    title="Decrease count"
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                  </button>
-                )}
-
-                <span className="px-1">x{card.plan.budgetedCount}</span>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    cycleService.incrementHabitBudget(cycleId, card.habit.id);
-                  }}
-                  className="p-0.5 rounded hover:bg-stone-700 dark:hover:bg-stone-300 transition-colors"
-                  title="Increase count"
-                >
-                  <ChevronUp className="h-3 w-3" />
-                </button>
-              </div>
-            )}
-          </div>
+            cycleId={cycleId}
+            habit={card.habit}
+            area={area}
+            count={card.ghosts}
+            onIncrement={
+              isEditMode
+                ? () =>
+                    cycleService.incrementHabitBudget(cycleId, card.habit.id)
+                : undefined
+            }
+            onDecrement={
+              isEditMode && card.plan.budgetedCount > 1
+                ? () =>
+                    cycleService.decrementHabitBudget(cycleId, card.habit.id)
+                : undefined
+            }
+            onRemove={
+              isEditMode && card.plan.budgetedCount <= 1
+                ? () =>
+                    cycleService.removeHabitFromDeck(cycleId, card.habit.id)
+                : undefined
+            }
+          />
         ))}
 
         {/* Unbudgeted habits as ghost cards (edit mode) */}
