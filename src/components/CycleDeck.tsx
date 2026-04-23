@@ -3,7 +3,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
 import { Check, ChevronDown, ChevronUp, Flag, Pencil } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import {
   Popover,
@@ -140,30 +140,32 @@ export function CycleDeck() {
   });
 
   // Derive virtual deck cards for the effective cycle, grouped by area.
-  const areasWithCards = useMemo<
-    Array<{ area: Area; cards: VirtualDeckCard[] }>
-  >(() => {
-    if (!effectiveCycleId) return [];
-    const cards = computeVirtualDeckCards({
-      cycleId: effectiveCycleId,
-      plans: Object.values(plansMap),
-      habits: Object.values(habitsMap),
-      areas: Object.values(areasMap),
-      moments: Object.values(momentsMap),
-    });
+  // Intentionally not memoized: legend-state may return a stable top-level
+  // reference after nested writes, which would leave a useMemo stale and
+  // the UI stuck showing outdated ghost counts after +/-/remove.
+  const areasWithCards: Array<{ area: Area; cards: VirtualDeckCard[] }> =
+    (() => {
+      if (!effectiveCycleId) return [];
+      const cards = computeVirtualDeckCards({
+        cycleId: effectiveCycleId,
+        plans: Object.values(plansMap),
+        habits: Object.values(habitsMap),
+        areas: Object.values(areasMap),
+        moments: Object.values(momentsMap),
+      });
 
-    const byArea = new Map<string, VirtualDeckCard[]>();
-    for (const card of cards) {
-      const list = byArea.get(card.habit.areaId) ?? [];
-      list.push(card);
-      byArea.set(card.habit.areaId, list);
-    }
+      const byArea = new Map<string, VirtualDeckCard[]>();
+      for (const card of cards) {
+        const list = byArea.get(card.habit.areaId) ?? [];
+        list.push(card);
+        byArea.set(card.habit.areaId, list);
+      }
 
-    return Array.from(byArea.entries())
-      .map(([areaId, list]) => ({ area: areasMap[areaId], cards: list }))
-      .filter(({ area }) => Boolean(area))
-      .sort((a, b) => a.area.order - b.area.order);
-  }, [effectiveCycleId, plansMap, habitsMap, areasMap, momentsMap]);
+      return Array.from(byArea.entries())
+        .map(([areaId, list]) => ({ area: areasMap[areaId], cards: list }))
+        .filter(({ area }) => Boolean(area))
+        .sort((a, b) => a.area.order - b.area.order);
+    })();
 
   // No active cycle → show only the strip (with "+ Plan new cycle") and a
   // quiet hint. No floating "Cycle Deck" container over an empty space.

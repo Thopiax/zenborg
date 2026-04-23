@@ -187,8 +187,17 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     }
   }, [name, mode, manualEmojiOverride, taggedField]);
 
+  // Skip the next autocomplete-open effect after a habit is selected.
+  // Otherwise reinitializing the tagged field to the habit name reopens the
+  // popover showing only the just-selected habit.
+  const skipReopenRef = useRef(false);
+
   // Show habit autocomplete when typing in create mode
   useEffect(() => {
+    if (skipReopenRef.current) {
+      skipReopenRef.current = false;
+      return;
+    }
     if (mode === "create" && taggedField.displayValue.trim().length > 0) {
       setShowHabitAutocomplete(true);
     } else {
@@ -203,6 +212,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
   // Handle habit selection from autocomplete
   const handleSelectHabit = (habit: Habit) => {
+    skipReopenRef.current = true;
     momentFormState$.name.set(habit.name);
     momentFormState$.areaId.set(habit.areaId);
     momentFormState$.emoji.set(habit.emoji);

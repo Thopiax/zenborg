@@ -31,10 +31,6 @@ export function AreaColumnSubtoolbar({
   const hasTags = tags.length > 0;
   const hasAttitude = area.attitude !== null && area.attitude !== undefined;
 
-  if (!hasTags && !hasAttitude) {
-    return null;
-  }
-
   const handleAttitudeChange = (attitude: Attitude | null) => {
     onUpdateArea(area.id, { attitude });
     setAttitudeSelectorOpen(false);
@@ -50,7 +46,7 @@ export function AreaColumnSubtoolbar({
   const visibleTags = shouldCollapse ? tags.slice(0, MAX_VISIBLE_TAGS) : tags;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-4 py-2">
+    <div className="flex flex-wrap items-center gap-1.5 px-4 py-2 min-h-[2.25rem]">
       {hasAttitude && (
         <AttitudeSelector
           open={attitudeSelectorOpen}

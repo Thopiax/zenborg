@@ -34,9 +34,16 @@ import {
   reorderMomentsWithHistory,
 } from "@/infrastructure/state/history-middleware";
 import { selectionState$ } from "@/infrastructure/state/selection";
-import { areas$, moments$ } from "@/infrastructure/state/store";
+import { areas$, habits$, moments$ } from "@/infrastructure/state/store";
 import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
-import { columnWidth } from "@/lib/design-tokens";
+import type { Area } from "@/domain/entities/Area";
+import type { Habit } from "@/domain/entities/Habit";
+import {
+  columnWidth,
+  getTextColorsForBackground,
+  momentCard,
+} from "@/lib/design-tokens";
+import { cn } from "@/lib/utils";
 import {
   calculateNextOrder,
   canDropInCell,
@@ -49,11 +56,53 @@ interface DnDProviderProps {
   children: React.ReactNode;
 }
 
+/**
+ * DeckCardPreview — overlay preview rendered when dragging a VirtualDeckCard.
+ * Matches MomentCard styling so the drop into a timeline slot feels continuous
+ * with allocating a moment.
+ */
+function DeckCardPreview({ habit, area }: { habit: Habit; area: Area }) {
+  const textColors = getTextColorsForBackground(area.color);
+  return (
+    <div
+      className={cn(
+        "rounded-lg w-full flex flex-row items-center gap-2 shadow-lg",
+      )}
+      style={{
+        backgroundColor: area.color,
+        minHeight: momentCard.minHeight,
+        paddingLeft: momentCard.paddingX,
+        paddingRight: momentCard.paddingX,
+        paddingTop: momentCard.paddingY,
+        paddingBottom: momentCard.paddingY,
+      }}
+    >
+      {habit.emoji && (
+        <span className={cn("mr-2 text-lg", textColors.primary)}>
+          {habit.emoji}
+        </span>
+      )}
+      <span
+        className={cn(
+          "text-lg font-semibold font-mono truncate flex-1 min-w-0",
+          textColors.primary,
+        )}
+      >
+        {habit.name}
+      </span>
+    </div>
+  );
+}
+
 export function DnDProvider({ children }: DnDProviderProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeDeckHabitId, setActiveDeckHabitId] = useState<string | null>(
+    null,
+  );
   const isDuplicateMode = useValue(isDuplicateMode$);
   const allMoments = useValue(moments$);
   const allAreas = useValue(areas$);
+  const allHabits = useValue(habits$);
   const selectedMomentIds = useValue(selectionState$.selectedMomentIds);
 
   // Custom collision detection strategy
@@ -113,6 +162,20 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id as string;
+    const data = event.active.data.current as DraggableData | undefined;
+
+    // Deck-card drags don't correspond to a Moment yet. Track the habit so
+    // the overlay can render a moment-shaped preview of the intended drop.
+    if (data?.type === "deck-card") {
+      setActiveDeckHabitId(data.habitId);
+      setActiveId(null);
+      const altKeyPressed =
+        // @ts-expect-error - activatorEvent carries the original pointer event
+        event.activatorEvent?.altKey || false;
+      isDuplicateMode$.set(altKeyPressed);
+      return;
+    }
+
     // MomentStack draggables use "stack-{momentId}" as their dnd-kit ID but
     // store the real moment ID in data.current.momentId. Use that for the
     // overlay lookup so allMoments[activeId] resolves correctly.
@@ -120,6 +183,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       (event.active.data.current as { momentId?: string } | undefined)
         ?.momentId ?? id;
     setActiveId(momentId);
+    setActiveDeckHabitId(null);
     // Capture duplicate decision at drag start (locked for entire drag operation)
     // If Option/Alt is held when drag begins, we'll duplicate on drop
     // @ts-expect-error - activatorEvent contains the original mouse/pointer event
@@ -131,6 +195,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     const { active, over } = event;
     const wasDuplicateMode = isDuplicateMode;
     setActiveId(null);
+    setActiveDeckHabitId(null);
     isDuplicateMode$.set(false);
 
     if (!over) {
@@ -647,12 +712,21 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
   function handleDragCancel() {
     setActiveId(null);
+    setActiveDeckHabitId(null);
     isDuplicateMode$.set(false);
   }
 
   // Get active moment for drag overlay
   const activeMoment = activeId ? allMoments[activeId] : null;
   const activeArea = activeMoment ? allAreas[activeMoment.areaId] : null;
+
+  // Get active deck-card habit for drag overlay (moment-shaped preview)
+  const activeDeckHabit = activeDeckHabitId
+    ? allHabits[activeDeckHabitId]
+    : null;
+  const activeDeckArea = activeDeckHabit
+    ? allAreas[activeDeckHabit.areaId]
+    : null;
 
   return (
     <DndContext
@@ -718,6 +792,13 @@ export function DnDProvider({ children }: DnDProviderProps) {
               // Single moment - show normally
               <MomentCard moment={activeMoment} area={activeArea} />
             )}
+          </div>
+        ) : activeDeckHabit && activeDeckArea ? (
+          <div
+            className="cursor-grabbing"
+            style={{ width: columnWidth.md }}
+          >
+            <DeckCardPreview habit={activeDeckHabit} area={activeDeckArea} />
           </div>
         ) : null}
       </DragOverlay>

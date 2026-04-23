@@ -80,6 +80,7 @@ vi.mock("@legendapp/state/react", () => ({
 vi.mock("@/infrastructure/state/store", () => ({
   moments$: "moments",
   areas$: "areas",
+  habits$: "habits",
 }));
 
 vi.mock("@/infrastructure/state/selection", () => ({

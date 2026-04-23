@@ -2,6 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Archive } from "lucide-react";
 import type { Habit } from "@/domain/entities/Habit";
 import { getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ interface DraggableHabitItemProps {
   habit: Habit;
   areaColor?: string;
   onEdit: () => void;
+  onArchive?: () => void;
 }
 
 /**
@@ -25,6 +27,7 @@ export function DraggableHabitItem({
   habit,
   areaColor,
   onEdit,
+  onArchive,
 }: DraggableHabitItemProps) {
   const {
     attributes,
@@ -99,6 +102,26 @@ export function DraggableHabitItem({
           )}
         </div>
       </button>
+
+      {/* Archive — hover-revealed, quiet */}
+      {onArchive && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onArchive();
+          }}
+          className={cn(
+            "flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity",
+            textColors.primary,
+          )}
+          aria-label="Archive habit"
+          title="Archive"
+        >
+          <Archive className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AreaColumnHeader } from "@/components/AreaColumnHeader";
 import { AreaColumnSubtoolbar } from "@/components/AreaColumnSubtoolbar";
+import { AreaRestingHabits } from "@/components/AreaRestingHabits";
 import { PlanHabitsList } from "@/components/PlanHabitsList";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
@@ -15,10 +16,12 @@ import { cn } from "@/lib/utils";
 interface AreaBoardColumnProps {
   area: Area;
   habits: Habit[];
+  archivedHabits?: Habit[];
   onUpdateArea: (areaId: string, updates: Partial<Area>) => void;
   onArchiveArea: (areaId: string) => void;
   onEditHabit: (habitId: string) => void;
   onArchiveHabit: (habitId: string) => void;
+  onUnarchiveHabit?: (habitId: string) => void;
   onCreateHabit: () => void;
   maxHabitsHeight?: string;
 }
@@ -26,10 +29,12 @@ interface AreaBoardColumnProps {
 export function AreaBoardColumn({
   area,
   habits,
+  archivedHabits = [],
   onUpdateArea,
   onArchiveArea,
   onEditHabit,
   onArchiveHabit,
+  onUnarchiveHabit,
   onCreateHabit,
   maxHabitsHeight = "calc(100vh - 16rem)",
 }: AreaBoardColumnProps) {
@@ -124,6 +129,13 @@ export function AreaBoardColumn({
           />
         )}
       </div>
+
+      {onUnarchiveHabit && archivedHabits.length > 0 && (
+        <AreaRestingHabits
+          habits={archivedHabits}
+          onUnarchive={onUnarchiveHabit}
+        />
+      )}
     </div>
   );
 }
