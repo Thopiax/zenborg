@@ -596,3 +596,184 @@ describe("CycleService.countAllocatedForPlan", () => {
     expect(service.countAllocatedForPlan("plan-1")).toBe(1);
   });
 });
+
+describe("CycleService.allocateFromPlan", () => {
+  const cycle = {
+    id: "c-1",
+    name: "Cycle",
+    startDate: "2026-04-23",
+    endDate: "2026-05-06",
+    intention: null,
+    reflection: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const habit = {
+    id: "h-1",
+    name: "fiction",
+    areaId: "a-1",
+    attitude: null,
+    phase: null,
+    tags: [],
+    emoji: "📖",
+    isArchived: false,
+    order: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    habits$.set({});
+
+    cycles$[cycle.id].set(cycle);
+    habits$[habit.id].set(habit);
+  });
+
+  it("errors when no plan exists", () => {
+    const service = new CycleService();
+    const result = service.allocateFromPlan({
+      cycleId: "c-1",
+      habitId: "h-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+    });
+    expect(result).toEqual({
+      error: expect.stringContaining("No budget"),
+    });
+  });
+
+  it("creates an allocated moment and increases plan's allocated count", () => {
+    const service = new CycleService();
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 2,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const result = service.allocateFromPlan({
+      cycleId: "c-1",
+      habitId: "h-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+    });
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.name).toBe("fiction");
+    expect(result.day).toBe("2026-04-24");
+    expect(result.phase).toBe("MORNING");
+    expect(result.cyclePlanId).toBe("plan-1");
+    expect(service.countAllocatedForPlan("plan-1")).toBe(1);
+  });
+
+  it("errors when already over budget", () => {
+    const service = new CycleService();
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const first = service.allocateFromPlan({
+      cycleId: "c-1",
+      habitId: "h-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+    });
+    expect("error" in first).toBe(false);
+    const second = service.allocateFromPlan({
+      cycleId: "c-1",
+      habitId: "h-1",
+      day: "2026-04-25",
+      phase: "MORNING",
+    });
+    expect(second).toEqual({
+      error: expect.stringContaining("Over budget"),
+    });
+  });
+
+  it("errors when slot already has 3 moments", () => {
+    const service = new CycleService();
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 4,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    for (let i = 0; i < 3; i++) {
+      moments$[`m-${i}`].set({
+        id: `m-${i}`,
+        name: "other",
+        areaId: "a-1",
+        habitId: null,
+        cycleId: "c-1",
+        cyclePlanId: null,
+        day: "2026-04-24",
+        phase: "MORNING",
+        order: i,
+        tags: [],
+        emoji: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    const result = service.allocateFromPlan({
+      cycleId: "c-1",
+      habitId: "h-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+    });
+    expect(result).toEqual({ error: expect.stringContaining("Slot") });
+  });
+
+  it("errors when day outside cycle range (endDate set)", () => {
+    const service = new CycleService();
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 2,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const result = service.allocateFromPlan({
+      cycleId: "c-1",
+      habitId: "h-1",
+      day: "2026-06-01",
+      phase: "MORNING",
+    });
+    expect(result).toEqual({ error: expect.stringContaining("outside") });
+  });
+
+  it("errors when habit archived", () => {
+    const service = new CycleService();
+    habits$[habit.id].set({ ...habit, isArchived: true });
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 2,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const result = service.allocateFromPlan({
+      cycleId: "c-1",
+      habitId: "h-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+    });
+    expect(result).toEqual({
+      error: expect.stringContaining("archived"),
+    });
+  });
+});
