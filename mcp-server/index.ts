@@ -36,7 +36,6 @@ import {
   areaHasMoments,
   canAllocateToPhase,
   computeCycleCascade,
-  computeHabitCascade,
   findAreaByIdOrName,
   normalizeAliases,
   findCycleByIdOrName,
@@ -453,29 +452,27 @@ server.tool(
 
 server.tool(
   'archive_habit',
-  'Archive a habit. Cascades: deletes unallocated moments + all cycle plans for this habit. Allocated moments are preserved as historical record.',
+  'Archive a habit. Cascades: deletes all cycle plans for this habit. Allocated moments are preserved as historical record (virtual deck ghosts vanish because plans are gone).',
   { id: z.string() },
   async ({ id }): Promise<ToolResult> => {
     const habits = readCollection(VAULT_ROOT, 'habits');
     const habit = habits[id];
     if (!habit) return err(`Habit not found: ${id}`);
 
-    const moments = readCollection(VAULT_ROOT, 'moments');
     const plans = readCollection(VAULT_ROOT, 'cyclePlans');
-    const cascade = computeHabitCascade(id, moments, plans);
-
-    for (const mId of cascade.momentIdsToDelete) delete moments[mId];
-    for (const pId of cascade.planIdsToDelete) delete plans[pId];
+    const planIdsToDelete: string[] = [];
+    for (const p of Object.values(plans)) {
+      if (p.habitId === id) planIdsToDelete.push(p.id);
+    }
+    for (const pId of planIdsToDelete) delete plans[pId];
     habits[id] = { ...habit, isArchived: true, updatedAt: nowIso() };
 
     writeCollection(VAULT_ROOT, 'habits', habits);
-    writeCollection(VAULT_ROOT, 'moments', moments);
     writeCollection(VAULT_ROOT, 'cyclePlans', plans);
 
     return ok({
       archived: id,
-      deletedMoments: cascade.momentIdsToDelete.length,
-      deletedPlans: cascade.planIdsToDelete.length,
+      deletedPlans: planIdsToDelete.length,
     });
   },
 );
@@ -1359,22 +1356,20 @@ server.tool(
 
 server.tool(
   'unallocate_moment',
-  'Return an allocated moment to the drawing board (clears day/phase).',
+  'Delete the moment row for a previously-allocated plan-linked moment. Virtual deck ghost reappears automatically as allocatedCount drops. Spontaneous moments (cyclePlanId === null) must use delete_moment instead.',
   { id: z.string() },
   async ({ id }): Promise<ToolResult> => {
     const moments = readCollection(VAULT_ROOT, 'moments');
     const moment = moments[id];
     if (!moment) return err(`Moment not found: ${id}`);
-    const next: Moment = {
-      ...moment,
-      day: null,
-      phase: null,
-      order: 0,
-      updatedAt: nowIso(),
-    };
-    moments[id] = next;
+    if (moment.cyclePlanId === null) {
+      return err(
+        'Cannot unallocate spontaneous moment; use delete_moment instead',
+      );
+    }
+    delete moments[id];
     writeCollection(VAULT_ROOT, 'moments', moments);
-    return ok({ unallocated: next });
+    return ok({ unallocated: id });
   },
 );
 

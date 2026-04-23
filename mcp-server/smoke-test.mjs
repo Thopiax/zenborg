@@ -146,6 +146,7 @@ try {
   });
 
   // 5b. allocate_from_plan — materialize a plan-linked moment on a day/phase
+  let planLinkedMomentId = null;
   await step('allocate_from_plan 2026-04-22 MORNING', async () => {
     const resp = await callTool('allocate_from_plan', {
       cycleId,
@@ -164,6 +165,40 @@ try {
     const momentsFile = JSON.parse(readFileSync(path.join(vault, 'moments.json'), 'utf8'));
     if (!momentsFile[m.id]) throw new Error(`moment ${m.id} not written to vault`);
     if (momentsFile[m.id].cyclePlanId !== m.cyclePlanId) throw new Error(`vault cyclePlanId mismatch`);
+    planLinkedMomentId = m.id;
+  });
+
+  // 5c. unallocate_moment — derive paradigm: deletes the plan-linked row entirely
+  await step('unallocate_moment deletes plan-linked row', async () => {
+    const resp = await callTool('unallocate_moment', { id: planLinkedMomentId });
+    parseOk(resp);
+    const momentsFile = JSON.parse(readFileSync(path.join(vault, 'moments.json'), 'utf8'));
+    if (momentsFile[planLinkedMomentId]) {
+      throw new Error(`moment ${planLinkedMomentId} still present after unallocate_moment`);
+    }
+  });
+
+  // 5d. unallocate_moment rejects spontaneous moments
+  await step('unallocate_moment rejects spontaneous', async () => {
+    const spawn = await callTool('spawn_spontaneous_from_habit', {
+      habitId,
+      day: '2026-04-23',
+      phase: 'MORNING',
+    });
+    const spawned = parseOk(spawn);
+    const spontaneousId = spawned.created.id;
+    const resp = await callTool('unallocate_moment', { id: spontaneousId });
+    const text = toolText(resp);
+    if (!text.toLowerCase().includes('spontaneous')) {
+      throw new Error(`expected spontaneous rejection, got: ${text}`);
+    }
+    // Should still be present in vault
+    const momentsFile = JSON.parse(readFileSync(path.join(vault, 'moments.json'), 'utf8'));
+    if (!momentsFile[spontaneousId]) {
+      throw new Error(`spontaneous ${spontaneousId} should NOT be deleted`);
+    }
+    // Clean up so later phase-cap + archive assertions line up
+    await callTool('delete_moment', { id: spontaneousId });
   });
 
   // 6. spawn_spontaneous_from_habit
@@ -180,7 +215,8 @@ try {
   await step('list_moments allocated', async () => {
     const resp = await callTool('list_moments', { filter: { allocation: 'allocated' } });
     const list = parseOk(resp);
-    if (list.length !== 2) throw new Error(`expected 2 allocated, got ${list.length}`);
+    // Only the spontaneous moment from step 6 remains (plan-linked was unallocated in 5c).
+    if (list.length !== 1) throw new Error(`expected 1 allocated, got ${list.length}`);
   });
 
   // 8. Enforce phase cap (3 moments max)
@@ -193,13 +229,43 @@ try {
     if (!text.toLowerCase().includes('max')) throw new Error(`expected cap error, got: ${text}`);
   });
 
-  // 9. archive_habit cascade
-  await step('archive_habit cascade', async () => {
+  // 9. archive_habit — derive paradigm: plans deleted, allocated moments preserved
+  await step('archive_habit keeps allocated moments, deletes plans', async () => {
+    // Snapshot moments with this habitId before archiving.
+    const momentsBefore = JSON.parse(readFileSync(path.join(vault, 'moments.json'), 'utf8'));
+    const allocatedBefore = Object.values(momentsBefore).filter(
+      (m) => m.habitId === habitId && m.day !== null && m.phase !== null,
+    );
+    if (allocatedBefore.length === 0) {
+      throw new Error('precondition: expected at least one allocated moment for habit');
+    }
+
     const resp = await callTool('archive_habit', { id: habitId });
     const parsed = parseOk(resp);
-    // 3 allocated moments kept (historical). No unallocated. 1 plan deleted.
     if (parsed.deletedPlans !== 1) throw new Error(`expected 1 plan deleted, got ${parsed.deletedPlans}`);
-    if (parsed.deletedMoments !== 0) throw new Error(`expected 0 unallocated moments deleted, got ${parsed.deletedMoments}`);
+    // New semantics: moments are NOT deleted; the response no longer reports deletedMoments.
+    if ('deletedMoments' in parsed) {
+      throw new Error(`archive_habit must not report deletedMoments, got ${JSON.stringify(parsed)}`);
+    }
+
+    // Verify vault: every allocated moment for this habit still exists.
+    const momentsAfter = JSON.parse(readFileSync(path.join(vault, 'moments.json'), 'utf8'));
+    for (const m of allocatedBefore) {
+      if (!momentsAfter[m.id]) {
+        throw new Error(`allocated moment ${m.id} was deleted by archive_habit (should survive)`);
+      }
+      if (momentsAfter[m.id].habitId !== habitId) {
+        throw new Error(`moment ${m.id} habitId was altered by archive_habit`);
+      }
+    }
+
+    // Plans for this habit must be gone.
+    const plansAfter = JSON.parse(readFileSync(path.join(vault, 'cyclePlans.json'), 'utf8'));
+    for (const p of Object.values(plansAfter)) {
+      if (p.habitId === habitId) {
+        throw new Error(`plan ${p.id} for archived habit still present`);
+      }
+    }
   });
 
   // 10. delete_cycle cascade
