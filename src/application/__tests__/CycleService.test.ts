@@ -529,3 +529,70 @@ describe("CycleService.getCycleReview", () => {
     expect(review!.habits[0].longestGapDays).toBe(15);
   });
 });
+
+describe("CycleService.countAllocatedForPlan", () => {
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    habits$.set({});
+  });
+
+  it("returns 0 when no moments link to plan", () => {
+    const service = new CycleService();
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 4,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    expect(service.countAllocatedForPlan("plan-1")).toBe(0);
+  });
+
+  it("counts only allocated moments (day + phase set)", () => {
+    const service = new CycleService();
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 4,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    moments$["m-1"].set({
+      id: "m-1",
+      name: "fiction",
+      areaId: "a-1",
+      habitId: "h-1",
+      cycleId: "c-1",
+      cyclePlanId: "plan-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    moments$["m-2"].set({
+      id: "m-2",
+      name: "fiction",
+      areaId: "a-1",
+      habitId: "h-1",
+      cycleId: "c-1",
+      cyclePlanId: "plan-1",
+      day: null,
+      phase: null,
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    expect(service.countAllocatedForPlan("plan-1")).toBe(1);
+  });
+});
