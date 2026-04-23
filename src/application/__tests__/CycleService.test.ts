@@ -39,7 +39,7 @@ const makeCycle = (id: string) => ({
   updatedAt: new Date().toISOString(),
 });
 
-describe("CycleService.budgetHabitToCycle (incremental materialize)", () => {
+describe("CycleService.budgetHabitToCycle (plan-only, derive paradigm)", () => {
   let service: CycleService;
 
   beforeEach(() => {
@@ -57,73 +57,87 @@ describe("CycleService.budgetHabitToCycle (incremental materialize)", () => {
     service = new CycleService();
   });
 
-  it("should create N moments when budgeting a new habit", () => {
-    service.budgetHabitToCycle("cycle-1", "habit-1", 3);
+  it("should create a plan with budgetedCount N and not materialize any moments", () => {
+    const before = Object.keys(moments$.get()).length;
+    const result = service.budgetHabitToCycle("cycle-1", "habit-1", 3);
 
-    const allMoments = Object.values(moments$.get());
-    const planMoments = allMoments.filter((m) => m.cyclePlanId !== null);
-    expect(planMoments).toHaveLength(3);
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.budgetedCount).toBe(3);
+
+    // Derive paradigm: moments are NOT materialized on budget
+    expect(Object.keys(moments$.get()).length).toBe(before);
   });
 
-  it("should add only delta moments when incrementing", () => {
+  it("should update plan budgetedCount when incrementing; moments untouched", () => {
     service.budgetHabitToCycle("cycle-1", "habit-1", 2);
-    const momentsBefore = Object.values(moments$.get());
-    const idsBefore = new Set(momentsBefore.map((m) => m.id));
+    const momentsBefore = Object.keys(moments$.get()).length;
 
-    service.budgetHabitToCycle("cycle-1", "habit-1", 3);
-    const momentsAfter = Object.values(moments$.get());
+    const result = service.budgetHabitToCycle("cycle-1", "habit-1", 3);
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.budgetedCount).toBe(3);
 
-    // All original moments should still exist
-    for (const id of idsBefore) {
-      expect(moments$[id].get()).toBeTruthy();
-    }
-    // Exactly 1 new moment added
-    expect(momentsAfter).toHaveLength(3);
+    // No moments spawned regardless of budget changes
+    expect(Object.keys(moments$.get()).length).toBe(momentsBefore);
   });
 
-  it("should remove unallocated moments first when decrementing", () => {
+  it("should update plan budgetedCount when decrementing; allocated moments survive", () => {
     service.budgetHabitToCycle("cycle-1", "habit-1", 3);
 
-    // Simulate: allocate one moment to the timeline
-    const allMoments = Object.values(moments$.get());
-    const firstMoment = allMoments[0];
-    moments$[firstMoment.id].day.set("2026-02-01");
-    moments$[firstMoment.id].phase.set("morning" as Phase);
+    // Simulate an independently-allocated moment for this habit
+    moments$["m-alloc"].set({
+      id: "m-alloc",
+      name: "fiction",
+      areaId: "area-1",
+      habitId: "habit-1",
+      cycleId: "cycle-1",
+      cyclePlanId: Object.values(cyclePlans$.get())[0].id,
+      day: "2026-02-01",
+      phase: "morning" as Phase,
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
 
-    // Decrement to 1
-    service.budgetHabitToCycle("cycle-1", "habit-1", 1);
+    const result = service.budgetHabitToCycle("cycle-1", "habit-1", 1);
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.budgetedCount).toBe(1);
 
-    // The allocated moment should survive
-    expect(moments$[firstMoment.id].get()).toBeTruthy();
-    expect(moments$[firstMoment.id].day.get()).toBe("2026-02-01");
-
-    // Total moments for this plan should be 1 (the allocated one)
-    const remaining = Object.values(moments$.get()).filter(
-      (m) => m.habitId === "habit-1",
-    );
-    expect(remaining).toHaveLength(1);
+    // Allocated moment must survive — budgetHabitToCycle no longer cascades
+    expect(moments$["m-alloc"].get()).toBeTruthy();
+    expect(moments$["m-alloc"].day.get()).toBe("2026-02-01");
   });
 
-  it("should remove only unallocated moments when setting to 0", () => {
+  it("setting budget to 0 updates plan only; allocated moments survive", () => {
     service.budgetHabitToCycle("cycle-1", "habit-1", 3);
 
-    // Allocate one moment
-    const allMoments = Object.values(moments$.get());
-    const allocatedMoment = allMoments[0];
-    moments$[allocatedMoment.id].day.set("2026-02-01");
-    moments$[allocatedMoment.id].phase.set("morning" as Phase);
+    moments$["m-alloc"].set({
+      id: "m-alloc",
+      name: "fiction",
+      areaId: "area-1",
+      habitId: "habit-1",
+      cycleId: "cycle-1",
+      cyclePlanId: Object.values(cyclePlans$.get())[0].id,
+      day: "2026-02-01",
+      phase: "morning" as Phase,
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
 
-    // Set to 0
-    service.budgetHabitToCycle("cycle-1", "habit-1", 0);
+    const result = service.budgetHabitToCycle("cycle-1", "habit-1", 0);
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.budgetedCount).toBe(0);
 
     // Allocated moment survives (orphaned from budget but on timeline)
-    expect(moments$[allocatedMoment.id].get()).toBeTruthy();
-
-    // Unallocated moments are gone
-    const unallocated = Object.values(moments$.get()).filter(
-      (m) => m.day === null && m.habitId === "habit-1",
-    );
-    expect(unallocated).toHaveLength(0);
+    expect(moments$["m-alloc"].get()).toBeTruthy();
   });
 });
 
@@ -255,6 +269,7 @@ describe("CycleService.budgetHabitToCycleWithOptions — rhythm derivation", () 
     const rhythm: Rhythm = { period: "weekly", count: 3 };
     habits$["habit-1"].set({ ...makeHabit("habit-1"), rhythm });
 
+    const momentsBefore = Object.keys(moments$.get()).length;
     const result = service.budgetHabitToCycleWithOptions(
       "cycle-1",
       "habit-1",
@@ -262,12 +277,12 @@ describe("CycleService.budgetHabitToCycleWithOptions — rhythm derivation", () 
     );
 
     expect("error" in result).toBe(false);
+    if ("error" in result) return;
     // rhythmToCycleBudget({weekly, 3}, 28) = round(3 * 28 / 7) = 12
     expect(rhythmToCycleBudget(rhythm, 28)).toBe(12);
-    const allMoments = Object.values(moments$.get()).filter(
-      (m) => m.cyclePlanId !== null
-    );
-    expect(allMoments).toHaveLength(12);
+    expect(result.budgetedCount).toBe(12);
+    // Derive paradigm: plan written, moments unchanged
+    expect(Object.keys(moments$.get()).length).toBe(momentsBefore);
   });
 
   it("uses explicit count when both rhythm and count given", () => {
@@ -276,12 +291,17 @@ describe("CycleService.budgetHabitToCycleWithOptions — rhythm derivation", () 
       rhythm: { period: "weekly", count: 3 },
     });
 
-    service.budgetHabitToCycleWithOptions("cycle-1", "habit-1", { count: 5 });
-
-    const planMoments = Object.values(moments$.get()).filter(
-      (m) => m.cyclePlanId !== null
+    const momentsBefore = Object.keys(moments$.get()).length;
+    const result = service.budgetHabitToCycleWithOptions(
+      "cycle-1",
+      "habit-1",
+      { count: 5 }
     );
-    expect(planMoments).toHaveLength(5);
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.budgetedCount).toBe(5);
+    // Derive paradigm: plan written, moments unchanged
+    expect(Object.keys(moments$.get()).length).toBe(momentsBefore);
   });
 
   it("stores rhythmOverride on the CyclePlan", () => {
@@ -1021,5 +1041,50 @@ describe("CycleService.decrementHabitBudget (floored at allocatedCount)", () => 
     expect("error" in result).toBe(false);
     if ("error" in result) return;
     expect(result.budgetedCount).toBe(3);
+  });
+});
+
+describe("budgetHabitToCycle (derive paradigm)", () => {
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    habits$.set({});
+  });
+
+  it("writes plan only; moments.json untouched", () => {
+    const service = new CycleService();
+    cycles$["c-1"].set({
+      id: "c-1",
+      name: "Cycle",
+      startDate: "2026-04-23",
+      endDate: "2026-05-06",
+      intention: null,
+      reflection: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    habits$["h-1"].set({
+      id: "h-1",
+      name: "fiction",
+      areaId: "a-1",
+      attitude: null,
+      phase: null,
+      tags: [],
+      emoji: null,
+      isArchived: false,
+      order: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const before = Object.keys(moments$.get()).length;
+    const result = service.budgetHabitToCycle("c-1", "h-1", 5);
+    expect("error" in result).toBe(false);
+    const after = Object.keys(moments$.get()).length;
+    expect(after).toBe(before); // no new moments spawned
+    if ("error" in result) return;
+    expect(result.budgetedCount).toBe(5);
   });
 });

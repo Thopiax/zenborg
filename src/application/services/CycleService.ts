@@ -629,9 +629,6 @@ export class CycleService {
       cyclePlans$[plan.id].set(plan);
     }
 
-    // Materialize moments
-    this.materializeCyclePlanMoments(plan.id);
-
     return plan;
   }
 
@@ -880,74 +877,6 @@ export class CycleService {
   }
 
   /**
-   * Materializes moments for a cycle plan incrementally.
-   * Adds or removes only the delta, preserving allocated moments.
-   *
-   * @param cyclePlanId - ID of cycle plan to materialize
-   */
-  private materializeCyclePlanMoments(cyclePlanId: string): void {
-    const plan = cyclePlans$[cyclePlanId].get();
-    if (!plan) {
-      console.error(`Cycle plan ${cyclePlanId} not found`);
-      return;
-    }
-
-    const habit = habits$[plan.habitId].get();
-    if (!habit) {
-      console.error(`Habit ${plan.habitId} not found`);
-      return;
-    }
-
-    // Get existing moments for this plan
-    const allMoments = Object.values(moments$.get());
-    const planMoments = allMoments.filter((m) => m.cyclePlanId === cyclePlanId);
-
-    // Separate into allocated (on timeline) and unallocated (in deck)
-    const allocated = planMoments.filter(
-      (m) => m.day !== null && m.phase !== null
-    );
-    const unallocated = planMoments.filter(
-      (m) => m.day === null || m.phase === null
-    );
-
-    const currentCount = planMoments.length;
-    const targetCount = plan.budgetedCount;
-
-    if (targetCount > currentCount) {
-      // INCREMENT: Create only the delta
-      const toCreate = targetCount - currentCount;
-      for (let i = 0; i < toCreate; i++) {
-        const result = createMoment({
-          name: habit.name,
-          areaId: habit.areaId,
-          emoji: habit.emoji,
-          habitId: plan.habitId,
-          cycleId: plan.cycleId,
-          cyclePlanId: plan.id,
-          phase: null,
-          tags: habit.tags || [],
-        });
-
-        if ("error" in result) {
-          console.error(`Failed to create budgeted moment: ${result.error}`);
-          continue;
-        }
-
-        moments$[result.id].set(result);
-      }
-    } else if (targetCount < currentCount) {
-      // DECREMENT: Remove unallocated moments only; allocated moments survive
-      const toRemove = currentCount - targetCount;
-      const removable = Math.min(toRemove, unallocated.length);
-
-      for (let i = 0; i < removable; i++) {
-        moments$[unallocated[i].id].delete();
-      }
-    }
-    // targetCount === currentCount: no-op
-  }
-
-  /**
    * Increments the budget for a habit in a cycle by 1.
    * Creates a new cycle plan if none exists.
    *
@@ -1053,14 +982,6 @@ export class CycleService {
 
     // Set the active cycle ID (replaces any previously active cycle)
     activeCycleId$.set(cycleId);
-
-    // Materialize all cycle plans for this cycle
-    const allPlans = Object.values(cyclePlans$.get());
-    const cyclePlansForCycle = allPlans.filter((plan) => plan.cycleId === cycleId);
-
-    for (const plan of cyclePlansForCycle) {
-      this.materializeCyclePlanMoments(plan.id);
-    }
 
     return cycle;
   }
