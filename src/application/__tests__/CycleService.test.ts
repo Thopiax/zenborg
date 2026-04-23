@@ -777,3 +777,66 @@ describe("CycleService.allocateFromPlan", () => {
     });
   });
 });
+
+describe("CycleService.unallocateMoment", () => {
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    habits$.set({});
+  });
+
+  it("deletes plan-linked moment row", () => {
+    const service = new CycleService();
+    moments$["m-1"].set({
+      id: "m-1",
+      name: "fiction",
+      areaId: "a-1",
+      habitId: "h-1",
+      cycleId: "c-1",
+      cyclePlanId: "plan-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const result = service.unallocateMoment("m-1");
+    expect(result).toEqual({ ok: true });
+    expect(moments$["m-1"].get()).toBeUndefined();
+  });
+
+  it("errors when moment not found", () => {
+    const service = new CycleService();
+    expect(service.unallocateMoment("missing")).toEqual({
+      error: expect.stringContaining("not found"),
+    });
+  });
+
+  it("rejects spontaneous moments (cyclePlanId === null)", () => {
+    const service = new CycleService();
+    moments$["m-1"].set({
+      id: "m-1",
+      name: "spontaneous",
+      areaId: "a-1",
+      habitId: null,
+      cycleId: "c-1",
+      cyclePlanId: null,
+      day: "2026-04-24",
+      phase: "MORNING",
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    expect(service.unallocateMoment("m-1")).toEqual({
+      error: expect.stringContaining("spontaneous"),
+    });
+    expect(moments$["m-1"].get()?.id).toBe("m-1");
+  });
+});
