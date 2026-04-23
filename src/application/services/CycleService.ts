@@ -884,8 +884,12 @@ export class CycleService {
    * don't need to query allocated vs. deck moments themselves.
    */
   incrementHabitBudget(cycleId: string, habitId: string): CyclePlanResult {
-    const currentTotal = this.countMomentsForHabitInCycle(cycleId, habitId);
-    return this.budgetHabitToCycle(cycleId, habitId, currentTotal + 1);
+    // Increment the plan's current budget. Deck ghosts are virtual
+    // (budgetedCount minus allocated), so `countMomentsForHabitInCycle`
+    // undercounts by the number of ghosts and would leave the budget stuck.
+    const plan = this.findCyclePlan(cycleId, habitId);
+    const currentBudget = plan?.budgetedCount ?? 0;
+    return this.budgetHabitToCycle(cycleId, habitId, currentBudget + 1);
   }
 
   /**

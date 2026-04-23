@@ -27,6 +27,7 @@ export function PlanHabitsList({
   habits,
   areaColor,
   onEditHabit,
+  onArchiveHabit,
 }: PlanHabitsListProps) {
   // Sort habits by order property (ascending)
   const sortedHabits = [...habits].sort((a, b) => a.order - b.order);
@@ -41,13 +42,14 @@ export function PlanHabitsList({
       items={sortedHabits.map((h) => h.id)}
       strategy={verticalListSortingStrategy}
     >
-      <div className="space-y-2 rounded-md p-2 bg-stone-100/60 dark:bg-stone-800/40 shadow-[inset_0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]">
+      <div className="flex-1 space-y-2 rounded-md p-2 bg-stone-100/60 dark:bg-stone-800/40 shadow-[inset_0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]">
         {sortedHabits.map((habit) => (
           <DraggableHabitItem
             key={habit.id}
             habit={habit}
             areaColor={areaColor}
             onEdit={() => onEditHabit(habit.id)}
+            onArchive={() => onArchiveHabit(habit.id)}
           />
         ))}
       </div>

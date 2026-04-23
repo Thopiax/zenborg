@@ -179,7 +179,7 @@ export function AreaColumnHeader({
             {/* Archive */}
             <DropdownMenuItem
               onSelect={() => onArchiveArea(area.id)}
-              className="text-red-600 dark:text-red-400"
+              className="text-stone-600 dark:text-stone-400"
             >
               <Archive className="w-4 h-4 mr-2" />
               Archive area
