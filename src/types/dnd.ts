@@ -21,24 +21,30 @@ export type DropTargetType =
 /**
  * Data attached to draggable items.
  *
- * Two variants:
- *  - A concrete Moment being dragged (from timeline or from the cycle deck
- *    in the legacy "materialized deck moment" paradigm — kept for allocated
- *    moments dragged back onto the deck).
- *  - A virtual deck card representing a plan ghost slot (new derive paradigm).
- *    These carry `type: "deck-card"` plus `cycleId` + `habitId`; dropping one
- *    on a timeline slot calls `CycleService.allocateFromPlan(...)`.
+ * Discriminated union with two variants:
+ *  - `type: "deck-card"` — a virtual deck card representing a plan ghost slot
+ *    (derive paradigm). Requires `cycleId` + `habitId`. Dropping on a timeline
+ *    slot calls `CycleService.allocateFromPlan(...)`.
+ *  - `type: undefined` (moment variant) — a concrete Moment being dragged
+ *    (from timeline or from the cycle deck for legacy/allocated cases).
+ *    Requires `momentId`.
+ *
+ * The `type` discriminant lets consumers narrow without optional chaining.
  */
-export interface DraggableData {
-  type?: "deck-card";
-  momentId?: string;
-  cycleId?: string;
-  habitId?: string;
-  sourceType?: DragSourceType;
-  sourceDay?: string; // ISO date, undefined if from cycle deck
-  sourcePhase?: Phase; // undefined if from cycle deck
-  sourceOrder?: number; // 0-2, undefined if from cycle deck
-}
+export type DraggableData =
+  | {
+      type: "deck-card";
+      cycleId: string;
+      habitId: string;
+    }
+  | {
+      type?: undefined;
+      momentId: string;
+      sourceType: DragSourceType;
+      sourceDay?: string; // ISO date, undefined if from cycle deck
+      sourcePhase?: Phase; // undefined if from cycle deck
+      sourceOrder?: number; // 0-2, undefined if from cycle deck
+    };
 
 /**
  * Data attached to droppable zones

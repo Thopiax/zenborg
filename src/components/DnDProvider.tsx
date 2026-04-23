@@ -197,6 +197,24 @@ export function DnDProvider({ children }: DnDProviderProps) {
       const activeMoment = allMoments[active.id as string];
       const overMoment = allMoments[over.id as string];
 
+      // Bug C1: deck-card dropped on an allocated moment resolves over.id to
+      // that sortable moment's id (not its droppable cell), so dropData has no
+      // targetType. Re-route to handleAllocateFromPlan using the overMoment's
+      // cell coordinates so the drop isn't silently swallowed.
+      if (
+        !activeMoment &&
+        dragData?.type === "deck-card" &&
+        overMoment?.day &&
+        overMoment?.phase
+      ) {
+        handleAllocateFromPlan(dragData, {
+          targetType: "timeline-cell",
+          targetDay: overMoment.day,
+          targetPhase: overMoment.phase,
+        });
+        return;
+      }
+
       if (!activeMoment || !overMoment) {
         return;
       }
@@ -293,16 +311,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
    * via alert().
    */
   function handleAllocateFromPlan(
-    dragData: DraggableData,
+    dragData: Extract<DraggableData, { type: "deck-card" }>,
     dropData: DroppableData,
   ) {
     const { cycleId, habitId } = dragData;
     const { targetDay, targetPhase } = dropData;
 
-    if (!cycleId || !habitId) {
-      console.warn("deck-card drag missing cycleId/habitId", dragData);
-      return;
-    }
     if (!targetDay || !targetPhase) {
       console.warn("timeline-cell drop missing day/phase", dropData);
       return;
@@ -355,7 +369,9 @@ export function DnDProvider({ children }: DnDProviderProps) {
     reorderMomentsWithHistory(day, phase, reorders);
   }
 
-  function handleUnallocateMoment(dragData: DraggableData) {
+  function handleUnallocateMoment(
+    dragData: Extract<DraggableData, { type?: undefined }>,
+  ) {
     const { momentId, sourceDay, sourcePhase } = dragData;
 
     // Only process if moment was allocated (coming from timeline)
@@ -442,18 +458,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
   }
 
   function handleDropOnTimelineCell(
-    dragData: DraggableData,
+    dragData: Extract<DraggableData, { type?: undefined }>,
     dropData: DroppableData,
     shouldDuplicate = false,
   ) {
     const { momentId, sourceDay, sourcePhase } = dragData;
     const { targetDay, targetPhase } = dropData;
-
-    if (!momentId) {
-      // Deck-card drags are routed through handleAllocateFromPlan earlier.
-      console.warn("handleDropOnTimelineCell missing momentId", dragData);
-      return;
-    }
 
     if (!targetDay || !targetPhase) {
       console.error("Timeline cell missing day/phase", dropData);
