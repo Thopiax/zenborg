@@ -5,12 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
 import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import type { CyclePlan } from "@/domain/entities/CyclePlan";
+import type { Habit } from "@/domain/entities/Habit";
+import type { VirtualDeckCard } from "@/infrastructure/state/virtualDeckCards";
 
 // Make React globally available (needed for JSX in components without React import)
 globalThis.React = React;
 
-// Test data - needs to be before mocks
+// ---------- Test fixtures ----------
 const testArea: Area = {
   id: "area-1",
   name: "Wellness",
@@ -33,6 +35,44 @@ const testArea2: Area = {
   order: 1,
 };
 
+const testHabit1: Habit = {
+  id: "habit-1",
+  name: "fiction",
+  areaId: "area-1",
+  attitude: null,
+  phase: null,
+  tags: [],
+  emoji: "📖",
+  isArchived: false,
+  order: 0,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const testHabit2: Habit = {
+  ...testHabit1,
+  id: "habit-2",
+  name: "deep work",
+  areaId: "area-2",
+  emoji: "💻",
+};
+
+const testPlan1: CyclePlan = {
+  id: "plan-1",
+  cycleId: "cycle-1",
+  habitId: "habit-1",
+  budgetedCount: 3,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const testPlan2: CyclePlan = {
+  ...testPlan1,
+  id: "plan-2",
+  habitId: "habit-2",
+  budgetedCount: 2,
+};
+
 const testCycle = {
   id: "cycle-1",
   name: "Barcelona Summer",
@@ -44,33 +84,27 @@ const testCycle = {
   updatedAt: new Date().toISOString(),
 };
 
-// Mock dependencies
+// ---------- Mocks ----------
 vi.mock("@legendapp/state/react", () => ({
   use$: vi.fn(),
   useValue: vi.fn(),
-}));
-
-vi.mock("../MomentStack", () => ({
-  MomentStack: ({ moments, area }: { moments: Moment[]; area: Area }) => (
-    <div data-testid="moment-stack" data-area-id={area.id}>
-      Stack: {moments.length} moments
-    </div>
-  ),
 }));
 
 vi.mock("../CycleStrip", () => ({
   CycleStrip: () => <div data-testid="cycle-strip" />,
 }));
 
+// Mock CycleDeckColumn: render a deck-card-testid element per ghost slot so
+// the parent test can assert total ghost count via getAllByTestId.
 vi.mock("../CycleDeckColumn", () => ({
   CycleDeckColumn: ({
     area,
-    habitMoments,
+    cards,
     isEditMode,
     showAllHabits,
   }: {
     area: Area;
-    habitMoments: Record<string, Moment[]>;
+    cards: VirtualDeckCard[];
     isEditMode: boolean;
     showAllHabits: boolean;
     cycleId: string;
@@ -82,68 +116,36 @@ vi.mock("../CycleDeckColumn", () => ({
     >
       <span>{area.emoji}</span>
       <span>{area.name}</span>
-      {Object.entries(habitMoments).map(([habitId, moments]) => (
-        <div key={habitId} data-testid="moment-stack" data-area-id={area.id}>
-          Stack: {moments.length} moments
-        </div>
-      ))}
-      {showAllHabits && (
-        <div data-testid={`ghost-cards-${area.id}`}>Ghost cards</div>
+      {cards.map((card) =>
+        Array.from({ length: card.ghosts }).map((_, i) => (
+          <div
+            key={`${card.plan.id}-${i}`}
+            data-testid="deck-card"
+            data-habit-id={card.habit.id}
+          >
+            ghost
+          </div>
+        )),
       )}
     </div>
   ),
 }));
 
-const mockGetCurrentAndFutureCycles = vi.fn(() => [testCycle]);
-const mockGetAreasWithDeckMoments = vi.fn((deckMoments) => {
-  const areasMap: Record<string, Area> = {
-    "area-1": testArea,
-    "area-2": testArea2,
-  };
-  return Object.keys(deckMoments)
-    .map((areaId) => ({
-      area: areasMap[areaId],
-      habits: deckMoments[areaId],
-    }))
-    .filter(({ area }) => Boolean(area))
-    .sort((a, b) => a.area.order - b.area.order);
-});
-const mockUpdateCycle = vi.fn();
-const mockGetDefaultStartDate = vi.fn(() => "2026-04-02");
-const mockPlanCycle = vi.fn(() => ({ id: "new-cycle" }));
-const mockBudgetHabitToCycle = vi.fn();
-
-vi.mock("@/infrastructure/state/store", () => ({
-  deckMomentsByAreaAndHabit$: { get: vi.fn(() => ({})) },
-  areas$: {
-    get: vi.fn(() => ({
-      "area-1": testArea,
-      "area-2": testArea2,
-    })),
-  },
-  activeCycle$: { get: vi.fn(() => null) },
-  cycles$: { get: vi.fn(() => ({ "cycle-1": testCycle })) },
-  habits$: {
-    get: vi.fn(() => ({})),
-  },
-  storeHydrated$: { get: vi.fn(() => true) },
+vi.mock("../CycleCalendarDialog", () => ({
+  CycleCalendarDialog: () => <div data-testid="cycle-calendar-dialog" />,
 }));
 
 vi.mock("@dnd-kit/core", () => ({
   useDroppable: vi.fn(() => ({ setNodeRef: vi.fn(), isOver: false })),
 }));
 
+const mockUpdateCycle = vi.fn();
+const mockEndCycle = vi.fn();
+
 vi.mock("@/application/services/CycleService", () => ({
   CycleService: vi.fn().mockImplementation(() => ({
-    getAreasWithDeckMoments: mockGetAreasWithDeckMoments,
-    getCurrentAndFutureCycles: mockGetCurrentAndFutureCycles,
     updateCycle: mockUpdateCycle,
-    getDefaultStartDate: mockGetDefaultStartDate,
-    planCycle: mockPlanCycle,
-    budgetHabitToCycle: mockBudgetHabitToCycle,
-    incrementHabitBudget: vi.fn(),
-    decrementHabitBudget: vi.fn(),
-    removeHabitFromDeck: vi.fn(),
+    endCycle: mockEndCycle,
   })),
 }));
 
@@ -152,6 +154,16 @@ vi.mock("@/lib/dates", () => ({
   formatCycleDateRange: vi.fn(() => "Jan 1 – Apr 1"),
   fromISODate: vi.fn((s: string) => new Date(s)),
   toISODate: vi.fn((d: Date) => d.toISOString().slice(0, 10)),
+}));
+
+vi.mock("@/infrastructure/state/store", () => ({
+  areas$: { get: vi.fn(() => ({})) },
+  activeCycle$: { get: vi.fn(() => null) },
+  cycles$: { get: vi.fn(() => ({})) },
+  cyclePlans$: { get: vi.fn(() => ({})) },
+  habits$: { get: vi.fn(() => ({})) },
+  moments$: { get: vi.fn(() => ({})) },
+  storeHydrated$: { get: vi.fn(() => true) },
 }));
 
 vi.mock("@/infrastructure/state/ui-store", () => ({
@@ -172,88 +184,72 @@ vi.mock("@/infrastructure/state/ui-store", () => ({
   },
 }));
 
-vi.mock("../CycleCalendarDialog", () => ({
-  CycleCalendarDialog: () => <div data-testid="cycle-calendar-dialog" />,
-}));
-
+// ---------- Imports after mocks ----------
 import { useValue } from "@legendapp/state/react";
-import { habits$, storeHydrated$ } from "@/infrastructure/state/store";
 // Import after mocks
 import { CycleDeck } from "../CycleDeck";
 
 const mockUseValue = useValue as unknown as ReturnType<typeof vi.fn>;
 
-// Test helpers
-const createTestMoment = (overrides: Partial<Moment> = {}): Moment => ({
-  id: `moment-${Math.random()}`,
-  name: "Test Moment",
-  areaId: "area-1",
-  habitId: "habit-1",
-  cycleId: "cycle-1",
-  cyclePlanId: "plan-1",
-  phase: null,
-  day: null,
-  order: 0,
-  tags: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...overrides,
-});
+interface MockStoreState {
+  activeCycle?: typeof testCycle | null;
+  isCollapsed?: boolean;
+  isEditMode?: boolean;
+  selectedCycleId?: string | null;
+  cyclesMap?: Record<string, typeof testCycle>;
+  plansMap?: Record<string, CyclePlan>;
+  habitsMap?: Record<string, Habit>;
+  areasMap?: Record<string, Area>;
+  momentsMap?: Record<string, unknown>;
+  isHydrated?: boolean;
+}
+
+/**
+ * CycleDeck calls `useValue` in this order (see CycleDeck.tsx):
+ * 1. activeCycle (selector)
+ * 2. cycleDeckCollapsed$
+ * 3. cycleDeckEditMode$
+ * 4. cycleDeckSelectedCycleId$
+ * 5. cycles$ (selector)
+ * 6. cyclePlans$ (selector)
+ * 7. habits$ (selector)
+ * 8. areas$ (selector)
+ * 9. moments$ (selector)
+ * 10. storeHydrated$
+ */
+const mockStore = (state: MockStoreState) => {
+  const values = [
+    state.activeCycle ?? null,
+    state.isCollapsed ?? false,
+    state.isEditMode ?? false,
+    state.selectedCycleId ?? null,
+    state.cyclesMap ??
+      (state.activeCycle
+        ? { [state.activeCycle.id]: state.activeCycle }
+        : {}),
+    state.plansMap ?? {},
+    state.habitsMap ?? {},
+    state.areasMap ?? {},
+    state.momentsMap ?? {},
+    state.isHydrated ?? true,
+  ];
+
+  let callIndex = 0;
+  mockUseValue.mockImplementation(() => {
+    const v = values[callIndex] ?? null;
+    callIndex++;
+    return v;
+  });
+};
 
 describe("CycleDeck", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetCurrentAndFutureCycles.mockReturnValue([testCycle]);
   });
-
-  /**
-   * Mock useValue calls with a cycling implementation.
-   *
-   * CycleDeck calls useValue in this order:
-   * 1. deckMoments (via selector fn)
-   * 2. activeCycle (via selector fn)
-   * 3. cycleDeckCollapsed$ (boolean)
-   * 4. cycleDeckEditMode$ (boolean)
-   * 5. cycleDeckSelectedCycleId$ (string | null)
-   * 6. allCyclesMap (via selector fn)
-   * 7. storeHydrated$ (boolean)
-   * Then child components call useValue(habits$) etc.
-   */
-  const mockCycleDeckValues = (
-    deckMoments: Record<string, unknown>,
-    activeCycle: unknown = null,
-    isCollapsed = false,
-    isEditMode = false,
-    habitsMap: Record<string, unknown> = {},
-    selectedCycleId: string | null = null,
-  ) => {
-    const allCyclesMap = activeCycle
-      ? { [(activeCycle as { id: string }).id]: activeCycle }
-      : {};
-    const values = [
-      deckMoments,
-      activeCycle,
-      isCollapsed,
-      isEditMode,
-      selectedCycleId,
-      allCyclesMap,
-      true, // storeHydrated$
-    ];
-    let callIndex = 0;
-
-    mockUseValue.mockImplementation(() => {
-      const idx = callIndex % values.length;
-      callIndex++;
-      if (callIndex > values.length) {
-        return habitsMap;
-      }
-      return values[idx];
-    });
-  };
 
   describe("no active cycle", () => {
     it("renders the strip and a quiet hint when no cycle is active", () => {
-      mockCycleDeckValues({}, null);
+      mockStore({ activeCycle: null });
 
       render(<CycleDeck />);
 
@@ -262,9 +258,9 @@ describe("CycleDeck", () => {
     });
   });
 
-  describe("empty state", () => {
-    it("should show empty message when no budgeted moments in read-only mode", () => {
-      mockCycleDeckValues({}, testCycle);
+  describe("empty state (no plans)", () => {
+    it("shows 'No budgeted moments in deck' in read-only mode", () => {
+      mockStore({ activeCycle: testCycle });
 
       render(<CycleDeck />);
 
@@ -273,8 +269,8 @@ describe("CycleDeck", () => {
       ).toBeInTheDocument();
     });
 
-    it("should show hint to drag habits from library", () => {
-      mockCycleDeckValues({}, testCycle);
+    it("hints to drag habits from library", () => {
+      mockStore({ activeCycle: testCycle });
 
       render(<CycleDeck />);
 
@@ -282,85 +278,108 @@ describe("CycleDeck", () => {
     });
   });
 
-  describe("with budgeted moments", () => {
-    it("should render area headers", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle);
-
-      render(<CycleDeck />);
-
-      expect(screen.getByText("🟢")).toBeInTheDocument();
-      expect(screen.getByText("Wellness")).toBeInTheDocument();
-    });
-
-    it("should render MomentStack for each habit", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [
-            createTestMoment({ id: "1" }),
-            createTestMoment({ id: "2" }),
-          ],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle);
-
-      const { container } = render(<CycleDeck />);
-
-      const stacks = container.querySelectorAll('[data-testid="moment-stack"]');
-      expect(stacks).toHaveLength(1);
-      expect(stacks[0]).toHaveTextContent("Stack: 2 moments");
-    });
-
-    it("should group moments by area", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ areaId: "area-1" })],
-        },
-        "area-2": {
-          "habit-2": [createTestMoment({ areaId: "area-2" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle);
+  describe("virtual deck cards", () => {
+    it("renders one deck-card per ghost slot (budgetedCount - allocated)", () => {
+      mockStore({
+        activeCycle: testCycle,
+        plansMap: { "plan-1": testPlan1 }, // budgetedCount: 3
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+        momentsMap: {}, // no allocations
+      });
 
       render(<CycleDeck />);
 
-      expect(screen.getByText("🟢")).toBeInTheDocument();
-      expect(screen.getByText("🔵")).toBeInTheDocument();
-      expect(screen.getByText("Wellness")).toBeInTheDocument();
-      expect(screen.getByText("Craft")).toBeInTheDocument();
+      // 3 ghosts = 3 deck-card elements
+      expect(screen.getAllByTestId("deck-card")).toHaveLength(3);
+    });
+
+    it("subtracts allocated moments from ghost count", () => {
+      mockStore({
+        activeCycle: testCycle,
+        plansMap: { "plan-1": testPlan1 }, // budgetedCount: 3
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+        momentsMap: {
+          "m-1": {
+            id: "m-1",
+            name: "fiction",
+            areaId: "area-1",
+            habitId: "habit-1",
+            cycleId: "cycle-1",
+            cyclePlanId: "plan-1",
+            day: "2026-02-01",
+            phase: "MORNING",
+            order: 0,
+            tags: [],
+            emoji: null,
+            createdAt: "",
+            updatedAt: "",
+          },
+        },
+      });
+
+      render(<CycleDeck />);
+
+      // 3 budgeted - 1 allocated = 2 ghosts
+      expect(screen.getAllByTestId("deck-card")).toHaveLength(2);
+    });
+
+    it("renders area column per area with plans", () => {
+      mockStore({
+        activeCycle: testCycle,
+        plansMap: { "plan-1": testPlan1, "plan-2": testPlan2 },
+        habitsMap: { "habit-1": testHabit1, "habit-2": testHabit2 },
+        areasMap: { "area-1": testArea, "area-2": testArea2 },
+        momentsMap: {},
+      });
+
+      render(<CycleDeck />);
+
+      expect(
+        screen.getByTestId("cycle-deck-column-area-1"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("cycle-deck-column-area-2"),
+      ).toBeInTheDocument();
+    });
+
+    it("renders total ghosts across both areas (3 + 2 = 5)", () => {
+      mockStore({
+        activeCycle: testCycle,
+        plansMap: { "plan-1": testPlan1, "plan-2": testPlan2 },
+        habitsMap: { "habit-1": testHabit1, "habit-2": testHabit2 },
+        areasMap: { "area-1": testArea, "area-2": testArea2 },
+        momentsMap: {},
+      });
+
+      render(<CycleDeck />);
+
+      expect(screen.getAllByTestId("deck-card")).toHaveLength(5);
     });
   });
 
   describe("header", () => {
-    it("should show collapse button", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle);
+    it("shows collapse button", () => {
+      mockStore({
+        activeCycle: testCycle,
+        plansMap: { "plan-1": testPlan1 },
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+      });
 
       render(<CycleDeck />);
 
       expect(screen.getByTitle("Collapse cycle deck")).toBeInTheDocument();
     });
 
-    it("should render CycleStrip above the header", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle);
+    it("renders CycleStrip above the header", () => {
+      mockStore({
+        activeCycle: testCycle,
+        plansMap: { "plan-1": testPlan1 },
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+      });
 
       render(<CycleDeck />);
 
@@ -369,60 +388,42 @@ describe("CycleDeck", () => {
   });
 
   describe("edit mode", () => {
-    it("should show Done editing button when edit mode is active", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [
-            createTestMoment({ id: "1" }),
-            createTestMoment({ id: "2" }),
-          ],
-        },
-      };
-
-      mockCycleDeckValues(
-        deckMoments,
-        testCycle,
-        false,
-        true, // editMode ON
-      );
+    it("shows Done editing button when edit mode is active", () => {
+      mockStore({
+        activeCycle: testCycle,
+        isEditMode: true,
+        plansMap: { "plan-1": testPlan1 },
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+      });
 
       render(<CycleDeck />);
 
       expect(screen.getByTitle("Done editing")).toBeInTheDocument();
     });
 
-    it("should show Edit button when edit mode is inactive", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(
-        deckMoments,
-        testCycle,
-        false,
-        false, // editMode OFF
-      );
+    it("shows Edit button when edit mode is inactive", () => {
+      mockStore({
+        activeCycle: testCycle,
+        isEditMode: false,
+        plansMap: { "plan-1": testPlan1 },
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+      });
 
       render(<CycleDeck />);
 
       expect(screen.getByTitle("Edit cycle deck")).toBeInTheDocument();
     });
 
-    it("should hide Edit button when collapsed", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(
-        deckMoments,
-        testCycle,
-        true, // collapsed
-        false,
-      );
+    it("hides Edit button when collapsed", () => {
+      mockStore({
+        activeCycle: testCycle,
+        isCollapsed: true,
+        plansMap: { "plan-1": testPlan1 },
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+      });
 
       render(<CycleDeck />);
 
@@ -431,14 +432,14 @@ describe("CycleDeck", () => {
   });
 
   describe("inline cycle header editing", () => {
-    it("should render name as input when edit mode is active", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle, false, true);
+    it("renders name as input when edit mode is active", () => {
+      mockStore({
+        activeCycle: testCycle,
+        isEditMode: true,
+        plansMap: { "plan-1": testPlan1 },
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+      });
 
       render(<CycleDeck />);
 
@@ -447,14 +448,14 @@ describe("CycleDeck", () => {
       expect(nameInput.tagName).toBe("INPUT");
     });
 
-    it("should render name as plain text when edit mode is off", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle, false, false);
+    it("renders name as plain text when edit mode is off", () => {
+      mockStore({
+        activeCycle: testCycle,
+        isEditMode: false,
+        plansMap: { "plan-1": testPlan1 },
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+      });
 
       render(<CycleDeck />);
 
@@ -462,53 +463,31 @@ describe("CycleDeck", () => {
       expect(screen.queryByDisplayValue("Barcelona Summer")).toBeNull();
     });
 
-    it("should render date inputs when edit mode is active", () => {
-      const deckMoments = {
-        "area-1": {
-          "habit-1": [createTestMoment({ id: "1" })],
-        },
-      };
-
-      mockCycleDeckValues(deckMoments, testCycle, false, true);
+    it("renders date inputs when edit mode is active", () => {
+      mockStore({
+        activeCycle: testCycle,
+        isEditMode: true,
+        plansMap: { "plan-1": testPlan1 },
+        habitsMap: { "habit-1": testHabit1 },
+        areasMap: { "area-1": testArea },
+      });
 
       render(<CycleDeck />);
 
       expect(screen.getByLabelText("Start date")).toBeInTheDocument();
       expect(screen.getByLabelText("End date")).toBeInTheDocument();
     });
-
   });
 
   describe("empty state in edit mode", () => {
-    it("should show area columns instead of empty message", () => {
-      const habitsData = {
-        "habit-1": {
-          id: "habit-1",
-          name: "Morning Run",
-          areaId: "area-1",
-          isArchived: false,
-          order: 0,
-          emoji: null,
-        },
-        "habit-2": {
-          id: "habit-2",
-          name: "Deep Work",
-          areaId: "area-2",
-          isArchived: false,
-          order: 0,
-          emoji: null,
-        },
-      };
-
-      (habits$.get as ReturnType<typeof vi.fn>).mockReturnValue(habitsData);
-
-      mockCycleDeckValues(
-        {}, // empty deck
-        testCycle,
-        false,
-        true, // editMode ON
-        habitsData, // habits for child components
-      );
+    it("shows area columns instead of empty message", () => {
+      mockStore({
+        activeCycle: testCycle,
+        isEditMode: true,
+        plansMap: {},
+        habitsMap: { "habit-1": testHabit1, "habit-2": testHabit2 },
+        areasMap: { "area-1": testArea, "area-2": testArea2 },
+      });
 
       render(<CycleDeck />);
 

@@ -25,6 +25,7 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useValue } from "@legendapp/state/react";
 import { useState } from "react";
+import { CycleService } from "@/application/services/CycleService";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
 import {
@@ -243,7 +244,20 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
+    // Virtual deck card drag (derive paradigm) — materialize on allocation.
+    if (dragData.type === "deck-card") {
+      if (dropData.targetType === "timeline-cell") {
+        handleAllocateFromPlan(dragData, dropData);
+      }
+      // Deck card dropped on deck or elsewhere: no-op.
+      return;
+    }
+
     const momentId = dragData.momentId;
+    if (!momentId) {
+      console.warn("Missing momentId in drag data", dragData);
+      return;
+    }
     const moment = allMoments[momentId];
 
     if (!moment) {
@@ -269,6 +283,41 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
       default:
         console.warn("Unknown drop target type:", dropData.targetType);
+    }
+  }
+
+  /**
+   * Allocate a virtual deck card into a timeline slot.
+   * Calls `CycleService.allocateFromPlan` which materializes a new Moment
+   * linked to the plan. Errors (over-budget, slot full, etc.) are surfaced
+   * via alert().
+   */
+  function handleAllocateFromPlan(
+    dragData: DraggableData,
+    dropData: DroppableData,
+  ) {
+    const { cycleId, habitId } = dragData;
+    const { targetDay, targetPhase } = dropData;
+
+    if (!cycleId || !habitId) {
+      console.warn("deck-card drag missing cycleId/habitId", dragData);
+      return;
+    }
+    if (!targetDay || !targetPhase) {
+      console.warn("timeline-cell drop missing day/phase", dropData);
+      return;
+    }
+
+    const service = new CycleService();
+    const result = service.allocateFromPlan({
+      cycleId,
+      habitId,
+      day: targetDay,
+      phase: targetPhase,
+    });
+
+    if ("error" in result) {
+      alert(result.error);
     }
   }
 
@@ -310,14 +359,30 @@ export function DnDProvider({ children }: DnDProviderProps) {
     const { momentId, sourceDay, sourcePhase } = dragData;
 
     // Only process if moment was allocated (coming from timeline)
-    if (!sourceDay || !sourcePhase) {
-      return; // Already unallocated
+    if (!momentId || !sourceDay || !sourcePhase) {
+      return; // Already unallocated or missing id
     }
 
-    // Batch unallocate + reorders
+    const moment = allMoments[momentId];
+    if (!moment) return;
+
+    // Derive paradigm: plan-linked moments are deleted on unallocate
+    // (the virtual ghost in the deck auto-reappears as allocatedCount drops).
+    // Spontaneous moments (cyclePlanId === null) fall back to the legacy
+    // "move to drawing board" behavior for now.
+    if (moment.cyclePlanId !== null) {
+      const service = new CycleService();
+      const result = service.unallocateMoment(momentId);
+      if ("error" in result) {
+        alert(result.error);
+      }
+      return;
+    }
+
+    // Spontaneous moment → keep legacy move-to-null semantics so the card
+    // lands on the drawing board rather than being deleted.
     startBatch();
 
-    // Calculate reorders in source cell
     const reorders = reorderAfterRemoval(
       sourceDay,
       sourcePhase,
@@ -329,13 +394,14 @@ export function DnDProvider({ children }: DnDProviderProps) {
       toOrder: order,
     }));
 
-    // Apply move (null day/phase) with history
     moveMomentWithHistory(momentId, null, null, 0, reorders);
 
     endBatch("Unallocated moment");
   }
 
   function handleBatchUnallocate(momentIds: string[]) {
+    const service = new CycleService();
+
     startBatch();
 
     for (const momentId of momentIds) {
@@ -345,12 +411,19 @@ export function DnDProvider({ children }: DnDProviderProps) {
       const sourceDay = moment.day;
       const sourcePhase = moment.phase;
 
-      // Only process if moment was allocated
       if (!sourceDay || !sourcePhase) {
         continue; // Already unallocated
       }
 
-      // Calculate reorders in source cell
+      if (moment.cyclePlanId !== null) {
+        const result = service.unallocateMoment(momentId);
+        if ("error" in result) {
+          console.warn("[DnD] Unallocate failed:", result.error);
+        }
+        continue;
+      }
+
+      // Spontaneous moment → legacy move-to-null
       const reorders = reorderAfterRemoval(
         sourceDay,
         sourcePhase,
@@ -362,7 +435,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
         toOrder: order,
       }));
 
-      // Unallocate the moment
       moveMomentWithHistory(momentId, null, null, 0, reorders);
     }
 
@@ -376,6 +448,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
   ) {
     const { momentId, sourceDay, sourcePhase } = dragData;
     const { targetDay, targetPhase } = dropData;
+
+    if (!momentId) {
+      // Deck-card drags are routed through handleAllocateFromPlan earlier.
+      console.warn("handleDropOnTimelineCell missing momentId", dragData);
+      return;
+    }
 
     if (!targetDay || !targetPhase) {
       console.error("Timeline cell missing day/phase", dropData);
