@@ -145,6 +145,27 @@ try {
     return parseOk(resp);
   });
 
+  // 5b. allocate_from_plan — materialize a plan-linked moment on a day/phase
+  await step('allocate_from_plan 2026-04-22 MORNING', async () => {
+    const resp = await callTool('allocate_from_plan', {
+      cycleId,
+      habitId,
+      day: '2026-04-22',
+      phase: 'MORNING',
+    });
+    const parsed = parseOk(resp);
+    const m = parsed.allocated;
+    if (!m || !m.id) throw new Error(`expected allocated moment, got ${JSON.stringify(parsed)}`);
+    if (m.day !== '2026-04-22') throw new Error(`expected day 2026-04-22, got ${m.day}`);
+    if (m.phase !== 'MORNING') throw new Error(`expected phase MORNING, got ${m.phase}`);
+    if (!m.cyclePlanId) throw new Error(`expected cyclePlanId set, got ${m.cyclePlanId}`);
+    if (m.habitId !== habitId) throw new Error(`expected habitId ${habitId}, got ${m.habitId}`);
+    // Verify written to vault
+    const momentsFile = JSON.parse(readFileSync(path.join(vault, 'moments.json'), 'utf8'));
+    if (!momentsFile[m.id]) throw new Error(`moment ${m.id} not written to vault`);
+    if (momentsFile[m.id].cyclePlanId !== m.cyclePlanId) throw new Error(`vault cyclePlanId mismatch`);
+  });
+
   // 6. spawn_spontaneous_from_habit
   await step('spawn_spontaneous_from_habit today MORNING', async () => {
     const resp = await callTool('spawn_spontaneous_from_habit', {
@@ -159,7 +180,7 @@ try {
   await step('list_moments allocated', async () => {
     const resp = await callTool('list_moments', { filter: { allocation: 'allocated' } });
     const list = parseOk(resp);
-    if (list.length !== 1) throw new Error(`expected 1 allocated, got ${list.length}`);
+    if (list.length !== 2) throw new Error(`expected 2 allocated, got ${list.length}`);
   });
 
   // 8. Enforce phase cap (3 moments max)

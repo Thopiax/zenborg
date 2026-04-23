@@ -113,7 +113,7 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 
 1. \`list_areas\` to orient yourself, then \`list_habits\` in an area.
 2. \`plan_cycle\` to open a season, \`budget_habit_to_cycle\` to allocate perennial slots.
-3. \`allocate_moment_from_deck\` to place a budgeted moment on a day/phase.
+3. \`allocate_from_plan\` to place a budgeted moment on a day/phase.
 4. \`spawn_spontaneous_from_habit\` for ad-hoc moments; \`create_standalone_moment\` for one-offs.
 
 ## Invariants the MCP enforces
@@ -1379,37 +1379,78 @@ server.tool(
 );
 
 server.tool(
-  'allocate_moment_from_deck',
-  'Allocate a deck moment (budgeted, not yet placed) to a (day, phase). Fails if the moment is not in a cycle deck.',
+  'allocate_from_plan',
+  'Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan. Errors if no plan exists, budget is exhausted, slot is full (3/3), habit is archived, or day is outside cycle range.',
   {
-    momentId: z.string(),
+    cycleId: z.string(),
+    habitId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: PhaseSchema,
-    order: z.number().int().min(0).max(2).optional(),
+    phase: z.enum(['MORNING', 'AFTERNOON', 'EVENING', 'NIGHT']),
   },
-  async ({ momentId, day, phase, order }): Promise<ToolResult> => {
-    const moments = readCollection(VAULT_ROOT, 'moments');
-    const moment = moments[momentId];
-    if (!moment) return err(`Moment not found: ${momentId}`);
-    if (!isInDeck(moment)) {
+  async ({ cycleId, habitId, day, phase }): Promise<ToolResult> => {
+    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycle = cycles[cycleId];
+    if (!cycle) return err(`Cycle ${cycleId} not found`);
+
+    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habit = habits[habitId];
+    if (!habit) return err(`Habit ${habitId} not found`);
+    if (habit.isArchived) return err(`Habit ${habitId} is archived`);
+
+    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const plan = Object.values(plans).find(
+      (p: CyclePlan) => p.cycleId === cycleId && p.habitId === habitId,
+    ) as CyclePlan | undefined;
+    if (!plan) return err('No budget: habit not planned for cycle');
+
+    const allMoments = readCollection(VAULT_ROOT, 'moments');
+    const allocatedForPlan = Object.values(allMoments).filter(
+      (m: Moment) =>
+        m.cyclePlanId === plan.id && m.day !== null && m.phase !== null,
+    ).length;
+    if (allocatedForPlan >= plan.budgetedCount) {
       return err(
-        `Moment is not in a cycle deck (cyclePlanId required, day must be null).`,
+        `Over budget: ${allocatedForPlan}/${plan.budgetedCount} already allocated`,
       );
     }
-    const allMoments = Object.values(moments);
-    if (!canAllocateToPhase(allMoments, day, phase, momentId)) {
-      return err(`Phase is full: max 3 moments on ${day} ${phase}.`);
+
+    if (cycle.endDate) {
+      if (day < cycle.startDate || day > cycle.endDate) {
+        return err(
+          `Day ${day} outside cycle range ${cycle.startDate}..${cycle.endDate}`,
+        );
+      }
+    } else if (day < cycle.startDate) {
+      return err(`Day ${day} before cycle start ${cycle.startDate}`);
     }
-    const next: Moment = {
-      ...moment,
+
+    const slotMoments = Object.values(allMoments).filter(
+      (m: Moment) => m.day === day && m.phase === phase,
+    );
+    if (slotMoments.length >= 3) {
+      return err(`Slot ${day} ${phase} full (3/3)`);
+    }
+
+    const nowIsoStr = nowIso();
+    const moment: Moment = {
+      id: crypto.randomUUID(),
+      name: habit.name,
+      areaId: habit.areaId,
+      habitId: habit.id,
+      cycleId,
+      cyclePlanId: plan.id,
       day,
       phase,
-      order: order ?? 0,
-      updatedAt: nowIso(),
+      order: slotMoments.length,
+      emoji: habit.emoji ?? null,
+      tags: habit.tags ?? [],
+      createdAt: nowIsoStr,
+      updatedAt: nowIsoStr,
     };
-    moments[momentId] = next;
-    writeCollection(VAULT_ROOT, 'moments', moments);
-    return ok({ allocatedFromDeck: next });
+
+    allMoments[moment.id] = moment;
+    writeCollection(VAULT_ROOT, 'moments', allMoments);
+    return ok({ allocated: moment });
   },
 );
 
