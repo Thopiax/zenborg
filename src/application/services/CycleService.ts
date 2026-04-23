@@ -378,6 +378,20 @@ export class CycleService {
   }
 
   /**
+   * Count moments allocated (day + phase set) for a cycle plan.
+   * Unallocated rows are ignored — deck size is derived, not stored.
+   */
+  countAllocatedForPlan(cyclePlanId: string): number {
+    const moments = Object.values(moments$.get());
+    return moments.filter(
+      (m) =>
+        m.cyclePlanId === cyclePlanId &&
+        m.day !== null &&
+        m.phase !== null,
+    ).length;
+  }
+
+  /**
    * Gets all cycle plans
    *
    * @returns Array of all cycle plans
