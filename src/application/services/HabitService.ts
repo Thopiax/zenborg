@@ -10,7 +10,6 @@ import {
 import {
   cyclePlans$,
   habits$,
-  moments$,
 } from "@/infrastructure/state/store";
 
 /**
@@ -91,15 +90,10 @@ export class HabitService {
 
     const result = archiveHabit(existing);
 
-    // Delete unallocated moments linked to this habit (allocated ones are kept)
-    const allMoments = moments$.get();
-    for (const moment of Object.values(allMoments)) {
-      if (moment.habitId === habitId && moment.day === null) {
-        moments$[moment.id].delete();
-      }
-    }
-
-    // Delete cycle plans for this habit
+    // Delete cycle plans for this habit. Moments are NOT cascaded:
+    // under the derive paradigm the deck is virtual (no persisted unallocated
+    // moments), and allocated moments are preserved as historical records
+    // orphaned via habitId.
     const allPlans = cyclePlans$.get();
     for (const plan of Object.values(allPlans)) {
       if (plan.habitId === habitId) {
