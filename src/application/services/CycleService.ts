@@ -466,6 +466,27 @@ export class CycleService {
   }
 
   /**
+   * Unallocate a plan-linked moment by deleting its row.
+   * In the derive paradigm, a moment only exists because it was allocated;
+   * unallocation removes the row and the virtual ghost in the deck auto-
+   * reappears as a consequence of `allocatedCount` dropping.
+   *
+   * Rejects spontaneous / standalone moments — those use `delete_moment`.
+   */
+  unallocateMoment(momentId: string): { ok: true } | { error: string } {
+    const moment = moments$[momentId].get();
+    if (!moment) return { error: `Moment ${momentId} not found` };
+    if (moment.cyclePlanId === null) {
+      return {
+        error:
+          "Cannot unallocate spontaneous moment; use delete_moment instead",
+      };
+    }
+    moments$[momentId].delete();
+    return { ok: true };
+  }
+
+  /**
    * Gets all cycle plans
    *
    * @returns Array of all cycle plans
