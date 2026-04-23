@@ -89,7 +89,7 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 | `get_habit` | `id` | |
 | `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, emoji?, description?, guidance?, rhythm?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. |
 | `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. |
-| `archive_habit` | `id` | **Cascade:** deletes unallocated moments + cycle plans for this habit. |
+| `archive_habit` | `id` | **Cascade:** deletes all cycle plans for this habit; allocated moments preserved as historical records (orphan via `habitId`). |
 | `unarchive_habit` | `id` | |
 
 ### Cycles + plans (`cycles.json`, `cyclePlans.json`)
