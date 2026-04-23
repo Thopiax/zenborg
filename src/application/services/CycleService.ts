@@ -487,6 +487,26 @@ export class CycleService {
   }
 
   /**
+   * One-shot migration: delete leftover unallocated plan-linked moments
+   * from the old materialize-on-budget paradigm. Safe to call repeatedly —
+   * on a clean vault, deletes zero.
+   *
+   * Safety: only deletes moments with cyclePlanId !== null
+   *         AND day === null AND phase === null.
+   */
+  reconcileLegacyDeckMoments(): { deleted: number } {
+    const all = Object.entries(moments$.get());
+    let deleted = 0;
+    for (const [id, m] of all) {
+      if (m.cyclePlanId !== null && m.day === null && m.phase === null) {
+        moments$[id].delete();
+        deleted++;
+      }
+    }
+    return { deleted };
+  }
+
+  /**
    * Gets all cycle plans
    *
    * @returns Array of all cycle plans

@@ -840,3 +840,74 @@ describe("CycleService.unallocateMoment", () => {
     expect(moments$["m-1"].get()?.id).toBe("m-1");
   });
 });
+
+describe("CycleService.reconcileLegacyDeckMoments", () => {
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    habits$.set({});
+  });
+
+  it("deletes plan-linked moments with day + phase null", () => {
+    const service = new CycleService();
+    moments$["m-1"].set({
+      id: "m-1",
+      name: "fiction",
+      areaId: "a-1",
+      habitId: "h-1",
+      cycleId: "c-1",
+      cyclePlanId: "plan-1",
+      day: null,
+      phase: null,
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const result = service.reconcileLegacyDeckMoments();
+    expect(result.deleted).toBe(1);
+    expect(moments$["m-1"].get()).toBeUndefined();
+  });
+
+  it("preserves allocated moments and spontaneous moments", () => {
+    const service = new CycleService();
+    moments$["allocated"].set({
+      id: "allocated",
+      name: "fiction",
+      areaId: "a-1",
+      habitId: "h-1",
+      cycleId: "c-1",
+      cyclePlanId: "plan-1",
+      day: "2026-04-24",
+      phase: "MORNING",
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    moments$["spontaneous"].set({
+      id: "spontaneous",
+      name: "ad-hoc",
+      areaId: "a-1",
+      habitId: null,
+      cycleId: "c-1",
+      cyclePlanId: null,
+      day: null,
+      phase: null,
+      order: 0,
+      tags: [],
+      emoji: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    const result = service.reconcileLegacyDeckMoments();
+    expect(result.deleted).toBe(0);
+    expect(moments$["allocated"].get()?.id).toBe("allocated");
+    expect(moments$["spontaneous"].get()?.id).toBe("spontaneous");
+  });
+});
