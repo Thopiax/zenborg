@@ -120,7 +120,7 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 - Moment and habit names are **1–3 words**.
 - Max **3 moments per (day, phase)** — evolving; check TOOLS.md.
 - One \`CyclePlan\` per (cycleId, habitId) — \`budget_habit_to_cycle\` upserts.
-- \`archive_habit\` cascades: deletes unallocated moments + all plans for that habit.
+- \`archive_habit\` cascade: deletes all cycle plans for that habit; allocated moments preserved as historical records (orphan via habitId).
 - \`delete_cycle\` cascades: deletes all moments + plans scoped to the cycle.
 - Active cycle is **derived from dates**, not a mutation. To activate a cycle, move its dates.
 `,
@@ -1085,15 +1085,29 @@ server.tool(
 
 server.tool(
   'decrement_habit_budget',
-  'Decrement the budgeted count for a (cycle, habit) plan by 1 (floor at 0).',
+  'Decrement the budgeted count for a (cycle, habit) plan by 1, floored at the number of already-allocated moments. No-op when the floor is already reached — allocated work is sunk cost and survives.',
   { cycleId: z.string(), habitId: z.string() },
   async ({ cycleId, habitId }): Promise<ToolResult> => {
     const plans = readCollection(VAULT_ROOT, 'cyclePlans');
     const existing = findCyclePlan(plans, cycleId, habitId);
     if (!existing) return err('No plan to decrement');
+
+    const moments = readCollection(VAULT_ROOT, 'moments');
+    const allocated = Object.values(moments).filter(
+      (m) =>
+        m.cyclePlanId === existing.id &&
+        m.day !== null &&
+        m.phase !== null,
+    ).length;
+
+    if (existing.budgetedCount - 1 < allocated) {
+      // Floor reached — return current plan unchanged.
+      return ok({ updated: existing, flooredAt: allocated });
+    }
+
     const next: CyclePlan = {
       ...existing,
-      budgetedCount: Math.max(0, existing.budgetedCount - 1),
+      budgetedCount: existing.budgetedCount - 1,
       updatedAt: nowIso(),
     };
     plans[next.id] = next;
@@ -1104,7 +1118,7 @@ server.tool(
 
 server.tool(
   'remove_habit_from_deck',
-  'Remove a (cycle, habit) plan entirely, plus any budgeted-but-unallocated moments tied to it.',
+  "Clears the deck-side of a (cycle, habit) plan: sets budgetedCount to the number of already-allocated moments. Plan is preserved; no moments are deleted. Mirrors CycleService.removeHabitFromDeck.",
   { cycleId: z.string(), habitId: z.string() },
   async ({ cycleId, habitId }): Promise<ToolResult> => {
     const plans = readCollection(VAULT_ROOT, 'cyclePlans');
@@ -1112,21 +1126,24 @@ server.tool(
     if (!plan) return err('No plan to remove');
 
     const moments = readCollection(VAULT_ROOT, 'moments');
-    const deletedMomentIds: string[] = [];
-    for (const m of Object.values(moments)) {
-      if (m.cyclePlanId === plan.id && m.day === null) {
-        deletedMomentIds.push(m.id);
-        delete moments[m.id];
-      }
-    }
-    delete plans[plan.id];
+    const allocatedCount = Object.values(moments).filter(
+      (m) =>
+        m.cyclePlanId === plan.id &&
+        m.day !== null &&
+        m.phase !== null,
+    ).length;
 
+    const next: CyclePlan = {
+      ...plan,
+      budgetedCount: allocatedCount,
+      updatedAt: nowIso(),
+    };
+    plans[next.id] = next;
     writeCollection(VAULT_ROOT, 'cyclePlans', plans);
-    writeCollection(VAULT_ROOT, 'moments', moments);
 
     return ok({
-      removedPlan: plan.id,
-      deletedDeckMoments: deletedMomentIds.length,
+      updated: next,
+      allocatedCount,
     });
   },
 );

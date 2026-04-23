@@ -384,39 +384,34 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     // Derive paradigm: plan-linked moments are deleted on unallocate
     // (the virtual ghost in the deck auto-reappears as allocatedCount drops).
-    // Spontaneous moments (cyclePlanId === null) fall back to the legacy
-    // "move to drawing board" behavior for now.
-    if (moment.cyclePlanId !== null) {
-      const service = new CycleService();
-      const result = service.unallocateMoment(momentId);
-      if ("error" in result) {
-        alert(result.error);
-      }
+    // Spontaneous moments (cyclePlanId === null) have no deck home, so
+    // unallocating them would send them into an invisible null-day/null-phase
+    // state. Reject instead; the user must delete them explicitly.
+    if (moment.cyclePlanId === null) {
+      alert("Cannot unallocate spontaneous moment; delete it instead");
       return;
     }
 
-    // Spontaneous moment → keep legacy move-to-null semantics so the card
-    // lands on the drawing board rather than being deleted.
-    startBatch();
-
-    const reorders = reorderAfterRemoval(
-      sourceDay,
-      sourcePhase,
-      allMoments,
-      momentId,
-    ).map(({ momentId: id, newOrder: order }) => ({
-      momentId: id,
-      fromOrder: allMoments[id].order,
-      toOrder: order,
-    }));
-
-    moveMomentWithHistory(momentId, null, null, 0, reorders);
-
-    endBatch("Unallocated moment");
+    const service = new CycleService();
+    const result = service.unallocateMoment(momentId);
+    if ("error" in result) {
+      alert(result.error);
+    }
   }
 
   function handleBatchUnallocate(momentIds: string[]) {
     const service = new CycleService();
+
+    // Reject the whole batch if any moment is spontaneous — no silent
+    // fallback to an invisible null-day/null-phase state.
+    const spontaneous = momentIds.filter((id) => {
+      const m = allMoments[id];
+      return m && m.day && m.phase && m.cyclePlanId === null;
+    });
+    if (spontaneous.length > 0) {
+      alert("Cannot unallocate spontaneous moment; delete it instead");
+      return;
+    }
 
     startBatch();
 
@@ -431,27 +426,10 @@ export function DnDProvider({ children }: DnDProviderProps) {
         continue; // Already unallocated
       }
 
-      if (moment.cyclePlanId !== null) {
-        const result = service.unallocateMoment(momentId);
-        if ("error" in result) {
-          console.warn("[DnD] Unallocate failed:", result.error);
-        }
-        continue;
+      const result = service.unallocateMoment(momentId);
+      if ("error" in result) {
+        console.warn("[DnD] Unallocate failed:", result.error);
       }
-
-      // Spontaneous moment → legacy move-to-null
-      const reorders = reorderAfterRemoval(
-        sourceDay,
-        sourcePhase,
-        allMoments,
-        momentId,
-      ).map(({ momentId: id, newOrder: order }) => ({
-        momentId: id,
-        fromOrder: allMoments[id].order,
-        toOrder: order,
-      }));
-
-      moveMomentWithHistory(momentId, null, null, 0, reorders);
     }
 
     endBatch(`Unallocated ${momentIds.length} moments`);
