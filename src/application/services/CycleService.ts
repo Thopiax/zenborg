@@ -40,6 +40,7 @@ import {
   type Rhythm,
 } from "@/domain/value-objects/Rhythm";
 import { Attitude } from "@/domain/value-objects/Attitude";
+import type { Phase } from "@/domain/value-objects/Phase";
 import { habitHealthService } from "@/domain/services/HabitHealthService";
 import type { Health } from "@/domain/value-objects/Health";
 import { formatCycleDateRange, fromISODate, toISODate } from "@/lib/dates";
@@ -389,6 +390,79 @@ export class CycleService {
         m.day !== null &&
         m.phase !== null,
     ).length;
+  }
+
+  /**
+   * Allocate a virtual deck card into a specific day/phase slot by
+   * materializing a new Moment. Enforces plan existence, budget ceiling,
+   * slot capacity (max 3 per phase), and cycle date range.
+   */
+  allocateFromPlan(props: {
+    cycleId: string;
+    habitId: string;
+    day: string;
+    phase: Phase;
+  }): Moment | { error: string } {
+    const { cycleId, habitId, day, phase } = props;
+
+    const cycle = cycles$[cycleId].get();
+    if (!cycle) return { error: `Cycle ${cycleId} not found` };
+
+    const habit = habits$[habitId].get();
+    if (!habit) return { error: `Habit ${habitId} not found` };
+    if (habit.isArchived) {
+      return { error: `Habit ${habitId} is archived` };
+    }
+
+    const plan = this.findCyclePlan(cycleId, habitId);
+    if (!plan) {
+      return { error: "No budget: habit not planned for cycle" };
+    }
+
+    const allocatedCount = this.countAllocatedForPlan(plan.id);
+    if (allocatedCount >= plan.budgetedCount) {
+      return {
+        error: `Over budget: ${allocatedCount}/${plan.budgetedCount} already allocated`,
+      };
+    }
+
+    if (cycle.endDate) {
+      if (day < cycle.startDate || day > cycle.endDate) {
+        return {
+          error: `Day ${day} outside cycle range ${cycle.startDate}..${cycle.endDate}`,
+        };
+      }
+    } else if (day < cycle.startDate) {
+      return { error: `Day ${day} before cycle start ${cycle.startDate}` };
+    }
+
+    const slotMoments = Object.values(moments$.get()).filter(
+      (m) => m.day === day && m.phase === phase,
+    );
+    if (slotMoments.length >= 3) {
+      return { error: `Slot ${day} ${phase} full (3/3)` };
+    }
+
+    const created = createMoment({
+      name: habit.name,
+      areaId: habit.areaId,
+      emoji: habit.emoji,
+      habitId: habit.id,
+      cycleId,
+      cyclePlanId: plan.id,
+      tags: habit.tags || [],
+      phase,
+    });
+    if ("error" in created) return created;
+
+    const allocated = allocateMoment(created, {
+      day,
+      phase,
+      order: slotMoments.length,
+    });
+
+    moments$[allocated.id].set(allocated);
+    return allocated;
   }
 
   /**
