@@ -5,7 +5,7 @@ main() {
     return 1
   fi
 
-  local dir="$HOME/Developer/zenborg"
+  local dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   local current=$(node -p "require('$dir/package.json').version")
   IFS='.' read -r major minor patch <<< "$current"
 
