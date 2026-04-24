@@ -37,7 +37,9 @@ export function VirtualDeckStack({
 }: VirtualDeckStackProps) {
   const behindLayerCount = Math.min(Math.max(count - 1, 0), 2);
   const showLayers = count > 1;
-  const showBadge = count > 0 || !!(onIncrement || onDecrement || onRemove);
+  // Always show the counter so count=0 stacks read as "fully allocated",
+  // not as identical to count=1.
+  const showBadge = true;
 
   const dragData: DraggableData = {
     type: "deck-card",
@@ -61,7 +63,7 @@ export function VirtualDeckStack({
       data-cycle-id={cycleId}
       className="relative transition-opacity duration-150 w-full"
       style={{
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0.5 : count === 0 ? 0.5 : 1,
         cursor: count === 0 ? "default" : isDragging ? "grabbing" : "grab",
         paddingTop: showLayers ? `${behindLayerCount * 4}px` : 0,
       }}
