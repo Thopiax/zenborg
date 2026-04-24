@@ -735,13 +735,17 @@ export function DnDProvider({ children }: DnDProviderProps) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
+      autoScroll={{ threshold: { x: 0, y: 0.2 } }}
     >
       {children}
 
-      {/* Drag overlay shows preview of dragged item(s) */}
+      {/* Drag overlay shows preview of dragged item(s). Null dropAnimation
+          avoids the snap-back when deck-card drops materialize a new moment —
+          the source draggable disappears, so the default return animation
+          looks like the card bounced away from the slot it just filled. */}
       <DragOverlay
         modifiers={[snapCenterToCursor]}
-        // dropAnimation={{ duration: 200, easing: "ease" }}
+        dropAnimation={null}
       >
         {activeMoment && activeArea ? (
           <div

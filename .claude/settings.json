@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_posthog_posthog__query-run",
+      "mcp__linear-server__list_issues",
+      "mcp__linear-server__list_projects",
+      "mcp__linear-server__list_teams",
+      "mcp__linear-server__get_issue",
+      "mcp__plugin_linear_linear__list_issues",
+      "mcp__plugin_linear_linear__list_projects",
+      "mcp__plugin_linear_linear__list_teams",
+      "mcp__plugin_linear_linear__get_issue",
+      "mcp__plugin_sentry_sentry__get_sentry_resource",
+      "mcp__plugin_sentry_sentry__search_issues",
+      "mcp__posthog__feature-flag-get-all",
+      "mcp__openoutreach__search_leads",
+      "mcp__openoutreach__list_campaigns",
+      "mcp__claude_ai_Veriguard_Staging__obtenir_timeline_decision_dommage_corporel",
+      "mcp__claude_ai_Veriguard__obtenir_timeline_decision_dommage_corporel"
+    ]
+  }
+}

@@ -142,7 +142,7 @@ export function Timeline() {
   const [daysAfter, setDaysAfter] = useState(1);
   const timelineDays = getExtendedTimelineDays(daysBefore, daysAfter);
   const containerRef = useRef<HTMLDivElement>(null);
-  const activeDayRef = useRef<HTMLDivElement>(null);
+  const todayRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
 
   const handleLoadEarlier = () => {
@@ -155,12 +155,14 @@ export function Timeline() {
 
   const isExpanded = daysBefore > 1 || daysAfter > 1;
 
-  // Scroll to active day
-  const scrollToActiveDay = useCallback(() => {
-    if (activeDayRef.current) {
+  // Scroll to calendar today (not active day — active day can shift to
+  // yesterday before morning starts, which would surprise users opening the
+  // app early in the morning).
+  const scrollToToday = useCallback(() => {
+    if (todayRef.current) {
       // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
-        activeDayRef.current?.scrollIntoView({
+        todayRef.current?.scrollIntoView({
           behavior: "instant",
           inline: "start",
           block: "nearest",
@@ -172,22 +174,22 @@ export function Timeline() {
     }
   }, []);
 
-  // Ensure active day is scrolled into view on mount
+  // Ensure today is scrolled into view on mount
   useEffect(() => {
-    const timeout = setTimeout(scrollToActiveDay, 200);
+    const timeout = setTimeout(scrollToToday, 200);
     return () => clearTimeout(timeout);
-  }, [scrollToActiveDay]);
+  }, [scrollToToday]);
 
-  // Re-scroll to active day and recalculate time on window focus
+  // Re-scroll to today and recalculate time on window focus
   useEffect(() => {
     const handleFocus = () => {
       timeTick$.set((t) => t + 1);
-      scrollToActiveDay();
+      scrollToToday();
     };
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [scrollToActiveDay]);
+  }, [scrollToToday]);
 
   // Tick every 60s so phase transitions happen even if app stays open
   useEffect(() => {
@@ -209,7 +211,7 @@ export function Timeline() {
           onClick={() => {
             setDaysBefore(1);
             setDaysAfter(1);
-            setTimeout(scrollToActiveDay, 100);
+            setTimeout(scrollToToday, 100);
           }}
           className={cn(
             "absolute top-2 left-1/2 -translate-x-1/2 z-10",
@@ -265,7 +267,7 @@ export function Timeline() {
         {timelineDays.map(({ date, isToday, isActiveDay }, index) => (
           <DayRow
             key={date}
-            ref={isActiveDay ? activeDayRef : null}
+            ref={isToday ? todayRef : null}
             day={date}
             isToday={isToday}
             isActiveDay={isActiveDay}
