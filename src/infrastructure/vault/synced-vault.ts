@@ -11,7 +11,7 @@
  *   syncObservable(moments$, syncedVaultCollection("moments"));
  */
 
-import type { Observable } from "@legendapp/state";
+import { type Observable, syncState } from "@legendapp/state";
 import { observablePersistIndexedDB } from "@legendapp/state/persist-plugins/indexeddb";
 import { synced } from "@legendapp/state/sync";
 import type { CollectionName } from "@/domain/registry";
@@ -50,7 +50,7 @@ const DEBOUNCE_MS = 2000;
 export function syncedVaultCollection<T>(collection: CollectionName) {
   return synced<Record<string, T>>({
     // Initial + on-demand load from vault
-    get: async () => {
+    get: async ({ updateLastSync }) => {
       const value = await readCollection<T>(collection);
       if (value === null) {
         // Vault file doesn't exist yet. Returning {} here would overwrite
@@ -63,12 +63,17 @@ export function syncedVaultCollection<T>(collection: CollectionName) {
         // a set(), which creates the vault file from the observable's value.
         return undefined as unknown as Record<string, T>;
       }
+      updateLastSync(Date.now());
       return value;
     },
 
     // Debounced write on mutation. Legend State batches rapid changes.
-    set: async ({ value }) => {
+    set: async ({ value, value$ }) => {
       await writeCollection(collection, value);
+      // Advance lastSync. The Rust watcher suppresses our own writes, so
+      // subscribe.refresh never re-runs get() after an internal mutation —
+      // without this stamp, the Settings "Synced" label freezes at boot time.
+      syncState(value$).lastSync.set(Date.now());
     },
 
     // External-edit subscription. When the watcher fires, we return a no-op
