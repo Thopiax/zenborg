@@ -27,9 +27,16 @@ export interface HeatmapBand {
   tense: HeatmapTense;
 }
 
+export interface HeatmapSegment {
+  startIndex: number;
+  endIndex: number;
+  band: HeatmapBand | null;
+}
+
 export interface HeatmapViewModel {
   days: HeatmapDay[];
   bands: HeatmapBand[];
+  segments: HeatmapSegment[];
   rows: Phase[];
   todayIndex: number;
 }
@@ -233,6 +240,36 @@ export function deriveBandedHeatmapViewModel(
 
   const todayIndex = dateList.indexOf(today);
   const bands = buildBands(days, cycles);
+  const segments = buildSegments(days, bands);
 
-  return { days, bands, rows, todayIndex };
+  return { days, bands, segments, rows, todayIndex };
+}
+
+function buildSegments(
+  days: HeatmapDay[],
+  bands: HeatmapBand[]
+): HeatmapSegment[] {
+  const bandByCycleId = new Map(bands.map((b) => [b.cycleId, b]));
+  const out: HeatmapSegment[] = [];
+  let runStart = 0;
+  let runCycleId: string | null = days[0]?.cycleId ?? null;
+
+  const flush = (endIndex: number) => {
+    out.push({
+      startIndex: runStart,
+      endIndex,
+      band: runCycleId ? bandByCycleId.get(runCycleId) ?? null : null,
+    });
+  };
+
+  for (let i = 1; i < days.length; i++) {
+    if (days[i].cycleId !== runCycleId) {
+      flush(i - 1);
+      runStart = i;
+      runCycleId = days[i].cycleId;
+    }
+  }
+  if (days.length > 0) flush(days.length - 1);
+
+  return out;
 }
