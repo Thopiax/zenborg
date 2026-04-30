@@ -77,6 +77,12 @@ export const focusedCell$ = observable<{
   phase: import("@/domain/value-objects/Phase").Phase;
 } | null>(null);
 
+/**
+ * Day selected in the cycle heatmap. Drives Timeline scroll/expand.
+ * Ephemeral - not persisted. null = no override (Timeline anchors on today).
+ */
+export const selectedDay$ = observable<string | null>(null);
+
 // ============================================================================
 // Modal/Dialog State
 // ============================================================================

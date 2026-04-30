@@ -1,22 +1,20 @@
-import { CELL_SIZE, STRIDE } from "./constants";
+import { CELL_SIZE } from "./constants";
 
 interface BandedHeatmapSelectionCursorProps {
-  selectedIndex: number;
+  x: number | null;
 }
 
 export function BandedHeatmapSelectionCursor({
-  selectedIndex,
+  x,
 }: BandedHeatmapSelectionCursorProps) {
-  if (selectedIndex < 0) return null;
-  const left = selectedIndex * STRIDE - 2;
-  const width = CELL_SIZE + 4;
+  if (x === null) return null;
 
   return (
     <div
-      className="absolute pointer-events-none rounded-[2px] border border-stone-700 dark:border-stone-300"
+      className="absolute pointer-events-none rounded-[3px] border border-stone-700 dark:border-stone-300"
       style={{
-        left,
-        width,
+        left: x - 2,
+        width: CELL_SIZE + 4,
         top: -2,
         bottom: -2,
         zIndex: 4,

@@ -47,6 +47,8 @@ export interface DeriveInput {
   areas: Area[];
   phaseConfigs: PhaseConfig[];
   today: string;
+  /** Days to pad after today regardless of cycles. Default 365 (1 year). */
+  futurePadDays?: number;
 }
 
 const MS_PER_DAY = 86_400_000;
@@ -196,22 +198,27 @@ function buildBands(days: HeatmapDay[], cycles: Cycle[]): HeatmapBand[] {
   return bands;
 }
 
+const ONE_YEAR_DAYS = 365;
+
+function shiftDateString(date: string, deltaDays: number): string {
+  return fromUtc(toUtc(date) + deltaDays * MS_PER_DAY);
+}
+
 function determineRange(
   cycles: Cycle[],
-  today: string
+  today: string,
+  futurePadDays: number,
 ): { start: string; end: string } {
-  if (cycles.length === 0) {
-    return { start: today, end: today };
-  }
-  let start = cycles[0].startDate;
-  let end = effectiveEnd(cycles[0], today);
+  // Past: bounded by the earliest cycle start (or today if none).
+  // Future: today + futurePadDays, extended further if a cycle ends past that.
+  let start = today;
+  let end =
+    futurePadDays > 0 ? shiftDateString(today, futurePadDays) : today;
   for (const c of cycles) {
     if (c.startDate < start) start = c.startDate;
     const cEnd = effectiveEnd(c, today);
     if (cEnd > end) end = cEnd;
   }
-  if (today < start) start = today;
-  if (today > end) end = today;
   return { start, end };
 }
 
@@ -219,9 +226,10 @@ export function deriveBandedHeatmapViewModel(
   input: DeriveInput
 ): HeatmapViewModel {
   const { cycles, moments, phaseConfigs, today } = input;
+  const futurePadDays = input.futurePadDays ?? ONE_YEAR_DAYS;
 
   const rows = getVisiblePhases(phaseConfigs).map((p) => p.phase);
-  const { start, end } = determineRange(cycles, today);
+  const { start, end } = determineRange(cycles, today, futurePadDays);
   const dateList = eachDay(start, end);
 
   const days: HeatmapDay[] = dateList.map((date) => {
