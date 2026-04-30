@@ -1,43 +1,44 @@
 import type { Area } from "@/domain/entities/Area";
 import type { HeatmapCell } from "@/infrastructure/state/bandedHeatmapViewModel";
-import {
-  CELL_SIZE,
-  FAINT_COLOR,
-  FALLOW_BG,
-  TENSE_OPACITY,
-} from "./constants";
+import { CELL_SIZE, TENSE_OPACITY } from "./constants";
 
 interface BandedHeatmapCellProps {
   cell: HeatmapCell;
   areaById: Map<string, Area>;
 }
 
+const baseClass = "rounded-[2px] box-border";
+
 export function BandedHeatmapCell({ cell, areaById }: BandedHeatmapCellProps) {
-  const baseStyle: React.CSSProperties = {
+  const sizeStyle: React.CSSProperties = {
     width: CELL_SIZE,
     height: CELL_SIZE,
-    borderRadius: 1.5,
-    boxSizing: "border-box",
     opacity: TENSE_OPACITY[cell.tense],
   };
 
   if (cell.state === "unplanted") {
     return (
       <div
-        style={{
-          ...baseStyle,
-          background: "transparent",
-          border: `1px dashed ${FAINT_COLOR}`,
-        }}
+        className={`${baseClass} border border-dashed border-stone-300 dark:border-stone-600 bg-transparent`}
+        style={sizeStyle}
       />
     );
   }
 
   if (cell.state === "fallow") {
-    return <div style={{ ...baseStyle, background: FALLOW_BG }} />;
+    return (
+      <div
+        className={`${baseClass} bg-stone-200/50 dark:bg-stone-700/40`}
+        style={sizeStyle}
+      />
+    );
   }
 
   const area = cell.areaId ? areaById.get(cell.areaId) : undefined;
-  const background = area?.color ?? FALLOW_BG;
-  return <div style={{ ...baseStyle, background }} />;
+  return (
+    <div
+      className={baseClass}
+      style={{ ...sizeStyle, background: area?.color ?? "transparent" }}
+    />
+  );
 }

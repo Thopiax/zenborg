@@ -90,8 +90,8 @@ vi.mock("@legendapp/state/react", () => ({
   useValue: vi.fn(),
 }));
 
-vi.mock("../CycleStrip", () => ({
-  CycleStrip: () => <div data-testid="cycle-strip" />,
+vi.mock("../banded-heatmap/CycleDeckHeatmap", () => ({
+  CycleDeckHeatmap: () => <div data-testid="cycle-deck-heatmap" />,
 }));
 
 // Mock CycleDeckColumn: render a deck-card-testid element per ghost slot so
@@ -253,7 +253,7 @@ describe("CycleDeck", () => {
 
       render(<CycleDeck />);
 
-      expect(screen.getByTestId("cycle-strip")).toBeInTheDocument();
+      expect(screen.getByTestId("cycle-deck-heatmap")).toBeInTheDocument();
       expect(screen.getByText(/No active cycle/i)).toBeInTheDocument();
     });
   });
@@ -373,7 +373,7 @@ describe("CycleDeck", () => {
       expect(screen.getByTitle("Collapse cycle deck")).toBeInTheDocument();
     });
 
-    it("renders CycleStrip above the header", () => {
+    it("renders the cycle heatmap above the header", () => {
       mockStore({
         activeCycle: testCycle,
         plansMap: { "plan-1": testPlan1 },
@@ -383,7 +383,7 @@ describe("CycleDeck", () => {
 
       render(<CycleDeck />);
 
-      expect(screen.getByTestId("cycle-strip")).toBeInTheDocument();
+      expect(screen.getByTestId("cycle-deck-heatmap")).toBeInTheDocument();
     });
   });
 
