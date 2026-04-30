@@ -1,5 +1,5 @@
 import type { HeatmapDay } from "@/infrastructure/state/bandedHeatmapViewModel";
-import { AXIS_HEIGHT } from "./constants";
+import { AXIS_HEIGHT, CELL_SIZE } from "./constants";
 
 interface BandedHeatmapAxisProps {
   days: HeatmapDay[];
@@ -24,6 +24,11 @@ const MONTH_LABELS = [
 
 const isMonthStart = (date: string) => date.slice(8, 10) === "01";
 
+const isWeekend = (date: string): boolean => {
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return dow === 0 || dow === 6;
+};
+
 export function BandedHeatmapAxis({
   days,
   todayIndex,
@@ -35,11 +40,12 @@ export function BandedHeatmapAxis({
       style={{ height: AXIS_HEIGHT, marginTop: 6, zIndex: 2 }}
     >
       {days.map((day, index) => {
-        const isNow = index === todayIndex;
-        const isMonth = isMonthStart(day.date);
-        if (!isNow && !isMonth) return null;
         const x = dayX[index];
         if (x === undefined) return null;
+        const isNow = index === todayIndex;
+        const isMonth = isMonthStart(day.date);
+        const weekend = isWeekend(day.date);
+        if (!isNow && !isMonth && !weekend) return null;
 
         if (isNow) {
           return (
@@ -50,15 +56,29 @@ export function BandedHeatmapAxis({
             />
           );
         }
-        const month = Number(day.date.slice(5, 7)) - 1;
+        if (isMonth) {
+          const month = Number(day.date.slice(5, 7)) - 1;
+          return (
+            <div
+              key={day.date}
+              className="absolute top-0 border-l border-stone-300/60 dark:border-stone-700/60 pl-1 pt-0.5 whitespace-nowrap"
+              style={{ left: x }}
+            >
+              {MONTH_LABELS[month]}
+            </div>
+          );
+        }
+        // Weekend tick — tiny dot centered under the day column.
         return (
           <div
             key={day.date}
-            className="absolute top-0 border-l border-stone-300/60 dark:border-stone-700/60 pl-1 pt-0.5 whitespace-nowrap"
-            style={{ left: x }}
-          >
-            {MONTH_LABELS[month]}
-          </div>
+            className="absolute bottom-1 rounded-full bg-stone-400/40 dark:bg-stone-500/40"
+            style={{
+              left: x + CELL_SIZE / 2 - 1,
+              width: 2,
+              height: 2,
+            }}
+          />
         );
       })}
     </div>

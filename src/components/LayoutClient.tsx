@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { CommandPalette } from "@/components/CommandPalette";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
 import { ModeSelector } from "@/components/ModeSelector";
+import { TodayButton } from "@/components/TodayButton";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { UpdateNotification } from "@/components/UpdateNotification";
@@ -89,8 +90,10 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
             paddingRight: "max(1rem, env(safe-area-inset-right) + 0.5rem)",
           }}
         >
-          {/* Spacer for left balance */}
-          <div className="w-8" />
+          {/* Left: Today button (visible when selectedDay is off-today) */}
+          <div className="min-w-8 mr-2 flex items-center">
+            <TodayButton />
+          </div>
 
           {/* Center: Mode Selector */}
           <ModeSelector />
