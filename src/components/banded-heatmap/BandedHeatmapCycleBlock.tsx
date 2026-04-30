@@ -42,11 +42,11 @@ export function BandedHeatmapCycleBlock({
           "relative flex flex-col rounded-md overflow-hidden ring-1 transition-colors";
         switch (band.tense) {
           case "active":
-            return `${base} bg-stone-50 dark:bg-stone-900/70 ring-stone-300 dark:ring-stone-600`;
+            return `${base} bg-stone-50 dark:bg-stone-900/70 ring-stone-400 dark:ring-stone-500`;
           case "past":
-            return `${base} bg-stone-100/50 dark:bg-stone-800/30 ring-stone-200 dark:ring-stone-700/70`;
+            return `${base} bg-stone-200/60 dark:bg-stone-800/50 ring-stone-300/70 dark:ring-stone-700/70`;
           case "future":
-            return `${base} bg-transparent ring-stone-300/70 dark:ring-stone-600/70`;
+            return `${base} bg-white dark:bg-stone-900/30 ring-stone-300 dark:ring-stone-600`;
         }
       })();
 
