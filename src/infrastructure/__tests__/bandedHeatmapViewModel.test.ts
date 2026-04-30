@@ -94,6 +94,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.rows).toEqual([Phase.MORNING, Phase.AFTERNOON, Phase.EVENING]);
@@ -113,6 +114,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: configs,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.rows).toContain(Phase.NIGHT);
@@ -130,6 +132,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-01-04",
+        futurePadDays: 0,
       });
 
       expect(vm.days).toHaveLength(7);
@@ -144,6 +147,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.days[vm.days.length - 1].date).toBe("2026-04-30");
@@ -157,6 +161,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-01-10",
+        futurePadDays: 0,
       });
 
       expect(vm.days[vm.days.length - 1].date).toBe("2026-01-10");
@@ -170,6 +175,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.days).toHaveLength(1);
@@ -186,6 +192,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.days[vm.todayIndex].date).toBe("2026-04-30");
@@ -198,6 +205,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
       // Empty cycles still includes today, so this just sanity-checks indexOf wiring
       expect(vm.todayIndex).toBe(0);
@@ -212,6 +220,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.days[0].tense).toBe("past");
@@ -228,6 +237,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       const future = vm.days[2];
@@ -242,6 +252,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [area("x")],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.days[0].cells[Phase.MORNING].state).toBe("fallow");
@@ -254,6 +265,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.days[0].cells[Phase.MORNING].state).toBe("fallow");
@@ -272,6 +284,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [area("wellness"), area("craft")],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       const cell = vm.days[0].cells[Phase.MORNING];
@@ -305,6 +318,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [area("wellness"), area("craft")],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.days[0].cells[Phase.MORNING].areaId).toBe("craft");
@@ -321,6 +335,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [area("wellness")],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.days[0].cells[Phase.MORNING].state).toBe("planted");
@@ -340,6 +355,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-01-04",
+        futurePadDays: 0,
       });
 
       expect(vm.bands).toHaveLength(2);
@@ -367,6 +383,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-01-03",
+        futurePadDays: 0,
       });
 
       expect(vm.bands).toHaveLength(2);
@@ -386,6 +403,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       const byCycle = (id: string) => vm.bands.find((b) => b.cycleId === id)!;
@@ -401,6 +419,7 @@ describe("deriveBandedHeatmapViewModel", () => {
         areas: [],
         phaseConfigs: allVisible,
         today: "2026-04-30",
+        futurePadDays: 0,
       });
 
       expect(vm.bands).toHaveLength(1);

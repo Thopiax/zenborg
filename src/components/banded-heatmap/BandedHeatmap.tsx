@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
+/** biome-ignore-all lint/a11y/noNoninteractiveTabindex: <explanation> */
 "use client";
 
 import {
@@ -33,6 +35,9 @@ import {
 
 const DRAG_THRESHOLD_PX = 4;
 const KEEP_ON_SCREEN_PADDING = STRIDE * 2;
+// Tailwind `gap-x-1` between segments — must match the value on the segments
+// flex row below. Segment offsets accumulate this between segments.
+const SEGMENT_FLEX_GAP_PX = 4;
 
 interface BandedHeatmapProps {
   cycles: Cycle[];
@@ -41,6 +46,7 @@ interface BandedHeatmapProps {
   phaseConfigs: PhaseConfig[];
   today: string;
   selectedCycleId?: string | null;
+  selectedDay?: string | null;
   onCycleSelect?: (cycleId: string) => void;
   onDaySelect?: (date: string) => void;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -54,6 +60,7 @@ export function BandedHeatmap({
   phaseConfigs,
   today,
   selectedCycleId,
+  selectedDay,
   onCycleSelect,
   onDaySelect,
 }: BandedHeatmapProps) {
@@ -70,6 +77,51 @@ export function BandedHeatmap({
   );
 
   const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
+
+  // x-position of each day in the rendered strip. Accounts for the
+  // gap-x-1 (4px) inserted between segments by the flex row.
+  const dayX = useMemo(() => {
+    const out = new Array<number>(vm.days.length);
+    let x = 0;
+    for (const seg of vm.segments) {
+      const count = seg.endIndex - seg.startIndex + 1;
+      for (let j = 0; j < count; j++) {
+        out[seg.startIndex + j] = x;
+        x += STRIDE;
+      }
+      x += SEGMENT_FLEX_GAP_PX;
+    }
+    return out;
+  }, [vm.segments, vm.days.length]);
+
+  const totalRenderedWidth = useMemo(() => {
+    if (vm.segments.length === 0) return 0;
+    const last = vm.segments[vm.segments.length - 1];
+    return (
+      dayX[last.endIndex] + STRIDE + (vm.segments.length - 1) * 0
+    );
+  }, [vm.segments, dayX]);
+
+  const indexAtX = useCallback(
+    (x: number): number | null => {
+      if (vm.days.length === 0) return null;
+      let lo = 0;
+      let hi = vm.days.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (dayX[mid] <= x) lo = mid;
+        else hi = mid - 1;
+      }
+      // Click on or past the last cell snaps to that cell. Click in inter-
+      // segment gap snaps to whichever neighbor is closer.
+      if (x < dayX[lo] + STRIDE) return lo;
+      if (lo + 1 >= vm.days.length) return lo;
+      const distToHere = x - (dayX[lo] + CELL_SIZE);
+      const distToNext = dayX[lo + 1] - x;
+      return distToHere < distToNext ? lo : lo + 1;
+    },
+    [dayX, vm.days.length],
+  );
 
   // Phase gradient — getting darker as the day progresses, matches the
   // visual language Timeline uses for phase backgrounds (mapped to stone).
@@ -104,30 +156,51 @@ export function BandedHeatmap({
     }
   }, [selectedIndex, vm.days, onDaySelect]);
 
+  // Scroll to today on mount only — never re-snap after the user has panned
+  // or selected a far-away day.
+  const didInitialScrollRef = useRef(false);
   useLayoutEffect(() => {
+    if (didInitialScrollRef.current) return;
     const el = scrollRef.current;
-    if (!el || vm.todayIndex < 0) return;
-    const target = vm.todayIndex * STRIDE + CELL_SIZE / 2 - el.clientWidth / 2;
+    if (!el || vm.todayIndex < 0 || dayX.length === 0) return;
+    const target = dayX[vm.todayIndex] + CELL_SIZE / 2 - el.clientWidth / 2;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         el.scrollLeft = Math.max(0, target);
+        didInitialScrollRef.current = true;
       });
     });
-  }, [vm.todayIndex, vm.days.length]);
+  }, [vm.todayIndex, dayX]);
 
-  const ensureVisible = useCallback((index: number) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const cellLeft = index * STRIDE;
-    const cellRight = cellLeft + CELL_SIZE;
-    const viewLeft = el.scrollLeft + KEEP_ON_SCREEN_PADDING;
-    const viewRight = el.scrollLeft + el.clientWidth - KEEP_ON_SCREEN_PADDING;
-    if (cellLeft < viewLeft) {
-      el.scrollLeft = cellLeft - KEEP_ON_SCREEN_PADDING;
-    } else if (cellRight > viewRight) {
-      el.scrollLeft = cellRight - el.clientWidth + KEEP_ON_SCREEN_PADDING;
-    }
-  }, []);
+  const ensureVisible = useCallback(
+    (index: number) => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const cellLeft = dayX[index] ?? 0;
+      const cellRight = cellLeft + CELL_SIZE;
+      const viewLeft = el.scrollLeft + KEEP_ON_SCREEN_PADDING;
+      const viewRight = el.scrollLeft + el.clientWidth - KEEP_ON_SCREEN_PADDING;
+      if (cellLeft < viewLeft) {
+        el.scrollLeft = cellLeft - KEEP_ON_SCREEN_PADDING;
+      } else if (cellRight > viewRight) {
+        el.scrollLeft = cellRight - el.clientWidth + KEEP_ON_SCREEN_PADDING;
+      }
+    },
+    [dayX],
+  );
+
+  // Externally-controlled selection: when the parent updates selectedDay
+  // (e.g. the global "Today" button), sync internal selectedIndex and pan to it.
+  useEffect(() => {
+    if (!selectedDay) return;
+    const idx = vm.days.findIndex((d) => d.date === selectedDay);
+    if (idx < 0) return;
+    setSelectedIndex((prev) => {
+      if (prev === idx) return prev;
+      ensureVisible(idx);
+      return idx;
+    });
+  }, [selectedDay, vm.days, ensureVisible]);
 
   const moveSelection = useCallback(
     (delta: number) => {
@@ -169,12 +242,9 @@ export function BandedHeatmap({
       const inner = el.firstElementChild as HTMLElement | null;
       if (!inner) return null;
       const rect = inner.getBoundingClientRect();
-      const x = clientX - rect.left;
-      const idx = Math.floor(x / STRIDE);
-      if (idx < 0 || idx >= vm.days.length) return null;
-      return idx;
+      return indexAtX(clientX - rect.left);
     },
-    [vm.days.length],
+    [indexAtX],
   );
 
   const endDrag = useCallback(
@@ -231,7 +301,6 @@ export function BandedHeatmap({
     [moveSelection, vm.todayIndex, ensureVisible],
   );
 
-  const totalWidth = vm.days.length * STRIDE;
   const segmentRowHeight = BRACKET_HEIGHT + CELL_SIZE * 3 + ROW_GAP * 2;
 
   return (
@@ -257,14 +326,14 @@ export function BandedHeatmap({
         onKeyDown={onKeyDown}
       >
         <div
-          className="relative"
+          className="relative py-2"
           style={{
-            width: totalWidth,
-            minWidth: totalWidth,
+            width: totalRenderedWidth,
+            minWidth: totalRenderedWidth,
             touchAction: "pan-x",
           }}
         >
-          <div className="flex px-2" style={{ height: segmentRowHeight }}>
+          <div className="flex gap-x-1" style={{ height: segmentRowHeight }}>
             {vm.segments.map((seg) => {
               const segDays = vm.days.slice(seg.startIndex, seg.endIndex + 1);
               if (seg.band) {
@@ -293,20 +362,29 @@ export function BandedHeatmap({
             })}
           </div>
 
-          <BandedHeatmapAxis days={vm.days} todayIndex={vm.todayIndex} />
+          <BandedHeatmapAxis
+            days={vm.days}
+            todayIndex={vm.todayIndex}
+            dayX={dayX}
+          />
 
           <div
-            className="absolute"
+            className="absolute left-0 right-0 top-2"
             style={{
-              left: 0,
-              right: 0,
-              top: 0,
               height: segmentRowHeight,
               pointerEvents: "none",
             }}
           >
-            <BandedHeatmapNeedle todayIndex={vm.todayIndex} />
-            <BandedHeatmapSelectionCursor selectedIndex={selectedIndex} />
+            <BandedHeatmapNeedle
+              x={
+                vm.todayIndex >= 0
+                  ? dayX[vm.todayIndex] + CELL_SIZE / 2
+                  : null
+              }
+            />
+            <BandedHeatmapSelectionCursor
+              x={selectedIndex >= 0 ? dayX[selectedIndex] : null}
+            />
           </div>
         </div>
       </div>

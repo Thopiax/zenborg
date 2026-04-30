@@ -8,7 +8,10 @@ import {
   moments$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
-import { cycleDeckSelectedCycleId$ } from "@/infrastructure/state/ui-store";
+import {
+  cycleDeckSelectedCycleId$,
+  selectedDay$,
+} from "@/infrastructure/state/ui-store";
 import { getTodayISO } from "@/lib/dates";
 import { BandedHeatmap } from "./BandedHeatmap";
 
@@ -18,6 +21,7 @@ export function CycleDeckHeatmap() {
   const allAreas = useValue(() => areas$.get());
   const allPhaseConfigs = useValue(() => phaseConfigs$.get());
   const selectedCycleId = useValue(cycleDeckSelectedCycleId$);
+  const selectedDay = useValue(selectedDay$);
 
   const cycles = Object.values(allCycles);
   const moments = Object.values(allMoments);
@@ -30,6 +34,7 @@ export function CycleDeckHeatmap() {
 
   const handleDaySelect = useCallback(
     (date: string) => {
+      selectedDay$.set(date);
       const containing = cycles.find(
         (c) =>
           date >= c.startDate &&
@@ -50,6 +55,7 @@ export function CycleDeckHeatmap() {
       phaseConfigs={phaseConfigs}
       today={getTodayISO()}
       selectedCycleId={selectedCycleId}
+      selectedDay={selectedDay}
       onCycleSelect={handleCycleSelect}
       onDaySelect={handleDaySelect}
     />
