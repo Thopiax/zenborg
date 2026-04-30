@@ -1,7 +1,7 @@
 "use client";
 
 import { useValue } from "@legendapp/state/react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
   areas$,
   cycles$,
@@ -23,10 +23,15 @@ export function CycleDeckHeatmap() {
   const selectedCycleId = useValue(cycleDeckSelectedCycleId$);
   const selectedDay = useValue(selectedDay$);
 
-  const cycles = Object.values(allCycles);
-  const moments = Object.values(allMoments);
-  const areas = Object.values(allAreas);
-  const phaseConfigs = Object.values(allPhaseConfigs);
+  const cycles = useMemo(() => Object.values(allCycles), [allCycles]);
+  const moments = useMemo(() => Object.values(allMoments), [allMoments]);
+  const areas = useMemo(() => Object.values(allAreas), [allAreas]);
+  const phaseConfigs = useMemo(
+    () => Object.values(allPhaseConfigs),
+    [allPhaseConfigs],
+  );
+
+  const today = getTodayISO();
 
   const handleCycleSelect = useCallback((cycleId: string) => {
     cycleDeckSelectedCycleId$.set(cycleId);
@@ -34,17 +39,16 @@ export function CycleDeckHeatmap() {
 
   const handleDaySelect = useCallback(
     (date: string) => {
-      selectedDay$.set(date);
+      if (selectedDay$.peek() !== date) selectedDay$.set(date);
       const containing = cycles.find(
-        (c) =>
-          date >= c.startDate &&
-          date <= (c.endDate ?? "9999-12-31")
+        (c) => date >= c.startDate && date <= (c.endDate ?? "9999-12-31"),
       );
-      if (containing) {
-        cycleDeckSelectedCycleId$.set(containing.id);
+      const nextCycleId = containing?.id ?? null;
+      if (cycleDeckSelectedCycleId$.peek() !== nextCycleId) {
+        cycleDeckSelectedCycleId$.set(nextCycleId);
       }
     },
-    [cycles]
+    [cycles],
   );
 
   return (
@@ -53,7 +57,7 @@ export function CycleDeckHeatmap() {
       moments={moments}
       areas={areas}
       phaseConfigs={phaseConfigs}
-      today={getTodayISO()}
+      today={today}
       selectedCycleId={selectedCycleId}
       selectedDay={selectedDay}
       onCycleSelect={handleCycleSelect}
