@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { Check, ChevronDown, ChevronUp, Flag, Pencil } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Flag, Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import {
@@ -33,7 +33,7 @@ import { formatCycleSubtitle } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { CycleCalendarDialog } from "./CycleCalendarDialog";
 import { CycleDeckColumn } from "./CycleDeckColumn";
-import { CycleStrip } from "./CycleStrip";
+import { CycleDeckHeatmap } from "./banded-heatmap/CycleDeckHeatmap";
 
 /**
  * CycleDeck - Container for virtual deck cards derived from cycle plans.
@@ -173,9 +173,16 @@ export function CycleDeck() {
     if (!isHydrated) return null;
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+        <CycleDeckHeatmap />
         <div className="px-6 py-4 text-center text-xs font-mono text-stone-400 dark:text-stone-500">
-          No active cycle. Plan one above to start budgeting moments.
+          no active cycle ·{" "}
+          <button
+            type="button"
+            onClick={() => setCreateDialogOpen(true)}
+            className="underline underline-offset-2 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+          >
+            plan one
+          </button>
         </div>
         <CycleCalendarDialog
           open={createDialogOpen}
@@ -348,6 +355,14 @@ export function CycleDeck() {
           <>
             <button
               type="button"
+              onClick={() => setCreateDialogOpen(true)}
+              className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+              title="Plan new cycle"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
               onClick={toggleEditMode}
               className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
               title={isEditMode ? "Done editing" : "Edit cycle deck"}
@@ -426,7 +441,7 @@ export function CycleDeck() {
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
         {!isCollapsed && (
-          <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+          <CycleDeckHeatmap />
         )}
         {header}
         {renderColumns(areasToShow)}
@@ -443,7 +458,7 @@ export function CycleDeck() {
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
         {!isCollapsed && (
-          <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+          <CycleDeckHeatmap />
         )}
         {header}
         {!isCollapsed && (
@@ -475,7 +490,7 @@ export function CycleDeck() {
   return (
     <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
       {!isCollapsed && (
-        <CycleStrip onCreateCycle={() => setCreateDialogOpen(true)} />
+        <CycleDeckHeatmap />
       )}
       {header}
 

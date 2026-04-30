@@ -1,5 +1,5 @@
 import type { HeatmapBand } from "@/infrastructure/state/bandedHeatmapViewModel";
-import { BAND_SIDE_INSET, BRACKET_HEIGHT, HAIR_COLOR, STRIDE } from "./constants";
+import { BAND_SIDE_INSET, BRACKET_HEIGHT, STRIDE } from "./constants";
 
 interface BandedHeatmapBracketProps {
   band: HeatmapBand;
@@ -12,28 +12,18 @@ export function BandedHeatmapBracket({
 }: BandedHeatmapBracketProps) {
   const left = band.startIndex * STRIDE + BAND_SIDE_INSET;
   const width =
-    (band.endIndex - band.startIndex + 1) * STRIDE - 2 + Math.abs(BAND_SIDE_INSET) * 2;
+    (band.endIndex - band.startIndex + 1) * STRIDE -
+    2 +
+    Math.abs(BAND_SIDE_INSET) * 2;
 
-  const tenseStyle: React.CSSProperties = (() => {
+  const tenseClass = (() => {
     switch (band.tense) {
       case "active":
-        return {
-          color: "var(--zb-ink, #2a251f)",
-          fontWeight: 600,
-          borderBottomColor: "var(--zb-ink, #2a251f)",
-        };
+        return "text-stone-900 dark:text-stone-100 font-semibold border-stone-700 dark:border-stone-300";
       case "past":
-        return {
-          color: "rgba(42, 37, 31, 0.55)",
-          opacity: 0.55,
-          borderBottomColor: HAIR_COLOR,
-        };
+        return "text-stone-500 dark:text-stone-500 opacity-60 border-stone-300/60 dark:border-stone-700/60";
       case "future":
-        return {
-          color: "rgba(42, 37, 31, 0.55)",
-          fontStyle: "italic",
-          borderBottomColor: HAIR_COLOR,
-        };
+        return "text-stone-500 dark:text-stone-500 italic border-stone-300/60 dark:border-stone-700/60";
     }
   })();
 
@@ -41,26 +31,8 @@ export function BandedHeatmapBracket({
     <button
       type="button"
       onClick={() => onSelect?.(band.cycleId)}
-      style={{
-        position: "absolute",
-        top: 0,
-        height: BRACKET_HEIGHT,
-        left,
-        width,
-        fontSize: 9,
-        letterSpacing: "0.04em",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        display: "flex",
-        alignItems: "center",
-        padding: "0 5px",
-        borderBottom: "1px solid",
-        background: "transparent",
-        cursor: onSelect ? "pointer" : "default",
-        textAlign: "left",
-        ...tenseStyle,
-      }}
+      className={`absolute top-0 flex items-center px-1.5 text-[9px] tracking-[0.04em] font-mono whitespace-nowrap overflow-hidden text-ellipsis bg-transparent text-left border-b ${tenseClass} ${onSelect ? "cursor-pointer hover:opacity-100" : "cursor-default"}`}
+      style={{ left, width, height: BRACKET_HEIGHT }}
     >
       {band.name}
     </button>
