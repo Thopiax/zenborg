@@ -11,24 +11,24 @@ import {
 import type { Area } from "@/domain/entities/Area";
 import type { Cycle, CreateCycleProps } from "@/domain/entities/Cycle";
 import type { Moment } from "@/domain/entities/Moment";
-import type { PhaseConfig } from "@/domain/value-objects/Phase";
+import type { Phase, PhaseConfig } from "@/domain/value-objects/Phase";
 import {
   deriveBandedHeatmapViewModel,
   type HeatmapViewModel,
 } from "@/infrastructure/state/bandedHeatmapViewModel";
 import { BandedHeatmapAxis } from "./BandedHeatmapAxis";
-import { BandedHeatmapBand } from "./BandedHeatmapBand";
-import { BandedHeatmapBracket } from "./BandedHeatmapBracket";
-import { BandedHeatmapGrid } from "./BandedHeatmapGrid";
+import { BandedHeatmapCycleBlock } from "./BandedHeatmapCycleBlock";
+import { BandedHeatmapGapSegment } from "./BandedHeatmapGapSegment";
 import { BandedHeatmapNeedle } from "./BandedHeatmapNeedle";
 import { BandedHeatmapSelectionCursor } from "./BandedHeatmapSelectionCursor";
 import {
-  AXIS_HEIGHT,
   BRACKET_HEIGHT,
   CELL_SIZE,
   GUTTER_WIDTH,
   HEATMAP_HEIGHT,
+  ROW_GAP,
   STRIDE,
+  VERTICAL_PADDING,
 } from "./constants";
 
 const DRAG_THRESHOLD_PX = 4;
@@ -40,6 +40,7 @@ interface BandedHeatmapProps {
   areas: Area[];
   phaseConfigs: PhaseConfig[];
   today: string;
+  selectedCycleId?: string | null;
   onCycleSelect?: (cycleId: string) => void;
   onDaySelect?: (date: string) => void;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -52,6 +53,7 @@ export function BandedHeatmap({
   areas,
   phaseConfigs,
   today,
+  selectedCycleId,
   onCycleSelect,
   onDaySelect,
 }: BandedHeatmapProps) {
@@ -72,6 +74,14 @@ export function BandedHeatmap({
     [areas]
   );
 
+  const phaseColors = useMemo<Partial<Record<Phase, string>>>(() => {
+    const out: Partial<Record<Phase, string>> = {};
+    for (const cfg of phaseConfigs) {
+      out[cfg.phase] = `color-mix(in srgb, ${cfg.color} 14%, transparent)`;
+    }
+    return out;
+  }, [phaseConfigs]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{
@@ -84,7 +94,6 @@ export function BandedHeatmap({
     vm.todayIndex >= 0 ? vm.todayIndex : 0
   );
 
-  // Re-anchor selection if today shifts (e.g. day rolls over while open)
   useEffect(() => {
     setSelectedIndex((prev) =>
       prev < 0 || prev >= vm.days.length
@@ -93,14 +102,12 @@ export function BandedHeatmap({
     );
   }, [vm.days.length, vm.todayIndex]);
 
-  // Notify parent when selection changes
   useEffect(() => {
     if (selectedIndex >= 0 && selectedIndex < vm.days.length) {
       onDaySelect?.(vm.days[selectedIndex].date);
     }
   }, [selectedIndex, vm.days, onDaySelect]);
 
-  // Mount-center on today
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el || vm.todayIndex < 0) return;
@@ -113,7 +120,6 @@ export function BandedHeatmap({
     });
   }, [vm.todayIndex, vm.days.length]);
 
-  // Keep selection in view when it moves via keyboard
   const ensureVisible = useCallback((index: number) => {
     const el = scrollRef.current;
     if (!el) return;
@@ -161,25 +167,32 @@ export function BandedHeatmap({
     el.scrollLeft = drag.startScrollLeft - dx;
   }, []);
 
-  const indexFromClientX = useCallback((clientX: number): number | null => {
-    const el = scrollRef.current;
-    if (!el) return null;
-    const inner = el.firstElementChild as HTMLElement | null;
-    if (!inner) return null;
-    const rect = inner.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const idx = Math.floor(x / STRIDE);
-    if (idx < 0 || idx >= vm.days.length) return null;
-    return idx;
-  }, [vm.days.length]);
+  const indexFromClientX = useCallback(
+    (clientX: number): number | null => {
+      const el = scrollRef.current;
+      if (!el) return null;
+      const inner = el.firstElementChild as HTMLElement | null;
+      if (!inner) return null;
+      const rect = inner.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const idx = Math.floor(x / STRIDE);
+      if (idx < 0 || idx >= vm.days.length) return null;
+      return idx;
+    },
+    [vm.days.length]
+  );
 
   const endDrag = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current;
       const el = scrollRef.current;
       if (drag && !drag.moved) {
-        const idx = indexFromClientX(e.clientX);
-        if (idx !== null) setSelectedIndex(idx);
+        const target = e.target as HTMLElement | null;
+        const isBracket = target?.closest("button[data-cycle-bracket]");
+        if (!isBracket) {
+          const idx = indexFromClientX(e.clientX);
+          if (idx !== null) setSelectedIndex(idx);
+        }
       }
       dragRef.current = null;
       setIsDragging(false);
@@ -211,12 +224,6 @@ export function BandedHeatmap({
           moveSelection(e.shiftKey ? 7 : 1);
           break;
         case "Home":
-          e.preventDefault();
-          if (vm.todayIndex >= 0) {
-            setSelectedIndex(vm.todayIndex);
-            ensureVisible(vm.todayIndex);
-          }
-          break;
         case "Escape":
           e.preventDefault();
           if (vm.todayIndex >= 0) {
@@ -229,12 +236,15 @@ export function BandedHeatmap({
     [moveSelection, vm.todayIndex, ensureVisible]
   );
 
+  const totalWidth = vm.days.length * STRIDE;
+  const segmentRowHeight = BRACKET_HEIGHT + CELL_SIZE * 3 + ROW_GAP * 2;
+
   return (
     <div
-      className="relative bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 select-none font-sans"
+      className="relative bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md select-none font-sans"
       style={{
         height: HEATMAP_HEIGHT,
-        padding: `14px ${GUTTER_WIDTH}px`,
+        padding: `${VERTICAL_PADDING}px ${GUTTER_WIDTH}px`,
         boxSizing: "border-box",
       }}
     >
@@ -252,47 +262,57 @@ export function BandedHeatmap({
         onKeyDown={onKeyDown}
       >
         <div
-          className="relative pb-1"
-          style={{ minWidth: "fit-content", touchAction: "pan-x" }}
+          className="relative"
+          style={{
+            width: totalWidth,
+            minWidth: totalWidth,
+            touchAction: "pan-x",
+          }}
         >
-          <div
-            className="relative mb-1"
-            style={{ height: BRACKET_HEIGHT, zIndex: 2 }}
-          >
-            {vm.bands.map((band) => (
-              <BandedHeatmapBracket
-                key={band.cycleId}
-                band={band}
-                onSelect={onCycleSelect}
-              />
-            ))}
-          </div>
-
-          <div
-            className="absolute left-0 right-0"
-            style={{
-              top: 0,
-              bottom: AXIS_HEIGHT + 6,
-              pointerEvents: "none",
-              zIndex: 0,
-            }}
-          >
-            {vm.bands.map((band) => (
-              <BandedHeatmapBand key={band.cycleId} band={band} />
-            ))}
-          </div>
-
-          <div className="relative">
-            <BandedHeatmapGrid
-              days={vm.days}
-              rows={vm.rows}
-              areaById={areaById}
-            />
-            <BandedHeatmapNeedle todayIndex={vm.todayIndex} />
-            <BandedHeatmapSelectionCursor selectedIndex={selectedIndex} />
+          <div className="flex" style={{ height: segmentRowHeight }}>
+            {vm.segments.map((seg) => {
+              const segDays = vm.days.slice(seg.startIndex, seg.endIndex + 1);
+              if (seg.band) {
+                return (
+                  <BandedHeatmapCycleBlock
+                    key={`cycle-${seg.band.cycleId}-${seg.startIndex}`}
+                    band={seg.band}
+                    days={segDays}
+                    rows={vm.rows}
+                    areaById={areaById}
+                    phaseColors={phaseColors}
+                    isSelected={seg.band.cycleId === selectedCycleId}
+                    onSelect={onCycleSelect}
+                  />
+                );
+              }
+              return (
+                <BandedHeatmapGapSegment
+                  key={`gap-${seg.startIndex}`}
+                  days={segDays}
+                  rows={vm.rows}
+                  areaById={areaById}
+                  phaseColors={phaseColors}
+                />
+              );
+            })}
           </div>
 
           <BandedHeatmapAxis days={vm.days} todayIndex={vm.todayIndex} />
+
+          <div
+            className="absolute"
+            style={{
+              left: 0,
+              right: 0,
+              top: 0,
+              height: segmentRowHeight,
+              pointerEvents: "none",
+            }}
+          >
+            <BandedHeatmapNeedle todayIndex={vm.todayIndex} />
+            <BandedHeatmapSelectionCursor selectedIndex={selectedIndex} />
+          </div>
         </div>
       </div>
     </div>

@@ -17,6 +17,7 @@ export function CycleDeckHeatmap() {
   const allMoments = useValue(() => moments$.get());
   const allAreas = useValue(() => areas$.get());
   const allPhaseConfigs = useValue(() => phaseConfigs$.get());
+  const selectedCycleId = useValue(cycleDeckSelectedCycleId$);
 
   const cycles = Object.values(allCycles);
   const moments = Object.values(allMoments);
@@ -48,6 +49,7 @@ export function CycleDeckHeatmap() {
       areas={areas}
       phaseConfigs={phaseConfigs}
       today={getTodayISO()}
+      selectedCycleId={selectedCycleId}
       onCycleSelect={handleCycleSelect}
       onDaySelect={handleDaySelect}
     />
