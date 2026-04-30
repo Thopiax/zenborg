@@ -239,6 +239,7 @@ export function Timeline() {
     return () => clearInterval(interval);
   }, []);
 
+
   // Find active day's index to determine which days are past
   const activeDayIndex = timelineDays.findIndex((d) => d.isActiveDay);
 
