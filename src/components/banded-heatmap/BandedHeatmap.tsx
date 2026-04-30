@@ -25,6 +25,7 @@ import { BandedHeatmapNeedle } from "./BandedHeatmapNeedle";
 import { BandedHeatmapSelectionCursor } from "./BandedHeatmapSelectionCursor";
 import {
   BRACKET_HEIGHT,
+  CELL_GAP,
   CELL_SIZE,
   GUTTER_WIDTH,
   HEATMAP_HEIGHT,
@@ -78,8 +79,9 @@ export function BandedHeatmap({
 
   const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
 
-  // x-position of each day in the rendered strip. Accounts for the
-  // gap-x-1 (4px) inserted between segments by the flex row.
+  // x-position of each day in the rendered strip. Each segment ends flush
+  // with its last cell (block width = days*STRIDE - CELL_GAP), so we subtract
+  // CELL_GAP after the last cell of each segment, then add the flex gap.
   const dayX = useMemo(() => {
     const out = new Array<number>(vm.days.length);
     let x = 0;
@@ -89,7 +91,7 @@ export function BandedHeatmap({
         out[seg.startIndex + j] = x;
         x += STRIDE;
       }
-      x += SEGMENT_FLEX_GAP_PX;
+      x += SEGMENT_FLEX_GAP_PX - CELL_GAP;
     }
     return out;
   }, [vm.segments, vm.days.length]);
@@ -97,9 +99,7 @@ export function BandedHeatmap({
   const totalRenderedWidth = useMemo(() => {
     if (vm.segments.length === 0) return 0;
     const last = vm.segments[vm.segments.length - 1];
-    return (
-      dayX[last.endIndex] + STRIDE + (vm.segments.length - 1) * 0
-    );
+    return dayX[last.endIndex] + STRIDE + (vm.segments.length - 1) * 0;
   }, [vm.segments, dayX]);
 
   const indexAtX = useCallback(
@@ -150,11 +150,10 @@ export function BandedHeatmap({
     );
   }, [vm.days.length, vm.todayIndex]);
 
+  const selectedDate = vm.days[selectedIndex]?.date;
   useEffect(() => {
-    if (selectedIndex >= 0 && selectedIndex < vm.days.length) {
-      onDaySelect?.(vm.days[selectedIndex].date);
-    }
-  }, [selectedIndex, vm.days, onDaySelect]);
+    if (selectedDate) onDaySelect?.(selectedDate);
+  }, [selectedDate, onDaySelect]);
 
   // Scroll to today on mount only — never re-snap after the user has panned
   // or selected a far-away day.
@@ -308,14 +307,14 @@ export function BandedHeatmap({
       className="relative bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md select-none font-sans"
       style={{
         height: HEATMAP_HEIGHT,
-        padding: `${VERTICAL_PADDING}px ${GUTTER_WIDTH}px`,
+        padding: `${VERTICAL_PADDING}px 0px`,
         boxSizing: "border-box",
       }}
     >
       <div
         ref={scrollRef}
         tabIndex={0}
-        className={`relative overflow-x-auto overflow-y-hidden [scrollbar-width:thin] outline-none focus-visible:ring-1 focus-visible:ring-stone-400 ${
+        className={`relative overflow-x-auto overflow-y-hidden px-2 [scrollbar-width:thin] outline-none focus-visible:ring-1 focus-visible:ring-stone-400 ${
           isDragging ? "cursor-grabbing" : "cursor-grab"
         }`}
         onPointerDown={onPointerDown}
@@ -377,9 +376,7 @@ export function BandedHeatmap({
           >
             <BandedHeatmapNeedle
               x={
-                vm.todayIndex >= 0
-                  ? dayX[vm.todayIndex] + CELL_SIZE / 2
-                  : null
+                vm.todayIndex >= 0 ? dayX[vm.todayIndex] + CELL_SIZE / 2 : null
               }
             />
             <BandedHeatmapSelectionCursor
