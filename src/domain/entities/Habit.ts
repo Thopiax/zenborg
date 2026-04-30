@@ -164,7 +164,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
 
   return {
     id: crypto.randomUUID(),
-    name: name.trim().toLowerCase(),
+    name: name.trim(),
     areaId: areaId.trim(),
     attitude,
     phase,
@@ -214,7 +214,7 @@ export function updateHabit(
     habit.tags ??
     []) as string[];
 
-  const nextName = updates.name ? updates.name.trim().toLowerCase() : habit.name;
+  const nextName = updates.name ? updates.name.trim() : habit.name;
 
   const merged: Habit = {
     ...habit,

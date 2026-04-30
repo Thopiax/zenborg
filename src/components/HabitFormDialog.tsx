@@ -669,7 +669,7 @@ function AliasesSelector({
             value={draft}
             autoFocus
             autoCapitalize="none"
-            onChange={(e) => setDraft(e.target.value.toLowerCase())}
+            onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === ",") {
                 e.preventDefault();
