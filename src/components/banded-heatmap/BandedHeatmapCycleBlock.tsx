@@ -32,8 +32,8 @@ export function BandedHeatmapCycleBlock({
   isSelected,
   onSelect,
 }: BandedHeatmapCycleBlockProps) {
-  const blockWidth = days.length * STRIDE;
   const gridWidth = days.length * STRIDE - CELL_GAP;
+  const blockWidth = gridWidth;
 
   const containerClass = isSelected
     ? "relative flex flex-col rounded-md overflow-hidden bg-white dark:bg-stone-800 ring-2 ring-stone-700 dark:ring-stone-300 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.18)] transition-colors"
