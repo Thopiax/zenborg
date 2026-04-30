@@ -440,9 +440,7 @@ export function CycleDeck() {
 
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        {!isCollapsed && (
-          <CycleDeckHeatmap />
-        )}
+        <CycleDeckHeatmap />
         {header}
         {renderColumns(areasToShow)}
         <CycleCalendarDialog
@@ -457,9 +455,7 @@ export function CycleDeck() {
   if (!hasAnyCards) {
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        {!isCollapsed && (
-          <CycleDeckHeatmap />
-        )}
+        <CycleDeckHeatmap />
         {header}
         {!isCollapsed && (
           <div
@@ -489,9 +485,7 @@ export function CycleDeck() {
 
   return (
     <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-      {!isCollapsed && (
-        <CycleDeckHeatmap />
-      )}
+      <CycleDeckHeatmap />
       {header}
 
       {/* Droppable container for unallocating moments */}
