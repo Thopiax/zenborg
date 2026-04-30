@@ -9,9 +9,9 @@ import {
   useState,
 } from "react";
 import type { Area } from "@/domain/entities/Area";
-import type { Cycle, CreateCycleProps } from "@/domain/entities/Cycle";
+import type { CreateCycleProps, Cycle } from "@/domain/entities/Cycle";
 import type { Moment } from "@/domain/entities/Moment";
-import type { Phase, PhaseConfig } from "@/domain/value-objects/Phase";
+import type { PhaseConfig } from "@/domain/value-objects/Phase";
 import {
   deriveBandedHeatmapViewModel,
   type HeatmapViewModel,
@@ -66,21 +66,19 @@ export function BandedHeatmap({
         phaseConfigs,
         today,
       }),
-    [cycles, moments, areas, phaseConfigs, today]
+    [cycles, moments, areas, phaseConfigs, today],
   );
 
-  const areaById = useMemo(
-    () => new Map(areas.map((a) => [a.id, a])),
-    [areas]
-  );
+  const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
 
-  const phaseColors = useMemo<Partial<Record<Phase, string>>>(() => {
-    const out: Partial<Record<Phase, string>> = {};
-    for (const cfg of phaseConfigs) {
-      out[cfg.phase] = `color-mix(in srgb, ${cfg.color} 14%, transparent)`;
-    }
-    return out;
-  }, [phaseConfigs]);
+  // Phase gradient — getting darker as the day progresses, matches the
+  // visual language Timeline uses for phase backgrounds (mapped to stone).
+  const phaseFallowClasses: string[] = [
+    "bg-stone-100 dark:bg-stone-800",
+    "bg-stone-200 dark:bg-stone-700",
+    "bg-stone-300 dark:bg-stone-600",
+    "bg-stone-400 dark:bg-stone-500",
+  ];
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -91,14 +89,12 @@ export function BandedHeatmap({
   } | null>(null);
 
   const [selectedIndex, setSelectedIndex] = useState<number>(() =>
-    vm.todayIndex >= 0 ? vm.todayIndex : 0
+    vm.todayIndex >= 0 ? vm.todayIndex : 0,
   );
 
   useEffect(() => {
     setSelectedIndex((prev) =>
-      prev < 0 || prev >= vm.days.length
-        ? Math.max(0, vm.todayIndex)
-        : prev
+      prev < 0 || prev >= vm.days.length ? Math.max(0, vm.todayIndex) : prev,
     );
   }, [vm.days.length, vm.todayIndex]);
 
@@ -111,8 +107,7 @@ export function BandedHeatmap({
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el || vm.todayIndex < 0) return;
-    const target =
-      vm.todayIndex * STRIDE + CELL_SIZE / 2 - el.clientWidth / 2;
+    const target = vm.todayIndex * STRIDE + CELL_SIZE / 2 - el.clientWidth / 2;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         el.scrollLeft = Math.max(0, target);
@@ -142,7 +137,7 @@ export function BandedHeatmap({
         return next;
       });
     },
-    [vm.days.length, ensureVisible]
+    [vm.days.length, ensureVisible],
   );
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -179,7 +174,7 @@ export function BandedHeatmap({
       if (idx < 0 || idx >= vm.days.length) return null;
       return idx;
     },
-    [vm.days.length]
+    [vm.days.length],
   );
 
   const endDrag = useCallback(
@@ -200,7 +195,7 @@ export function BandedHeatmap({
         el.releasePointerCapture(e.pointerId);
       }
     },
-    [indexFromClientX]
+    [indexFromClientX],
   );
 
   const onWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
@@ -233,7 +228,7 @@ export function BandedHeatmap({
           break;
       }
     },
-    [moveSelection, vm.todayIndex, ensureVisible]
+    [moveSelection, vm.todayIndex, ensureVisible],
   );
 
   const totalWidth = vm.days.length * STRIDE;
@@ -269,7 +264,7 @@ export function BandedHeatmap({
             touchAction: "pan-x",
           }}
         >
-          <div className="flex" style={{ height: segmentRowHeight }}>
+          <div className="flex px-2" style={{ height: segmentRowHeight }}>
             {vm.segments.map((seg) => {
               const segDays = vm.days.slice(seg.startIndex, seg.endIndex + 1);
               if (seg.band) {
@@ -280,7 +275,7 @@ export function BandedHeatmap({
                     days={segDays}
                     rows={vm.rows}
                     areaById={areaById}
-                    phaseColors={phaseColors}
+                    phaseFallowClasses={phaseFallowClasses}
                     isSelected={seg.band.cycleId === selectedCycleId}
                     onSelect={onCycleSelect}
                   />
@@ -292,7 +287,7 @@ export function BandedHeatmap({
                   days={segDays}
                   rows={vm.rows}
                   areaById={areaById}
-                  phaseColors={phaseColors}
+                  phaseFallowClasses={phaseFallowClasses}
                 />
               );
             })}

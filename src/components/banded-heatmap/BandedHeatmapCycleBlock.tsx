@@ -18,7 +18,7 @@ interface BandedHeatmapCycleBlockProps {
   days: HeatmapDay[];
   rows: Phase[];
   areaById: Map<string, Area>;
-  phaseColors: Partial<Record<Phase, string>>;
+  phaseFallowClasses: string[];
   isSelected: boolean;
   onSelect?: (cycleId: string) => void;
 }
@@ -28,7 +28,7 @@ export function BandedHeatmapCycleBlock({
   days,
   rows,
   areaById,
-  phaseColors,
+  phaseFallowClasses,
   isSelected,
   onSelect,
 }: BandedHeatmapCycleBlockProps) {
@@ -87,7 +87,7 @@ export function BandedHeatmapCycleBlock({
           gap: ROW_GAP,
         }}
       >
-        {rows.map((phase) => (
+        {rows.map((phase, rowIndex) => (
           <div
             key={phase}
             style={{
@@ -103,7 +103,7 @@ export function BandedHeatmapCycleBlock({
                 key={day.date}
                 cell={day.cells[phase]}
                 areaById={areaById}
-                fallowColor={phaseColors[phase]}
+                fallowClassName={phaseFallowClasses[rowIndex]}
               />
             ))}
           </div>

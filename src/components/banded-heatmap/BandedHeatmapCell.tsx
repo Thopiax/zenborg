@@ -5,17 +5,17 @@ import { CELL_SIZE, TENSE_OPACITY } from "./constants";
 interface BandedHeatmapCellProps {
   cell: HeatmapCell;
   areaById: Map<string, Area>;
-  fallowColor?: string;
+  fallowClassName?: string;
 }
 
 const baseClass = "box-border rounded-sm";
 
-const DEFAULT_FALLOW = "rgba(168, 162, 158, 0.18)";
+const DEFAULT_FALLOW_CLASS = "bg-stone-200/60 dark:bg-stone-700/40";
 
 export function BandedHeatmapCell({
   cell,
   areaById,
-  fallowColor,
+  fallowClassName,
 }: BandedHeatmapCellProps) {
   const sizeStyle: React.CSSProperties = {
     width: CELL_SIZE,
@@ -23,20 +23,11 @@ export function BandedHeatmapCell({
     opacity: TENSE_OPACITY[cell.tense],
   };
 
-  if (cell.state === "unplanted") {
+  if (cell.state === "fallow" || cell.state === "unplanted") {
     return (
       <div
-        className={`${baseClass} border border-dashed border-stone-300 dark:border-stone-600 bg-transparent`}
+        className={`${baseClass} ${fallowClassName ?? DEFAULT_FALLOW_CLASS}`}
         style={sizeStyle}
-      />
-    );
-  }
-
-  if (cell.state === "fallow") {
-    return (
-      <div
-        className={baseClass}
-        style={{ ...sizeStyle, background: fallowColor ?? DEFAULT_FALLOW }}
       />
     );
   }
@@ -45,7 +36,7 @@ export function BandedHeatmapCell({
   return (
     <div
       className={baseClass}
-      style={{ ...sizeStyle, background: area?.color ?? DEFAULT_FALLOW }}
+      style={{ ...sizeStyle, background: area?.color ?? "transparent" }}
     />
   );
 }
