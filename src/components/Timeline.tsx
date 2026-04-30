@@ -157,11 +157,7 @@ export function Timeline() {
     setDaysAfter((prev) => prev + 3);
   };
 
-  const todayISO = getTodayISO();
-  const isExpanded =
-    daysBefore > 1 ||
-    daysAfter > 1 ||
-    (selectedDay !== null && selectedDay !== todayISO);
+  const isExpanded = daysBefore > 1 || daysAfter > 1;
 
   // Scroll to calendar today (not active day — active day can shift to
   // yesterday before morning starts, which would surprise users opening the
@@ -204,9 +200,15 @@ export function Timeline() {
   }, [scrollToToday]);
 
   // Auto-expand the rendered range to include selectedDay, then scroll to it.
+  // When selectedDay returns to today, collapse the range back to default.
   useEffect(() => {
     if (!selectedDay) return;
     const today = getTodayISO();
+    if (selectedDay === today) {
+      setDaysBefore((prev) => (prev > 1 ? 1 : prev));
+      setDaysAfter((prev) => (prev > 1 ? 1 : prev));
+      return;
+    }
     const ms = fromISODate(selectedDay).getTime() - fromISODate(today).getTime();
     const dayDiff = Math.round(ms / 86_400_000);
     if (dayDiff < 0) {
@@ -242,31 +244,6 @@ export function Timeline() {
 
   return (
     <div className="relative w-full h-full overflow-hidden">
-      {/* Back to Today indicator - shown when expanded beyond default range */}
-      {isExpanded && (
-        <button
-          type="button"
-          onClick={() => {
-            setDaysBefore(1);
-            setDaysAfter(1);
-            selectedDay$.set(getTodayISO());
-            setTimeout(scrollToToday, 100);
-          }}
-          className={cn(
-            "absolute top-2 left-1/2 -translate-x-1/2 z-10",
-            "px-3 py-1 rounded-full",
-            "bg-stone-800 dark:bg-stone-200",
-            "text-white dark:text-stone-900",
-            "text-xs font-mono font-medium",
-            "shadow-md hover:shadow-lg",
-            "transition-all duration-150",
-            "hover:scale-105",
-          )}
-        >
-          Today
-        </button>
-      )}
-
       <div
         ref={containerRef}
         className={cn(

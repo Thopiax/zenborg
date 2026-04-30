@@ -388,7 +388,7 @@ export function CycleDeck() {
   const renderColumns = (
     list: Array<{ area: Area; cards: VirtualDeckCard[] }>,
   ) => (
-    <div className="flex gap-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth">
+    <div className="flex gap-4 overflow-x-auto px-6 py-2 snap-x snap-mandatory scroll-smooth">
       {list.map(({ area, cards }) => (
         <CycleDeckColumn
           key={area.id}

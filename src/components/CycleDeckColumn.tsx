@@ -86,7 +86,7 @@ export function CycleDeckColumn({
       />
 
       {/* Column Content */}
-      <div className="flex flex-col gap-3 p-4 min-h-[120px] max-h-[400px] overflow-y-auto">
+      <div className="flex flex-col gap-3 p-3 min-h-[80px] max-h-[280px] overflow-y-auto">
         {cards.map((card) => (
           <VirtualDeckStack
             key={card.plan.id}
