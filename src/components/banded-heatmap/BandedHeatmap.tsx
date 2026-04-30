@@ -18,6 +18,7 @@ import {
   deriveBandedHeatmapViewModel,
   type HeatmapViewModel,
 } from "@/infrastructure/state/bandedHeatmapViewModel";
+import { phaseBackgrounds } from "@/lib/design-tokens";
 import { BandedHeatmapAxis } from "./BandedHeatmapAxis";
 import { BandedHeatmapCycleBlock } from "./BandedHeatmapCycleBlock";
 import { BandedHeatmapGapSegment } from "./BandedHeatmapGapSegment";
@@ -112,11 +113,12 @@ export function BandedHeatmap({
     return vm.days.findIndex((d) => d.date === selectedDay);
   }, [selectedDay, vm.days, vm.todayIndex]);
 
+  // Shared with TimelineCell — same vocabulary across surfaces.
   const phaseFallowClasses: string[] = [
-    "bg-stone-100 dark:bg-stone-800",
-    "bg-stone-200 dark:bg-stone-700",
-    "bg-stone-300 dark:bg-stone-600",
-    "bg-stone-400 dark:bg-stone-500",
+    phaseBackgrounds[0],
+    phaseBackgrounds[1],
+    phaseBackgrounds[2],
+    phaseBackgrounds[3],
   ];
 
   const scrollRef = useRef<HTMLDivElement>(null);
