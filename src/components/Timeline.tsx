@@ -9,10 +9,12 @@ import {
   timeTick$,
   visiblePhases$,
 } from "@/infrastructure/state/store";
+import { selectedDay$ } from "@/infrastructure/state/ui-store";
 import {
   fromISODate,
   getDateLabel,
   getExtendedTimelineDays,
+  getTodayISO,
 } from "@/lib/dates";
 import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
@@ -138,11 +140,13 @@ export function Timeline() {
   const currentPhase = use$(currentPhase$) as Phase | null;
   // Subscribe to timeTick$ so getExtendedTimelineDays recalculates on tick
   use$(timeTick$);
+  const selectedDay = use$(selectedDay$);
   const [daysBefore, setDaysBefore] = useState(1);
   const [daysAfter, setDaysAfter] = useState(1);
   const timelineDays = getExtendedTimelineDays(daysBefore, daysAfter);
   const containerRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLDivElement>(null);
+  const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [isReady, setIsReady] = useState(false);
 
   const handleLoadEarlier = () => {
@@ -153,7 +157,11 @@ export function Timeline() {
     setDaysAfter((prev) => prev + 3);
   };
 
-  const isExpanded = daysBefore > 1 || daysAfter > 1;
+  const todayISO = getTodayISO();
+  const isExpanded =
+    daysBefore > 1 ||
+    daysAfter > 1 ||
+    (selectedDay !== null && selectedDay !== todayISO);
 
   // Scroll to calendar today (not active day — active day can shift to
   // yesterday before morning starts, which would surprise users opening the
@@ -174,8 +182,12 @@ export function Timeline() {
     }
   }, []);
 
-  // Ensure today is scrolled into view on mount
+  // Ensure today is scrolled into view on mount (skip if a day is already selected)
   useEffect(() => {
+    if (selectedDay$.peek()) {
+      setIsReady(true);
+      return;
+    }
     const timeout = setTimeout(scrollToToday, 200);
     return () => clearTimeout(timeout);
   }, [scrollToToday]);
@@ -184,12 +196,38 @@ export function Timeline() {
   useEffect(() => {
     const handleFocus = () => {
       timeTick$.set((t) => t + 1);
-      scrollToToday();
+      if (!selectedDay$.peek()) scrollToToday();
     };
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, [scrollToToday]);
+
+  // Auto-expand the rendered range to include selectedDay, then scroll to it.
+  useEffect(() => {
+    if (!selectedDay) return;
+    const today = getTodayISO();
+    const ms = fromISODate(selectedDay).getTime() - fromISODate(today).getTime();
+    const dayDiff = Math.round(ms / 86_400_000);
+    if (dayDiff < 0) {
+      const need = -dayDiff;
+      setDaysBefore((prev) => (prev < need ? need : prev));
+    } else if (dayDiff > 0) {
+      setDaysAfter((prev) => (prev < dayDiff ? dayDiff : prev));
+    }
+  }, [selectedDay]);
+
+  // Scroll the selected day into view once it's rendered.
+  useEffect(() => {
+    if (!selectedDay) return;
+    requestAnimationFrame(() => {
+      dayRefs.current[selectedDay]?.scrollIntoView({
+        behavior: "smooth",
+        inline: "start",
+        block: "nearest",
+      });
+    });
+  }, [selectedDay, daysBefore, daysAfter]);
 
   // Tick every 60s so phase transitions happen even if app stays open
   useEffect(() => {
@@ -211,6 +249,7 @@ export function Timeline() {
           onClick={() => {
             setDaysBefore(1);
             setDaysAfter(1);
+            selectedDay$.set(getTodayISO());
             setTimeout(scrollToToday, 100);
           }}
           className={cn(
@@ -267,7 +306,10 @@ export function Timeline() {
         {timelineDays.map(({ date, isToday, isActiveDay }, index) => (
           <DayRow
             key={date}
-            ref={isToday ? todayRef : null}
+            ref={(el) => {
+              dayRefs.current[date] = el;
+              if (isToday) todayRef.current = el;
+            }}
             day={date}
             isToday={isToday}
             isActiveDay={isActiveDay}
