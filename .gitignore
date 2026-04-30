@@ -42,6 +42,13 @@ next-env.d.ts
 
 .claude/worktrees/**
 .claude/settings.local.json
+**/.claude/settings.local.json
 .worktrees/
 
 feature-lab
+
+# playwright mcp session dumps
+.playwright-mcp/
+
+# scraped/local data dumps
+/data/
