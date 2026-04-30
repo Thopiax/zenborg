@@ -11,12 +11,12 @@ export function BandedHeatmapSelectionCursor({
 
   return (
     <div
-      className="absolute pointer-events-none rounded-md border border-stone-700 dark:border-stone-300"
+      className="absolute pointer-events-none rounded-sm ring-1 ring-stone-500/70 dark:ring-stone-400/70"
       style={{
-        left: x - 3,
-        width: CELL_SIZE + 6,
-        top: -3,
-        bottom: -3,
+        left: x - 1,
+        width: CELL_SIZE + 2,
+        top: -1,
+        bottom: -1,
         zIndex: 4,
       }}
     />
