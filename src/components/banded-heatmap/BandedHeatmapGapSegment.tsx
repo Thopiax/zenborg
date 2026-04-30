@@ -14,14 +14,14 @@ interface BandedHeatmapGapSegmentProps {
   days: HeatmapDay[];
   rows: Phase[];
   areaById: Map<string, Area>;
-  phaseColors: Partial<Record<Phase, string>>;
+  phaseFallowClasses: string[];
 }
 
 export function BandedHeatmapGapSegment({
   days,
   rows,
   areaById,
-  phaseColors,
+  phaseFallowClasses,
 }: BandedHeatmapGapSegmentProps) {
   const segmentWidth = days.length * STRIDE;
   const gridWidth = days.length * STRIDE - CELL_GAP;
@@ -39,7 +39,7 @@ export function BandedHeatmapGapSegment({
           gap: ROW_GAP,
         }}
       >
-        {rows.map((phase) => (
+        {rows.map((phase, rowIndex) => (
           <div
             key={phase}
             style={{
@@ -56,7 +56,7 @@ export function BandedHeatmapGapSegment({
                 key={day.date}
                 cell={day.cells[phase]}
                 areaById={areaById}
-                fallowColor={phaseColors[phase]}
+                fallowClassName={phaseFallowClasses[rowIndex]}
               />
             ))}
           </div>
