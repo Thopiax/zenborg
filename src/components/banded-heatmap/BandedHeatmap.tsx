@@ -20,6 +20,8 @@ import {
 } from "@/infrastructure/state/bandedHeatmapViewModel";
 import { phaseBackgrounds } from "@/lib/design-tokens";
 import { BandedHeatmapAxis } from "./BandedHeatmapAxis";
+import { BandedHeatmapCreateDraft } from "./BandedHeatmapCreateDraft";
+import { BandedHeatmapCreatePopup } from "./BandedHeatmapCreatePopup";
 import { BandedHeatmapCycleBlock } from "./BandedHeatmapCycleBlock";
 import { BandedHeatmapGapSegment } from "./BandedHeatmapGapSegment";
 import { BandedHeatmapNeedle } from "./BandedHeatmapNeedle";
@@ -51,7 +53,6 @@ interface BandedHeatmapProps {
   selectedDay?: string | null;
   onCycleSelect?: (cycleId: string) => void;
   onDaySelect?: (date: string) => void;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onCycleCreate?: (props: CreateCycleProps) => void;
 }
 
@@ -71,6 +72,7 @@ export function BandedHeatmap({
   selectedDay,
   onCycleSelect,
   onDaySelect,
+  onCycleCreate,
 }: BandedHeatmapProps) {
   const vm: HeatmapViewModel = useMemo(
     () =>
@@ -123,11 +125,25 @@ export function BandedHeatmap({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef<{
-    startX: number;
-    startScrollLeft: number;
-    moved: boolean;
-  } | null>(null);
+  const dragRef = useRef<
+    | {
+        mode: "pan";
+        startX: number;
+        startScrollLeft: number;
+        moved: boolean;
+      }
+    | {
+        mode: "create";
+        startIdx: number;
+        startX: number;
+        moved: boolean;
+      }
+    | null
+  >(null);
+
+  type Draft = { startIdx: number; endIdx: number; valid: boolean };
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [pendingCreate, setPendingCreate] = useState<Draft | null>(null);
 
   // Imperative scroll helper. Idempotent — only mutates DOM scrollLeft.
   const ensureVisible = useCallback(
@@ -192,27 +208,6 @@ export function BandedHeatmap({
     [dayX, vm.days.length],
   );
 
-  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    const el = scrollRef.current;
-    if (!el || e.button !== 0) return;
-    dragRef.current = {
-      startX: e.clientX,
-      startScrollLeft: el.scrollLeft,
-      moved: false,
-    };
-    setIsDragging(true);
-    el.setPointerCapture(e.pointerId);
-  }, []);
-
-  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    const el = scrollRef.current;
-    if (!drag || !el) return;
-    const dx = e.clientX - drag.startX;
-    if (Math.abs(dx) > DRAG_THRESHOLD_PX) drag.moved = true;
-    el.scrollLeft = drag.startScrollLeft - dx;
-  }, []);
-
   const indexFromClientX = useCallback(
     (clientX: number): number | null => {
       const el = scrollRef.current;
@@ -223,6 +218,87 @@ export function BandedHeatmap({
       return indexAtX(clientX - rect.left);
     },
     [indexAtX],
+  );
+
+  const isGapDay = useCallback(
+    (idx: number): boolean =>
+      idx >= 0 && idx < vm.days.length && vm.days[idx].cycleId === null,
+    [vm.days],
+  );
+
+  const computeRangeValid = useCallback(
+    (start: number, end: number): boolean => {
+      const lo = Math.min(start, end);
+      const hi = Math.max(start, end);
+      for (let i = lo; i <= hi; i++) {
+        if (vm.days[i].cycleId !== null) return false;
+      }
+      return true;
+    },
+    [vm.days],
+  );
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const el = scrollRef.current;
+      if (!el || e.button !== 0) return;
+      // Bracket buttons handle their own click.
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button")) return;
+
+      const idx = indexFromClientX(e.clientX);
+      if (idx !== null && isGapDay(idx)) {
+        // Press in gap-space → start a create draft.
+        dragRef.current = {
+          mode: "create",
+          startIdx: idx,
+          startX: e.clientX,
+          moved: false,
+        };
+        setDraft({ startIdx: idx, endIdx: idx, valid: true });
+        setIsDragging(true);
+        el.setPointerCapture(e.pointerId);
+        return;
+      }
+
+      // Otherwise pan.
+      dragRef.current = {
+        mode: "pan",
+        startX: e.clientX,
+        startScrollLeft: el.scrollLeft,
+        moved: false,
+      };
+      setIsDragging(true);
+      el.setPointerCapture(e.pointerId);
+    },
+    [indexFromClientX, isGapDay],
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      const el = scrollRef.current;
+      if (!drag || !el) return;
+      const dx = e.clientX - drag.startX;
+      if (Math.abs(dx) > DRAG_THRESHOLD_PX) drag.moved = true;
+
+      if (drag.mode === "pan") {
+        el.scrollLeft = drag.startScrollLeft - dx;
+        return;
+      }
+
+      // Create mode — extend draft to current cell.
+      const idx = indexFromClientX(e.clientX);
+      if (idx === null) return;
+      const start = Math.min(drag.startIdx, idx);
+      const end = Math.max(drag.startIdx, idx);
+      setDraft({
+        startIdx: start,
+        endIdx: end,
+        valid: computeRangeValid(start, end),
+      });
+    },
+    [indexFromClientX, computeRangeValid],
   );
 
   const selectIndex = useCallback(
@@ -237,21 +313,29 @@ export function BandedHeatmap({
     (e: React.PointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current;
       const el = scrollRef.current;
-      if (drag && !drag.moved) {
+
+      if (drag?.mode === "create") {
+        if (draft?.valid) {
+          setPendingCreate(draft);
+        } else {
+          setDraft(null);
+        }
+      } else if (drag?.mode === "pan" && !drag.moved) {
         const target = e.target as HTMLElement | null;
-        const isBracket = target?.closest("button[data-cycle-bracket]");
+        const isBracket = target?.closest("button");
         if (!isBracket) {
           const idx = indexFromClientX(e.clientX);
           if (idx !== null) selectIndex(idx);
         }
       }
+
       dragRef.current = null;
       setIsDragging(false);
       if (el?.hasPointerCapture(e.pointerId)) {
         el.releasePointerCapture(e.pointerId);
       }
     },
-    [indexFromClientX, selectIndex],
+    [indexFromClientX, selectIndex, draft],
   );
 
   const onWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
@@ -369,7 +453,42 @@ export function BandedHeatmap({
             <BandedHeatmapSelectionCursor
               x={selectedIndex >= 0 ? dayX[selectedIndex] : null}
             />
+            {draft && (
+              <BandedHeatmapCreateDraft
+                startX={dayX[draft.startIdx]}
+                endX={dayX[draft.endIdx]}
+                valid={draft.valid}
+              />
+            )}
           </div>
+
+          {pendingCreate && (
+            <BandedHeatmapCreatePopup
+              startDate={vm.days[pendingCreate.startIdx].date}
+              endDate={vm.days[pendingCreate.endIdx].date}
+              dayCount={pendingCreate.endIdx - pendingCreate.startIdx + 1}
+              anchorX={
+                (dayX[pendingCreate.startIdx] +
+                  dayX[pendingCreate.endIdx] +
+                  CELL_SIZE) /
+                2
+              }
+              onCommit={({ name, intention }) => {
+                onCycleCreate?.({
+                  name,
+                  startDate: vm.days[pendingCreate.startIdx].date,
+                  endDate: vm.days[pendingCreate.endIdx].date,
+                  intention,
+                });
+                setPendingCreate(null);
+                setDraft(null);
+              }}
+              onCancel={() => {
+                setPendingCreate(null);
+                setDraft(null);
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -2,6 +2,8 @@
 
 import { useValue } from "@legendapp/state/react";
 import { useCallback, useMemo } from "react";
+import { CycleService } from "@/application/services/CycleService";
+import type { CreateCycleProps } from "@/domain/entities/Cycle";
 import {
   areas$,
   cycles$,
@@ -14,6 +16,8 @@ import {
 } from "@/infrastructure/state/ui-store";
 import { getTodayISO } from "@/lib/dates";
 import { BandedHeatmap } from "./BandedHeatmap";
+
+const cycleService = new CycleService();
 
 export function CycleDeckHeatmap() {
   const allCycles = useValue(() => cycles$.get());
@@ -35,6 +39,22 @@ export function CycleDeckHeatmap() {
 
   const handleCycleSelect = useCallback((cycleId: string) => {
     cycleDeckSelectedCycleId$.set(cycleId);
+  }, []);
+
+  const handleCycleCreate = useCallback((props: CreateCycleProps) => {
+    const result = cycleService.planCycle(
+      props.name,
+      undefined,
+      props.startDate,
+      props.endDate ?? undefined,
+      props.intention ?? null,
+    );
+    if ("error" in result) {
+      console.warn("[heatmap] cycle create failed:", result.error);
+      return;
+    }
+    cycleDeckSelectedCycleId$.set(result.id);
+    selectedDay$.set(result.startDate);
   }, []);
 
   const handleDaySelect = useCallback(
@@ -62,6 +82,7 @@ export function CycleDeckHeatmap() {
       selectedDay={selectedDay}
       onCycleSelect={handleCycleSelect}
       onDaySelect={handleDaySelect}
+      onCycleCreate={handleCycleCreate}
     />
   );
 }
