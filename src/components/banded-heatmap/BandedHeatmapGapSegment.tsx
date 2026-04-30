@@ -23,8 +23,8 @@ export function BandedHeatmapGapSegment({
   areaById,
   phaseFallowClasses,
 }: BandedHeatmapGapSegmentProps) {
-  const segmentWidth = days.length * STRIDE;
   const gridWidth = days.length * STRIDE - CELL_GAP;
+  const segmentWidth = gridWidth;
 
   return (
     <div

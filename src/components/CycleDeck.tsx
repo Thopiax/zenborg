@@ -173,7 +173,6 @@ export function CycleDeck() {
     if (!isHydrated) return null;
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        <CycleDeckHeatmap />
         <div className="px-6 py-4 text-center text-xs font-mono text-stone-400 dark:text-stone-500">
           no active cycle ·{" "}
           <button
@@ -184,6 +183,7 @@ export function CycleDeck() {
             plan one
           </button>
         </div>
+        <CycleDeckHeatmap />
         <CycleCalendarDialog
           open={createDialogOpen}
           onClose={() => setCreateDialogOpen(false)}
@@ -440,9 +440,9 @@ export function CycleDeck() {
 
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        <CycleDeckHeatmap />
         {header}
         {renderColumns(areasToShow)}
+        <CycleDeckHeatmap />
         <CycleCalendarDialog
           open={createDialogOpen}
           onClose={() => setCreateDialogOpen(false)}
@@ -455,7 +455,6 @@ export function CycleDeck() {
   if (!hasAnyCards) {
     return (
       <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        <CycleDeckHeatmap />
         {header}
         {!isCollapsed && (
           <div
@@ -475,6 +474,7 @@ export function CycleDeck() {
             </p>
           </div>
         )}
+        <CycleDeckHeatmap />
         <CycleCalendarDialog
           open={createDialogOpen}
           onClose={() => setCreateDialogOpen(false)}
@@ -485,7 +485,6 @@ export function CycleDeck() {
 
   return (
     <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-      <CycleDeckHeatmap />
       {header}
 
       {/* Droppable container for unallocating moments */}
@@ -517,6 +516,7 @@ export function CycleDeck() {
         </div>
       )}
 
+      <CycleDeckHeatmap />
       <CycleCalendarDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
