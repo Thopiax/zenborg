@@ -30,7 +30,7 @@ describe("HabitService", () => {
       if ("error" in habit) throw new Error(habit.error);
 
       expect(habit.id).toBeDefined();
-      expect(habit.name).toBe("morning run");
+      expect(habit.name).toBe("Morning Run");
       expect(habit.areaId).toBe("area-123");
       expect(habit.isArchived).toBe(false);
 
@@ -111,11 +111,11 @@ describe("HabitService", () => {
 
       if ("error" in updated) throw new Error(updated.error);
 
-      expect(updated.name).toBe("jogging");
+      expect(updated.name).toBe("Jogging");
 
       // Verify store is updated
       const storeHabit = habits$.get()[habit.id];
-      expect(storeHabit.name).toBe("jogging");
+      expect(storeHabit.name).toBe("Jogging");
     });
 
     it("should update attitude", () => {
@@ -172,7 +172,7 @@ describe("HabitService", () => {
 
       // Original name should be preserved in store
       const storeHabit = habits$.get()[habit.id];
-      expect(storeHabit.name).toBe("running");
+      expect(storeHabit.name).toBe("Running");
     });
 
     it("should return error if habit not found", () => {
@@ -393,7 +393,7 @@ describe("HabitService", () => {
 
       expect(habit).toBeDefined();
       expect(habit?.id).toBe(created.id);
-      expect(habit?.name).toBe("running");
+      expect(habit?.name).toBe("Running");
     });
 
     it("should return null if habit not found", () => {
@@ -461,7 +461,7 @@ describe("HabitService", () => {
       const activeHabits = service.getActiveHabits();
 
       expect(activeHabits).toHaveLength(1);
-      expect(activeHabits[0].name).toBe("active");
+      expect(activeHabits[0].name).toBe("Active");
       expect(activeHabits.every((h) => !h.isArchived)).toBe(true);
     });
 
@@ -472,9 +472,9 @@ describe("HabitService", () => {
 
       const activeHabits = service.getActiveHabits();
 
-      expect(activeHabits[0].name).toBe("first");
-      expect(activeHabits[1].name).toBe("second");
-      expect(activeHabits[2].name).toBe("third");
+      expect(activeHabits[0].name).toBe("First");
+      expect(activeHabits[1].name).toBe("Second");
+      expect(activeHabits[2].name).toBe("Third");
     });
   });
 });
