@@ -6,8 +6,17 @@ import { Phase, type PhaseConfig, getVisiblePhases } from "@/domain/value-object
 export type HeatmapTense = "past" | "active" | "future";
 export type HeatmapCellState = "planted" | "fallow" | "unplanted";
 
+export interface HeatmapCellAreaShare {
+  areaId: string;
+  count: number;
+}
+
 export interface HeatmapCell {
+  /** Dominant area (most moments; tie-broken by recency). */
   areaId: string | null;
+  /** All areas with at least one moment in this (day, phase), sorted by
+   *  area.order ascending so the stripe layout is stable across days. */
+  areas: HeatmapCellAreaShare[];
   state: HeatmapCellState;
   tense: HeatmapTense;
 }
@@ -135,6 +144,7 @@ function buildCell(
   date: string,
   phase: Phase,
   moments: Moment[],
+  areaOrder: Map<string, number>,
   today: string
 ): HeatmapCell {
   const tense = tenseOf(date, today);
@@ -145,13 +155,29 @@ function buildCell(
   if (matches.length === 0) {
     return {
       areaId: null,
+      areas: [],
       state: tense === "future" ? "unplanted" : "fallow",
       tense,
     };
   }
 
+  const counts = new Map<string, number>();
+  for (const m of matches) {
+    counts.set(m.areaId, (counts.get(m.areaId) ?? 0) + 1);
+  }
+  const areas: HeatmapCellAreaShare[] = Array.from(counts, ([areaId, count]) => ({
+    areaId,
+    count,
+  })).sort((a, b) => {
+    const oa = areaOrder.get(a.areaId) ?? Number.MAX_SAFE_INTEGER;
+    const ob = areaOrder.get(b.areaId) ?? Number.MAX_SAFE_INTEGER;
+    if (oa !== ob) return oa - ob;
+    return a.areaId.localeCompare(b.areaId);
+  });
+
   return {
     areaId: dominantAreaId(matches),
+    areas,
     state: "planted",
     tense,
   };
@@ -225,18 +251,19 @@ function determineRange(
 export function deriveBandedHeatmapViewModel(
   input: DeriveInput
 ): HeatmapViewModel {
-  const { cycles, moments, phaseConfigs, today } = input;
+  const { cycles, moments, areas, phaseConfigs, today } = input;
   const futurePadDays = input.futurePadDays ?? ONE_YEAR_DAYS;
 
   const rows = getVisiblePhases(phaseConfigs).map((p) => p.phase);
   const { start, end } = determineRange(cycles, today, futurePadDays);
   const dateList = eachDay(start, end);
+  const areaOrder = new Map(areas.map((a) => [a.id, a.order]));
 
   const days: HeatmapDay[] = dateList.map((date) => {
     const cycle = findCycleForDate(date, cycles, today);
     const cells = {} as Record<Phase, HeatmapCell>;
     for (const phase of rows) {
-      cells[phase] = buildCell(date, phase, moments, today);
+      cells[phase] = buildCell(date, phase, moments, areaOrder, today);
     }
     return {
       date,
