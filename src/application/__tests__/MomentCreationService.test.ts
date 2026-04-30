@@ -16,7 +16,7 @@ describe("MomentCreationService", () => {
 
         expect(isMomentError(result)).toBe(false);
         if (!isMomentError(result)) {
-          expect(result.name).toBe("morning run");
+          expect(result.name).toBe("Morning Run");
           expect(result.areaId).toBe("area-123");
           expect(result.day).toBeNull();
           expect(result.phase).toBeNull();
@@ -88,7 +88,7 @@ describe("MomentCreationService", () => {
 
         expect(isMomentError(result)).toBe(false);
         if (!isMomentError(result)) {
-          expect(result.name).toBe("morning run");
+          expect(result.name).toBe("Morning Run");
           expect(result.day).toBe("2025-01-15");
           expect(result.phase).toBe(Phase.MORNING);
           expect(result.order).toBe(0);
@@ -179,7 +179,7 @@ describe("MomentCreationService", () => {
 
         expect(isMomentError(result)).toBe(false);
         if (!isMomentError(result)) {
-          expect(result.name).toBe("morning run");
+          expect(result.name).toBe("Morning Run");
         }
       });
 

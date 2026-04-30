@@ -23,7 +23,7 @@ describe("MomentUpdateService", () => {
 
         expect(isMomentError(result)).toBe(false);
         if (!isMomentError(result)) {
-          expect(result.name).toBe("evening walk");
+          expect(result.name).toBe("Evening Walk");
           expect(result.areaId).toBe("area-123"); // Unchanged
           expect(result.id).toBe(moment.id); // Same moment
           expect(result.updatedAt).not.toBe(pastMoment.updatedAt); // Timestamp updated
@@ -77,7 +77,7 @@ describe("MomentUpdateService", () => {
 
         expect(isMomentError(result)).toBe(false);
         if (!isMomentError(result)) {
-          expect(result.name).toBe("evening walk");
+          expect(result.name).toBe("Evening Walk");
         }
       });
     });
@@ -97,7 +97,7 @@ describe("MomentUpdateService", () => {
         expect(isMomentError(result)).toBe(false);
         if (!isMomentError(result)) {
           expect(result.areaId).toBe("area-456");
-          expect(result.name).toBe("task"); // Unchanged
+          expect(result.name).toBe("Task"); // Unchanged
         }
       });
     });
@@ -208,7 +208,7 @@ describe("MomentUpdateService", () => {
 
         expect(isMomentError(result)).toBe(false);
         if (!isMomentError(result)) {
-          expect(result.name).toBe("new task");
+          expect(result.name).toBe("New Task");
           expect(result.areaId).toBe("area-456");
           expect(result.tags).toEqual(["important"]);
         }
@@ -229,7 +229,7 @@ describe("MomentUpdateService", () => {
 
         expect(isMomentError(result)).toBe(false);
         if (!isMomentError(result)) {
-          expect(result.name).toBe("updated task");
+          expect(result.name).toBe("Updated Task");
           // Other fields unchanged
           expect(result.areaId).toBe("area-123");
           expect(result.tags).toEqual(["tag1", "tag2"]);

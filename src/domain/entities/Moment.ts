@@ -167,7 +167,7 @@ export function createMoment(props: CreateMomentProps): MomentResult {
 
   return {
     id: crypto.randomUUID(),
-    name: name.trim().toLowerCase(),
+    name: name.trim(),
     areaId: areaId.trim(),
     habitId: habitId ? habitId.trim() : null, // Trim or null
     cycleId: cycleId ? cycleId.trim() : null, // Trim or null
@@ -262,7 +262,7 @@ export function updateMomentName(
 
   return {
     ...moment,
-    name: name.trim().toLowerCase(),
+    name: name.trim(),
     updatedAt: new Date().toISOString(),
   };
 }
