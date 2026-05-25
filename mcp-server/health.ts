@@ -12,6 +12,11 @@ export type Health =
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const BUDDING_PERIOD_COUNT = 3;
+/**
+ * RETURNING extends the KEEPING silence threshold to acknowledge re-engagement
+ * friction. Mirrors src/domain/services/HabitHealthService.ts.
+ */
+const RETURNING_THRESHOLD_MULTIPLIER = 1.5;
 
 /**
  * Parse a YYYY-MM-DD vault date string as local midnight.
@@ -44,6 +49,16 @@ export function computeHealth(
 
   if (habit.attitude === 'BEGINNING') {
     return habitMoments.length >= 5 ? 'budding' : 'seedling';
+  }
+
+  if (habit.attitude === 'RETURNING') {
+    if (!rhythm) return 'unstated';
+    const threshold =
+      rhythmSilenceThresholdDays(rhythm) * RETURNING_THRESHOLD_MULTIPLIER;
+    const last = latestAllocationDate(habitMoments);
+    if (last === null) return 'wilting';
+    const daysSince = (now.getTime() - last.getTime()) / MS_PER_DAY;
+    return daysSince <= threshold ? 'blooming' : 'wilting';
   }
 
   if (habit.attitude === 'KEEPING') {
