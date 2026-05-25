@@ -26,6 +26,7 @@ import { z } from 'zod';
 
 export const ATTITUDES = [
   'BEGINNING',
+  'RETURNING',
   'KEEPING',
   'BUILDING',
   'PUSHING',
