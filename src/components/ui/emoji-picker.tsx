@@ -1,29 +1,66 @@
 "use client";
 
 import {
+  type Emoji,
   type EmojiPickerListCategoryHeaderProps,
   type EmojiPickerListEmojiProps,
   type EmojiPickerListRowProps,
   EmojiPicker as EmojiPickerPrimitive,
 } from "frimousse";
 import { LoaderIcon, SearchIcon } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+const EmojiPickerSelectContext = React.createContext<
+  ((emoji: Emoji) => void) | undefined
+>(undefined);
+
 function EmojiPicker({
   className,
+  onEmojiSelect,
+  children,
   ...props
 }: React.ComponentProps<typeof EmojiPickerPrimitive.Root>) {
   return (
-    <EmojiPickerPrimitive.Root
-      className={cn(
-        "bg-popover text-popover-foreground isolate flex h-full w-fit flex-col overflow-hidden rounded-md",
-        className
-      )}
-      data-slot="emoji-picker"
-      {...props}
-    />
+    <EmojiPickerSelectContext.Provider value={onEmojiSelect}>
+      <EmojiPickerPrimitive.Root
+        className={cn(
+          "bg-popover text-popover-foreground isolate flex h-full w-fit flex-col overflow-hidden rounded-md",
+          className
+        )}
+        data-slot="emoji-picker"
+        onEmojiSelect={onEmojiSelect}
+        {...props}
+      >
+        {children}
+      </EmojiPickerPrimitive.Root>
+    </EmojiPickerSelectContext.Provider>
+  );
+}
+
+function EmojiPickerEmptyFallback({ search }: { search: string }) {
+  const onSelect = React.useContext(EmojiPickerSelectContext);
+  const trimmed = search.trim();
+
+  if (!trimmed) {
+    return <span>No emoji found.</span>;
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3 px-4 text-center">
+      <span>No emoji found.</span>
+      <button
+        type="button"
+        onClick={() => onSelect?.({ emoji: trimmed, label: trimmed })}
+        className="flex items-center gap-2 rounded-md border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-1.5 text-xs hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+      >
+        <span className="text-base">{trimmed}</span>
+        <span className="text-stone-600 dark:text-stone-400">
+          Use as character
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -108,7 +145,7 @@ function EmojiPickerContent({
         className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm"
         data-slot="emoji-picker-empty"
       >
-        No emoji found.
+        {({ search }) => <EmojiPickerEmptyFallback search={search} />}
       </EmojiPickerPrimitive.Empty>
       <EmojiPickerPrimitive.List
         className="select-none pb-1"
