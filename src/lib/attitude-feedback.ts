@@ -166,6 +166,11 @@ export function getAttitudeFeedback(
     case Attitude.BEGINNING:
       return getBeginningFeedback(allMoments, moment.name);
 
+    case Attitude.RETURNING:
+      // RETURNING shares KEEPING's "days since last" framing (presence-based);
+      // the difference is in health tolerance, not in surfaced feedback.
+      return getKeepingFeedback(allMoments, moment.name);
+
     case Attitude.KEEPING:
       return getKeepingFeedback(allMoments, moment.name);
 
