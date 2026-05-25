@@ -11,11 +11,13 @@
  */
 
 /**
- * The five attitudes representing different relationships to a practice
+ * The six attitudes representing different relationships to a practice
  */
 export enum Attitude {
   /** First encounters, exploration - shows count of times allocated */
   BEGINNING = "BEGINNING",
+  /** Re-engagement after a lapse - prior identity acknowledged, friction expected */
+  RETURNING = "RETURNING",
   /** Sporadic engagement, maintaining connection - shows days since last */
   KEEPING = "KEEPING",
   /** Regular practice, developing capacity - shows frequency patterns */
@@ -59,6 +61,14 @@ export const ATTITUDE_METADATA: Record<
     shows: "Count of times allocated",
     icon: "◇",
     hotkey: "1",
+    className: "font-mono text-stone-700 dark:text-stone-300",
+  },
+  [Attitude.RETURNING]: {
+    label: "Returning",
+    description: "Re-engaging after a lapse",
+    shows: "Days since last allocation (forgiving threshold)",
+    icon: "↻",
+    hotkey: "r",
     className: "font-mono text-stone-700 dark:text-stone-300",
   },
   [Attitude.KEEPING]: {
