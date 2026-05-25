@@ -182,6 +182,7 @@ export function groupByAttitude(
 ): MomentGroup[] {
   const groups: Record<string, Moment[]> = {
     beginning: [],
+    returning: [],
     keeping: [],
     building: [],
     pushing: [],
@@ -199,6 +200,9 @@ export function groupByAttitude(
     switch (attitude) {
       case Attitude.BEGINNING:
         groups.beginning.push(moment);
+        break;
+      case Attitude.RETURNING:
+        groups.returning.push(moment);
         break;
       case Attitude.KEEPING:
         groups.keeping.push(moment);
@@ -232,6 +236,12 @@ export function groupByAttitude(
       groupLabel: ATTITUDE_METADATA[Attitude.BEGINNING].label,
       emoji: ATTITUDE_METADATA[Attitude.BEGINNING].icon,
       moments: sortMoments(groups.beginning),
+    },
+    {
+      groupId: "attitude-returning",
+      groupLabel: ATTITUDE_METADATA[Attitude.RETURNING].label,
+      emoji: ATTITUDE_METADATA[Attitude.RETURNING].icon,
+      moments: sortMoments(groups.returning),
     },
     {
       groupId: "attitude-keeping",
