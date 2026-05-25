@@ -12,6 +12,12 @@ import { fromISODate } from "@/lib/dates";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const BUDDING_PERIOD_COUNT = 3;
+/**
+ * RETURNING extends the KEEPING silence threshold to acknowledge re-engagement
+ * friction. A returning practitioner has prior identity work; their tolerance
+ * for gaps should sit between BEGINNING (no wilt) and KEEPING (strict threshold).
+ */
+const RETURNING_THRESHOLD_MULTIPLIER = 1.5;
 
 /**
  * HabitHealthService — pure derivation of per-habit health from
@@ -41,6 +47,8 @@ export class HabitHealthService {
     switch (attitude) {
       case Attitude.BEGINNING:
         return this.computeBeginning(habitMoments);
+      case Attitude.RETURNING:
+        return this.computeReturning(rhythm, habitMoments, now);
       case Attitude.KEEPING:
         return this.computeKeeping(rhythm, habitMoments, now);
       case Attitude.BUILDING:
@@ -62,6 +70,27 @@ export class HabitHealthService {
   ): Health {
     if (!rhythm) return "unstated";
     const threshold = rhythmSilenceThresholdDays(rhythm);
+
+    const lastAllocation = this.latestAllocationDate(habitMoments, now);
+    if (lastAllocation === null) return "wilting";
+
+    const daysSince = (now.getTime() - lastAllocation.getTime()) / MS_PER_DAY;
+    return daysSince <= threshold ? "blooming" : "wilting";
+  }
+
+  /**
+   * RETURNING — like KEEPING but with an extended silence threshold to
+   * acknowledge re-engagement friction. Threshold = KEEPING threshold × 1.5.
+   * Without a rhythm, stays unstated (cannot derive a threshold).
+   */
+  private computeReturning(
+    rhythm: Rhythm | null,
+    habitMoments: Moment[],
+    now: Date
+  ): Health {
+    if (!rhythm) return "unstated";
+    const threshold =
+      rhythmSilenceThresholdDays(rhythm) * RETURNING_THRESHOLD_MULTIPLIER;
 
     const lastAllocation = this.latestAllocationDate(habitMoments, now);
     if (lastAllocation === null) return "wilting";

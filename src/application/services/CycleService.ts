@@ -52,7 +52,8 @@ export type { TemplateDuration };
 export type CyclePlanningProposalReason =
   | "wilting"
   | "on-rhythm"
-  | "beginning";
+  | "beginning"
+  | "returning";
 
 export interface CyclePlanningProposal {
   habitId: string;
@@ -755,8 +756,16 @@ export class CycleService {
       if (effectiveRhythm === null) continue;
 
       const suggestedCount = rhythmToCycleBudget(effectiveRhythm, cycleDays);
-      const reason: CyclePlanningProposalReason =
-        currentHealth === "wilting" ? "wilting" : "on-rhythm";
+      let reason: CyclePlanningProposalReason;
+      if (currentHealth === "wilting") {
+        reason = "wilting";
+      } else if (habit.attitude === Attitude.RETURNING) {
+        // Surface re-engagement explicitly so the planner can see the habit
+        // is being budgeted as a return, not a steady-state on-rhythm continuation.
+        reason = "returning";
+      } else {
+        reason = "on-rhythm";
+      }
 
       proposals.push({
         habitId: habit.id,
