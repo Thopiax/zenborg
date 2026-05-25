@@ -113,6 +113,63 @@ describe("HabitHealthService — BEGINNING", () => {
   });
 });
 
+describe("HabitHealthService — RETURNING", () => {
+  it("is 'unstated' when RETURNING has no rhythm", () => {
+    const habit = baseHabit({ attitude: Attitude.RETURNING });
+    const now = new Date("2026-04-20");
+    expect(service.computeHealth(habit, null, [], now)).toBe("unstated");
+  });
+
+  it("is 'wilting' when no allocations exist and rhythm is set", () => {
+    const habit = baseHabit({
+      attitude: Attitude.RETURNING,
+      rhythm: { period: "monthly", count: 2 },
+    });
+    expect(service.computeHealth(habit, null, [], new Date())).toBe("wilting");
+  });
+
+  it("is 'blooming' when last allocation is within RETURNING's extended threshold", () => {
+    // monthly count=2 → KEEPING threshold = 15 days; RETURNING = 22.5 days.
+    const rhythm: Rhythm = { period: "monthly", count: 2 };
+    const habit = baseHabit({
+      attitude: Attitude.RETURNING,
+      rhythm,
+    });
+    const now = new Date("2026-04-20");
+    const last = new Date("2026-04-01"); // 19 days ago — past KEEPING threshold, within RETURNING
+    expect(
+      service.computeHealth(habit, null, [allocatedMoment(habit.id, last)], now)
+    ).toBe("blooming");
+  });
+
+  it("is more forgiving than KEEPING for the same gap", () => {
+    const rhythm: Rhythm = { period: "monthly", count: 2 }; // KEEPING=15d, RETURNING=22.5d
+    const now = new Date("2026-04-20");
+    const last = new Date("2026-04-01"); // 19 days ago
+    const moments = [allocatedMoment("habit-1", last)];
+
+    const keeping = baseHabit({ id: "habit-1", attitude: Attitude.KEEPING, rhythm });
+    const returning = baseHabit({
+      id: "habit-1",
+      attitude: Attitude.RETURNING,
+      rhythm,
+    });
+
+    expect(service.computeHealth(keeping, null, moments, now)).toBe("wilting");
+    expect(service.computeHealth(returning, null, moments, now)).toBe("blooming");
+  });
+
+  it("is 'wilting' when last allocation is past RETURNING's extended threshold", () => {
+    const rhythm: Rhythm = { period: "monthly", count: 2 }; // RETURNING threshold = 22.5 days
+    const habit = baseHabit({ attitude: Attitude.RETURNING, rhythm });
+    const now = new Date("2026-04-30");
+    const last = new Date("2026-04-01"); // 29 days ago — past RETURNING threshold
+    expect(
+      service.computeHealth(habit, null, [allocatedMoment(habit.id, last)], now)
+    ).toBe("wilting");
+  });
+});
+
 describe("HabitHealthService — KEEPING", () => {
   it("is 'unstated' when KEEPING has no rhythm", () => {
     const habit = baseHabit({ attitude: Attitude.KEEPING });
@@ -226,6 +283,11 @@ describe("HabitHealthService — migration safety (pre-rhythm habits)", () => {
 
   it("KEEPING habit without rhythm stays unstated (not wilting)", () => {
     const habit = baseHabit({ attitude: Attitude.KEEPING });
+    expect(service.computeHealth(habit, null, [], new Date())).toBe("unstated");
+  });
+
+  it("RETURNING habit without rhythm stays unstated (not wilting)", () => {
+    const habit = baseHabit({ attitude: Attitude.RETURNING });
     expect(service.computeHealth(habit, null, [], new Date())).toBe("unstated");
   });
 

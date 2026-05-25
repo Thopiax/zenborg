@@ -138,6 +138,7 @@ describe("AttitudeService", () => {
       // Test each attitude type
       const attitudeTypes = [
         Attitude.BEGINNING,
+        Attitude.RETURNING,
         Attitude.KEEPING,
         Attitude.BUILDING,
         Attitude.PUSHING,
