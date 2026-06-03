@@ -1,5 +1,5 @@
 import type { HeatmapDay } from "@/infrastructure/state/bandedHeatmapViewModel";
-import { AXIS_HEIGHT, CELL_SIZE } from "./constants";
+import { AXIS_HEIGHT } from "./constants";
 
 interface BandedHeatmapAxisProps {
   days: HeatmapDay[];
@@ -24,11 +24,6 @@ const MONTH_LABELS = [
 
 const isMonthStart = (date: string) => date.slice(8, 10) === "01";
 
-const isWeekend = (date: string): boolean => {
-  const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return dow === 0 || dow === 6;
-};
-
 export function BandedHeatmapAxis({
   days,
   todayIndex,
@@ -44,8 +39,7 @@ export function BandedHeatmapAxis({
         if (x === undefined) return null;
         const isNow = index === todayIndex;
         const isMonth = isMonthStart(day.date);
-        const weekend = isWeekend(day.date);
-        if (!isNow && !isMonth && !weekend) return null;
+        if (!isNow && !isMonth) return null;
 
         if (isNow) {
           return (
@@ -68,18 +62,7 @@ export function BandedHeatmapAxis({
             </div>
           );
         }
-        // Weekend tick — tiny dot centered under the day column.
-        return (
-          <div
-            key={day.date}
-            className="absolute bottom-1 rounded-full bg-stone-400/40 dark:bg-stone-500/40"
-            style={{
-              left: x + CELL_SIZE / 2 - 1,
-              width: 2,
-              height: 2,
-            }}
-          />
-        );
+        return null;
       })}
     </div>
   );

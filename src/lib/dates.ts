@@ -66,7 +66,7 @@ export function getTimelineDays(): {
 export function getExtendedTimelineDays(
   daysBefore = 2,
   daysAfter = 3,
-  centerDate?: string
+  centerDate?: string,
 ): Array<{ date: string; isToday: boolean; isActiveDay: boolean }> {
   const today = new Date();
   const todayISO = toISODate(today);
@@ -171,7 +171,7 @@ export function getActiveDay(morningStartHour = 6): string {
  */
 export function formatCycleDateRange(
   startDate: string,
-  endDate: string | null
+  endDate: string | null,
 ): string {
   const start = fromISODate(startDate);
   const end = endDate ? fromISODate(endDate) : null;
@@ -298,5 +298,7 @@ export function formatCycleSubtitle(
   if (endDiff === 1) {
     return "ends tomorrow";
   }
-  return `${formatDistanceToNowStrict(end)} left`;
+  // Full calendar days left, inclusive of today (endDiff counts the end day
+  // but not today; +1 makes today count as a day you still have).
+  return `${endDiff + 1} days left`;
 }
