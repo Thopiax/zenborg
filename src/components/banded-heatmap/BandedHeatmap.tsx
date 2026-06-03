@@ -3,6 +3,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import { format } from "date-fns";
 import {
   useCallback,
   useEffect,
@@ -20,6 +21,7 @@ import {
   type HeatmapViewModel,
 } from "@/infrastructure/state/bandedHeatmapViewModel";
 import { cycleResizePreview$ } from "@/infrastructure/state/ui-store";
+import { fromISODate } from "@/lib/dates";
 import { phaseBackgrounds } from "@/lib/design-tokens";
 import { BandedHeatmapAxis } from "./BandedHeatmapAxis";
 import { BandedHeatmapCreateDraft } from "./BandedHeatmapCreateDraft";
@@ -40,6 +42,17 @@ import {
 
 const DRAG_THRESHOLD_PX = 4;
 const KEEP_ON_SCREEN_PADDING = STRIDE * 2;
+
+// Sat/Sun by UTC day-of-week, matching the rest of the heatmap's date math.
+// Locale-aware weekends (Fri/Sat, Sunday-start weeks) are deferred — see
+// docs/ideas/archive/weekend-day-styling.md.
+const isWeekend = (date: string): boolean => {
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return dow === 0 || dow === 6;
+};
+
+const formatHoverDate = (date: string): string =>
+  format(fromISODate(date), "EEE, MMM d");
 // Tailwind `gap-x-1` between segments — must match the value on the segments
 // flex row below. Segment offsets accumulate this between segments.
 const SEGMENT_FLEX_GAP_PX = 4;
@@ -110,6 +123,18 @@ export function BandedHeatmap({
     return dayX[last.endIndex] + STRIDE;
   }, [vm.segments, dayX]);
 
+  // Faint full-height washes behind weekend columns — ambient banding, not a
+  // marker. Rendered in the overlay layer beneath the needle/cursor.
+  const weekendLefts = useMemo(() => {
+    const out: { left: number; date: string }[] = [];
+    for (let i = 0; i < vm.days.length; i++) {
+      if (isWeekend(vm.days[i].date)) {
+        out.push({ left: dayX[i], date: vm.days[i].date });
+      }
+    }
+    return out;
+  }, [vm.days, dayX]);
+
   // Selection is fully derived from the `selectedDay` prop. Defaults to
   // today's index when no day is selected, so the cursor is always visible.
   const selectedIndex = useMemo(() => {
@@ -147,6 +172,11 @@ export function BandedHeatmap({
   }, [resizePreview, cycles, vm.days, dayX]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Hover affordance — date label following the pointer. `x` is relative to the
+  // outer container (scroll-independent) so the label is never clipped by the
+  // inner scroller's `overflow-y-hidden`.
+  const [hover, setHover] = useState<{ x: number; date: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<
     | {
@@ -268,6 +298,7 @@ export function BandedHeatmap({
     (e: React.PointerEvent<HTMLDivElement>) => {
       const el = scrollRef.current;
       if (!el || e.button !== 0) return;
+      setHover(null);
       // Bracket buttons handle their own click.
       const target = e.target as HTMLElement | null;
       if (target?.closest("button")) return;
@@ -304,7 +335,20 @@ export function BandedHeatmap({
     (e: React.PointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current;
       const el = scrollRef.current;
-      if (!drag || !el) return;
+      if (!el) return;
+
+      // No active drag → track hover for the date label.
+      if (!drag) {
+        const idx = indexFromClientX(e.clientX);
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (idx === null || idx < 0 || !rect) {
+          setHover(null);
+        } else {
+          setHover({ x: e.clientX - rect.left, date: vm.days[idx].date });
+        }
+        return;
+      }
+
       const dx = e.clientX - drag.startX;
       if (Math.abs(dx) > DRAG_THRESHOLD_PX) drag.moved = true;
 
@@ -324,7 +368,7 @@ export function BandedHeatmap({
         valid: computeRangeValid(start, end),
       });
     },
-    [indexFromClientX, computeRangeValid],
+    [indexFromClientX, computeRangeValid, vm.days],
   );
 
   const selectIndex = useCallback(
@@ -401,6 +445,7 @@ export function BandedHeatmap({
 
   return (
     <div
+      ref={containerRef}
       className="relative bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md select-none font-sans"
       style={{
         height: HEATMAP_HEIGHT,
@@ -408,6 +453,14 @@ export function BandedHeatmap({
         boxSizing: "border-box",
       }}
     >
+      {hover && !isDragging && (
+        <div
+          className="pointer-events-none absolute z-20 -translate-x-1/2 rounded bg-stone-900 px-1.5 py-0.5 font-mono text-[10px] text-stone-50 shadow-sm dark:bg-stone-100 dark:text-stone-900"
+          style={{ left: hover.x, top: 8 }}
+        >
+          {formatHoverDate(hover.date)}
+        </div>
+      )}
       <div
         ref={scrollRef}
         tabIndex={0}
@@ -418,6 +471,7 @@ export function BandedHeatmap({
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onPointerLeave={() => setHover(null)}
         onWheel={onWheel}
         onKeyDown={onKeyDown}
       >
@@ -471,6 +525,18 @@ export function BandedHeatmap({
               pointerEvents: "none",
             }}
           >
+            {weekendLefts.map((w) => (
+              <div
+                key={w.date}
+                className="absolute rounded-sm bg-stone-900/[0.035] dark:bg-stone-100/[0.045]"
+                style={{
+                  left: w.left,
+                  width: CELL_SIZE,
+                  top: BRACKET_HEIGHT,
+                  height: CELL_SIZE * 3 + ROW_GAP * 2,
+                }}
+              />
+            ))}
             <BandedHeatmapNeedle
               x={
                 vm.todayIndex >= 0 ? dayX[vm.todayIndex] + CELL_SIZE / 2 : null
