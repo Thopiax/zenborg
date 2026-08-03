@@ -36,3 +36,13 @@ tauri-plugin-dialog = "2"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-global-shortcut = "2"
+
+# Dev profile tuned for disk usage. Full debuginfo + incremental compilation
+# push target/debug into double-digit GB territory during normal tauri:dev
+# work. Trade:
+#  - `debug = "line-tables-only"` keeps backtrace file:line, drops the rest.
+#  - `incremental = false` drops the unbounded snapshot cache.
+# Hot rebuilds slightly slower; cold rebuild unchanged (deps dominate).
+[profile.dev]
+debug = "line-tables-only"
+incremental = false
