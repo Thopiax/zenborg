@@ -14,9 +14,7 @@ export type DragSourceType = "timeline" | "cycle-deck";
 /**
  * Target location types for droppable zones
  */
-export type DropTargetType =
-  | "timeline-cell"
-  | "cycle-deck";
+export type DropTargetType = "timeline-cell" | "cycle-deck";
 
 /**
  * Data attached to draggable items.
