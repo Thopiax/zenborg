@@ -1,8 +1,39 @@
 # Kairos Reach — Design
 
 **Date:** 2026-08-03
-**Status:** design, pending review
+**Status:** ⚠️ SUPERSEDED same day — do not build from this. Rewrite pending.
 **Problem owner:** Rafa
+
+> ## Why this is superseded
+>
+> Written at 18:00, invalidated by 19:45. Kept for the rejected-options record, which
+> is still sound. Three reversals:
+>
+> **1. Calendar is display AND source — never a write target.** D1 correctly rejected
+> writing *to* the calendar (reactivity, imported alerts, constraint erosion). It
+> wrongly discarded reading *from* it. Ingesting existing events as `tentative`
+> moments is a different mechanism with none of those costs — and it is the actual
+> fix for non-use.
+>
+> **2. The real cause of abandonment is authoring cost, not reach.** The tool demands
+> input it should derive. Life already emits traces — calendar events, Things tasks,
+> Garmin activities, location. The garden should fill itself and ask to be curated.
+> `Moment.status: tentative | accepted` moves from "out of scope" to the centre.
+>
+> **3. Native platform APIs replace the entire cloud integration layer.** Because
+> Kairos ships as native apps, EventKit (calendar) and HealthKit (Garmin, via Apple
+> Health) and Things' local store give local, permissioned, read-only ingestion with
+> no OAuth, no Google verification, no 100-user cap, no webhooks, no token storage.
+> Most of the infrastructure below evaporates.
+>
+> **Also decided after this was written:** folder substrate over Postgres; git as
+> sync (`days/*.md merge=union`); retrofit the existing repo rather than rebuild;
+> rename zenborg → kairos in place; buy-once native apps rather than subscription;
+> nomad-first positioning; TRMNL deleted; the 3-per-phase cap deleted.
+>
+> **Still valid below:** the D1 reasoning against calendar-as-write-surface, the
+> rejected-options record for Google Calendar / CalDAV / Elixir, and the feed-URL
+> secret handling.
 
 ---
 
