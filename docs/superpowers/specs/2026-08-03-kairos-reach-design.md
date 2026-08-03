@@ -20,16 +20,22 @@
 > Garmin activities, location. The garden should fill itself and ask to be curated.
 > `Moment.status: tentative | accepted` moves from "out of scope" to the centre.
 >
-> **3. Native platform APIs replace the entire cloud integration layer.** Because
-> Kairos ships as native apps, EventKit (calendar) and HealthKit (Garmin, via Apple
-> Health) and Things' local store give local, permissioned, read-only ingestion with
-> no OAuth, no Google verification, no 100-user cap, no webhooks, no token storage.
-> Most of the infrastructure below evaporates.
+> **3. Ingestion goes where each source actually lives — mostly local.** Calendar via
+> **EventKit in a Swift sidecar** (the repo already bundles sidecars), which removes
+> OAuth, Google verification, the 100-user cap, watch channels, and token storage.
+> Things is local-only. But **HealthKit does not exist on macOS** — health/Garmin
+> must be server-side, via Strava webhooks rather than Garmin's partner-gated API.
+> Ingestion therefore needs the Mac online periodically; closing that gap is the
+> iOS app's real purpose.
 >
-> **Also decided after this was written:** folder substrate over Postgres; git as
-> sync (`days/*.md merge=union`); retrofit the existing repo rather than rebuild;
-> rename zenborg → kairos in place; buy-once native apps rather than subscription;
-> nomad-first positioning; TRMNL deleted; the 3-per-phase cap deleted.
+> **Also decided after this was written:** folder substrate over Postgres-as-truth,
+> with local files canonical and the server holding a mirror; **Supabase-backed
+> server store for sync — git/GitHub explicitly rejected** (`files` +
+> `file_versions` for history, LWW per path, Supabase over Neon for Auth + RLS);
+> one Next.js backend serving `/api/sync`, `/api/mcp`, `/api/ics`; retrofit the
+> existing repo rather than rebuild; rename zenborg → kairos in place; buy-once
+> native apps rather than subscription; nomad-first positioning; TRMNL deleted; the
+> 3-per-phase cap deleted.
 >
 > **Still valid below:** the D1 reasoning against calendar-as-write-surface, the
 > rejected-options record for Google Calendar / CalDAV / Elixir, and the feed-URL
