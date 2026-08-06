@@ -3,12 +3,12 @@
 **Status:** draft for sign-off before implementation.
 **Vault layout:** collections are JSON keyed by UUID — `areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`, `moments.json`, `phaseConfigs.json`, `metricLogs.json`, `dayNotes.json`.
 
-> **Vault root — known discrepancy (2026-08-06).** The app moved the vault from
-> `~/.zenborg` to `~/.kairos` (`src-tauri/src/vault/fs.rs`, debug: `~/.kairos-dev`), but
-> this MCP server still defaults to `.zenborg` (`vault.ts`, `DEFAULT_VAULT_FOLDER`) and
-> the repo's `.mcp.json` pins `--vault ${HOME}/.zenborg`. The two roots are currently
-> byte-identical copies, so nothing has diverged yet — but the next write on either side
-> starts a split-brain. Reconcile before relying on MCP writes.
+**Vault root:** `~/.kairos` (release) or `~/.kairos-dev` (debug). Resolution order is
+`--vault` → `$KAIROS_HOME` → `$ZENBORG_VAULT_DIR` (legacy) → `~/.kairos`, and it must stay
+in lockstep with `vault_root()` in `src-tauri/src/vault/fs.rs`. The vault moved from
+`~/.zenborg` on 2026-08-06 (0.15.0); the MCP server followed on the same release. `.mcp.json`
+deliberately does *not* pin `--vault` — the default is the single source of truth, because
+two places naming the root is exactly how the app and the MCP server drifted apart.
 
 **Area sidecar folders.** Unstructured, area-scoped content lives at
 `<vault root>/areas/<slug>/` — `AGENTS.md`, `docs/`, `skills/` — where `<slug>` is the
@@ -161,10 +161,11 @@ Beyond entity-level validation, these are cross-entity rules currently enforced 
 Current: `--vault /path` CLI arg only. Proposal:
 
 1. `--vault /path` if passed.
-2. Else `$ZENBORG_VAULT_DIR` env var.
-3. Else `~/.zenborg/` (matches Tauri release default).
+2. Else `$KAIROS_HOME` env var.
+3. Else `$ZENBORG_VAULT_DIR` env var (legacy).
+4. Else `~/.kairos/` (matches Tauri release default).
 
-**Dev vs prod:** MCP defaults to the release vault. If user is running the debug app (`~/.zenborg-dev`) and the MCP against the default, they diverge silently. Fix: startup log line printing resolved vault path + warn if `~/.zenborg-dev` exists but not targeted.
+**Dev vs prod:** MCP defaults to the release vault. If user is running the debug app (`~/.kairos-dev`) and the MCP against the default, they diverge silently. Fix: startup log line printing resolved vault path + warn if `~/.kairos-dev` exists but not targeted.
 
 ---
 
@@ -206,8 +207,8 @@ Current `mcp-server/index.ts` reads penceive's `vault/areas/<key>.md` + YAML fro
 |---|---|---|
 | — | Scope | Must-have + Should-have both in v0.3. |
 | 1 | Cascade confirmation for `archive_habit` | **Silent cascade, return counts.** `{ archived, deletedPlans }` — allocated moments survive (derive paradigm; orphan via `habitId`). |
-| 2 | Vault resolution | **`--vault` → `$ZENBORG_VAULT_DIR` → `~/.zenborg`.** |
-| 3 | Dev vault safety | **Log loudly, trust the human.** Print resolved path + warn if `~/.zenborg-dev` exists but isn't the target. |
+| 2 | Vault resolution | **`--vault` → `$KAIROS_HOME` → `$ZENBORG_VAULT_DIR` → `~/.kairos`.** |
+| 3 | Dev vault safety | **Log loudly, trust the human.** Print resolved path + warn if `~/.kairos-dev` exists but isn't the target. |
 | 4 | Allocation via `update_moment` | **Keep allocation separate.** `allocate_moment` / `unallocate_moment` / `allocate_from_plan` stay their own tool family. |
 
 ### Known-evolving invariants

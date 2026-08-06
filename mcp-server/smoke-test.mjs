@@ -6,8 +6,40 @@
  */
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
 import path from 'node:path';
+import assert from 'node:assert/strict';
+import { resolveVault, DEFAULT_VAULT_FOLDER } from './dist/vault.js';
+
+// ── Vault resolution order — must match vault_root() in src-tauri/src/vault/fs.rs.
+// Guards the 2026-08-06 regression where the app moved to ~/.kairos and the MCP
+// server kept resolving ~/.zenborg, silently splitting the vault in two.
+{
+  const saved = { k: process.env.KAIROS_HOME, z: process.env.ZENBORG_VAULT_DIR };
+  delete process.env.KAIROS_HOME;
+  delete process.env.ZENBORG_VAULT_DIR;
+
+  assert.equal(resolveVault([]).root, path.join(homedir(), '.kairos'), 'default is ~/.kairos');
+  assert.equal(DEFAULT_VAULT_FOLDER, '.kairos');
+
+  process.env.ZENBORG_VAULT_DIR = '/tmp/legacy-vault';
+  assert.equal(resolveVault([]).root, '/tmp/legacy-vault', 'legacy env still honoured');
+
+  process.env.KAIROS_HOME = '/tmp/kairos-vault';
+  assert.equal(resolveVault([]).root, '/tmp/kairos-vault', 'KAIROS_HOME beats ZENBORG_VAULT_DIR');
+
+  assert.equal(
+    resolveVault(['--vault', '/tmp/cli-vault']).root,
+    '/tmp/cli-vault',
+    '--vault beats every env var',
+  );
+
+  if (saved.k === undefined) delete process.env.KAIROS_HOME;
+  else process.env.KAIROS_HOME = saved.k;
+  if (saved.z === undefined) delete process.env.ZENBORG_VAULT_DIR;
+  else process.env.ZENBORG_VAULT_DIR = saved.z;
+  console.log('✓ vault resolution order');
+}
 
 const vault = mkdtempSync(path.join(tmpdir(), 'zenborg-smoke-'));
 const child = spawn('node', ['dist/index.js', '--vault', vault], {
