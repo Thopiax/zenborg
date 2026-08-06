@@ -1,9 +1,16 @@
-//! Filesystem operations for the zenborg vault.
+//! Filesystem operations for the kairos vault.
+//!
+//! The vault moved from `~/.zenborg` to `~/.kairos` on 2026-08-06. The shared
+//! home is a kernel contract (kairos `kernel/substrate.md`) and keel reads
+//! areas from it, so one home means one truth. Under the previous arrangement
+//! keel read a seeded *copy*, which went stale twelve minutes after it was
+//! written and stayed that way.
 //!
 //! Layout:
-//!   $HOME/.zenborg/            (release builds)
-//!   $HOME/.zenborg-dev/        (debug builds — prevents dev from trashing prod)
-//!   $ZENBORG_VAULT_DIR         (explicit override — wins over both defaults)
+//!   $HOME/.kairos/             (release builds)
+//!   $HOME/.kairos-dev/         (debug builds — prevents dev from trashing prod)
+//!   $KAIROS_HOME               (explicit override — wins over both defaults)
+//!   $ZENBORG_VAULT_DIR         (legacy override — honoured after KAIROS_HOME)
 //!     ├── moments.json
 //!     ├── areas.json
 //!     ├── habits.json
@@ -22,9 +29,14 @@ use std::sync::Arc;
 
 use crate::vault::write_tracker::SelfWriteTracker;
 
-/// Env var that, if set, overrides the default vault location entirely.
+/// Env vars that, if set, override the default vault location entirely.
 /// Useful for tests, scratch vaults, or pointing at a synced folder.
-const VAULT_DIR_ENV: &str = "ZENBORG_VAULT_DIR";
+///
+/// `KAIROS_HOME` is the substrate contract's name and every instrument reads
+/// it, so it wins. `ZENBORG_VAULT_DIR` is honoured after it so existing shells
+/// and test setups keep working; an empty value falls through rather than
+/// resolving to the current directory.
+const VAULT_DIR_ENVS: &[&str] = &["KAIROS_HOME", "ZENBORG_VAULT_DIR"];
 
 /// Allowed collection names. Hardcoded to prevent path traversal.
 const ALLOWED_COLLECTIONS: &[&str] = &[
@@ -48,27 +60,36 @@ fn validate_collection(name: &str) -> Result<(), String> {
 
 /// Folder name inside $HOME for the default vault location.
 ///
-/// Debug builds use `.zenborg-dev` so that running `pnpm dev:desktop`
+/// Debug builds use `.kairos-dev` so that running `pnpm dev:desktop`
 /// against a locally-installed production app does NOT pollute the
-/// user's real vault. Release builds use `.zenborg`.
+/// user's real vault. Release builds use `.kairos`.
+///
+/// Readers outside zenborg must honour the same split — a dev session and a
+/// release app otherwise disagree about which areas exist. keel does this by
+/// pointing `KAIROS_HOME` at `~/.kairos-dev` when running against dev.
 const fn default_vault_folder() -> &'static str {
     if cfg!(debug_assertions) {
-        ".zenborg-dev"
+        ".kairos-dev"
     } else {
-        ".zenborg"
+        ".kairos"
     }
 }
 
 /// Returns the vault root, creating it if missing.
 ///
 /// Resolution order:
-///   1. `ZENBORG_VAULT_DIR` env var (if set and non-empty) — used verbatim
-///   2. `$HOME/.zenborg-dev` in debug builds
-///   3. `$HOME/.zenborg` in release builds
+///   1. `KAIROS_HOME` env var (if set and non-empty) — used verbatim
+///   2. `ZENBORG_VAULT_DIR` env var (legacy, same rule) — used verbatim
+///   3. `$HOME/.kairos-dev` in debug builds
+///   4. `$HOME/.kairos` in release builds
 pub fn vault_root() -> Result<PathBuf, String> {
-    let root = match env::var(VAULT_DIR_ENV) {
-        Ok(raw) if !raw.trim().is_empty() => PathBuf::from(raw),
-        _ => {
+    let override_dir = VAULT_DIR_ENVS.iter().find_map(|key| match env::var(key) {
+        Ok(raw) if !raw.trim().is_empty() => Some(PathBuf::from(raw)),
+        _ => None,
+    });
+    let root = match override_dir {
+        Some(dir) => dir,
+        None => {
             let home =
                 dirs::home_dir().ok_or_else(|| "Could not resolve $HOME".to_string())?;
             home.join(default_vault_folder())

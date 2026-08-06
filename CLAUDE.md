@@ -414,6 +414,53 @@ Introspective: #6b7280 (gray)
 
 ## Data Persistence Strategy
 
+### Vault Layout
+
+Garden state lives in a filesystem vault, one JSON file per collection, each keyed by
+entity UUID: `areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`,
+`moments.json`, `phaseConfigs.json`, `metricLogs.json`, `dayNotes.json`.
+
+Two independent implementations read and write it — `src-tauri/src/vault/fs.rs` (the app)
+and `mcp-server/vault.ts` (the MCP server). Any change to the vault's *structured* shape
+has to be paid for twice. Keep that in mind before adding a format.
+
+Vault root resolution lives in `vault_root()` (`src-tauri/src/vault/fs.rs`). The vault
+moved from `~/.zenborg` to `~/.kairos` on 2026-08-06.
+
+### Area Sidecar Folders
+
+Unstructured, area-scoped content lives beside the JSON, not inside it:
+
+```
+<vault root>/areas/<slug>/
+├── AGENTS.md      # area-scoped agent context
+├── docs/          # whatever belongs to this plot
+└── skills/        # area-scoped skills
+```
+
+- `<slug>` is the area name kebab-cased — `equanimi.tech` → `equanimi-tech`. Renaming an
+  area means renaming the folder. At ~20 areas that is rare enough not to warrant an
+  id-keyed indirection.
+- Create a folder when there is a file to put in it. Do not scaffold one per area.
+- `areas.json` stays the index and the source of truth for structured fields (name,
+  color, emoji, order, attitude). **The sidecar never carries structured state** — no
+  `AREA.md`, no frontmatter, no slug↔id map, no parser. That is the whole point: the
+  convention costs zero code in either vault implementation.
+- Habits get `areas/<slug>/habits/<slug>/` on the day a habit actually has a doc. Same
+  convention, no new decisions needed.
+
+Considered and rejected: making `AREA.md` frontmatter the source of truth. It reads fine
+and is git-friendly, but it turns a single atomic JSON write into an N-file operation and
+obliges *both* vault implementations to grow a YAML parser and a rename-is-a-move path.
+Read performance was never the constraint — 20 areas and 126 habits parse in
+single-digit milliseconds. The write path and the double implementation are the cost.
+
+Prior art: `docs/pitches/areas-as-orchestration-layer.md` (2026-04-29) solved the same
+need — per-area repos, agents, principles — with an optional `context` block inside
+`areas.json`. The sidecar is strictly lazier: no schema change at all, and it holds
+arbitrary files rather than a fixed field list. Add MCP tooling to resolve an area to its
+folder only once an agent actually needs the path and guessing the slug proves flaky.
+
 ### MVP (Phase 1): IndexedDB Only
 - All data stored locally in browser
 - Auto-save on every change (500ms debounce)
