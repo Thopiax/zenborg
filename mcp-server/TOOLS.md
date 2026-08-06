@@ -1,7 +1,20 @@
 # Zenborg MCP — Tool Inventory (proposal)
 
 **Status:** draft for sign-off before implementation.
-**Vault layout:** `~/.zenborg/` (release) or `~/.zenborg-dev/` (debug). Collections are JSON keyed by UUID: `areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`, `moments.json`, `phaseConfigs.json`, `metricLogs.json`.
+**Vault layout:** collections are JSON keyed by UUID — `areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`, `moments.json`, `phaseConfigs.json`, `metricLogs.json`, `dayNotes.json`.
+
+> **Vault root — known discrepancy (2026-08-06).** The app moved the vault from
+> `~/.zenborg` to `~/.kairos` (`src-tauri/src/vault/fs.rs`, debug: `~/.kairos-dev`), but
+> this MCP server still defaults to `.zenborg` (`vault.ts`, `DEFAULT_VAULT_FOLDER`) and
+> the repo's `.mcp.json` pins `--vault ${HOME}/.zenborg`. The two roots are currently
+> byte-identical copies, so nothing has diverged yet — but the next write on either side
+> starts a split-brain. Reconcile before relying on MCP writes.
+
+**Area sidecar folders.** Unstructured, area-scoped content lives at
+`<vault root>/areas/<slug>/` — `AGENTS.md`, `docs/`, `skills/` — where `<slug>` is the
+area name kebab-cased. The sidecar holds files only; `areas.json` remains the source of
+truth for all structured fields. No `AREA.md`, no frontmatter, no parser, and no MCP tool
+resolves an area to its folder yet. See `CLAUDE.md` → *Area Sidecar Folders*.
 
 ---
 
