@@ -33,10 +33,9 @@ export function EmptyMomentCard({
       className={cn(
         "w-full rounded-lg cursor-pointer",
         "focus:outline-none",
-        // Glassmorphism with dashed border
+        // Dashed hairline border over a tonal step. Flat at rest: no blur.
         "border-2 border-dashed border-stone-300 dark:border-stone-700",
         "bg-stone-50/50 dark:bg-stone-900/50",
-        "glass-base backdrop-blur-sm",
         // Elastic transitions for natural feel
         "transition-all duration-medium transition-elastic",
         // Enhanced hover states
