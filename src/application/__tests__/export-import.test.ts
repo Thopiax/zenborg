@@ -96,7 +96,6 @@ describe("Export/Import System", () => {
       phase: "MORNING" as Phase,
       label: "Morning",
       emoji: "☕",
-      color: "#f59e0b",
       startHour: 6,
       endHour: 12,
       isVisible: true,

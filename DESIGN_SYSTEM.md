@@ -1,5 +1,20 @@
 # Zenborg Design System Implementation
 
+> **SUPERSEDED IN PART (2026-08-06).** The org-wide system now lives at
+> [`../DESIGN.md`](../DESIGN.md) and wins on any conflict. Three sections below
+> are no longer true and are retained only as history:
+>
+> - **Glassmorphism** (tokens, utilities, guidelines, `glassmorphism.momentCard`):
+>   cut. The system is flat at rest everywhere. No shadow, no gradient, no blur.
+>   Depth is hairline rules, 1px grid gaps, and tonal stone steps. The single
+>   exception is the One Lift, a `-2px` translate on hover for genuinely
+>   draggable elements.
+> - **Bounce easing** (`--ease-bounce`): cut. Two curves remain, elastic and smooth.
+> - **Border radius**: square by default, `4px` ceiling. The old 6/8/12px ladder is gone.
+>
+> Everything else here (duration ladder, easing use, OKLCH rationale, reduced-motion
+> handling, the philosophy section) still holds.
+
 > **Physics-based animations and wabi-sabi aesthetics for mindful technology**
 
 ## Overview

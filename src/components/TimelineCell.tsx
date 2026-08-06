@@ -128,10 +128,9 @@ export function TimelineCell({
         "p-2 rounded-md",
         // Smooth transitions for drag hover states
         "transition-all duration-fast transition-smooth",
-        "focus-within:outline-none shadow-inner",
-        // Subtle glassmorphism for depth
-        "glass-base backdrop-blur-sm",
-        // Phase-based gradient background
+        "focus-within:outline-none",
+        // Flat at rest: depth is the tonal step below, never blur or shadow.
+        // Phase-based tonal background
         "md:p-2.5",
         phaseBackgrounds[phaseIndex],
         // Active phase indicator (current phase on active day)

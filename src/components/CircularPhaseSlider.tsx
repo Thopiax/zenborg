@@ -32,11 +32,12 @@ const COLORS = {
     innerDot: "#78716c", // stone-500
     ring: "#a8a29e", // stone-400 - hover ring
   },
-  // NOW indicator
+  // NOW indicator. The one attention signal on the dial, so it takes the
+  // brand accent; slate was the only cool hue left on a warm-axis system.
   now: {
-    ring: "#94a3b8", // slate-400 - subtle accent
-    dot: "#0f172a", // slate-900
-    dotStroke: "#cbd5e1", // slate-300
+    ring: "#b07a3a", // clay-500 - the accent
+    dot: "#1c1917", // stone-900
+    dotStroke: "#d6d3d1", // stone-300
   },
   // Text
   text: {
