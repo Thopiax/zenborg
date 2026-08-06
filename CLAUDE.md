@@ -146,6 +146,27 @@ action }`. `infrastructure/state/command-parser.ts` is a separate pure parser fo
 `[day][y][phase]` allocations (`:ty1` = today/morning), `:d` to unallocate. Adding a palette entry
 does not add a `:` command.
 
+Mnemonics, from `DAY_MAP` / `PHASE_MAP` in the parser — day `y` yesterday · `t` today ·
+`w` tomorrow (*will do*); phase `1` morning · `2` afternoon · `3` evening · `4` night. Navigation
+commands are `:area`, `:settings`, `:help`.
+
+There is **no grid-level vim normal mode.** An older doc listed `hjkl`/`dd`/`yy`/`p`/`x`; no global
+key handler implements them. Keyboard handling is component-local (palette, dialogs, autocompletes).
+
+### Entity forms read the store, not props
+
+Habit and Moment forms follow one pattern — deviate only with a reason:
+
+- Form state lives in `infrastructure/state/ui-store.ts` (`habitFormState$` / `momentFormState$`),
+  never in component state. Fields are set directly (`habitFormState$.name.set(v)`).
+- Open via the helpers — `openHabitFormCreate({ areaId })` / `openHabitFormEdit(id, habit)` — not by
+  toggling an `open` prop.
+- The dialog takes **only** `onSave` and `onDelete`. See `components/HabitFormDialog.tsx`.
+- Local state is for popovers and validation only.
+
+**Areas are the exception**: inline editing, not dialogs, per the "no modals, flat UI" constraint —
+simple properties contextual to one card, so local state is correct there.
+
 ## Commands
 
 ```bash
