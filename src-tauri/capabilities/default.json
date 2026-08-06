@@ -33,8 +33,10 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$HOME/.zenborg" },
-        { "path": "$HOME/.zenborg/**" }
+        { "path": "$HOME/.kairos" },
+        { "path": "$HOME/.kairos/**" },
+        { "path": "$HOME/.kairos-dev" },
+        { "path": "$HOME/.kairos-dev/**" }
       ]
     }
   ]
