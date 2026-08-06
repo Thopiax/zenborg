@@ -7,7 +7,7 @@
 //! but everything lives in-process under Tauri rather than a separate
 //! CLI sub-command. The principal never opens a Terminal.
 //!
-//! Wiring is idempotent: a marker file at `~/.zenborg/.mcp-wired-binary`
+//! Wiring is idempotent: a marker file at `<vault>/.mcp-wired-binary`
 //! records the bundled binary path + app version. We re-wire only when
 //! that signature changes (app upgrade, app moved).
 
@@ -118,8 +118,10 @@ pub fn install_once_per_version(app_version: &str) -> Result<()> {
 }
 
 fn marker_path() -> Result<PathBuf> {
-    let home = dirs::home_dir().ok_or_else(|| anyhow!("no home dir"))?;
-    Ok(home.join(".zenborg").join(MARKER_FILE))
+    // Follows the vault root rather than pinning a second copy of the path, so
+    // it honours $KAIROS_HOME and the debug/release split for free.
+    let root = crate::vault::fs::vault_root().map_err(|e| anyhow!(e))?;
+    Ok(root.join(MARKER_FILE))
 }
 
 // ────────────────────────────────────────────────────────────────────────
