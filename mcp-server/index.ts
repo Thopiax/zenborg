@@ -6,7 +6,7 @@
  * Zenborg vault (JSON collections at `{vaultRoot}/{collection}.json`).
  * See TOOLS.md for the scoped tool inventory.
  *
- * Vault path resolution: --vault CLI > $ZENBORG_VAULT_DIR > ~/.zenborg.
+ * Vault path resolution: --vault CLI > $KAIROS_HOME > $ZENBORG_VAULT_DIR > ~/.kairos.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -397,6 +397,9 @@ server.tool(
     }
 
     const nextName = updates.name !== undefined ? updates.name.trim() : habit.name;
+    // Hoisted: inside the `else` of `'aliases' in updates` below, TS narrows
+    // `updates` to `never`, so it cannot be read there.
+    const nameProvided = updates.name !== undefined;
 
     const next: Habit = {
       ...habit,
@@ -434,7 +437,7 @@ server.tool(
       } else {
         next.aliases = normalized;
       }
-    } else if (updates.name !== undefined && habit.aliases) {
+    } else if (nameProvided && habit.aliases) {
       // Name changed but aliases untouched — re-normalize so an alias that
       // now collides with the new name gets dropped.
       const renormalized = normalizeAliases(habit.aliases, nextName);
