@@ -1,638 +1,202 @@
-# Zenborg - Intention Compass
+# zenborg — the garden
 
-> *An attention orchestration system for budgeting moments toward personal flourishing.*
+> Orientation and working agreements. Two documents outrank this one and win on conflict:
+> philosophy → [`docs/principles.md`](docs/principles.md); shared contracts → [`../kairos/kernel/`](../kairos/kernel/).
+> Anything here that contradicts the code is a bug in here — the code is the truth.
 
-## What This Is
+## Where this sits
 
-Zenborg is a **local-first web application** for conscious attention allocation. Not a task manager. Not a habit tracker. Not a calendar.
+**kairos is the umbrella; zenborg is an instrument under it.** Not a rename — renaming
+zenborg → kairos in place was decided 2026-08-03 and reversed 2026-08-06, because one name
+cannot be both the whole and a part.
 
-**Principles:** see [`docs/principles.md`](docs/principles.md) for the canonical reference. Zenborg inherits the **equanimi.tech** three-layer pyramid: Sovereignty → Awareness → Equanimity. The nine principles (Local-First Ownership, Holistic Control, Modification Rights, Peripheral Presence, Attentional Granularity, Bounded Experiences, Strategic Friction, Fade-by-Design, Downstream Allocation) constrain every design decision. When in doubt, read `docs/principles.md` before building.
+Zenborg keeps the garden metaphor and should. Plots, perennials, seasons, weeds — that
+vocabulary does real work. *The substrate is unified; the metaphors are not.*
 
-**The Question:** "Where will I place my consciousness today?"
+Sibling instruments: **keel** (attentive tech — activity log, rules, tides) and **wake**
+(journals). They share a home on disk, not a codebase.
 
----
+## What it is
 
-## Domain Model (PostgreSQL-Ready)
+A macOS desktop app (Tauri 2) wrapping a Next.js static export, plus an MCP server that
+exposes the same vault to any agent. Local-first, no accounts, no server.
 
-### Entities
+Not a task manager, not a habit tracker, not a calendar. The question it exists to ask is
+*"Where will I place my consciousness today?"*
 
-**Moment** - A named intention (1-3 words max)
-```typescript
-interface Moment {
-  id: string              // UUID
-  name: string            // "Morning Run", "Deep Work"
-  areaId: string          // FK to Area
-  phase: Phase | null     // morning/afternoon/evening/night
-  day: string | null      // ISO date, null when unallocated
-  order: number           // 0-2 (max 3 per phase)
-  createdAt: string
-  updatedAt: string
-}
-```
+## Domain
 
-**Area** - Life domain with color (user-extensible)
-```typescript
-interface Area {
-  id: string
-  name: string            // "Wellness", "Craft", "Social"
-  color: string           // hex color
-  emoji: string           // 🟢, 🔵, 🟠
-  isDefault: boolean
-  order: number
-  createdAt: string
-  updatedAt: string
-}
+Pure TypeScript in `src/domain/`. Entities carry behaviour; there are no classes in the
+persistence path.
 
-// 5 default areas: Wellness, Craft, Social, Joyful, Introspective
-```
+| | |
+|---|---|
+| **Area** | a plot of your life. The one shared kernel concept — see below |
+| **Habit** | a perennial: a recurring moment template, lives in an area |
+| **Moment** | what you plant: a named intention, 1–3 words, allocated to a (day, phase) |
+| **Cycle** | a season: a time container with an intention |
+| **CyclePlan** | a plot's budget for the season — one per (cycleId, habitId) |
+| **Phase** | time-of-day band — MORNING / AFTERNOON / EVENING / NIGHT |
+| **Attitude** | relationship mode — BEGINNING → RETURNING → KEEPING → BUILDING → PUSHING → BEING |
+| **Rhythm / Health** | declared cadence, and the wilting signal derived from it |
+| **DayNote, MetricLog, HistoryEntry, Meta** | supporting records |
 
-**Cycle** - Time container (e.g., "Barcelona Summer")
-```typescript
-interface Cycle {
-  id: string
-  name: string
-  startDate: string       // ISO date
-  endDate: string | null  // null for ongoing
-  isActive: boolean       // only one active at a time
-  createdAt: string
-  updatedAt: string
-}
-```
+`Attitude` lives on **habits**, not areas — 80 of 126 habits carry one, 0 of 20 areas do.
+Anything reasoning about friction reads habits or the moment that references one.
 
-**PhaseConfig** - User-configurable phase settings
-```typescript
-interface PhaseConfig {
-  id: string
-  phase: Phase            // morning/afternoon/evening/night
-  label: string           // "Morning", "Afternoon"
-  emoji: string           // ☕, ☀️, 🌙, 🌃
-  color: string           // hex color
-  startHour: number       // 0-23
-  endHour: number         // 0-23 (wraps for night: 22-6)
-  isVisible: boolean      // can hide Night phase
-  order: number
-  createdAt: string
-  updatedAt: string
-}
-```
+## The vault
 
-### Constraints
-- **Max 3 moments per (day, phase)** combination
-- **Only 1 active cycle** at a time
-- **Areas cannot be deleted** if they have moments (FK constraint)
-- **Moment names**: 1-3 words enforced in app
-
----
-
-## Tech Stack
-
-**Core**:
-- Next.js 15 (App Router, TypeScript, Turbopack)
-- Tailwind CSS 4 (monochromatic design + color accents)
-- Shadcn/ui (Radix primitives, no heavy modals)
-
-**State & Data**:
-- `@legendapp/state` - Reactive local-first state management
-- `@legendapp/state/persist` - IndexedDB persistence
-- `@legendapp/state/sync-supabase` - Future cloud sync (Phase 2)
-
-**Interactions**:
-- `@dnd-kit/core` + `@dnd-kit/sortable` - Drag & drop (optional for mouse users)
-- `date-fns` - Lightweight date handling
-
-**Testing**:
-- Vitest - Unit tests
-- Playwright - E2E tests
-- @testing-library/react - Component tests
-
-**Future (Phase 2)**:
-- Supabase - PostgreSQL database + auth + real-time sync
-
----
-
-## Architecture
-
-**Hexagonal (Ports & Adapters)** with DDD principles:
+Garden state is a filesystem vault under the kairos substrate contract. **The contract is
+[`../kairos/kernel/substrate.md`](../kairos/kernel/substrate.md) and it wins on conflict** —
+what follows is only what you need to work here.
 
 ```
-src/
-├── domain/              # Pure TypeScript, no frameworks
-│   ├── entities/        # Moment, Area, Cycle (business logic)
-│   ├── value-objects/   # Phase, PhaseConfig
-│   └── repositories/    # Interfaces (ports)
-├── infrastructure/      # Framework-specific implementations
-│   ├── persistence/     # IndexedDB + future Supabase adapters
-│   └── state/           # Legend State store
-├── application/         # Use cases (orchestration)
-│   ├── use-cases/       # CreateMoment, AllocateMoment, etc.
-│   └── services/        # TimeService (phase detection)
-└── presentation/        # React components + hooks
-    ├── components/      # UI components (Vim-aware)
-    ├── hooks/           # Custom React hooks
-    └── app/             # Next.js pages
+$KAIROS_HOME          # default ~/.kairos (release), ~/.kairos-dev (debug builds)
 ```
 
-**Key Principles**:
-- **Domain logic isolated** from UI/infrastructure
-- **Local-first**: IndexedDB primary, Supabase secondary (eventual consistency)
-- **PostgreSQL-ready schema**: All entities designed for relational DB migration
-- **SOLID**: Single responsibility, dependency inversion, open/closed
+One JSON file per collection, each a **JSON object keyed by entity UUID** (not an array):
+`areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`, `moments.json`,
+`phaseConfigs.json`, `metricLogs.json`, `dayNotes.json`.
 
----
+The debug/release split is not a zenborg detail — running a dev build against a locally
+installed release app must not trash the real vault.
 
-## Form Handling Architecture
+### Rules you inherit
 
-**Standardized pattern for entity forms (Habits, Moments):**
+- **One writer per collection.** Zenborg is the writer for all eight above. Keel reads
+  `areas` live. Readers never mutate — not even to add a missing record.
+- **`id` is a UUID.** Stable, opaque, never regenerated. The filename is the id, never a
+  slug of the name.
+- **Time is UTC, ISO-8601, milliseconds.** Local time is computed at render, never stored.
+- **Order is explicit.** Anything whose display order matters carries an integer `order`.
+- **Fail soft.** A missing or malformed collection means *empty*, never an error.
+- **Preserve unknown fields on write**, or an older build silently deletes a newer one's data.
 
-### Layer Separation
+### Two implementations, pay twice
 
-```
-┌─────────────────────────────────────────────────┐
-│ Presenters (Form Dialogs)                      │
-│ - Read UI state from uiStore                    │
-│ - Call onSave/onDelete callbacks for persistence│
-│ - Minimal local state (popovers, focus)         │
-├─────────────────────────────────────────────────┤
-│ Infrastructure/State                             │
-│ - uiStore: Ephemeral form state (NOT persisted) │
-│ - store: Domain entities (persisted)            │
-├─────────────────────────────────────────────────┤
-│ Application/Services                             │
-│ - HabitService, MomentService, AreaService      │
-│ - Orchestrate domain operations                 │
-├─────────────────────────────────────────────────┤
-│ Domain/Entities                                  │
-│ - Habit, Moment, Area (pure business logic)     │
-└─────────────────────────────────────────────────┘
-```
+`src-tauri/src/vault/fs.rs` (the app) and `mcp-server/vault.ts` (the MCP server) each read
+and write the vault independently. **Any change to the vault's structured shape costs two
+implementations.** Weigh that before adding a format — it is the reason the sidecar
+convention below carries no structured state.
 
-### Pattern Components
+Root resolution: `vault_root()` in `fs.rs`, mirrored in `resolveVault()` in `vault.ts`.
+They must stay in lockstep; they have drifted before.
 
-**1. UI Store State (`infrastructure/state/ui-store.ts`)**:
-- Form field values (name, areaId, emoji, etc.)
-- Dialog open/close state
-- Mode (create/edit)
-- Editing entity ID (for edit mode)
-- Convenience defaults (lastUsedAreaId)
+## Area sidecar folders
 
-**2. Helper Functions**:
-- `openHabitFormCreate()` / `openMomentFormCreate()` - Initialize form for create mode
-- `openHabitFormEdit()` / `openMomentFormEdit()` - Initialize form for edit mode
-- `closeHabitForm()` / `closeMomentForm()` - Close form and reset state
-
-**3. Form Dialog Component**:
-- Props: Only `onSave` and `onDelete` callbacks
-- Reads all form state from `habitFormState$` or `momentFormState$`
-- Updates store directly (e.g., `habitFormState$.name.set(value)`)
-- Local state ONLY for UI (popover open states, validation errors)
-
-**4. Parent Component**:
-- Calls helper functions to open forms
-- Provides persistence callbacks that call application services
-- No form state management (delegated to uiStore)
-
-### Example Usage
-
-```typescript
-// 1. UI Store (infrastructure/state/ui-store.ts)
-export interface HabitFormState {
-  open: boolean;
-  mode: "create" | "edit";
-  name: string;
-  areaId: string;
-  emoji: string | null;
-  attitude: Attitude | null;
-  phase: Phase | null;
-  tags: string[];
-  editingHabitId: string | null;
-}
-
-export const habitFormState$ = observable<HabitFormState>({...});
-
-export function openHabitFormCreate(params?: { areaId?: string }) {
-  habitFormState$.set({
-    open: true,
-    mode: "create",
-    name: "",
-    areaId: params?.areaId || lastUsedAreaId$.peek() || "",
-    // ... rest of fields
-  });
-}
-
-// 2. Form Dialog (components/HabitFormDialog.tsx)
-interface HabitFormDialogProps {
-  onSave: (props: CreateHabitProps | UpdateHabitProps) => void;
-  onDelete?: () => void;
-}
-
-export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
-  // Read from store
-  const formState = use$(habitFormState$);
-  const { open, mode, name, areaId, emoji } = formState;
-
-  // Update store directly
-  const handleSave = () => {
-    onSave({ name, areaId, emoji, ... });
-    closeHabitForm();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closeHabitForm()}>
-      <input
-        value={name}
-        onChange={(e) => habitFormState$.name.set(e.target.value)}
-      />
-    </Dialog>
-  );
-}
-
-// 3. Parent Component (components/AreaGallery.tsx)
-function AreaGallery() {
-  const handleSaveHabit = (props: CreateHabitProps | UpdateHabitProps) => {
-    const formState = habitFormState$.peek();
-
-    if (formState.mode === "edit") {
-      habitService.update(formState.editingHabitId, props);
-    } else {
-      habitService.create(props);
-    }
-  };
-
-  return (
-    <>
-      <button onClick={() => openHabitFormCreate({ areaId: area.id })}>
-        New Habit
-      </button>
-      <HabitFormDialog onSave={handleSaveHabit} onDelete={handleDeleteHabit} />
-    </>
-  );
-}
-```
-
-### Benefits
-
-| Principle | How It Helps |
-|-----------|-------------|
-| **Separation of Concerns** | UI state (uiStore) separated from domain state (store) |
-| **Single Source of Truth** | Form state lives in one place, not duplicated in props |
-| **Type Safety** | Store provides typed state, prevents prop drilling |
-| **Testability** | Can test form logic by manipulating store directly |
-| **Reusability** | Helper functions make opening forms trivial |
-| **Clear Boundaries** | Callbacks define persistence boundary (Presenter → Application) |
-| **Convenience** | Preserve defaults (lastUsedAreaId) across sessions |
-
-### Area Forms (Exception)
-
-**Areas use inline editing (not dialogs)** per design constraint "No modals, flat UI":
-- Simple properties (name, emoji, color)
-- Contextual to specific card
-- Local state in card component (EmptyAreaCard, PlanAreaCard)
-- No need for dialog or global state
-
----
-
-### Key Bindings Reference
-
-| Normal Mode | Action                             |
-| ----------- | ---------------------------------- |
-| `hjkl`      | Navigate grid (left/down/up/right) |
-| `gg` / `G`  | First / Last moment                |
-| `w` / `b`   | Next / Previous moment             |
-| `i`         | Insert mode (create or edit)       |
-| `dd`        | Delete moment                      |
-| `yy`        | Yank (duplicate)                   |
-| `p`         | Put (paste yanked moment)          |
-| `x`         | Quick delete (unallocated only)    |
-| `:`         | Command mode                       |
-| `Ctrl+/`    | Toggle compass view                |
-
-| Command Mode | Action                                  |
-| ------------ | --------------------------------------- |
-| `:ty1`       | Allocate to Today, phase 1 (Morning)    |
-| `:wy3`       | Allocate to Tomorrow, phase 3 (Evening) |
-| `:d`         | Unallocate (return to drawing board)    |
-| `:area`      | Open area management                    |
-| `:settings`  | Open phase settings                     |
-
-**Day shortcuts**: `y` (yesterday), `t` (today), `w` (tomorrow/will do)
-**Phase shortcuts**: `1` (morning), `2` (afternoon), `3` (evening), `4` (night)
-
----
-
-## UI Structure
-
-### Desktop Layout (≥768px)
-```
-┌─────────────────────────────────────────────────────────┐
-│  Zenborg                                                │
-├─────────────────────────────────────────────────────────┤
-│                                                           │
-│  Timeline (3 days × 3-4 phases grid)                     │
-│                                                           │
-│       Yesterday  │    Today ★    │   Tomorrow            │
-│  ☕ [slot]      │   [slot]      │   [slot]              │
-│  ☀️ [slot]      │   [slot]      │   [slot]              │
-│  🌙 [slot]      │   [slot]      │   [slot]              │
-│                                                           │
-├─────────────────────────────────────────────────────────┤
-│  Drawing Board                                           │
-│  [unallocated moments...]                                │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Mobile Layout (<768px)
-```
-┌───────────────────┐
-│ ← Today →         │ (swipe or buttons)
-├───────────────────┤
-│ ☕ Morning        │
-│  [moment 1]       │
-│  [moment 2]       │
-├───────────────────┤
-│ ☀️ Afternoon      │
-│  [moment 1]       │
-├───────────────────┤
-│ 🌙 Evening        │
-│  [moment 1]       │
-│  [moment 2]       │
-├───────────────────┤
-│ Drawing Board     │
-│ [unallocated...]  │
-└───────────────────┘
-```
-
-**Mobile differences**:
-- **Single-day column** (not 3-day grid)
-- Drawing board **below** timeline (not sidebar)
-- Swipe left/right to navigate days
-
----
-
-## Design System
-
-> Canonical system: [`../DESIGN.md`](../DESIGN.md) (org-wide). It wins on conflict.
-
-### Visual Principles
-- **Monochromatic base**: warm stone on the OKLCH hue-60 axis. Off-white (#fafaf9), light gray (#f5f5f4)
-- **Color attributes, never decorates**: the only polychrome layer is Area color, which is user-owned and universal across apps. Clay (#b07a3a) is the brand accent; enso sage marks completion; red is the only alarm
-- **Phases are structural, not colored**: expressed by position in the grid, label, glyph, and tonal stone step. `PhaseConfig` carries no color field
-- **Area colors on moments**: border or small pill, never a full fill that puts text contrast at the mercy of a user-chosen hue
-- **Flat at rest**: no shadow, no gradient, no blur, no glassmorphism. One exception, the One Lift: a -2px translate on hover for genuinely draggable elements
-- **Square by default**: 4px radius ceiling
-- **Flat UI**: no modals, inline editing only
-
-### Inspiration
-- **Things 3**: Flat hierarchy, inline editing, keyboard-first
-- **Linear**: Clean spacing, subtle borders, fast shortcuts
-- **Vercel Dashboard**: Monochrome with color accents, no clutter
-- **Claude UI**: Generous whitespace, simple interactions
-
-### Typography
-- **Moment names**: 20-24px, bold, monospace or Inter
-- **Command line**: 14px, monospace (Fira Code, JetBrains Mono)
-- **Labels**: 14px, medium weight
-
-### Colors (Tailwind)
-```css
-/* Base */
-bg-stone-50, text-stone-900, border-stone-200
-
-/* Brand accent */
-clay: #b07a3a
-
-/* Phases: no hue. Tonal stone steps, darkening through the day. */
-morning: stone-100  afternoon: stone-200  evening: stone-300  night: stone-400
-
-/* Area colors (user-owned, the only polychrome layer) */
-Wellness: #10b981 (green)
-Craft: #3b82f6 (blue)
-Social: #f97316 (orange)
-Joyful: #eab308 (yellow)
-Introspective: #6b7280 (gray)
-```
-
-
-## Data Persistence Strategy
-
-### Vault Layout
-
-Garden state lives in a filesystem vault, one JSON file per collection, each keyed by
-entity UUID: `areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`,
-`moments.json`, `phaseConfigs.json`, `metricLogs.json`, `dayNotes.json`.
-
-Two independent implementations read and write it — `src-tauri/src/vault/fs.rs` (the app)
-and `mcp-server/vault.ts` (the MCP server). Any change to the vault's *structured* shape
-has to be paid for twice. Keep that in mind before adding a format.
-
-Vault root resolution lives in `vault_root()` (`src-tauri/src/vault/fs.rs`). The vault
-moved from `~/.zenborg` to `~/.kairos` on 2026-08-06.
-
-### Area Sidecar Folders
-
-Unstructured, area-scoped content lives beside the JSON, not inside it:
+Unstructured, area-scoped content lives beside the JSON, never inside it:
 
 ```
-<vault root>/areas/<slug>/
+$KAIROS_HOME/areas/<slug>/
 ├── AGENTS.md      # area-scoped agent context
 ├── docs/          # whatever belongs to this plot
 └── skills/        # area-scoped skills
 ```
 
 - `<slug>` is the area name kebab-cased — `equanimi.tech` → `equanimi-tech`. Renaming an
-  area means renaming the folder. At ~20 areas that is rare enough not to warrant an
+  area means renaming the folder; at ~20 areas that is rare enough not to warrant an
   id-keyed indirection.
 - Create a folder when there is a file to put in it. Do not scaffold one per area.
-- `areas.json` stays the index and the source of truth for structured fields (name,
-  color, emoji, order, attitude). **The sidecar never carries structured state** — no
-  `AREA.md`, no frontmatter, no slug↔id map, no parser. That is the whole point: the
-  convention costs zero code in either vault implementation.
-- Habits get `areas/<slug>/habits/<slug>/` on the day a habit actually has a doc. Same
-  convention, no new decisions needed.
+- `areas.json` stays the index and the source of truth for structured fields (name, color,
+  emoji, order). **The sidecar never carries structured state** — no `AREA.md`, no
+  frontmatter, no slug↔id map, no parser. That is the whole point: zero code in either
+  vault implementation.
+- Habits get `areas/<slug>/habits/<slug>/` the day a habit actually has a doc.
 
-Considered and rejected: making `AREA.md` frontmatter the source of truth. It reads fine
-and is git-friendly, but it turns a single atomic JSON write into an N-file operation and
-obliges *both* vault implementations to grow a YAML parser and a rename-is-a-move path.
-Read performance was never the constraint — 20 areas and 126 habits parse in
-single-digit milliseconds. The write path and the double implementation are the cost.
+**Considered and rejected:** making `AREA.md` frontmatter the source of truth. It reads
+fine and is git-friendly, but it turns one atomic JSON write into an N-file operation and
+obliges both vault implementations to grow a YAML parser and a rename-is-a-move path. Read
+performance was never the constraint — 20 areas and 126 habits parse in single-digit
+milliseconds. The write path is the cost.
 
-Prior art: `docs/pitches/areas-as-orchestration-layer.md` (2026-04-29) solved the same
-need — per-area repos, agents, principles — with an optional `context` block inside
-`areas.json`. The sidecar is strictly lazier: no schema change at all, and it holds
-arbitrary files rather than a fixed field list. Add MCP tooling to resolve an area to its
-folder only once an agent actually needs the path and guessing the slug proves flaky.
+## Layout
 
-### MVP (Phase 1): IndexedDB Only
-- All data stored locally in browser
-- Auto-save on every change (500ms debounce)
-- Schema matches PostgreSQL structure (UUIDs, FKs, timestamps)
-- No backend, no auth, no sync
-
-### Phase 2: Supabase Sync
-- Enable `@legendapp/state/sync-supabase` plugin
-- Real-time bidirectional sync (local ↔ cloud)
-- Conflict resolution: last-write-wins
-- Offline-first: app works without connection
-
-### Schema Design Philosophy
-- **Already PostgreSQL-compatible**: All entities use proper relational design
-- **UUIDs for all IDs**: Enables distributed creation (no auto-increment)
-- **Foreign keys enforced**: area_id REFERENCES areas(id)
-- **Timestamps on everything**: created_at, updated_at for audit trail
-- **Indexes for performance**: Composite indexes on (day, phase), area_id, etc.
-
----
-
-## Red Lines and Non-Goals
-
-Full treatment in [`docs/principles.md`](docs/principles.md). Quick reference:
-
-**Red lines (violate the pyramid — never build):**
-- No completion checkboxes, "done" animations, streak counts, or completion %
-- No push notifications, email reminders, badges, red dots, modal alerts
-- No algorithmic curation of what the user sees
-- No performance ranking, leaderboards, comparative scoring
-- No advertising or engagement-based revenue
-- No dark patterns, forced updates, or account-gated features
-
-**Permitted that may surprise (not red lines):**
-- Counting allocations ("3rd time" = information, not score)
-- History and neutral feedback ("2 days ago")
-- Passive surfaces (whispers lane, dormancy indicators) — user visits, surface doesn't visit user
-- Cadence awareness used internally to drive whispers (never displayed as score)
-- Visual chips on cards (attitude, area color) — ambient, not demanding
-
-**Non-goals (scope, not ethos — may arrive in later phases):**
-- Calendar sync (Phase 3+)
-- Multi-user collaboration
-- Mobile native apps (PWA for now)
-- Attachments / URLs / long-form notes
-
-**UI-level constraints:**
-- No modals (flat UI, inline editing)
-- Monochromatic base; color is reserved for area attribution
-
----
-
-## Development Workflow
-
-### Setup
-```bash
-# Create Next.js app
-npx create-next-app@latest zenborg --typescript --tailwind --app --src-dir
-
-# Install dependencies
-npm install @legendapp/state date-fns
-npm install @dnd-kit/core @dnd-kit/sortable
-npm install -D vitest @testing-library/react @playwright/test
-
-# Run dev server
-npm run dev
+```
+src/
+├── domain/          pure TS — entities, value-objects, services. No framework imports
+├── application/     use-case services: Area, Habit, Cycle, DayNote, MomentCreation, MomentUpdate
+├── infrastructure/  Legend State stores, vault sync, integrations
+├── components/      React. Inline editing, no modals
+└── app/             routes — plant · cultivate · harvest
+src-tauri/src/       vault/{fs,watcher,write_tracker}, mcp_install
+mcp-server/          the second vault implementation + MCP tools (TOOLS.md)
 ```
 
-### Testing
-```bash
-# Unit tests (domain logic)
-npm run test
+Dependencies flow inward: domain ← application ← infrastructure ← UI.
 
-# E2E tests 
-npx playwright install  # First time only
-npm run test:e2e
+`src/domain/registry.ts` is the type-level registry of persisted collections. Add a collection
+there and TypeScript forces the export/import path and the stores to follow. It is the one file to
+touch when the vault grows a file.
+
+### Two runtimes, one shape
+
+`infrastructure/state/persistence.ts` picks a mode at boot via `isTauri()`. **Tauri** → vault-synced:
+the vault is truth, IndexedDB is a hot cache, writes debounce 2s through
+`infrastructure/vault/adapter.ts` and a Rust watcher feeds external edits back. **Web** → IndexedDB
+only, same layout, no vault. The web path is still live; don't assume Tauri.
+
+UI preferences (`activeCycleId`, `lastUsedAreaId`, TRMNL settings) always go to localStorage — they
+are per-device, not per-vault. `ui-store.ts` holds ephemeral form state and is deliberately not
+persisted; `store.ts` holds domain collections as `Record<uuid, Entity>`.
+
+### Two command systems, no shared code
+
+`src/commands/` is the palette registry (cmdk) — flat list of `{ id, label, shortcut, category,
+action }`. `infrastructure/state/command-parser.ts` is a separate pure parser for the vim `:` mode:
+`[day][y][phase]` allocations (`:ty1` = today/morning), `:d` to unallocate. Adding a palette entry
+does not add a `:` command.
+
+## Commands
+
+```bash
+pnpm dev            # Next dev server
+pnpm dev:tauri      # the actual app
+pnpm build:tauri    # bundle
+pnpm build:export   # static export the Tauri bundle wraps
+pnpm test           # vitest — node env, src/**/*.test.{ts,tsx}
+pnpm test -- src/domain/services/__tests__/HabitHealthService.test.ts   # single file
+pnpm lint           # biome check (not eslint/prettier); pnpm format to write
 ```
 
-### Build
-```bash
-# Production build
-npm run build
+pnpm only — never npm or yarn. Running `pnpm dev` and building to verify a change is fine.
 
-# Start production server
-npm run start
-```
+The husky pre-commit hook runs `pnpm test`, so a red suite blocks commits. `@playwright/test` is
+installed but has no config and no script — there is no working E2E suite. `mcp-server/` is its own
+package: `pnpm start` (tsx), `pnpm build` (tsc), `pnpm build:compile` (bun binary), `pnpm smoke`.
 
-## Success Metrics (Qualitative)
+## Design
 
-**Primary Question**: "Did I consciously allocate my attention today?"
+Canonical system: [`../DESIGN.md`](../DESIGN.md) (org-wide). It wins on conflict.
+`DESIGN_SYSTEM.md` in this repo is partly superseded and retained as history.
 
-**User Testing Goals**:
-- Is the learning curve acceptable for power users?
-- Does single-day mobile view feel focused?
-- Is inline editing better than modals?
-- Does the 3-word constraint feel liberating?
+- **Stone tones only, unless attributed to an area.** Area `color` is the one sanctioned
+  channel for colour in the whole system. Test: if something on screen is coloured, a
+  viewer must be able to name which area it belongs to. "Red because destructive" fails.
+- **Phases are structural, not coloured** — position, label, glyph, tonal stone step.
+- **Flat at rest.** No shadow, gradient, blur, or glassmorphism. One exception, the One
+  Lift: `-2px` translate on hover for genuinely draggable elements.
+- **Square by default**, 4px radius ceiling.
+- **No modals.** Inline editing.
+- **Mobile is landscape-only.** Portrait is not considered.
 
-**Technical Health**:
-- No data loss on refresh/crash
-- Drag & drop smooth (60fps desktop)
-- Touch interactions smooth (mobile)
-- Loads in <1 second
+## Red lines
 
----
+Full treatment in [`docs/principles.md`](docs/principles.md). Never build: completion
+checkboxes or "done" states, streaks, progress bars against targets, push notifications or
+badges, algorithmic curation, leaderboards or comparative scoring, engagement-based revenue.
 
-## Origin (Attend System)
+Permitted and easily confused with the above: counting allocations ("3rd time" is
+information, not a score), neutral history ("2 days ago"), passive surfaces the user visits,
+ambient chips on cards.
 
-Zenborg is the digital evolution of a physical whiteboard + magnets system. The philosophical distillation lives in [`docs/principles.md`](docs/principles.md). Original quotes worth preserving as compass:
+## Known drift — verify before trusting a doc
 
-> "It is not about eliminating distractions from my life. Accept them, make some room for them to avoid them growing too much."
->
-> "I'm not budgeting hours; I'm allocating attention. The difference changes everything."
->
-> "Three items maximum per phase. This isn't limitation; it's liberation."
->
-> "Mindful tech comes at a cost: it's boring. It's not meant to be exciting, intriguing. It's meant to hide the digital tech behind a wall — away from our attention."
-
----
-
-## Common Questions
-
-
-**Q: Why 3 words maximum for moments?**
-A: Forces clarity. If you can't name it in 3 words, the intention isn't clear enough.
-
-**Q: Why no "done" button or completion tracking?**
-A: This isn't task management. It's about committing to the time, not achieving outcomes.
-
-**Q: Why no infinite timeline scrolling?**
-A: Presence requires bounded context. Yesterday (reflection), Today (presence), Tomorrow (intention). That's enough.
-
-**Q: Why PostgreSQL if it's local-first?**
-A: The schema is designed for eventual cloud sync (Phase 2). Local IndexedDB structure matches PostgreSQL for seamless migration.
-
-**Q: Can I use this without learning Vim shortcuts?**
-A: Yes. Drag & drop, inline forms, and click interactions work. Vim mode is for power users who want maximum efficiency.
-
-**Q: Why "Zenborg"?**
-A: Zen (mindfulness, presence) + Cyborg (technology augmenting human capability). A mindful cyborg approach to attention management.
-
----
-
-## Related Concepts
-
-**Attention Orchestration System (Attend)**: The physical whiteboard + magnets prototype that inspired Zenborg
-
-**Mindful Technology**: Technology designed to reduce attention strain, using peripheral interfaces ("feelers") and ambient outputs ("indicators")
-
-**Calm Technology**: Systems that inform without demanding focal attention (Mark Weiser)
-
-**Shape Up**: Basecamp's product development methodology (appetite-based, fixed time/variable scope)
-
-**Habylon**: Future system for habit-building through ambient interaction
-
-**Perceive**: Knowledge graph system where moments become nodes in a network of intention and action
-
----
-
-## License
-
-MIT License - See [LICENSE](LICENSE) file for details
-
----
-
-## Contact / Maintainer
-
-This is a personal project for conscious attention management. Built with the philosophy that **structure should guide our organic growth** and that **technology should enhance rather than extract human attention**.
-
-*"Where will I place my consciousness today?"*
-
-# IMPORTANT DEV INSTRUCTIONS
-
-- ok to run the dev server (`pnpm dev`) and build when testing is needed
-- IMPORTANT: only use `stone` tones (monochrome) unless attributed to an area
-- all mobile UX should be designed for landscape exprience. Portrait mode won't be considered.
+- **The 3-moments-per-phase cap.** Recorded as removed (idea 2026-06-14, substrate.md says
+  deleted 2026-08-03) but still enforced in `TimelineCell.tsx`, `lib/design-tokens.ts`,
+  `mcp-server/validation.ts`, and `CycleService.ts`. Code is the truth until someone lands
+  the removal. The intent is that the cap is a day-view affordance, not a domain invariant.
+- **`README.md`** still describes the retired Next-on-Vercel era — a web app with a Compass
+  and a three-day timeline. Do not build from it.
+- **The `docs/protection/` tree** documents shields and a rule engine that moved to keel,
+  whose intervention layer was then retired 2026-06-12. Dead here.
+- **`docs/ideas/2026-05-31-*`** are capture stubs pointing at Things, not designs.
