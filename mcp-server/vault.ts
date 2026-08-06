@@ -6,10 +6,14 @@
  * MCP server reads and writes the same files directly — the Rust watcher
  * picks up our edits and refreshes the desktop observables.
  *
- * Resolution order:
+ * Resolution order (mirrors `vault_root()` in `src-tauri/src/vault/fs.rs` — the two
+ * must agree or the app and the MCP server end up on different vaults):
  *   1. `--vault /path/to/vault` CLI arg
- *   2. `$ZENBORG_VAULT_DIR` env var
- *   3. `$HOME/.zenborg/` (release default)
+ *   2. `$KAIROS_HOME` env var
+ *   3. `$ZENBORG_VAULT_DIR` env var (legacy, honoured after KAIROS_HOME)
+ *   4. `$HOME/.kairos/` (release default)
+ *
+ * The vault moved from `~/.zenborg` to `~/.kairos` on 2026-08-06 (zenborg 0.15.0).
  *
  * Writes are atomic: temp file in the same directory, then rename. This
  * matches the Tauri adapter's semantics so concurrent readers never see a
@@ -200,9 +204,10 @@ export interface CollectionTypeMap {
 // Vault path resolution
 // ────────────────────────────────────────────────────────────────────────
 
+export const KAIROS_HOME_ENV = 'KAIROS_HOME';
 export const VAULT_DIR_ENV = 'ZENBORG_VAULT_DIR';
-export const DEFAULT_VAULT_FOLDER = '.zenborg';
-export const DEV_VAULT_FOLDER = '.zenborg-dev';
+export const DEFAULT_VAULT_FOLDER = '.kairos';
+export const DEV_VAULT_FOLDER = '.kairos-dev';
 
 export interface ResolvedVault {
   root: string;
@@ -210,7 +215,10 @@ export interface ResolvedVault {
 }
 
 /**
- * Resolve the vault root. Priority: --vault CLI > $ZENBORG_VAULT_DIR > ~/.zenborg
+ * Resolve the vault root.
+ * Priority: --vault CLI > $KAIROS_HOME > $ZENBORG_VAULT_DIR > ~/.kairos
+ *
+ * Keep in lockstep with `vault_root()` in `src-tauri/src/vault/fs.rs`.
  */
 export function resolveVault(argv: readonly string[] = process.argv): ResolvedVault {
   const vaultArg = argv.find((_, i, a) => a[i - 1] === '--vault');
@@ -218,9 +226,11 @@ export function resolveVault(argv: readonly string[] = process.argv): ResolvedVa
     return { root: path.resolve(vaultArg), source: 'cli' };
   }
 
-  const envPath = process.env[VAULT_DIR_ENV];
-  if (envPath && envPath.trim().length > 0) {
-    return { root: path.resolve(envPath), source: 'env' };
+  for (const envVar of [KAIROS_HOME_ENV, VAULT_DIR_ENV]) {
+    const envPath = process.env[envVar];
+    if (envPath && envPath.trim().length > 0) {
+      return { root: path.resolve(envPath), source: 'env' };
+    }
   }
 
   return {
