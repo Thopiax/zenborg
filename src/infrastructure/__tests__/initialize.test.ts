@@ -157,7 +157,8 @@ describe("Initialize Store", () => {
         expect(phase.phase).toBeDefined();
         expect(phase.label).toBeDefined();
         expect(phase.emoji).toBeDefined();
-        expect(phase.color).toMatch(/^#[0-9a-f]{6}$/);
+        // Phase carries no color: it is expressed structurally, not by hue.
+        expect(phase).not.toHaveProperty("color");
         expect(phase.startHour).toBeGreaterThanOrEqual(0);
         expect(phase.startHour).toBeLessThanOrEqual(23);
         expect(phase.endHour).toBeGreaterThanOrEqual(0);

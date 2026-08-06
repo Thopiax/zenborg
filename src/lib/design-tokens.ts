@@ -91,9 +91,10 @@ export const typography = {
  * Consistent rounding across components
  */
 export const borderRadius = {
-  sm: "0.375rem", // 6px - small elements
-  md: "0.5rem", // 8px - standard (moment cards, buttons)
-  lg: "0.75rem", // 12px - larger containers
+  none: "0", // default: square (sections, cells, grid matrices)
+  sm: "0.125rem", // 2px - inline code, focus outlines
+  md: "0.25rem", // 4px - the ceiling (moment cards, buttons)
+  lg: "0.25rem", // 4px - alias; nothing rounds further
   full: "9999px", // pill shape (vim mode indicator)
 } as const;
 
@@ -119,10 +120,10 @@ export const animation = {
   medium: "400ms", // Component transitions (expand, reveal)
   slow: "600ms", // Page transitions (modals, views)
 
-  // Easing curves (physics-based)
+  // Easing curves (physics-based). Two curves only: the exaggerated bounce
+  // was cut, it is playful in a way the system is not. See ../../../DESIGN.md.
   elastic: "cubic-bezier(.25, 1, .5, 1)", // Settle with overshoot - for entering, hover, expand
   smooth: "cubic-bezier(.4, 0, .2, 1)", // Standard ease - for exits, fades
-  bounce: "cubic-bezier(.68, -.55, .265, 1.55)", // Strong bounce - use sparingly
 
   // CSS variable references
   cssVars: {
@@ -131,7 +132,6 @@ export const animation = {
     durationSlow: "var(--duration-slow)",
     easeElastic: "var(--ease-elastic)",
     easeSmooth: "var(--ease-smooth)",
-    easeBounce: "var(--ease-bounce)",
   },
 } as const;
 
@@ -185,53 +185,20 @@ export const breakpoints = {
 } as const;
 
 /**
- * Shadow Styles
- * Minimal shadows for flat design with wabi-sabi depth
- */
-export const shadows = {
-  none: "shadow-none",
-  subtle: "shadow-sm", // Very subtle elevation
-  card: "shadow-md", // Card elevation (sparingly used)
-  // Glass shadows (for glassmorphism)
-  glass: "0 1px 2px oklch(0% 0 0 / 0.05), 0 4px 8px oklch(0% 0 0 / 0.1)",
-  glassHover: "0 4px 8px oklch(0% 0 0 / 0.1), 0 12px 24px oklch(0% 0 0 / 0.15)",
-} as const;
-
-/**
- * Glassmorphism Utilities
- * Material design patterns with backdrop blur and transparency
+ * Elevation
  *
- * Usage:
- * - Apply glass-moment class for moment cards
- * - Apply glass-overlay class for modals/drawers
- * - Use CSS custom properties: --glass-blur, --glass-opacity-light, --glass-opacity-heavy
+ * The system is flat at rest, everywhere. No shadow, no gradient, no blur,
+ * no glassmorphism. Depth comes from hairline rules, 1px grid gaps, and tonal
+ * steps in the stone ramp. See ../../../DESIGN.md, "Elevation & Depth".
+ *
+ * The single exception is response to a hand: a draggable element may lift
+ * (-2px translate on the elastic curve) while the cursor or finger is on it.
+ * That lift is motion and geometry, never an ambient shadow.
  */
-export const glassmorphism = {
-  // Blur values
-  blur: "clamp(1px, 0.125em, 4px)", // Scales with font size
-  blurHeavy: "calc(clamp(1px, 0.125em, 4px) * 2)",
-
-  // Opacity values
-  opacityLight: 0.1,
-  opacityHeavy: 0.25,
-
-  // CSS variable references
-  cssVars: {
-    blur: "var(--glass-blur)",
-    opacityLight: "var(--glass-opacity-light)",
-    opacityHeavy: "var(--glass-opacity-heavy)",
-  },
-
-  // Helper: Create glassmorphism style object for area-colored backgrounds
-  momentCard: (areaColor: string) => ({
-    backdropFilter: "blur(var(--glass-blur))",
-    WebkitBackdropFilter: "blur(var(--glass-blur))",
-    background: `linear-gradient(135deg,
-      oklch(from ${areaColor} l c h / var(--glass-opacity-light)),
-      oklch(from ${areaColor} l c h / var(--glass-opacity-heavy))
-    )`,
-    boxShadow: shadows.glass,
-  }),
+export const elevation = {
+  rest: "shadow-none",
+  /** The One Lift. Applied on hover only, on genuinely movable elements. */
+  lift: "hover:-translate-y-0.5",
 } as const;
 
 /**
