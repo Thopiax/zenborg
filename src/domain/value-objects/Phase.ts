@@ -2,7 +2,12 @@
  * Phase - Time-of-day categorization for moments
  *
  * Phases divide the day into 4 periods with configurable boundaries.
- * Users can customize labels, colors, time boundaries, and visibility.
+ * Users can customize labels, emoji, time boundaries, and visibility.
+ *
+ * Phase carries no color. Color in this system attributes an Area, which is
+ * user-owned and universal across apps; a parallel phase palette would compete
+ * with it. Phase is expressed structurally instead: by position in the grid,
+ * by label, by glyph, and by tonal step. See ../../../DESIGN.md, "Colors".
  */
 export enum Phase {
   MORNING = "MORNING",
@@ -19,7 +24,6 @@ export interface PhaseConfig {
   phase: Phase;
   label: string;
   emoji: string;
-  color: string; // hex color
   startHour: number; // 0-23
   endHour: number; // 0-23 (can wrap for night: 22-6 means 22-23, 0-6)
   isVisible: boolean;
@@ -39,7 +43,6 @@ export const DEFAULT_PHASE_CONFIGS: Omit<
     phase: Phase.MORNING,
     label: "Morning",
     emoji: "☕",
-    color: "#f59e0b",
     startHour: 6,
     endHour: 12,
     isVisible: true,
@@ -49,7 +52,6 @@ export const DEFAULT_PHASE_CONFIGS: Omit<
     phase: Phase.AFTERNOON,
     label: "Afternoon",
     emoji: "☀️",
-    color: "#eab308",
     startHour: 12,
     endHour: 18,
     isVisible: true,
@@ -59,7 +61,6 @@ export const DEFAULT_PHASE_CONFIGS: Omit<
     phase: Phase.EVENING,
     label: "Evening",
     emoji: "🌙",
-    color: "#8b5cf6",
     startHour: 18,
     endHour: 22,
     isVisible: true,
@@ -69,7 +70,6 @@ export const DEFAULT_PHASE_CONFIGS: Omit<
     phase: Phase.NIGHT,
     label: "Night",
     emoji: "✨",
-    color: "#1e293b",
     startHour: 22,
     endHour: 6,
     isVisible: false, // Hidden by default

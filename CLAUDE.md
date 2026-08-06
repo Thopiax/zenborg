@@ -370,11 +370,16 @@ function AreaGallery() {
 
 ## Design System
 
+> Canonical system: [`../DESIGN.md`](../DESIGN.md) (org-wide). It wins on conflict.
+
 ### Visual Principles
-- **Monochromatic base**: Off-white (#fafaf9), light gray (#f5f5f4)
-- **Phase colors as accents**: Morning (amber), Afternoon (yellow), Evening (purple), Night (dark slate)
-- **Area colors on moments**: Border or small pill
-- **Flat design**: No modals, inline editing only
+- **Monochromatic base**: warm stone on the OKLCH hue-60 axis. Off-white (#fafaf9), light gray (#f5f5f4)
+- **Color attributes, never decorates**: the only polychrome layer is Area color, which is user-owned and universal across apps. Clay (#b07a3a) is the brand accent; enso sage marks completion; red is the only alarm
+- **Phases are structural, not colored**: expressed by position in the grid, label, glyph, and tonal stone step. `PhaseConfig` carries no color field
+- **Area colors on moments**: border or small pill, never a full fill that puts text contrast at the mercy of a user-chosen hue
+- **Flat at rest**: no shadow, no gradient, no blur, no glassmorphism. One exception, the One Lift: a -2px translate on hover for genuinely draggable elements
+- **Square by default**: 4px radius ceiling
+- **Flat UI**: no modals, inline editing only
 
 ### Inspiration
 - **Things 3**: Flat hierarchy, inline editing, keyboard-first
@@ -392,13 +397,13 @@ function AreaGallery() {
 /* Base */
 bg-stone-50, text-stone-900, border-stone-200
 
-/* Phase colors */
-morning: #f59e0b (amber)
-afternoon: #eab308 (yellow)
-evening: #8b5cf6 (purple)
-night: #1e293b (dark slate)
+/* Brand accent */
+clay: #b07a3a
 
-/* Area colors */
+/* Phases: no hue. Tonal stone steps, darkening through the day. */
+morning: stone-100  afternoon: stone-200  evening: stone-300  night: stone-400
+
+/* Area colors (user-owned, the only polychrome layer) */
 Wellness: #10b981 (green)
 Craft: #3b82f6 (blue)
 Social: #f97316 (orange)

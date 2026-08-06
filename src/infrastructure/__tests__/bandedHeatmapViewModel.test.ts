@@ -69,7 +69,6 @@ const phaseConfig = (
   phase,
   label: phase,
   emoji: "•",
-  color: "#000",
   startHour: 0,
   endHour: 6,
   isVisible,
