@@ -4,7 +4,7 @@
  * Two modes, chosen at runtime:
  *
  *   Tauri desktop →  vault-synced: each domain collection lives at
- *                    $HOME/.zenborg/{collection}.json. IndexedDB is a hot
+ *                    $HOME/.kairos/{collection}.json. IndexedDB is a hot
  *                    runtime cache. Vault is source of truth across sessions
  *                    and devices.
  *
