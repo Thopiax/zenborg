@@ -30,6 +30,7 @@
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
+    "garmin:report": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/garmin/garmin-report.mts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
