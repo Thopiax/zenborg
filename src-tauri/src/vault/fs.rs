@@ -38,7 +38,15 @@ use crate::vault::write_tracker::SelfWriteTracker;
 /// resolving to the current directory.
 const VAULT_DIR_ENVS: &[&str] = &["KAIROS_HOME", "ZENBORG_VAULT_DIR"];
 
-/// Allowed collection names. Hardcoded to prevent path traversal.
+/// Allowed vault file names (without `.json`). Hardcoded to prevent path traversal.
+///
+/// `activeMoment` is the odd one out: a singleton pointer (`{momentId, at}`)
+/// naming the moment that IS the current intention, not a collection keyed by
+/// UUID. It rides these generic commands anyway — the Rust side only ever moves
+/// opaque JSON strings — and listing it here is also what lets the watcher emit
+/// change events for it, so the app follows a pointer the MCP server wrote.
+/// It is deliberately absent from `DomainModelRegistry` on the TS side, where
+/// the record-of-UUID shape does matter.
 const ALLOWED_COLLECTIONS: &[&str] = &[
     "moments",
     "areas",
@@ -48,6 +56,7 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "phaseConfigs",
     "metricLogs",
     "dayNotes",
+    "activeMoment",
 ];
 
 fn validate_collection(name: &str) -> Result<(), String> {

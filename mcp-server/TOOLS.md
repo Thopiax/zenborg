@@ -29,6 +29,7 @@ before the agent commits).
 - `list_areas`, `list_habits`, `list_cycles`, `list_moments`, `list_cycle_plans`, `list_phase_configs`
 - `get_area`, `get_habit`, `get_cycle`, `get_moment`, `get_cycle_plan`
 - `get_habit_health`
+- `get_active_moment`
 - `list_wilting_habits`
 - `get_cycle_planning_proposals`
 - `get_cycle_review`
@@ -43,6 +44,7 @@ before the agent commits).
 - `plan_cycle`, `quick_create_cycle`, `update_cycle`, `end_cycle`, `delete_cycle`
 - `budget_habit_to_cycle`, `increment_habit_budget`, `decrement_habit_budget`, `remove_habit_from_deck`
 - `update_phase_config`
+- `set_active_moment`, `clear_active_moment`
 
 ### Attitude-driven planning
 
@@ -135,6 +137,18 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 | `allocate_from_plan` | `cycleId, habitId, day, phase` | Materialize a virtual deck card onto a slot. Resolves plan server-side; creates `Moment` with `cyclePlanId` set and the habit's schedule timing inherited. Returns `dayViewOverflow` past 3 in the slot. |
 | `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags, plus the habit's schedule timing. Returns `dayViewOverflow` past 3 in the slot. |
 | `create_standalone_moment` | `name, areaId, day, phase, order?, startTime?, durationMin?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. |
+
+### Active moment (`activeMoment.json`)
+
+The one moment that is *what I'm doing now*. A singleton pointer — `{ momentId, at }` — not a collection, so it stays out of the registry and out of export/import.
+
+**Zenborg writes it; keel reads it** and surfaces it in every Claude Code session as `◎ intention: …`. Keel honours the pointer only while the moment it names sits on the current **waking-day**, which rolls at **04:00**, not midnight. `set_active_moment` uses the same roll; the two must stay in lockstep or a moment set at 02:00 would be written here and silently ignored there.
+
+| Tool | Inputs | Notes |
+|---|---|---|
+| `set_active_moment` | `momentIdOrName` | An id, or a name matched against today's board. Refuses a moment not allocated to today (keel would ignore it), and refuses an ambiguous name, listing the candidate ids. |
+| `get_active_moment` | — | Resolved to its moment and area. `{ active: null }` when nothing is set. Reports `stale: true` when the moment was deleted or has rolled off today. |
+| `clear_active_moment` | — | Releases the intention. Removing the pointer IS the empty state. |
 
 ### Phases (`phaseConfigs.json`) — Should-have
 | Tool | Inputs | Notes |

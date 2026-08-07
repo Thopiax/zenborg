@@ -344,3 +344,74 @@ export function writeCollection<K extends CollectionName>(
   fs.writeFileSync(tmp, JSON.stringify(value, null, 2), 'utf8');
   fs.renameSync(tmp, file);
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// Active moment — the intention pointer
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * `activeMoment.json` — which moment IS the current intention.
+ *
+ *   { "momentId": "80d0f15a-…", "at": "2026-08-07T13:40:12.222Z" }
+ *
+ * Deliberately NOT a collection: it is a singleton pointer, not a record keyed
+ * by UUID, so it stays out of `COLLECTION_NAMES` and out of the registry.
+ *
+ * Zenborg is the writer (this server + the desktop app); **keel is a reader**
+ * and resolves the pointer against `moments.json` to surface the intention in
+ * its session hooks. Keel honours it only while the moment it names sits on the
+ * current waking-day, so a stale pointer costs nothing — see keel's
+ * `docs/superpowers/specs/2026-08-07-active-moment-intention-design.md`.
+ */
+export const ACTIVE_MOMENT_FILE = 'activeMoment.json';
+
+export const ActiveMomentPointerSchema = z.object({
+  momentId: z.string().min(1),
+  at: z.string().min(1),
+});
+export type ActiveMomentPointer = z.infer<typeof ActiveMomentPointerSchema>;
+
+export function activeMomentPath(root: string): string {
+  return path.join(root, ACTIVE_MOMENT_FILE);
+}
+
+/**
+ * Read the pointer. Fails soft to `null` — a missing or malformed file means
+ * "no intention", never an error, matching the vault's fail-soft rule.
+ * Unknown fields are preserved so an older build cannot delete a newer one's.
+ */
+export function readActiveMoment(
+  root: string,
+): (ActiveMomentPointer & Record<string, unknown>) | null {
+  const file = activeMomentPath(root);
+  if (!fs.existsSync(file)) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as unknown;
+    const parsed = ActiveMomentPointerSchema.safeParse(raw);
+    if (!parsed.success) return null;
+    return { ...(raw as Record<string, unknown>), ...parsed.data };
+  } catch {
+    return null;
+  }
+}
+
+/** Point the intention at a moment. Atomic, and preserves unknown fields. */
+export function writeActiveMoment(root: string, momentId: string, at: string): ActiveMomentPointer {
+  if (!fs.existsSync(root)) {
+    fs.mkdirSync(root, { recursive: true });
+  }
+  const existing = readActiveMoment(root) ?? {};
+  const next = { ...existing, momentId, at };
+  const file = activeMomentPath(root);
+  const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
+  fs.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, file);
+  return { momentId, at };
+}
+
+/** Release the intention. Removing the file IS the empty state — an absent
+ * pointer and a pointer to nothing are the same thing to every reader. */
+export function clearActiveMoment(root: string): void {
+  const file = activeMomentPath(root);
+  if (fs.existsSync(file)) fs.rmSync(file);
+}
