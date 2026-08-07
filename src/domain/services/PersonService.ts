@@ -86,7 +86,13 @@ export function hasArrangedContact(
   return false;
 }
 
-/** Whole days since the last real contact. Null means never. */
+/**
+ * Whole days since the last real contact. Null means never.
+ *
+ * Floors, whereas `personHealth` compares the fractional elapsed days against
+ * the threshold — so a `count > 1` rhythm (e.g. {monthly, 4} → 7.5 days) can
+ * show a stable "7" here while health flips from blooming to wilting at midday.
+ */
 export function daysSinceLastContact(
   personId: string,
   moments: Moment[],
