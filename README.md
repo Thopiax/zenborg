@@ -29,7 +29,7 @@ We tend to see limits as a problem. If we are limited, we aren't free. If we are
 Zenborg embraces constraints as liberation:
 
 - **3 words** to a moment
-- **3 moments** per phase
+- **3 moments** per phase — in the day view; zoom in to time-block more
 - **3 phases** per day
 - **3 days** in the timeline
 
@@ -39,7 +39,7 @@ It looks like just another productivity tool, but...
 
 - **Not a task manager**: no tasks, no checklists, no "done", no projects, no goals, no outcomes
 - **Not a habit tracker**: no streaks, no points, no badges — and definitely no leaderboards
-- **Not a calendar**: no durations, no "time blocking", no reminders, no notifications
+- **Not a calendar**: no reminders, no notifications. (A habit *may* declare a schedule — weekdays, start time, duration — when the commitment really is pinned to the clock; it's optional, and most habits stay ambient.)
 - **Not even an app**: no accounts, no servers, no analytics, no ads
 
 All of these tools can be useful in their own right. Zenborg explores a mindful alternative to these conventional paradigms.

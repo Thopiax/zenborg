@@ -1,7 +1,16 @@
 import { normalizeTag } from "@/domain/services/TagService";
 import type { Attitude } from "../value-objects/Attitude";
-import type { Phase } from "../value-objects/Phase";
+import type { Phase, PhaseConfig } from "../value-objects/Phase";
 import type { Rhythm } from "../value-objects/Rhythm";
+import {
+  createSchedule,
+  deriveRhythmFromSchedule,
+  isScheduleError,
+  phaseForStartTime,
+  type Schedule,
+  schedulePhaseError,
+  scheduleRhythmError,
+} from "../value-objects/Schedule";
 
 /**
  * Habit - Recurring moment template
@@ -24,6 +33,7 @@ export interface Habit {
   description?: string; // Free-form prose describing the habit (capped at HABIT_DESCRIPTION_MAX_CHARS)
   guidance?: string; // Practitioner-facing guidance for the habit
   rhythm?: Rhythm; // Optional declared cadence (count per period)
+  schedule?: Schedule; // Optional clock-time commitment (weekdays + HH:MM + minutes)
   createdAt: string;
   updatedAt: string;
 }
@@ -74,6 +84,51 @@ export interface CreateHabitProps {
   description?: string;
   guidance?: string;
   rhythm?: Rhythm;
+  schedule?: Schedule;
+  /**
+   * Phase bands, needed only when a schedule is declared: they let the factory
+   * derive `phase` from `schedule.startTime` (or reject a phase that
+   * contradicts it). Omit to leave `phase` exactly as given.
+   */
+  phaseConfigs?: readonly PhaseConfig[];
+}
+
+/**
+ * Reconciles the three fields a schedule touches.
+ *
+ * `rhythm` and `phase` stay *stored* rather than derived — every existing
+ * consumer (health, cycle budgets, the (day, phase) allocation grid) reads them
+ * directly, and phase bands are user-mutable, so deriving at read time would
+ * make allocations shift under the user's feet. Instead the schedule *fills*
+ * them when absent and *rejects* them when they contradict it.
+ */
+function reconcileSchedule(
+  schedule: Schedule,
+  rhythm: Rhythm | undefined,
+  phase: Phase | null | undefined,
+  phaseConfigs: readonly PhaseConfig[] | undefined
+): { rhythm: Rhythm; phase: Phase | null } | { error: string } {
+  const rhythmError = scheduleRhythmError(schedule, rhythm);
+  if (rhythmError) {
+    return { error: rhythmError };
+  }
+
+  if (!phaseConfigs) {
+    return {
+      rhythm: rhythm ?? deriveRhythmFromSchedule(schedule),
+      phase: phase ?? null,
+    };
+  }
+
+  const phaseError = schedulePhaseError(schedule, phase, phaseConfigs);
+  if (phaseError) {
+    return { error: phaseError };
+  }
+
+  return {
+    rhythm: rhythm ?? deriveRhythmFromSchedule(schedule),
+    phase: phase ?? phaseForStartTime(schedule.startTime, phaseConfigs),
+  };
 }
 
 /**
@@ -132,6 +187,8 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     description,
     guidance,
     rhythm,
+    schedule,
+    phaseConfigs,
   } = props;
 
   const validation = validateHabitName(name);
@@ -162,12 +219,29 @@ export function createHabit(props: CreateHabitProps): HabitResult {
   }
   const trimmedGuidance = guidance?.trim();
 
+  let normalizedSchedule: Schedule | undefined;
+  let effectiveRhythm = rhythm;
+  let effectivePhase = phase;
+  if (schedule) {
+    const built = createSchedule(schedule);
+    if (isScheduleError(built)) {
+      return { error: built.error };
+    }
+    const reconciled = reconcileSchedule(built, rhythm, phase, phaseConfigs);
+    if ("error" in reconciled) {
+      return { error: reconciled.error };
+    }
+    normalizedSchedule = built;
+    effectiveRhythm = reconciled.rhythm;
+    effectivePhase = reconciled.phase;
+  }
+
   return {
     id: crypto.randomUUID(),
     name: name.trim(),
     areaId: areaId.trim(),
     attitude,
-    phase,
+    phase: effectivePhase,
     tags: normalizedTags,
     emoji: emoji ? emoji.trim() : null,
     isArchived: false,
@@ -175,7 +249,8 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
     ...(trimmedDescription ? { description: trimmedDescription } : {}),
     ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
-    ...(rhythm ? { rhythm } : {}),
+    ...(effectiveRhythm ? { rhythm: effectiveRhythm } : {}),
+    ...(normalizedSchedule ? { schedule: normalizedSchedule } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -186,7 +261,8 @@ export function createHabit(props: CreateHabitProps): HabitResult {
  */
 export function updateHabit(
   habit: Habit,
-  updates: Partial<Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">>
+  updates: Partial<Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">>,
+  phaseConfigs?: readonly PhaseConfig[]
 ): HabitResult {
   if (updates.name !== undefined) {
     const validation = validateHabitName(updates.name);
@@ -243,6 +319,28 @@ export function updateHabit(
     } else {
       merged.aliases = renormalized;
     }
+  }
+  if ("schedule" in updates && updates.schedule === undefined) {
+    delete merged.schedule;
+  }
+
+  if (merged.schedule) {
+    const built = createSchedule(merged.schedule);
+    if (isScheduleError(built)) {
+      return { error: built.error };
+    }
+    const reconciled = reconcileSchedule(
+      built,
+      merged.rhythm,
+      merged.phase,
+      phaseConfigs
+    );
+    if ("error" in reconciled) {
+      return { error: reconciled.error };
+    }
+    merged.schedule = built;
+    merged.rhythm = reconciled.rhythm;
+    merged.phase = reconciled.phase;
   }
   return merged;
 }
