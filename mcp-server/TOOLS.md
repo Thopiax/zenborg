@@ -30,6 +30,7 @@ before the agent commits).
 - `get_area`, `get_habit`, `get_cycle`, `get_moment`, `get_cycle_plan`
 - `get_habit_health`
 - `list_wilting_habits`
+- `list_people_to_reach`
 - `get_cycle_planning_proposals`
 - `get_cycle_review`
 
@@ -128,7 +129,7 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 | `list_moments` | `filter: { areaId?, habitId?, cycleId?, day?, phase?, allocation?: "unallocated"\|"deck"\|"allocated"\|"budgeted"\|"spontaneous" }` | One tool, structured filter. |
 | `get_moment` | `id` | |
 | `create_moment` | `name, areaId, phase?, emoji?, tags?, personIds?, customMetric?, startTime?, durationMin?` | Unallocated. `personIds` are the people present; an empty array writes nothing (absent means nobody). |
-| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, customMetric?, startTime?, durationMin? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. |
+| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, personIds?, customMetric?, startTime?, durationMin? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. `personIds` replaces the whole list; pass `null` or `[]` to clear it (absent means nobody — the same single empty representation `create_moment` writes); omit it to leave the existing list untouched. |
 | `delete_moment` | `id` | |
 | `allocate_moment` | `id, day, phase, order?, startTime?, durationMin?` | No cap. Returns `dayViewOverflow` past 3 in the slot. |
 | `unallocate_moment` | `id` | |
@@ -141,6 +142,13 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_phase_configs` | — | Sorted by `order`. |
 | `update_phase_config` | `id, { label?, emoji?, color?, startHour?, endHour?, isVisible?, order? }` | Configs are seeded; only update surface. |
+
+### Health + outreach (derived, read-only)
+| Tool | Inputs | Notes |
+|---|---|---|
+| `get_habit_health` | `habitId` | Health is never stored — recomputed on every read. |
+| `list_wilting_habits` | `areaId?, attitude?` | Habits whose current health is `wilting`. |
+| `list_people_to_reach` | `areaId?, tag?, limit?` | The outreach queue: people (`kind: "person"`, non-archived) whose `personHealth` is `wilting` and who have **nothing already arranged** — anyone with a future-dated moment is excluded, so the queue stays quiet about someone you are already seeing on Thursday. `areaId` narrows to one plot; `tag` narrows to a place tag such as `paris`, `bcn`, `sp`, `london`, `nyc`; `limit` truncates *after* sorting, so it always returns the most overdue. Sorted most-overdue-first, with never-contacted people (`daysSinceLastContact: null`) ahead of everyone. People with no `rhythm` are `unstated`, never wilting, and never appear. |
 
 ---
 
