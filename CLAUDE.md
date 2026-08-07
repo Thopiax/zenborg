@@ -58,13 +58,21 @@ One JSON file per collection, each a **JSON object keyed by entity UUID** (not a
 `areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`, `moments.json`,
 `phaseConfigs.json`, `metricLogs.json`, `dayNotes.json`.
 
+Plus one **singleton** file that is not a collection: `activeMoment.json`, a
+`{ momentId, at }` pointer naming the moment that IS the current intention. It is
+deliberately outside `DomainModelRegistry`, export/import and the synced stores — it has
+its own shape and its own module (`src/infrastructure/vault/active-moment.ts`). Adding
+another singleton is a design decision; the parity test in
+`src/infrastructure/vault/__tests__/collections-sync.test.ts` makes you declare it.
+
 The debug/release split is not a zenborg detail — running a dev build against a locally
 installed release app must not trash the real vault.
 
 ### Rules you inherit
 
-- **One writer per collection.** Zenborg is the writer for all eight above. Keel reads
-  `areas` live. Readers never mutate — not even to add a missing record.
+- **One writer per collection.** Zenborg is the writer for all eight above, and for
+  `activeMoment`. Keel reads `areas`, `dayNotes` and `activeMoment` live. Readers never
+  mutate — not even to add a missing record.
 - **`id` is a UUID.** Stable, opaque, never regenerated. The filename is the id, never a
   slug of the name.
 - **Time is UTC, ISO-8601, milliseconds.** Local time is computed at render, never stored.

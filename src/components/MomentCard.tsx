@@ -3,6 +3,7 @@
 import { use$ } from "@legendapp/state/react";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
+import { useActiveMoment } from "@/hooks/useActiveMoment";
 import { useHabitHealth } from "@/hooks/useHabitHealth";
 import { useSelection } from "@/hooks/useSelection";
 import { phaseConfigs$ } from "@/infrastructure/state/store";
@@ -32,8 +33,11 @@ interface MomentCardProps {
  * 1. Single click → Opens MomentEditCard modal
  * 2. Cmd/Ctrl + click → Toggle selection (shows ring)
  * 3. Shift + click → Range selection from last selected to current (if contextMomentIds provided)
- * 4. Hover → Shows subtle 1px ring
- * 5. Selected → Shows prominent 2px ring in area color
+ * 4. Alt/Option + click → Make this the active moment — the intention keel reads
+ *    and surfaces in every Claude Code session. Alt-clicking the active one releases it.
+ * 5. Hover → Shows subtle 1px ring
+ * 6. Selected → Shows prominent 2px ring in area color
+ * 7. Active → Shows a ◎ marker (the same glyph keel puts in its HUD)
  *
  * Features:
  * - Multi-select for bulk operations
@@ -53,8 +57,10 @@ export function MomentCard({
     selectRange,
   } = useSelection();
   const allPhaseConfigs = use$(phaseConfigs$);
+  const { activeMomentId, toggleActive } = useActiveMoment();
 
   const isSelected = isSelectedMoment(moment.id);
+  const isActive = activeMomentId === moment.id;
 
   // Health-based emoji treatment (opacity) — "unstated" when no habit link
   const { health } = useHabitHealth(moment.habitId ?? "");
@@ -74,6 +80,11 @@ export function MomentCard({
       e.preventDefault();
       toggleSelection(moment.id);
     }
+    // Alt/Option + click → Make this the intention (or release it)
+    else if (e.altKey) {
+      e.preventDefault();
+      void toggleActive(moment.id);
+    }
     // Regular click → Open global edit modal
     else {
       openMomentFormEdit(moment.id, moment);
@@ -89,9 +100,10 @@ export function MomentCard({
     : null;
 
   // Descriptive ARIA label for accessibility
+  const activeSuffix = isActive ? ", active moment" : "";
   const ariaLabel = isSelected
-    ? `${moment.name} in ${area.name} area, selected`
-    : `${moment.name} in ${area.name} area, click to edit`;
+    ? `${moment.name} in ${area.name} area, selected${activeSuffix}`
+    : `${moment.name} in ${area.name} area${activeSuffix}, click to edit`;
 
   return (
     <button
@@ -162,6 +174,15 @@ export function MomentCard({
               </div>
             ))}
           </div>
+        )}
+        {/* The intention marker — same glyph keel shows in its statusline HUD. */}
+        {isActive && (
+          <span
+            className={cn("ml-auto text-sm flex-shrink-0", textColors.primary)}
+            title="Active moment — the intention keel is holding"
+          >
+            ◎
+          </span>
         )}
       </div>
     </button>
