@@ -34,8 +34,12 @@ One deviation from the doc's field signature: `Moment.personIds` is declared `pe
 - **Code style:** functional preferred; `for...of` never `forEach`; always braced blocks, no braceless `if`/`for`; `pnpm` never npm/yarn.
 - **Habit and moment names are 1–3 words.** Enforced by existing validators; the migration must not violate it.
 - **Test runner:** root `vitest.config.mts` includes both `src/**/*.test.ts` and `mcp-server/**/*.test.ts`. Single-run form is `pnpm test run <path>` (bare `pnpm test` is watch mode).
+- **`pnpm lint` is RED at baseline and is NOT a gate.** Measured at `b337dea`: 205 errors and 116 warnings across 242 files, none of them ours. Never run `pnpm lint` expecting green, and never "fix" findings in files you did not touch. The gate is instead: `pnpm exec biome check <the exact paths you changed>` must introduce **no new diagnostic** relative to the same paths at the task's base commit. Compare explicitly when in doubt — `git show <base>:<path> > /tmp/base-<name>` then biome-check both.
+- **`pnpm exec tsc --noEmit` IS a gate** and is green at baseline. So is `pnpm test run`.
+- **A husky pre-commit hook runs the full vitest suite on every commit** (~30s). Expected, not a hang.
+- **`mcp-server/` is a separate package** with its own `package.json`, `pnpm-lock.yaml` and `node_modules` — it is not a pnpm workspace member. Its deps are already installed in this worktree. `pnpm --filter ./mcp-server typecheck` and `cd mcp-server && pnpm typecheck` both work.
 - **Do not run `pnpm dev`, `tauri dev`, or any dev server.** The user runs those manually.
-- **Commit only your own paths.** The working tree carries unrelated in-progress DayNote work (`src/application/services/DayNoteService.ts`, `src/components/Timeline.tsx`, `src/domain/entities/DayNote.ts`, `src/components/DayNoteBody.tsx`, `src/domain/__tests__/DayNote.test.ts`, `docs/superpowers/specs/2026-08-03-kairos-reach-design.md`). Never `git add -A`, never `git add .`, never `git checkout`/`restore`/`stash` those paths. Stage exact paths only.
+- **Commit only your own paths.** Never `git add -A`, never `git add .`, never `git checkout`/`restore`/`stash` any file. Stage exact paths only. This is a live user's repository.
 
 ---
 
@@ -1321,10 +1325,9 @@ Then call `list_people_to_reach` from a Claude session and confirm it returns pe
 ```bash
 pnpm test run
 pnpm exec tsc --noEmit
-pnpm lint
 ```
 
-Expected: all pass. Nothing further to commit unless lint reformatted a file you own — in which case stage only those exact paths.
+Expected: both green. Do NOT run `pnpm lint` as a gate — it is red at baseline with 205 pre-existing errors (see Global Constraints). Instead biome-check only the paths this plan created or modified and confirm no new diagnostic against their base versions.
 
 ---
 
