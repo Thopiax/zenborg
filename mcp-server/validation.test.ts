@@ -4,12 +4,14 @@ import {
   DAY_VIEW_PHASE_CAPACITY,
   deriveRhythmFromSchedule,
   hasDayViewCapacity,
+  normalizeRefs,
   normalizeSchedule,
   phaseForStartTime,
   schedulePhaseError,
   scheduleRhythmError,
   timingFromSchedule,
   validateMomentTiming,
+  validateRefs,
 } from "./validation.js";
 import type { Moment, PhaseConfig, Schedule } from "./vault.js";
 
@@ -242,5 +244,40 @@ describe("day-view phase capacity", () => {
   it("reports the slot as beyond day-view capacity", () => {
     expect(hasDayViewCapacity(filled, day, "MORNING")).toBe(false);
     expect(hasDayViewCapacity(filled.slice(0, 2), day, "MORNING")).toBe(true);
+  });
+});
+
+describe("refs", () => {
+  it("accepts any parseable URL, including app schemes", () => {
+    expect(validateRefs(["https://linear.app/x/issue/ABC-1"])).toBeNull();
+    expect(validateRefs(["things:///show?id=abc"])).toBeNull();
+    expect(validateRefs(["obsidian://open?vault=v&file=f"])).toBeNull();
+    expect(validateRefs(["file:///Users/somebody/notes.md"])).toBeNull();
+  });
+
+  it("treats absent and empty as nothing to validate", () => {
+    expect(validateRefs(undefined)).toBeNull();
+    expect(validateRefs([])).toBeNull();
+  });
+
+  it("names the ref it cannot parse", () => {
+    expect(validateRefs(["not a url"])).toBe(
+      "Moment ref is not a parseable URL: not a url",
+    );
+    expect(validateRefs(["https://ok.example", "example.com"])).toBe(
+      "Moment ref is not a parseable URL: example.com",
+    );
+  });
+
+  it("normalizes: trims, drops empties, de-duplicates, keeps order", () => {
+    expect(
+      normalizeRefs([
+        " https://b.example/2 ",
+        "https://a.example/1",
+        "",
+        "https://b.example/2",
+      ]),
+    ).toEqual(["https://b.example/2", "https://a.example/1"]);
+    expect(normalizeRefs(undefined)).toEqual([]);
   });
 });
