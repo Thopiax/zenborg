@@ -2,6 +2,7 @@ import {
   createDayNote,
   type DayNote,
   type DayNoteResult,
+  setDayNoteBody,
   updateDayNote,
 } from "@/domain/entities/DayNote";
 import { dayNotes$ } from "@/infrastructure/state/store";
@@ -35,6 +36,30 @@ export class DayNoteService {
 
     dayNotes$[date].set(result);
     return result;
+  }
+
+  /**
+   * Set the day's markdown body.
+   *
+   * A body needs a note to hang on, and a note needs a title, so writing a
+   * body to an untitled day would either invent a title or silently drop the
+   * text. It errors instead — the caller decides what the day is called.
+   */
+  setBody(date: string, body: string): DayNoteResult {
+    const existing = dayNotes$[date].get();
+    if (!existing) {
+      return { error: "Name the day before writing its note" };
+    }
+    const updated = setDayNoteBody(existing, body);
+    dayNotes$[date].set(updated);
+    return updated;
+  }
+
+  /**
+   * Read a day's markdown body (null if absent).
+   */
+  getBody(date: string): string | null {
+    return dayNotes$[date].get()?.body || null;
   }
 
   /**

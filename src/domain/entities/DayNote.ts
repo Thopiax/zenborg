@@ -1,10 +1,15 @@
 /**
  * DayNote - per-day metadata keyed by ISO date.
  *
- * Today the only field is `title` (a 1-3 word label shown in the Timeline
- * day header). The entity exists rather than a flat `Record<string, string>`
- * so future fields (intention, mood, recap) can be added without renaming
- * the collection or migrating shape.
+ * `title` is a 1-3 word label shown in the Timeline day header. `body` is
+ * free markdown for the day — what it's for, what happened, whatever the
+ * moments below it don't say on their own. It renders in the same row as
+ * that day's phases, which is the tie to the moments: same day, one screen.
+ *
+ * `body` is optional so notes written before it existed stay valid — a sparse
+ * collection, no migration step. Markdown is the storage format even though
+ * nothing renders it yet: it stays greppable, diffable, and readable by the
+ * other things that read this vault.
  *
  * Primary key is `date` (YYYY-MM-DD) — there is at most one note per day.
  */
@@ -14,6 +19,8 @@ import { momentConstraints } from "@/lib/design-tokens";
 export interface DayNote {
   date: string;
   title: string;
+  /** Free markdown. Absent on notes written before the field existed. */
+  body?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,6 +28,7 @@ export interface DayNote {
 export interface CreateDayNoteProps {
   date: string;
   title: string;
+  body?: string;
 }
 
 export interface UpdateDayNoteProps {
@@ -67,8 +75,25 @@ export function createDayNote(props: CreateDayNoteProps): DayNoteResult {
   return {
     date: props.date,
     title: props.title.trim(),
+    ...(props.body ? { body: props.body } : {}),
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+/**
+ * Set the day's markdown body. Deliberately separate from `updateDayNote`:
+ * the body has no word limit and must not drag the title through validation
+ * it didn't ask for. An all-whitespace body drops the field rather than
+ * storing "" — absent and empty should not be two different states.
+ */
+export function setDayNoteBody(existing: DayNote, body: string): DayNote {
+  const trimmed = body.trim();
+  const { body: _dropped, ...rest } = existing;
+  return {
+    ...rest,
+    ...(trimmed ? { body: trimmed } : {}),
+    updatedAt: new Date().toISOString(),
   };
 }
 

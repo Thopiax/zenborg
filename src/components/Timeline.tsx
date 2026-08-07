@@ -19,6 +19,7 @@ import {
 import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import { DayHeaderTitle } from "./DayHeaderTitle";
+import { DayNoteBody } from "./DayNoteBody";
 import { TimelineCell } from "./TimelineCell";
 
 /**
@@ -74,6 +75,11 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
               {monthDay}
             </span>
           </div>
+        </div>
+
+        {/* The day's note — between its title and its moments, on purpose. */}
+        <div className="px-1">
+          <DayNoteBody day={day} isActiveDay={isActiveDay} />
         </div>
 
         {/* Phase Sections - Horizontal Flow */}
