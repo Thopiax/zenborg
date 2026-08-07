@@ -290,7 +290,7 @@ function moment(over: Partial<Moment> = {}): Moment {
     habitId: null,
     cycleId: null,
     cyclePlanId: null,
-    phase: "EVENING",
+    phase: Phase.EVENING,
     day: "2026-08-01",
     order: 0,
     tags: null,
@@ -299,7 +299,19 @@ function moment(over: Partial<Moment> = {}): Moment {
     ...over,
   };
 }
+```
 
+**`Phase` on the domain side is a TypeScript `enum`, not a string-literal union** (`src/domain/value-objects/Phase.ts`). `phase: "EVENING"` does NOT typecheck here — it must be `Phase.EVENING`, and the test file needs:
+
+```ts
+import { Phase } from "@/domain/value-objects/Phase";
+```
+
+This differs from the MCP server, where `Phase` is `z.infer<typeof z.enum(PHASES)>` — a string union where `'EVENING'` is correct. Do not "fix" Task 4's fixture to match this one.
+
+The rest of the test file continues in the same module:
+
+```ts
 describe("personMoments", () => {
   it("matches a moment that carries the person in personIds", () => {
     const m = moment({ personIds: ["p-yanik", "p-yoel"] });
