@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import { Phase } from "@/domain/value-objects/Phase";
 import { rhythmToCycleBudget, type Rhythm } from "@/domain/value-objects/Rhythm";
+import { Weekday } from "@/domain/value-objects/Schedule";
 import {
   activeCycleId$,
   cyclePlans$,
@@ -720,7 +721,7 @@ describe("CycleService.allocateFromPlan", () => {
     });
   });
 
-  it("errors when slot already has 3 moments", () => {
+  it("allocates past the day-view capacity of 3 — the cap is a display concern", () => {
     const service = new CycleService();
     cyclePlans$["plan-1"].set({
       id: "plan-1",
@@ -753,7 +754,9 @@ describe("CycleService.allocateFromPlan", () => {
       day: "2026-04-24",
       phase: Phase.MORNING,
     });
-    expect(result).toEqual({ error: expect.stringContaining("Slot") });
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.order).toBe(3);
   });
 
   it("errors when day outside cycle range (endDate set)", () => {
@@ -773,6 +776,62 @@ describe("CycleService.allocateFromPlan", () => {
       phase: Phase.MORNING,
     });
     expect(result).toEqual({ error: expect.stringContaining("outside") });
+  });
+
+  it("inherits the habit's schedule timing onto the allocated moment", () => {
+    const service = new CycleService();
+    habits$[habit.id].set({
+      ...habit,
+      schedule: {
+        weekdays: [Weekday.FRI],
+        startTime: "12:00",
+        durationMin: 90,
+      },
+    });
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 2,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const result = service.allocateFromPlan({
+      cycleId: "c-1",
+      habitId: "h-1",
+      day: "2026-04-24",
+      phase: Phase.MORNING,
+    });
+
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.startTime).toBe("12:00");
+    expect(result.durationMin).toBe(90);
+  });
+
+  it("leaves ambient habits without any timing", () => {
+    const service = new CycleService();
+    cyclePlans$["plan-1"].set({
+      id: "plan-1",
+      cycleId: "c-1",
+      habitId: "h-1",
+      budgetedCount: 2,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const result = service.allocateFromPlan({
+      cycleId: "c-1",
+      habitId: "h-1",
+      day: "2026-04-24",
+      phase: Phase.MORNING,
+    });
+
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.startTime).toBeUndefined();
+    expect(result.durationMin).toBeUndefined();
   });
 
   it("errors when habit archived", () => {

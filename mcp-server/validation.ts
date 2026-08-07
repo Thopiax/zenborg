@@ -6,13 +6,19 @@
  * collection boundaries (referential integrity, phase cap, cascades).
  * Entity-shape validation lives in zod schemas on the tool layer.
  */
-import type {
-  Area,
-  Cycle,
-  CyclePlan,
-  Habit,
-  Moment,
-  Phase,
+import {
+  START_TIME_PATTERN,
+  WEEKDAYS,
+  type Area,
+  type Cycle,
+  type CyclePlan,
+  type Habit,
+  type Moment,
+  type Phase,
+  type PhaseConfig,
+  type Rhythm,
+  type Schedule,
+  type Weekday,
 } from './vault.js';
 
 // ────────────────────────────────────────────────────────────────────────
@@ -90,26 +96,190 @@ export function normalizeAliases(
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Phase cap (max 3 per day/phase)
-// TODO(moment-cap): Rafa flagged this will evolve. When the domain loosens
-// the per-phase cap in src/domain/entities/Moment.ts::canAllocateToPhase,
-// update this helper to match — otherwise MCP and app will disagree.
+// Day-view phase capacity (mirrors src/domain/entities/Moment.ts)
+//
+// Resolved 2026-08-07: the "3 moments per (day, phase)" rule is a *display*
+// constraint of the coarse day view, not a data-layer invariant. Write paths
+// no longer block on it; they report the overflow so callers (and the
+// `morning` / `cycle-planning` skills) keep the anti-over-planning signal.
+// See docs/ideas/2026-06-08-calendar-zoomed-in-mode-and-phase-cap.md.
 // ────────────────────────────────────────────────────────────────────────
 
-export const MAX_MOMENTS_PER_PHASE = 3;
+export const DAY_VIEW_PHASE_CAPACITY = 3;
 
-export function canAllocateToPhase(
+export function countMomentsInPhase(
   moments: readonly Moment[],
   day: string,
   phase: Phase,
   excludeMomentId?: string,
-): boolean {
+): number {
   let count = 0;
   for (const m of moments) {
     if (excludeMomentId && m.id === excludeMomentId) continue;
     if (m.day === day && m.phase === phase) count++;
   }
-  return count < MAX_MOMENTS_PER_PHASE;
+  return count;
+}
+
+export function hasDayViewCapacity(
+  moments: readonly Moment[],
+  day: string,
+  phase: Phase,
+  excludeMomentId?: string,
+): boolean {
+  return (
+    countMomentsInPhase(moments, day, phase, excludeMomentId) <
+    DAY_VIEW_PHASE_CAPACITY
+  );
+}
+
+/**
+ * Non-blocking overflow notice for allocation responses. Returns null while
+ * the slot still fits in the day view.
+ */
+export function dayViewOverflow(
+  count: number,
+): { count: number; capacity: number; note: string } | null {
+  if (count <= DAY_VIEW_PHASE_CAPACITY) {
+    return null;
+  }
+  return {
+    count,
+    capacity: DAY_VIEW_PHASE_CAPACITY,
+    note: `Slot now holds ${count} moments; the coarse day view shows ${DAY_VIEW_PHASE_CAPACITY}. The rest are visible only in the zoomed-in, time-blocked view.`,
+  };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Schedule (mirrors src/domain/value-objects/Schedule.ts)
+// ────────────────────────────────────────────────────────────────────────
+
+export function isValidStartTime(value: string): boolean {
+  return START_TIME_PATTERN.test(value);
+}
+
+export function startTimeHour(startTime: string): number {
+  return Number.parseInt(startTime.slice(0, 2), 10);
+}
+
+export function normalizeWeekdays(weekdays: readonly Weekday[]): Weekday[] {
+  const present = new Set(weekdays);
+  return WEEKDAYS.filter((day) => present.has(day));
+}
+
+/**
+ * Normalizes a schedule: weekdays de-duplicated and ordered MON..SUN, start
+ * time and duration validated. Zod already enforces most of this at the tool
+ * boundary; this keeps the invariant true for any other caller.
+ */
+export function normalizeSchedule(input: {
+  weekdays: readonly Weekday[];
+  startTime: string;
+  durationMin: number;
+}): Schedule | { error: string } {
+  const weekdays = normalizeWeekdays(input.weekdays);
+  if (weekdays.length === 0) {
+    return { error: 'Schedule must have at least one weekday' };
+  }
+  if (!isValidStartTime(input.startTime)) {
+    return {
+      error: `Schedule startTime must be HH:MM (24h), got: ${input.startTime}`,
+    };
+  }
+  if (!Number.isInteger(input.durationMin) || input.durationMin <= 0) {
+    return {
+      error: 'Schedule durationMin must be a positive whole number of minutes',
+    };
+  }
+  return { weekdays, startTime: input.startTime, durationMin: input.durationMin };
+}
+
+/** One occurrence per scheduled weekday. */
+export function deriveRhythmFromSchedule(schedule: Schedule): Rhythm {
+  return { period: 'weekly', count: schedule.weekdays.length };
+}
+
+/**
+ * Only *weekly* rhythms are constrained by the weekday list — there, count and
+ * weekdays.length are two spellings of the same fact. Longer periods treat
+ * weekdays as candidate days ("every other Monday" = biweekly ×1 on [MON]).
+ */
+export function scheduleRhythmError(
+  schedule: Schedule,
+  rhythm: Rhythm | undefined,
+): string | null {
+  if (!rhythm || rhythm.period !== 'weekly') {
+    return null;
+  }
+  if (rhythm.count !== schedule.weekdays.length) {
+    return `Weekly rhythm count (${rhythm.count}) must equal the number of scheduled weekdays (${schedule.weekdays.length})`;
+  }
+  return null;
+}
+
+function isHourInPhase(hour: number, config: PhaseConfig): boolean {
+  const { startHour, endHour } = config;
+  if (endHour <= startHour) {
+    return hour >= startHour || hour < endHour;
+  }
+  return hour >= startHour && hour < endHour;
+}
+
+/**
+ * The phase band a clock time falls into. Visibility is ignored — 03:00 is
+ * NIGHT whether or not NIGHT is shown. Null when no band covers the hour.
+ */
+export function phaseForStartTime(
+  startTime: string,
+  phaseConfigs: readonly PhaseConfig[],
+): Phase | null {
+  const hour = startTimeHour(startTime);
+  const ordered = [...phaseConfigs].sort((a, b) => a.order - b.order);
+  for (const config of ordered) {
+    if (isHourInPhase(hour, config)) {
+      return config.phase;
+    }
+  }
+  return null;
+}
+
+export function schedulePhaseError(
+  schedule: Schedule,
+  phase: Phase | null | undefined,
+  phaseConfigs: readonly PhaseConfig[],
+): string | null {
+  if (!phase) {
+    return null;
+  }
+  const derived = phaseForStartTime(schedule.startTime, phaseConfigs);
+  if (derived === null || derived === phase) {
+    return null;
+  }
+  return `Phase ${phase} contradicts startTime ${schedule.startTime}, which falls in ${derived}`;
+}
+
+/** Timing a moment inherits when spawned from a scheduled habit. */
+export function timingFromSchedule(schedule: Schedule): {
+  startTime: string;
+  durationMin: number;
+} {
+  return { startTime: schedule.startTime, durationMin: schedule.durationMin };
+}
+
+export function validateMomentTiming(
+  startTime: string | undefined,
+  durationMin: number | undefined,
+): string | null {
+  if (startTime !== undefined && !isValidStartTime(startTime)) {
+    return `Moment startTime must be HH:MM (24h), got: ${startTime}`;
+  }
+  if (
+    durationMin !== undefined &&
+    (!Number.isInteger(durationMin) || durationMin <= 0)
+  ) {
+    return 'Moment durationMin must be a positive whole number of minutes';
+  }
+  return null;
 }
 
 // ────────────────────────────────────────────────────────────────────────

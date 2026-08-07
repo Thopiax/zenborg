@@ -155,7 +155,7 @@ describe("Moment", () => {
       }
     });
 
-    it("should throw error for invalid order", () => {
+    it("should throw error for negative order", () => {
       const moment = createMoment({ name: "Running", areaId: "area-1" });
       expect(isMomentError(moment)).toBe(false);
 
@@ -166,15 +166,22 @@ describe("Moment", () => {
             phase: Phase.MORNING,
             order: -1,
           })
-        ).toThrow("Order must be between 0 and 2");
+        ).toThrow("Order must be non-negative");
+      }
+    });
 
-        expect(() =>
-          allocateMoment(moment, {
-            day: "2025-01-15",
-            phase: Phase.MORNING,
-            order: 3,
-          })
-        ).toThrow("Order must be between 0 and 2");
+    it("should accept an order beyond the day-view capacity", () => {
+      const moment = createMoment({ name: "Running", areaId: "area-1" });
+      expect(isMomentError(moment)).toBe(false);
+
+      if (!isMomentError(moment)) {
+        const allocated = allocateMoment(moment, {
+          day: "2025-01-15",
+          phase: Phase.MORNING,
+          order: 3,
+        });
+
+        expect(allocated.order).toBe(3);
       }
     });
   });

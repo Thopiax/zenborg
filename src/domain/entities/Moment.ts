@@ -1,6 +1,7 @@
 import { validateTag } from "../services/TagService";
 import type { CustomMetric } from "../value-objects/Attitude";
 import type { Phase } from "../value-objects/Phase";
+import { isValidStartTime } from "../value-objects/Schedule";
 
 /**
  * Moment - A named intention (1-3 words maximum)
@@ -31,7 +32,12 @@ export interface Moment {
   cyclePlanId: string | null; // Which budget plan (null = spontaneous)
   phase: Phase | null;
   day: string | null; // ISO date: "2025-01-15"
-  order: number; // 0-2 (max 3 per phase)
+  order: number; // Position within the (day, phase) slot; non-negative
+
+  // Clock time (optional). Inherited from the parent habit's schedule at
+  // allocation time, overridable per instance. Absent on ambient moments.
+  startTime?: string; // "HH:MM", 24h
+  durationMin?: number; // positive whole minutes
 
   emoji?: string | null; // Optional emoji override (inherits from habit or area)
   customMetric?: CustomMetric; // Keep for PUSHING habit support
@@ -98,24 +104,64 @@ export function validateMomentName(name: string): MomentNameValidation {
 }
 
 /**
- * Checks if a moment can be allocated to a specific day/phase
- * Enforces the constraint: max 3 moments per (day, phase) combination
+ * How many moments the coarse **day view** shows in one (day, phase) cell.
  *
- * @param moments - All existing moments
- * @param day - ISO date string
- * @param phase - Phase to allocate to
- * @returns True if allocation is allowed
+ * This is a display constraint, not a data-layer invariant. The garden's
+ * "rule of 3" is an anti-over-planning guard at day-view granularity; the
+ * zoomed-in (time-blocked) view holds as many blocks as the clock allows.
+ * See `docs/ideas/2026-06-08-calendar-zoomed-in-mode-and-phase-cap.md`.
+ */
+export const DAY_VIEW_PHASE_CAPACITY = 3;
+
+/**
+ * Counts moments already sitting in a (day, phase) slot.
+ *
+ * @param excludeMomentId - a moment being moved, which shouldn't count itself
+ */
+export function countMomentsInPhase(
+  moments: readonly Moment[],
+  day: string,
+  phase: Phase,
+  excludeMomentId?: string
+): number {
+  let count = 0;
+  for (const m of moments) {
+    if (excludeMomentId && m.id === excludeMomentId) continue;
+    if (m.day === day && m.phase === phase) count++;
+  }
+  return count;
+}
+
+/**
+ * True when the (day, phase) cell still has room in the coarse day view.
+ *
+ * Callers that render or drive the day-view grid should gate on this. Write
+ * paths (allocation, spawning, planning) must NOT — the data layer accepts
+ * more than three, and the excess is simply invisible until you zoom in.
+ */
+export function hasDayViewCapacity(
+  moments: readonly Moment[],
+  day: string,
+  phase: Phase,
+  excludeMomentId?: string
+): boolean {
+  return (
+    countMomentsInPhase(moments, day, phase, excludeMomentId) <
+    DAY_VIEW_PHASE_CAPACITY
+  );
+}
+
+/**
+ * @deprecated Renamed to `hasDayViewCapacity` — the cap is a day-view display
+ * concern, not an allocation rule. Kept so existing day-view callers keep
+ * working; do not introduce new uses on write paths.
  */
 export function canAllocateToPhase(
   moments: Moment[],
   day: string,
   phase: Phase
 ): boolean {
-  const momentsInPhase = moments.filter(
-    (m) => m.day === day && m.phase === phase
-  );
-
-  return momentsInPhase.length < 3;
+  return hasDayViewCapacity(moments, day, phase);
 }
 
 /**
@@ -132,6 +178,27 @@ export interface CreateMomentProps {
   // REMOVED: attitude (now on Habit/Area)
   tags?: string[];
   customMetric?: CustomMetric; // Keep for habit-inherited PUSHING support
+  startTime?: string; // "HH:MM" — usually inherited from the habit's schedule
+  durationMin?: number; // positive whole minutes
+}
+
+/**
+ * Validates the optional clock-time fields shared by create and update.
+ */
+function validateTiming(
+  startTime: string | undefined,
+  durationMin: number | undefined
+): string | null {
+  if (startTime !== undefined && !isValidStartTime(startTime)) {
+    return `Moment startTime must be HH:MM (24h), got: ${startTime}`;
+  }
+  if (
+    durationMin !== undefined &&
+    (!Number.isInteger(durationMin) || durationMin <= 0)
+  ) {
+    return "Moment durationMin must be a positive whole number of minutes";
+  }
+  return null;
 }
 
 /**
@@ -151,6 +218,8 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     emoji = null, // Default to null (inherits from habit/area)
     tags = [],
     customMetric, // Keep for habit-inherited PUSHING support
+    startTime,
+    durationMin,
   } = props;
 
   const validation = validateMomentName(name);
@@ -161,6 +230,11 @@ export function createMoment(props: CreateMomentProps): MomentResult {
 
   if (!areaId || !areaId.trim()) {
     return { error: "Moment must have an areaId" };
+  }
+
+  const timingError = validateTiming(startTime, durationMin);
+  if (timingError) {
+    return { error: timingError };
   }
 
   const now = new Date().toISOString();
@@ -176,6 +250,8 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     day: null,
     order: 0,
     emoji: emoji ? emoji.trim() : null, // Trim or null
+    ...(startTime !== undefined ? { startTime } : {}),
+    ...(durationMin !== undefined ? { durationMin } : {}),
     // REMOVED: attitude
     customMetric,
     tags: tags.filter(validateTag), // Filter out invalid tags
@@ -206,8 +282,8 @@ export function allocateMoment(
 ): Moment {
   const { day, phase, order } = props;
 
-  if (order < 0 || order > 2) {
-    throw new Error("Order must be between 0 and 2");
+  if (order < 0) {
+    throw new Error("Order must be non-negative");
   }
 
   return {
@@ -330,6 +406,50 @@ export function updateMomentPhaseGrouping(
     phase,
     updatedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Parameters for overriding a moment's clock time.
+ * `null` clears the field; `undefined` (absent) leaves it as-is.
+ */
+export interface UpdateMomentTimingProps {
+  startTime?: string | null;
+  durationMin?: number | null;
+}
+
+/**
+ * Overrides the timing a moment inherited from its habit's schedule.
+ * A moment can start at 12:15 when the habit says 12:00.
+ */
+export function updateMomentTiming(
+  moment: Moment,
+  props: UpdateMomentTimingProps
+): MomentResult {
+  const { startTime, durationMin } = props;
+
+  const timingError = validateTiming(
+    startTime === null ? undefined : startTime,
+    durationMin === null ? undefined : durationMin
+  );
+  if (timingError) {
+    return { error: timingError };
+  }
+
+  const next: Moment = {
+    ...moment,
+    ...(startTime !== undefined && startTime !== null ? { startTime } : {}),
+    ...(durationMin !== undefined && durationMin !== null
+      ? { durationMin }
+      : {}),
+    updatedAt: new Date().toISOString(),
+  };
+  if (startTime === null) {
+    delete next.startTime;
+  }
+  if (durationMin === null) {
+    delete next.durationMin;
+  }
+  return next;
 }
 
 /**
