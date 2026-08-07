@@ -349,3 +349,29 @@ describe("Moment", () => {
     });
   });
 });
+
+describe("Moment.personIds", () => {
+  const base: Moment = {
+    id: "m1",
+    name: "dinner bcn",
+    areaId: "a1",
+    habitId: null,
+    cycleId: null,
+    cyclePlanId: null,
+    phase: Phase.EVENING,
+    day: "2026-08-07",
+    order: 0,
+    tags: null,
+    createdAt: "2026-08-07T00:00:00.000Z",
+    updatedAt: "2026-08-07T00:00:00.000Z",
+  };
+
+  it("composes several people under one moment", () => {
+    const m: Moment = { ...base, personIds: ["p-eli", "p-fox", "p-gil"] };
+    expect(m.personIds).toHaveLength(3);
+  });
+
+  it("is absent on a moment that involves nobody", () => {
+    expect(base.personIds).toBeUndefined();
+  });
+});
