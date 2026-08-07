@@ -1276,7 +1276,13 @@ cp ~/.kairos/areas.json ~/.kairos/habits.json /tmp/kairos-migration-test/
 KAIROS_HOME=/tmp/kairos-migration-test node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/people-migration.mts
 ```
 
-Expected: `marked kind="person": 46` and `created from splits: 2`, for 48 people total. The four ritual names must NOT appear in the marked list. If the count differs, stop and reconcile against the vault before going further — do not "fix" it by loosening the filter.
+Expected, **re-derived from the live vault on 2026-08-07**: `marked kind="person": 42` and `created from splits: 2`, for **44 people total**.
+
+The decision doc's figure of 48 is wrong and this supersedes it. That count was taken with `v.get("archived")`, but the real field is **`isArchived`** — so it silently included four archived records. The social areas hold 48 records, of which 4 are archived (`Mio`, `colloc auber`, `dad`, `family breakfast`), leaving 44 live. Two of those are rituals (`poetry`, `tantric`), so 42 get marked, and the two pair records split into four, giving 44 people. Only **12** of them carry a rhythm, so the outreach queue will be short until more are set.
+
+`NOT_PEOPLE` deliberately keeps all four ritual names even though `colloc auber` and `family breakfast` are currently archived — harmless now, and correct if either is ever unarchived.
+
+The ritual names must NOT appear in the marked list. **Do not trust these numbers either — re-derive them from the vault at run time.** The vault is live and changes between sessions (habit count moved 126 → 130 while this plan was being executed). If your count differs, reconcile against the actual data and report the discrepancy; never "fix" it by loosening the filter.
 
 - [ ] **Step 3: Apply to the copy and verify the result**
 
