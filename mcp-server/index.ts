@@ -63,12 +63,7 @@ import {
   validateOneToThreeWords,
 } from './validation.js';
 import { computeHealth, daysSinceLast, parseVaultDay, resolveRhythm } from './health.js';
-import {
-  daysSinceLastContact,
-  hasArrangedContact,
-  overdueRank,
-  personHealth,
-} from './people.js';
+import { selectPeopleToReach } from './people.js';
 
 // ────────────────────────────────────────────────────────────────────────
 // Boot
@@ -695,7 +690,7 @@ server.tool(
 
 server.tool(
   'list_people_to_reach',
-  'List people who have gone quiet past their rhythm and have nothing already arranged. Most overdue first. Filter by areaId or by a place tag such as paris, bcn, sp, london, nyc.',
+  'List people who have gone quiet past their rhythm and have nothing already arranged. Ordered by how far past their OWN rhythm they are (`overdueRatio`, a multiple of their threshold — 5.71 means five and a half times overdue), NOT by raw elapsed days, so a weekly friend at 20 days outranks an annual one at 400. Never-contacted people come first. Filter by areaId or by a place tag such as paris, bcn, sp, london, nyc.',
   {
     areaId: z.string().optional(),
     tag: z.string().optional(),
@@ -704,55 +699,9 @@ server.tool(
   async ({ areaId, tag, limit }): Promise<ToolResult> => {
     const habits = readCollection(VAULT_ROOT, 'habits');
     const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
-    const now = new Date();
-
-    const results: Array<{
-      personId: string;
-      name: string;
-      areaId: string;
-      tags: string[];
-      rhythm: Rhythm | null;
-      daysSinceLastContact: number | null;
-    }> = [];
-
-    for (const habit of Object.values(habits)) {
-      if (habit.kind !== 'person') {
-        continue;
-      }
-      if (habit.isArchived) {
-        continue;
-      }
-      if (areaId && habit.areaId !== areaId) {
-        continue;
-      }
-      if (tag && !habit.tags.includes(tag)) {
-        continue;
-      }
-      if (personHealth(habit, moments, now) !== 'wilting') {
-        continue;
-      }
-      // Already reached out and agreed a date — stay quiet.
-      if (hasArrangedContact(habit.id, moments, now)) {
-        continue;
-      }
-
-      results.push({
-        personId: habit.id,
-        name: habit.name,
-        areaId: habit.areaId,
-        tags: habit.tags,
-        rhythm: habit.rhythm ?? null,
-        daysSinceLastContact: daysSinceLastContact(habit.id, moments, now),
-      });
-    }
-
-    results.sort(
-      (a, b) =>
-        overdueRank(b.daysSinceLastContact) -
-        overdueRank(a.daysSinceLastContact),
+    return ok(
+      selectPeopleToReach(habits, moments, new Date(), { areaId, tag, limit }),
     );
-
-    return ok(limit ? results.slice(0, limit) : results);
   },
 );
 

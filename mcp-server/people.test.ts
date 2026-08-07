@@ -4,8 +4,10 @@ import {
   hasArrangedContact,
   latestContactDate,
   overdueRank,
+  overdueRatio,
   personHealth,
   personMoments,
+  selectPeopleToReach,
 } from './people.js';
 import type { Attitude, Habit, Moment, Rhythm } from './vault.js';
 
@@ -406,5 +408,183 @@ describe('overdueRank', () => {
 
   it('passes a real day count straight through', () => {
     expect(overdueRank(12)).toBe(12);
+  });
+});
+
+describe('overdueRatio', () => {
+  it('is 1 exactly at the rhythm threshold', () => {
+    expect(overdueRatio(7, WEEKLY)).toBe(1);
+    expect(overdueRatio(365, { period: 'annually', count: 1 })).toBe(1);
+  });
+
+  it('measures against the person OWN rhythm, not raw days', () => {
+    // The pair from the real vault: Jhonny {annually,1} at 400 days is barely
+    // late; Eli {weekly,2} at 20 days is five and a half times past due.
+    expect(overdueRatio(400, { period: 'annually', count: 1 })).toBe(1.1);
+    expect(overdueRatio(20, TWICE_WEEKLY)).toBe(5.71);
+  });
+
+  it('rounds to 2 decimals', () => {
+    expect(overdueRatio(30, WEEKLY)).toBe(4.29); // 30/7 = 4.2857…
+  });
+
+  it('is null when never contacted, and when there is no rhythm to measure', () => {
+    expect(overdueRatio(null, WEEKLY)).toBeNull();
+    expect(overdueRatio(30, null)).toBeNull();
+  });
+});
+
+// ── selectPeopleToReach — the outreach queue ────────────────────────────────
+
+/** Keyed by id, insertion order preserved — it is the sort's tie-break. */
+function vault(...people: Habit[]): Record<string, Habit> {
+  const out: Record<string, Habit> = {};
+  for (const p of people) {
+    out[p.id] = p;
+  }
+  return out;
+}
+
+const ANNUALLY: Rhythm = { period: 'annually', count: 1 };
+
+describe('selectPeopleToReach', () => {
+  // Alice and Erin are a deliberately sharp pair: identical -30d contact,
+  // same rhythm, same area. The ONLY difference is Erin's future moment.
+  const carol = person({ id: 'p-carol', name: 'Carol', rhythm: WEEKLY, tags: ['bcn'] });
+  const dave = person({ id: 'p-dave', name: 'Dave', rhythm: WEEKLY, tags: ['bcn'] });
+  const alice = person({ id: 'p-alice', name: 'Alice', rhythm: WEEKLY, tags: ['paris'] });
+  const bob = person({ id: 'p-bob', name: 'Bob', rhythm: WEEKLY, tags: ['paris'] });
+  const erin = person({ id: 'p-erin', name: 'Erin', rhythm: WEEKLY, tags: ['london'] });
+  const frank = person({ id: 'p-frank', name: 'Frank', tags: ['nyc'] }); // no rhythm
+  const gina = person({ id: 'p-gina', name: 'Gina', rhythm: WEEKLY, tags: ['sp'], isArchived: true });
+  const hugo = person({ id: 'p-hugo', name: 'Hugo', rhythm: WEEKLY, tags: ['sp'], areaId: 'a-family' });
+  const yoga: Habit = { ...person({ id: 'h-yoga', name: 'Yoga', rhythm: WEEKLY }), kind: undefined };
+
+  const HABITS = vault(carol, dave, alice, bob, erin, frank, gina, hugo, yoga);
+  const MOMENTS: Moment[] = [
+    moment({ id: 'm-alice', day: dayBefore(NOW, 30), personIds: ['p-alice'] }),
+    moment({ id: 'm-bob', day: dayBefore(NOW, 2), personIds: ['p-bob'] }),
+    moment({ id: 'm-erin-past', day: dayBefore(NOW, 30), personIds: ['p-erin'] }),
+    moment({ id: 'm-erin-future', day: dayBefore(NOW, -3), personIds: ['p-erin'] }),
+    moment({ id: 'm-gina', day: dayBefore(NOW, 90), personIds: ['p-gina'] }),
+    moment({ id: 'm-hugo', day: dayBefore(NOW, 60), personIds: ['p-hugo'] }),
+  ];
+
+  const queue = () => selectPeopleToReach(HABITS, MOMENTS, NOW);
+  const names = (rows: ReturnType<typeof queue>) => rows.map((r) => r.name);
+
+  it('1. includes someone silent past their rhythm, with the elapsed days', () => {
+    const row = queue().find((r) => r.name === 'Alice');
+    expect(row?.daysSinceLastContact).toBe(30);
+    expect(row?.overdueRatio).toBe(4.29);
+  });
+
+  it('2. excludes someone still inside their rhythm', () => {
+    expect(names(queue())).not.toContain('Bob');
+  });
+
+  it('3. puts a never-contacted person first, with a null day count', () => {
+    const first = queue()[0];
+    expect(first.name).toBe('Carol');
+    expect(first.daysSinceLastContact).toBeNull();
+    expect(first.overdueRatio).toBeNull();
+  });
+
+  it('4. keeps two never-contacted people both present and stably ordered', () => {
+    const rows = queue();
+    expect(names(rows).slice(0, 2)).toEqual(['Carol', 'Dave']);
+    // The NaN hazard: if the comparator returned NaN for the null/null pair the
+    // rest of the ordering would be corrupted too. Prove the tail survived.
+    expect(names(rows)).toEqual(['Carol', 'Dave', 'Hugo', 'Alice']);
+  });
+
+  it('5. excludes someone already arranged — a future moment silences the nag', () => {
+    // Erin and Alice have IDENTICAL past contact (-30d) and the same rhythm.
+    expect(names(queue())).toContain('Alice');
+    expect(names(queue())).not.toContain('Erin');
+    // ...and it really is only the future moment doing the work.
+    const withoutErinsPlan = MOMENTS.filter((m) => m.id !== 'm-erin-future');
+    expect(names(selectPeopleToReach(HABITS, withoutErinsPlan, NOW))).toContain('Erin');
+  });
+
+  it('6. excludes a person with no rhythm — unstated, never wilting', () => {
+    expect(names(queue())).not.toContain('Frank');
+  });
+
+  it('7. excludes an archived person who would otherwise qualify', () => {
+    expect(names(queue())).not.toContain('Gina');
+    const unarchived = vault({ ...gina, isArchived: false });
+    expect(names(selectPeopleToReach(unarchived, MOMENTS, NOW))).toEqual(['Gina']);
+  });
+
+  it('8. excludes an ordinary wilting habit — the queue is people-only', () => {
+    expect(names(queue())).not.toContain('Yoga');
+  });
+
+  it('9. filters by tag, and by areaId', () => {
+    expect(names(selectPeopleToReach(HABITS, MOMENTS, NOW, { tag: 'bcn' }))).toEqual([
+      'Carol',
+      'Dave',
+    ]);
+    expect(
+      names(selectPeopleToReach(HABITS, MOMENTS, NOW, { areaId: 'a-family' })),
+    ).toEqual(['Hugo']);
+  });
+
+  it('9b. survives a hand-edited vault whose person is missing tags entirely', () => {
+    const untagged = vault({ ...carol, tags: undefined as unknown as string[] });
+    expect(() => selectPeopleToReach(untagged, MOMENTS, NOW, { tag: 'bcn' })).not.toThrow();
+    expect(selectPeopleToReach(untagged, MOMENTS, NOW, { tag: 'bcn' })).toEqual([]);
+  });
+
+  it('10. limit truncates to the MOST overdue, not an arbitrary prefix', () => {
+    expect(names(selectPeopleToReach(HABITS, MOMENTS, NOW, { limit: 2 }))).toEqual([
+      'Carol',
+      'Dave',
+    ]);
+    expect(names(selectPeopleToReach(HABITS, MOMENTS, NOW, { limit: 3 }))).toEqual([
+      'Carol',
+      'Dave',
+      'Hugo',
+    ]);
+  });
+
+  it('11. orders the whole set most-overdue-first', () => {
+    expect(queue().map((r) => r.overdueRatio)).toEqual([null, null, 8.57, 4.29]);
+  });
+
+  // ── FIX A: ranking is relative to rhythm, not absolute days ──────────────
+
+  it('A1. ranks a short-rhythm person above a long-rhythm one with FAR more days', () => {
+    const jhonny = person({ id: 'p-jhonny', name: 'Jhonny', rhythm: ANNUALLY });
+    const yanik = person({ id: 'p-eli', name: 'Eli', rhythm: TWICE_WEEKLY });
+    const habits = vault(jhonny, yanik); // Jhonny first, so order is not incidental
+    const moments = [
+      moment({ id: 'm-j', day: dayBefore(NOW, 400), personIds: ['p-jhonny'] }),
+      moment({ id: 'm-y', day: dayBefore(NOW, 20), personIds: ['p-eli'] }),
+    ];
+
+    const rows = selectPeopleToReach(habits, moments, NOW);
+    expect(rows.map((r) => r.name)).toEqual(['Eli', 'Jhonny']);
+    expect(rows.map((r) => r.overdueRatio)).toEqual([5.71, 1.1]);
+  });
+
+  it('A2. and the raw-days key would have inverted exactly that ordering', () => {
+    const jhonny = person({ id: 'p-jhonny', name: 'Jhonny', rhythm: ANNUALLY });
+    const yanik = person({ id: 'p-eli', name: 'Eli', rhythm: TWICE_WEEKLY });
+    const habits = vault(jhonny, yanik);
+    const moments = [
+      moment({ id: 'm-j', day: dayBefore(NOW, 400), personIds: ['p-jhonny'] }),
+      moment({ id: 'm-y', day: dayBefore(NOW, 20), personIds: ['p-eli'] }),
+    ];
+
+    const rows = selectPeopleToReach(habits, moments, NOW);
+    // Jhonny has 20x the elapsed days...
+    const byDays = [...rows].sort(
+      (a, b) => overdueRank(b.daysSinceLastContact) - overdueRank(a.daysSinceLastContact),
+    );
+    expect(byDays.map((r) => r.name)).toEqual(['Jhonny', 'Eli']);
+    // ...yet the queue puts him LAST. The two keys disagree, and the ratio wins.
+    expect(rows.map((r) => r.name)).toEqual(['Eli', 'Jhonny']);
   });
 });
