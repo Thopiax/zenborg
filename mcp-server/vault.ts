@@ -66,6 +66,36 @@ export const RhythmSchema = z.object({
 });
 export type Rhythm = z.infer<typeof RhythmSchema>;
 
+/**
+ * Schedule — a habit's clock-time commitment. Optional: most habits are
+ * ambient. `rhythm` says how often; `schedule` says when.
+ * Mirrors `src/domain/value-objects/Schedule.ts`.
+ */
+export const WEEKDAYS = [
+  'MON',
+  'TUE',
+  'WED',
+  'THU',
+  'FRI',
+  'SAT',
+  'SUN',
+] as const;
+export const WeekdaySchema = z.enum(WEEKDAYS);
+export type Weekday = z.infer<typeof WeekdaySchema>;
+
+/** Zero-padded 24h clock time. */
+export const START_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+export const StartTimeSchema = z
+  .string()
+  .regex(START_TIME_PATTERN, 'startTime must be HH:MM (24h)');
+
+export const ScheduleSchema = z.object({
+  weekdays: z.array(WeekdaySchema).min(1),
+  startTime: StartTimeSchema,
+  durationMin: z.number().int().positive(),
+});
+export type Schedule = z.infer<typeof ScheduleSchema>;
+
 export const PERIOD_DAYS: Record<RhythmPeriod, number> = {
   weekly: 7,
   biweekly: 14,
@@ -110,6 +140,7 @@ export interface Habit {
   description?: string;
   guidance?: string;
   rhythm?: Rhythm;
+  schedule?: Schedule;
   createdAt: string;
   updatedAt: string;
 }
@@ -145,6 +176,8 @@ export interface Moment {
   phase: Phase | null;
   day: string | null; // YYYY-MM-DD
   order: number;
+  startTime?: string; // "HH:MM" — inherited from the habit's schedule, overridable
+  durationMin?: number; // positive whole minutes
   emoji?: string | null;
   customMetric?: CustomMetric;
   tags: string[] | null;
