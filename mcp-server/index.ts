@@ -20,10 +20,13 @@ import {
   RhythmSchema,
   ScheduleSchema,
   StartTimeSchema,
+  clearActiveMoment,
   logVaultBanner,
+  readActiveMoment,
   readCollection,
   resolveVault,
   rhythmToCycleBudget,
+  writeActiveMoment,
   writeCollection,
   type Area,
   type Cycle,
@@ -1716,6 +1719,113 @@ server.tool(
       created: moment,
       ...(overflow ? { dayViewOverflow: overflow } : {}),
     });
+  },
+);
+
+// ────────────────────────────────────────────────────────────────────────
+// ACTIVE MOMENT — the intention pointer
+// ────────────────────────────────────────────────────────────────────────
+//
+// One moment at a time is "what I'm doing now". Zenborg writes the pointer;
+// keel reads it and surfaces it in every Claude Code session. The file contract
+// lives in vault.ts.
+
+/**
+ * The waking-day key, rolling at 04:00 rather than midnight.
+ *
+ * Mirrors `focusDayKey` / `DAY_START_HOUR` in keel's `apps/agent/core.mjs` and
+ * must stay in lockstep with it: keel honours the pointer only while the moment
+ * it names sits on *its* waking-day, so if the two disagreed, a moment set at
+ * 02:00 would be written here and silently ignored there.
+ */
+const DAY_START_HOUR = 4;
+
+function wakingDayKey(now: Date = new Date()): string {
+  const rolled = new Date(now.getTime() - DAY_START_HOUR * 3600_000);
+  const y = rolled.getFullYear();
+  const m = String(rolled.getMonth() + 1).padStart(2, '0');
+  const d = String(rolled.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Shape the pointer into something a reader can act on without a second call. */
+function describeActiveMoment(pointer: { momentId: string; at: string }) {
+  const moment = readCollection(VAULT_ROOT, 'moments')[pointer.momentId];
+  if (!moment) {
+    return { ...pointer, moment: null, active: false, stale: true, reason: 'moment no longer exists' };
+  }
+  const area = readCollection(VAULT_ROOT, 'areas')[moment.areaId];
+  const onToday = moment.day === wakingDayKey();
+  return {
+    ...pointer,
+    moment: { id: moment.id, name: moment.name, day: moment.day, phase: moment.phase },
+    area: area ? { id: area.id, name: area.name } : null,
+    // keel surfaces the intention only while this is true.
+    active: onToday,
+    ...(onToday
+      ? {}
+      : { stale: true, reason: `moment is allocated to ${moment.day}, not today` }),
+  };
+}
+
+server.tool(
+  'set_active_moment',
+  "Point the intention at a moment — 'this is what I'm doing now'. Accepts a moment id, or a name matched against today's board. keel reads this pointer and surfaces it in every Claude Code session. Refuses moments that aren't on today's board, since keel would ignore them.",
+  { momentIdOrName: z.string().min(1) },
+  async ({ momentIdOrName }): Promise<ToolResult> => {
+    const moments = readCollection(VAULT_ROOT, 'moments');
+    const today = wakingDayKey();
+    const needle = momentIdOrName.trim();
+
+    let moment: Moment | undefined = moments[needle];
+    if (!moment) {
+      const lower = needle.toLowerCase();
+      const todays = Object.values(moments).filter((m) => m.day === today);
+      const matches = todays.filter((m) => m.name.trim().toLowerCase() === lower);
+      if (matches.length > 1) {
+        return err(
+          `Ambiguous on today's board: ${matches.length} moments named "${needle}". ` +
+            `Pass the id — ${matches.map((m) => m.id).join(', ')}.`,
+        );
+      }
+      moment = matches[0];
+      if (!moment) {
+        const board = todays.map((m) => `"${m.name}"`).join(', ') || '(empty)';
+        return err(`No moment "${needle}" on today's board. Today: ${board}.`);
+      }
+    }
+
+    if (moment.day !== today) {
+      return err(
+        `"${moment.name}" is allocated to ${moment.day ?? 'no day'}, not today (${today}). ` +
+          'The active moment is what you are doing NOW — allocate it to today first.',
+      );
+    }
+
+    const pointer = writeActiveMoment(VAULT_ROOT, moment.id, nowIso());
+    return ok({ set: describeActiveMoment(pointer) });
+  },
+);
+
+server.tool(
+  'get_active_moment',
+  'Read the current intention pointer, resolved to its moment and area. Returns null when nothing is active.',
+  {},
+  async (): Promise<ToolResult> => {
+    const pointer = readActiveMoment(VAULT_ROOT);
+    if (!pointer) return ok({ active: null });
+    return ok({ active: describeActiveMoment(pointer) });
+  },
+);
+
+server.tool(
+  'clear_active_moment',
+  'Release the intention — no moment is active. Removing the pointer IS the empty state.',
+  {},
+  async (): Promise<ToolResult> => {
+    const previous = readActiveMoment(VAULT_ROOT);
+    clearActiveMoment(VAULT_ROOT);
+    return ok({ cleared: previous ? previous.momentId : null });
   },
 );
 

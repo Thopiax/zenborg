@@ -351,6 +351,90 @@ try {
     return parseOk(resp);
   });
 
+  // 11. Active moment — the intention pointer keel reads.
+  //     The waking-day rolls at 04:00 here exactly as it does in keel, so the
+  //     day these assertions target is computed the same way, not from the clock.
+  const wakingDay = (() => {
+    const d = new Date(Date.now() - 4 * 3600_000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  await step('get_active_moment on empty vault → null', async () => {
+    const parsed = parseOk(await callTool('get_active_moment', {}));
+    if (parsed.active !== null) throw new Error(`expected null, got ${JSON.stringify(parsed)}`);
+  });
+
+  const todayMoment = await step('create a moment on today for the pointer', async () => {
+    const resp = await callTool('create_standalone_moment', {
+      name: 'ship export',
+      areaId,
+      day: wakingDay,
+      phase: 'MORNING',
+    });
+    return parseOk(resp).created;
+  });
+
+  await step('set_active_moment by name resolves today\'s board', async () => {
+    const parsed = parseOk(await callTool('set_active_moment', { momentIdOrName: 'ship export' }));
+    if (parsed.set.momentId !== todayMoment.id) {
+      throw new Error(`pointed at ${parsed.set.momentId}, expected ${todayMoment.id}`);
+    }
+    if (parsed.set.active !== true) throw new Error('expected active:true for a moment on today');
+    if (parsed.set.area?.name !== 'Work') throw new Error(`expected area Work, got ${JSON.stringify(parsed.set.area)}`);
+    // The pointer must be on disk in the shape keel parses.
+    const onDisk = JSON.parse(readFileSync(path.join(vault, 'activeMoment.json'), 'utf8'));
+    if (onDisk.momentId !== todayMoment.id) throw new Error('activeMoment.json momentId mismatch');
+    if (typeof onDisk.at !== 'string' || !onDisk.at) throw new Error('activeMoment.json missing `at`');
+  });
+
+  await step('get_active_moment resolves the pointer', async () => {
+    const parsed = parseOk(await callTool('get_active_moment', {}));
+    if (parsed.active?.moment?.name !== 'ship export') {
+      throw new Error(`expected "ship export", got ${JSON.stringify(parsed.active)}`);
+    }
+  });
+
+  await step('set_active_moment refuses a moment not on today', async () => {
+    const other = parseOk(
+      await callTool('create_standalone_moment', {
+        name: 'next week thing',
+        areaId,
+        day: '2027-01-04',
+        phase: 'MORNING',
+      }),
+    ).created;
+    const text = toolText(await callTool('set_active_moment', { momentIdOrName: other.id }));
+    if (!text.startsWith('Error:')) throw new Error(`expected refusal, got: ${text}`);
+    // The existing pointer must survive a rejected set.
+    const onDisk = JSON.parse(readFileSync(path.join(vault, 'activeMoment.json'), 'utf8'));
+    if (onDisk.momentId !== todayMoment.id) throw new Error('rejected set clobbered the pointer');
+  });
+
+  await step('set_active_moment reports an unknown name with the board', async () => {
+    const text = toolText(await callTool('set_active_moment', { momentIdOrName: 'not a thing' }));
+    if (!text.startsWith('Error:')) throw new Error(`expected refusal, got: ${text}`);
+    if (!text.includes('ship export')) throw new Error(`expected the board listed, got: ${text}`);
+  });
+
+  await step('clear_active_moment removes the pointer', async () => {
+    parseOk(await callTool('clear_active_moment', {}));
+    if (existsSync(path.join(vault, 'activeMoment.json'))) {
+      throw new Error('activeMoment.json still present after clear');
+    }
+    const parsed = parseOk(await callTool('get_active_moment', {}));
+    if (parsed.active !== null) throw new Error('expected null after clear');
+  });
+
+  await step('a deleted moment leaves the pointer stale, not fatal', async () => {
+    parseOk(await callTool('set_active_moment', { momentIdOrName: todayMoment.id }));
+    parseOk(await callTool('delete_moment', { id: todayMoment.id }));
+    const parsed = parseOk(await callTool('get_active_moment', {}));
+    if (parsed.active?.stale !== true) {
+      throw new Error(`expected stale:true, got ${JSON.stringify(parsed.active)}`);
+    }
+    if (parsed.active?.active !== false) throw new Error('a vanished moment must not read as active');
+  });
+
   console.log('\n--- vault files ---');
   const files = ['areas.json', 'habits.json', 'cycles.json', 'cyclePlans.json', 'moments.json'];
   for (const f of files) {
