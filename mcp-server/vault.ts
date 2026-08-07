@@ -181,6 +181,11 @@ export interface Moment {
   emoji?: string | null;
   customMetric?: CustomMetric;
   tags: string[] | null;
+  /**
+   * URLs this moment refers to — the Linear issue, the PR, the doc. A pointer
+   * and nothing else. Absent when the moment refers to nothing.
+   */
+  refs?: readonly string[];
   createdAt: string;
   updatedAt: string;
 }

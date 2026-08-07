@@ -129,14 +129,14 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_moments` | `filter: { areaId?, habitId?, cycleId?, day?, phase?, allocation?: "unallocated"\|"deck"\|"allocated"\|"budgeted"\|"spontaneous" }` | One tool, structured filter. |
 | `get_moment` | `id` | |
-| `create_moment` | `name, areaId, phase?, emoji?, tags?, customMetric?, startTime?, durationMin?` | Unallocated. |
-| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, customMetric?, startTime?, durationMin? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. |
+| `create_moment` | `name, areaId, phase?, emoji?, tags?, customMetric?, startTime?, durationMin?, refs?` | Unallocated. `refs` = URLs this moment refers to (pointers only). |
+| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, customMetric?, startTime?, durationMin?, refs? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. `refs` replaces the list; `[]` clears it. |
 | `delete_moment` | `id` | |
 | `allocate_moment` | `id, day, phase, order?, startTime?, durationMin?` | No cap. Returns `dayViewOverflow` past 3 in the slot. |
 | `unallocate_moment` | `id` | |
 | `allocate_from_plan` | `cycleId, habitId, day, phase` | Materialize a virtual deck card onto a slot. Resolves plan server-side; creates `Moment` with `cyclePlanId` set and the habit's schedule timing inherited. Returns `dayViewOverflow` past 3 in the slot. |
-| `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags, plus the habit's schedule timing. Returns `dayViewOverflow` past 3 in the slot. |
-| `create_standalone_moment` | `name, areaId, day, phase, order?, startTime?, durationMin?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. |
+| `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags, plus the habit's schedule timing. No `refs`: a habit has none — what a moment points at is particular to the occurrence. Returns `dayViewOverflow` past 3 in the slot. |
+| `create_standalone_moment` | `name, areaId, day, phase, order?, startTime?, durationMin?, refs?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. |
 
 ### Active moment (`activeMoment.json`)
 
