@@ -4,14 +4,19 @@
  * Business logic for validating drag operations against Zenborg's constraints.
  */
 
-import type { Moment } from '@/domain/entities/Moment';
+import {
+  DAY_VIEW_PHASE_CAPACITY,
+  type Moment,
+} from '@/domain/entities/Moment';
 import type { Phase } from '@/domain/value-objects/Phase';
 import type { DragValidationResult } from '@/types/dnd';
 
 /**
  * Check if a moment can be dropped into a specific timeline cell.
  *
- * Enforces the max-3-per-cell constraint.
+ * Enforces the day-view cell capacity (`DAY_VIEW_PHASE_CAPACITY`). This is a
+ * display constraint of the coarse day view, not a data-layer invariant — the
+ * zoomed-in time-blocked view holds more.
  *
  * @param targetDay - ISO date string of target cell
  * @param targetPhase - Phase of target cell
@@ -33,10 +38,10 @@ export function canDropInCell(
       m.id !== draggingMomentId
   );
 
-  if (momentsInCell.length >= 3) {
+  if (momentsInCell.length >= DAY_VIEW_PHASE_CAPACITY) {
     return {
       isValid: false,
-      reason: `Cell already has 3 moments (max allowed)`,
+      reason: `Cell already shows ${DAY_VIEW_PHASE_CAPACITY} moments (day-view capacity)`,
     };
   }
 

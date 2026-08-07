@@ -251,14 +251,59 @@ try {
     if (list.length !== 1) throw new Error(`expected 1 allocated, got ${list.length}`);
   });
 
-  // 8. Enforce phase cap (3 moments max)
-  await step('phase cap enforced', async () => {
-    // Already 1 allocated. Add 2 more, then 4th should fail.
+  // 8. Phase cap is a day-view display concern: allocation past 3 succeeds and
+  //    reports `dayViewOverflow` instead of erroring.
+  await step('phase overflow reported, not blocked', async () => {
+    // Already 1 allocated. Add 2 more, then a 4th which overflows the day view.
     await callTool('spawn_spontaneous_from_habit', { habitId, day: '2026-04-21', phase: 'MORNING' });
     await callTool('spawn_spontaneous_from_habit', { habitId, day: '2026-04-21', phase: 'MORNING' });
     const resp = await callTool('spawn_spontaneous_from_habit', { habitId, day: '2026-04-21', phase: 'MORNING' });
-    const text = toolText(resp);
-    if (!text.toLowerCase().includes('max')) throw new Error(`expected cap error, got: ${text}`);
+    const payload = parseOk(resp);
+    if (!payload.created) throw new Error(`expected the 4th moment to be created, got: ${toolText(resp)}`);
+    if (payload.created.order !== 3) throw new Error(`expected order 3, got ${payload.created.order}`);
+    if (!payload.dayViewOverflow || payload.dayViewOverflow.count !== 4) {
+      throw new Error(`expected dayViewOverflow count 4, got: ${toolText(resp)}`);
+    }
+  });
+
+  // 8b. Habit schedules: additive, reconciled against rhythm and phase.
+  await step('habit schedule fills rhythm + phase and is inherited by moments', async () => {
+    const created = parseOk(
+      await callTool('create_habit', {
+        name: 'singing',
+        areaId,
+        order: 9,
+        schedule: { weekdays: ['MON'], startTime: '14:00', durationMin: 60 },
+      }),
+    ).created;
+    if (created.schedule.startTime !== '14:00') throw new Error('schedule not stored');
+    if (created.rhythm?.period !== 'weekly' || created.rhythm.count !== 1) {
+      throw new Error(`expected derived weekly rhythm, got ${JSON.stringify(created.rhythm)}`);
+    }
+
+    const conflict = toolText(
+      await callTool('update_habit', {
+        id: created.id,
+        rhythm: { period: 'weekly', count: 3 },
+      }),
+    );
+    if (!conflict.startsWith('Error:')) throw new Error(`expected rhythm conflict, got: ${conflict}`);
+
+    const spawned = parseOk(
+      await callTool('spawn_spontaneous_from_habit', {
+        habitId: created.id,
+        day: '2026-04-22',
+        phase: 'AFTERNOON',
+      }),
+    ).created;
+    if (spawned.startTime !== '14:00' || spawned.durationMin !== 60) {
+      throw new Error(`expected inherited timing, got ${JSON.stringify(spawned)}`);
+    }
+
+    const overridden = parseOk(
+      await callTool('update_moment', { id: spawned.id, startTime: '14:15' }),
+    ).updated;
+    if (overridden.startTime !== '14:15') throw new Error('per-instance override failed');
   });
 
   // 9. archive_habit — derive paradigm: plans deleted, allocated moments preserved
