@@ -42,7 +42,17 @@ export class HabitHealthService {
     if (attitude === Attitude.BEING) return "evergreen";
 
     const rhythm = this.resolveRhythm(habit, cyclePlan);
-    const habitMoments = moments.filter((m) => m.habitId === habit.id);
+    // A moment belongs to this habit when it was planted against it OR when it
+    // names it among the people present. People ARE habit records, so one dinner
+    // with three friends is ONE moment carrying three `personIds` — without the
+    // second clause that dinner would be invisible here while the outreach queue
+    // counts it, and the two read-paths would disagree about the same person.
+    // For an ordinary habit `personIds` can never hold its own id, so this is
+    // provably inert there. The attitude gate above is untouched: person health
+    // still lives in PersonService, standalone and attitude-free.
+    const habitMoments = moments.filter(
+      (m) => m.habitId === habit.id || (m.personIds?.includes(habit.id) ?? false)
+    );
 
     switch (attitude) {
       case Attitude.BEGINNING:

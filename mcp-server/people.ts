@@ -225,7 +225,9 @@ export function selectPeopleToReach(
       personId: habit.id,
       name: habit.name,
       areaId: habit.areaId,
-      tags: habit.tags,
+      // Guarded like the `tag` filter above — `PersonToReach.tags` promises
+      // `string[]`, and a vault record written before tags existed has none.
+      tags: habit.tags ?? [],
       rhythm,
       daysSinceLastContact: daysSince,
       overdueRatio: overdueRatio(daysSince, rhythm),
