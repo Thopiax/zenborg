@@ -59,3 +59,6 @@ feature-lab
 # bun lockfile (we use pnpm; bun is build-time-only via `bun build --compile`)
 mcp-server/bun.lock
 
+
+# Garmin backing: local payloads, real habit map (contains vault UUIDs)
+.local/
