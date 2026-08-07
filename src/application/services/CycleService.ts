@@ -41,6 +41,7 @@ import {
 } from "@/domain/value-objects/Rhythm";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { timingFromSchedule } from "@/domain/value-objects/Schedule";
 import { habitHealthService } from "@/domain/services/HabitHealthService";
 import type { Health } from "@/domain/value-objects/Health";
 import { formatCycleDateRange, fromISODate, toISODate } from "@/lib/dates";
@@ -437,12 +438,12 @@ export class CycleService {
       return { error: `Day ${day} before cycle start ${cycle.startDate}` };
     }
 
+    // No slot cap here. The "3 per (day, phase)" rule is a day-view display
+    // concern (`DAY_VIEW_PHASE_CAPACITY`), not an allocation invariant — a
+    // zoomed-in, time-blocked phase can hold more.
     const slotMoments = Object.values(moments$.get()).filter(
       (m) => m.day === day && m.phase === phase,
     );
-    if (slotMoments.length >= 3) {
-      return { error: `Slot ${day} ${phase} full (3/3)` };
-    }
 
     const created = createMoment({
       name: habit.name,
@@ -453,6 +454,7 @@ export class CycleService {
       cyclePlanId: plan.id,
       tags: habit.tags || [],
       phase,
+      ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),
     });
     if ("error" in created) return created;
 
@@ -1073,6 +1075,7 @@ export class CycleService {
       cyclePlanId: null, // Spontaneous
       phase: null,
       tags: habit.tags || [],
+      ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),
     });
 
     if ("error" in result) {

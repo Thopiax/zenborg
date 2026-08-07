@@ -18,6 +18,8 @@ import {
   CustomMetricSchema,
   PhaseSchema,
   RhythmSchema,
+  ScheduleSchema,
+  StartTimeSchema,
   logVaultBanner,
   readCollection,
   resolveVault,
@@ -31,10 +33,19 @@ import {
   type Phase,
   type PhaseConfig,
   type Rhythm,
+  type Schedule,
 } from './vault.js';
 import {
   areaHasMoments,
-  canAllocateToPhase,
+  countMomentsInPhase,
+  dayViewOverflow,
+  deriveRhythmFromSchedule,
+  normalizeSchedule,
+  phaseForStartTime,
+  schedulePhaseError,
+  scheduleRhythmError,
+  timingFromSchedule,
+  validateMomentTiming,
   computeCycleCascade,
   findAreaByIdOrName,
   normalizeAliases,
@@ -83,6 +94,37 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/**
+ * Reconciles a habit's schedule with the two fields it overlaps.
+ *
+ * `rhythm` and `phase` stay stored rather than derived — health, cycle budgets
+ * and the (day, phase) grid all read them directly, and phase bands are
+ * user-mutable. The schedule *fills* them when absent and *rejects* them when
+ * they contradict it. Mirrors `reconcileSchedule` in
+ * `src/domain/entities/Habit.ts`.
+ */
+function reconcileHabitSchedule(
+  schedule: Schedule,
+  rhythm: Rhythm | undefined,
+  phase: Phase | null | undefined,
+): { rhythm: Rhythm; phase: Phase | null } | { error: string } {
+  const rhythmError = scheduleRhythmError(schedule, rhythm);
+  if (rhythmError) {
+    return { error: rhythmError };
+  }
+
+  const phaseConfigs = Object.values(readCollection(VAULT_ROOT, 'phaseConfigs'));
+  const phaseError = schedulePhaseError(schedule, phase, phaseConfigs);
+  if (phaseError) {
+    return { error: phaseError };
+  }
+
+  return {
+    rhythm: rhythm ?? deriveRhythmFromSchedule(schedule),
+    phase: phase ?? phaseForStartTime(schedule.startTime, phaseConfigs),
+  };
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Server
 // ────────────────────────────────────────────────────────────────────────
@@ -103,6 +145,8 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 - **CyclePlan** — a plot's budget for the season (how many moments of this habit this cycle)
 - **Phase** — time-of-day band (MORNING / AFTERNOON / EVENING / NIGHT)
 - **Attitude** — relationship mode: BEGINNING → RETURNING → KEEPING → BUILDING → PUSHING → BEING
+- **Rhythm** — how often (\`{ period, count }\`)
+- **Schedule** — *when* on the clock (\`{ weekdays, startTime, durationMin }\`), optional; most habits are ambient
 
 ## Vault layout
 
@@ -118,7 +162,9 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 ## Invariants the MCP enforces
 
 - Moment and habit names are **1–3 words**.
-- Max **3 moments per (day, phase)** — evolving; check TOOLS.md.
+- **No cap on moments per (day, phase).** The "3 per phase" rule is a *day-view display* limit, not a data invariant — a zoomed-in, time-blocked phase holds more. Allocation tools return a \`dayViewOverflow\` notice past 3 so you can still flag over-planning; they never refuse.
+- A habit's \`schedule\` (optional) fills \`rhythm\` and \`phase\` when they're absent, and is **rejected** when they contradict it: a weekly rhythm's \`count\` must equal \`weekdays.length\`, and \`phase\` must match the band \`startTime\` falls in. Longer rhythm periods are unconstrained (weekdays are candidate days).
+- Moments inherit \`startTime\`/\`durationMin\` from their habit's schedule at allocation, and may override either per instance.
 - One \`CyclePlan\` per (cycleId, habitId) — \`budget_habit_to_cycle\` upserts.
 - \`archive_habit\` cascade: deletes all cycle plans for that habit; allocated moments preserved as historical records (orphan via habitId).
 - \`delete_cycle\` cascades: deletes all moments + plans scoped to the cycle.
@@ -312,7 +358,7 @@ server.tool(
 
 server.tool(
   'create_habit',
-  'Create a habit (perennial) inside an area. Name must be 1–3 words.',
+  'Create a habit (perennial) inside an area. Name must be 1–3 words. Pass `schedule` for clock-time commitments (e.g. singing at 14:00 on Mondays); it fills `rhythm` and `phase` when they are absent and is rejected when they contradict it. Omit it for ambient habits.',
   {
     name: z.string(),
     areaId: z.string(),
@@ -325,6 +371,7 @@ server.tool(
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
     rhythm: RhythmSchema.optional(),
+    schedule: ScheduleSchema.optional(),
   },
   async (params): Promise<ToolResult> => {
     const nameError = validateOneToThreeWords(params.name, 'Habit');
@@ -334,6 +381,23 @@ server.tool(
     const areaCheck = requireActiveArea(areas, params.areaId);
     if (typeof areaCheck === 'string') return err(areaCheck);
 
+    let schedule: Schedule | undefined;
+    let rhythm = params.rhythm;
+    let phase: Phase | null = params.phase ?? null;
+    if (params.schedule) {
+      const normalized = normalizeSchedule(params.schedule);
+      if ('error' in normalized) return err(normalized.error);
+      const reconciled = reconcileHabitSchedule(
+        normalized,
+        params.rhythm,
+        params.phase ?? null,
+      );
+      if ('error' in reconciled) return err(reconciled.error);
+      schedule = normalized;
+      rhythm = reconciled.rhythm;
+      phase = reconciled.phase;
+    }
+
     const habits = readCollection(VAULT_ROOT, 'habits');
     const now = nowIso();
     const normalizedAliases = normalizeAliases(params.aliases, params.name);
@@ -342,7 +406,7 @@ server.tool(
       name: params.name.trim(),
       areaId: params.areaId,
       attitude: params.attitude ?? null,
-      phase: params.phase ?? null,
+      phase,
       tags: normalizeTags(params.tags),
       emoji: params.emoji ? params.emoji.trim() : null,
       isArchived: false,
@@ -352,7 +416,8 @@ server.tool(
         ? { description: params.description.trim() }
         : {}),
       ...(params.guidance?.trim() ? { guidance: params.guidance.trim() } : {}),
-      ...(params.rhythm ? { rhythm: params.rhythm } : {}),
+      ...(rhythm ? { rhythm } : {}),
+      ...(schedule ? { schedule } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -364,7 +429,7 @@ server.tool(
 
 server.tool(
   'update_habit',
-  'Partially update a habit.',
+  'Partially update a habit. Pass `schedule: null` to drop a clock-time commitment. Setting or keeping a schedule re-reconciles `rhythm` and `phase` against it.',
   {
     id: z.string(),
     name: z.string().optional(),
@@ -378,6 +443,7 @@ server.tool(
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
     rhythm: RhythmSchema.nullable().optional(),
+    schedule: ScheduleSchema.nullable().optional(),
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
@@ -447,6 +513,28 @@ server.tool(
         next.aliases = renormalized;
       }
     }
+    if ('schedule' in updates) {
+      if (updates.schedule === null) {
+        delete next.schedule;
+      } else if (updates.schedule !== undefined) {
+        next.schedule = updates.schedule;
+      }
+    }
+
+    if (next.schedule) {
+      const normalized = normalizeSchedule(next.schedule);
+      if ('error' in normalized) return err(normalized.error);
+      const reconciled = reconcileHabitSchedule(
+        normalized,
+        next.rhythm,
+        next.phase,
+      );
+      if ('error' in reconciled) return err(reconciled.error);
+      next.schedule = normalized;
+      next.rhythm = reconciled.rhythm;
+      next.phase = reconciled.phase;
+    }
+
     habits[id] = next;
     writeCollection(VAULT_ROOT, 'habits', habits);
     return ok({ updated: next });
@@ -1244,6 +1332,8 @@ function buildMoment(params: {
   emoji?: string | null;
   tags?: string[] | null;
   customMetric?: Moment['customMetric'];
+  startTime?: string;
+  durationMin?: number;
 }): Moment {
   const now = nowIso();
   return {
@@ -1256,6 +1346,10 @@ function buildMoment(params: {
     phase: params.phase ?? null,
     day: params.day ?? null,
     order: params.order ?? 0,
+    ...(params.startTime !== undefined ? { startTime: params.startTime } : {}),
+    ...(params.durationMin !== undefined
+      ? { durationMin: params.durationMin }
+      : {}),
     emoji: params.emoji ?? null,
     tags: normalizeTags(params.tags ?? undefined),
     ...(params.customMetric ? { customMetric: params.customMetric } : {}),
@@ -1266,7 +1360,7 @@ function buildMoment(params: {
 
 server.tool(
   'create_moment',
-  'Create an unallocated moment (lives in the drawing board). Name must be 1–3 words.',
+  'Create an unallocated moment (lives in the drawing board). Name must be 1–3 words. `startTime`/`durationMin` are optional clock time — usually inherited from a habit schedule, but settable directly.',
   {
     name: z.string(),
     areaId: z.string(),
@@ -1274,10 +1368,18 @@ server.tool(
     emoji: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
     customMetric: CustomMetricSchema.optional(),
+    startTime: StartTimeSchema.optional(),
+    durationMin: z.number().int().positive().optional(),
   },
   async (params): Promise<ToolResult> => {
     const nameError = validateOneToThreeWords(params.name, 'Moment');
     if (nameError) return err(nameError);
+
+    const timingError = validateMomentTiming(
+      params.startTime,
+      params.durationMin,
+    );
+    if (timingError) return err(timingError);
 
     const areas = readCollection(VAULT_ROOT, 'areas');
     const areaCheck = requireActiveArea(areas, params.areaId);
@@ -1293,7 +1395,7 @@ server.tool(
 
 server.tool(
   'update_moment',
-  'Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that.',
+  'Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear.',
   {
     id: z.string(),
     name: z.string().optional(),
@@ -1302,6 +1404,8 @@ server.tool(
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
     customMetric: CustomMetricSchema.optional(),
+    startTime: StartTimeSchema.nullable().optional(),
+    durationMin: z.number().int().positive().nullable().optional(),
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
@@ -1331,8 +1435,16 @@ server.tool(
       ...(updates.customMetric !== undefined
         ? { customMetric: updates.customMetric }
         : {}),
+      ...(updates.startTime ? { startTime: updates.startTime } : {}),
+      ...(updates.durationMin ? { durationMin: updates.durationMin } : {}),
       updatedAt: nowIso(),
     };
+    if (updates.startTime === null) {
+      delete next.startTime;
+    }
+    if (updates.durationMin === null) {
+      delete next.durationMin;
+    }
     moments[id] = next;
     writeCollection(VAULT_ROOT, 'moments', moments);
     return ok({ updated: next });
@@ -1354,31 +1466,45 @@ server.tool(
 
 server.tool(
   'allocate_moment',
-  'Allocate a moment to a specific (day, phase). Enforces max 3 per phase.',
+  'Allocate a moment to a specific (day, phase). No hard cap: the "3 per phase" rule is a day-view display concern, so a slot beyond it comes back with a `dayViewOverflow` notice rather than an error. `startTime`/`durationMin` optionally pin the moment to the clock.',
   {
     id: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     phase: PhaseSchema,
-    order: z.number().int().min(0).max(2).optional(),
+    order: z.number().int().nonnegative().optional(),
+    startTime: StartTimeSchema.optional(),
+    durationMin: z.number().int().positive().optional(),
   },
-  async ({ id, day, phase, order }): Promise<ToolResult> => {
+  async ({
+    id,
+    day,
+    phase,
+    order,
+    startTime,
+    durationMin,
+  }): Promise<ToolResult> => {
     const moments = readCollection(VAULT_ROOT, 'moments');
     const moment = moments[id];
     if (!moment) return err(`Moment not found: ${id}`);
+
+    const timingError = validateMomentTiming(startTime, durationMin);
+    if (timingError) return err(timingError);
+
     const allMoments = Object.values(moments);
-    if (!canAllocateToPhase(allMoments, day, phase, id)) {
-      return err(`Phase is full: max 3 moments on ${day} ${phase}.`);
-    }
+    const slotCount = countMomentsInPhase(allMoments, day, phase, id);
     const next: Moment = {
       ...moment,
       day,
       phase,
-      order: order ?? 0,
+      order: order ?? slotCount,
+      ...(startTime !== undefined ? { startTime } : {}),
+      ...(durationMin !== undefined ? { durationMin } : {}),
       updatedAt: nowIso(),
     };
     moments[id] = next;
     writeCollection(VAULT_ROOT, 'moments', moments);
-    return ok({ allocated: next });
+    const overflow = dayViewOverflow(slotCount + 1);
+    return ok({ allocated: next, ...(overflow ? { dayViewOverflow: overflow } : {}) });
   },
 );
 
@@ -1403,7 +1529,7 @@ server.tool(
 
 server.tool(
   'allocate_from_plan',
-  'Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan. Errors if no plan exists, budget is exhausted, slot is full (3/3), habit is archived, or day is outside cycle range.',
+  'Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan, inheriting the habit\'s schedule timing when it has one. Errors if no plan exists, budget is exhausted, habit is archived, or day is outside cycle range. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.',
   {
     cycleId: z.string(),
     habitId: z.string(),
@@ -1447,12 +1573,9 @@ server.tool(
       return err(`Day ${day} before cycle start ${cycle.startDate}`);
     }
 
-    const slotMoments = Object.values(allMoments).filter(
-      (m: Moment) => m.day === day && m.phase === phase,
-    );
-    if (slotMoments.length >= 3) {
-      return err(`Slot ${day} ${phase} full (3/3)`);
-    }
+    // No slot cap: the "3 per (day, phase)" rule is a day-view display
+    // concern, reported below rather than enforced.
+    const slotCount = countMomentsInPhase(Object.values(allMoments), day, phase);
 
     const nowIsoStr = nowIso();
     const moment: Moment = {
@@ -1464,7 +1587,8 @@ server.tool(
       cyclePlanId: plan.id,
       day,
       phase,
-      order: slotMoments.length,
+      order: slotCount,
+      ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),
       emoji: habit.emoji ?? null,
       tags: habit.tags ?? [],
       createdAt: nowIsoStr,
@@ -1473,18 +1597,22 @@ server.tool(
 
     allMoments[moment.id] = moment;
     writeCollection(VAULT_ROOT, 'moments', allMoments);
-    return ok({ allocated: moment });
+    const overflow = dayViewOverflow(slotCount + 1);
+    return ok({
+      allocated: moment,
+      ...(overflow ? { dayViewOverflow: overflow } : {}),
+    });
   },
 );
 
 server.tool(
   'spawn_spontaneous_from_habit',
-  'Create an ad-hoc moment from a habit template and allocate it. Inherits name/area/emoji/tags. Spontaneous = no cyclePlanId. If a cycle contains the day, inherits its cycleId.',
+  'Create an ad-hoc moment from a habit template and allocate it. Inherits name/area/emoji/tags, plus the habit\'s schedule timing when it has one. Spontaneous = no cyclePlanId. If a cycle contains the day, inherits its cycleId. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.',
   {
     habitId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     phase: PhaseSchema,
-    order: z.number().int().min(0).max(2).optional(),
+    order: z.number().int().nonnegative().optional(),
   },
   async ({ habitId, day, phase, order }): Promise<ToolResult> => {
     const habits = readCollection(VAULT_ROOT, 'habits');
@@ -1497,9 +1625,7 @@ server.tool(
     if (typeof areaCheck === 'string') return err(areaCheck);
 
     const moments = readCollection(VAULT_ROOT, 'moments');
-    if (!canAllocateToPhase(Object.values(moments), day, phase)) {
-      return err(`Phase is full: max 3 moments on ${day} ${phase}.`);
-    }
+    const slotCount = countMomentsInPhase(Object.values(moments), day, phase);
 
     // Inherit cycleId if a cycle contains `day`.
     const cycles = readCollection(VAULT_ROOT, 'cycles');
@@ -1522,53 +1648,74 @@ server.tool(
       cyclePlanId: null, // spontaneous
       phase,
       day,
-      order: order ?? 0,
+      order: order ?? slotCount,
       emoji: habit.emoji,
       tags: habit.tags,
+      ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),
     });
     moments[moment.id] = moment;
     writeCollection(VAULT_ROOT, 'moments', moments);
-    return ok({ created: moment });
+    const overflow = dayViewOverflow(slotCount + 1);
+    return ok({
+      created: moment,
+      ...(overflow ? { dayViewOverflow: overflow } : {}),
+    });
   },
 );
 
 server.tool(
   'create_standalone_moment',
-  'Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit.',
+  'Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.',
   {
     name: z.string(),
     areaId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     phase: PhaseSchema,
-    order: z.number().int().min(0).max(2).optional(),
+    order: z.number().int().nonnegative().optional(),
     emoji: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
+    startTime: StartTimeSchema.optional(),
+    durationMin: z.number().int().positive().optional(),
   },
   async (params): Promise<ToolResult> => {
     const nameError = validateOneToThreeWords(params.name, 'Moment');
     if (nameError) return err(nameError);
+
+    const timingError = validateMomentTiming(
+      params.startTime,
+      params.durationMin,
+    );
+    if (timingError) return err(timingError);
 
     const areas = readCollection(VAULT_ROOT, 'areas');
     const areaCheck = requireActiveArea(areas, params.areaId);
     if (typeof areaCheck === 'string') return err(areaCheck);
 
     const moments = readCollection(VAULT_ROOT, 'moments');
-    if (!canAllocateToPhase(Object.values(moments), params.day, params.phase)) {
-      return err(`Phase is full: max 3 moments on ${params.day} ${params.phase}.`);
-    }
+    const slotCount = countMomentsInPhase(
+      Object.values(moments),
+      params.day,
+      params.phase,
+    );
 
     const moment = buildMoment({
       name: params.name,
       areaId: params.areaId,
       phase: params.phase,
       day: params.day,
-      order: params.order ?? 0,
+      order: params.order ?? slotCount,
       emoji: params.emoji ?? null,
       tags: params.tags,
+      startTime: params.startTime,
+      durationMin: params.durationMin,
     });
     moments[moment.id] = moment;
     writeCollection(VAULT_ROOT, 'moments', moments);
-    return ok({ created: moment });
+    const overflow = dayViewOverflow(slotCount + 1);
+    return ok({
+      created: moment,
+      ...(overflow ? { dayViewOverflow: overflow } : {}),
+    });
   },
 );
 
