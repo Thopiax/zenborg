@@ -100,8 +100,8 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_habits` | `areaId?, includeArchived?` | |
 | `get_habit` | `id` | |
-| `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, emoji?, description?, guidance?, rhythm?, schedule?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. |
-| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. |
+| `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, kind?, emoji?, description?, guidance?, rhythm?, schedule?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. `kind: "person"` marks the record as a person; absent means an ordinary habit. |
+| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear; `kind?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. `kind: null` untags a mistagged person back into an ordinary habit. |
 | `archive_habit` | `id` | **Cascade:** deletes all cycle plans for this habit; allocated moments preserved as historical records (orphan via `habitId`). |
 | `unarchive_habit` | `id` | |
 
@@ -127,14 +127,14 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_moments` | `filter: { areaId?, habitId?, cycleId?, day?, phase?, allocation?: "unallocated"\|"deck"\|"allocated"\|"budgeted"\|"spontaneous" }` | One tool, structured filter. |
 | `get_moment` | `id` | |
-| `create_moment` | `name, areaId, phase?, emoji?, tags?, customMetric?, startTime?, durationMin?` | Unallocated. |
+| `create_moment` | `name, areaId, phase?, emoji?, tags?, personIds?, customMetric?, startTime?, durationMin?` | Unallocated. `personIds` are the people present; an empty array writes nothing (absent means nobody). |
 | `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, customMetric?, startTime?, durationMin? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. |
 | `delete_moment` | `id` | |
 | `allocate_moment` | `id, day, phase, order?, startTime?, durationMin?` | No cap. Returns `dayViewOverflow` past 3 in the slot. |
 | `unallocate_moment` | `id` | |
 | `allocate_from_plan` | `cycleId, habitId, day, phase` | Materialize a virtual deck card onto a slot. Resolves plan server-side; creates `Moment` with `cyclePlanId` set and the habit's schedule timing inherited. Returns `dayViewOverflow` past 3 in the slot. |
 | `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags, plus the habit's schedule timing. Returns `dayViewOverflow` past 3 in the slot. |
-| `create_standalone_moment` | `name, areaId, day, phase, order?, startTime?, durationMin?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. |
+| `create_standalone_moment` | `name, areaId, day, phase, order?, emoji?, tags?, personIds?, startTime?, durationMin?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. `personIds` are the people present; an empty array writes nothing (absent means nobody). |
 
 ### Phases (`phaseConfigs.json`) — Should-have
 | Tool | Inputs | Notes |
