@@ -1,0 +1,84 @@
+{
+  "$comment": [
+    "Garmin activity type -> zenborg habit. Copy to $KAIROS_HOME/integrations/garmin/habit-map.json",
+    "and replace every REPLACE-WITH-... with a habit UUID from your own habits.json.",
+    "Habit ids are per-vault; this file ships names and reasoning only, never one user's ids.",
+    "",
+    "Two sections, and the difference is load-bearing:",
+    "  mappings  - decided. Resolves to a habit.",
+    "  pending   - undecided. NEVER resolves; surfaced for you to settle.",
+    "A type listed in `pending` is ignored even if it also appears in `mappings`,",
+    "so a half-finished edit cannot start writing moments.",
+    "",
+    "Garmin type strings come from `get_activities_by_date`. They carry version",
+    "suffixes (tennis_v2, stand_up_paddleboarding_v2) — match what your account emits."
+  ],
+  "version": 1,
+
+  "mappings": {
+    "yoga": {
+      "habitId": "REPLACE-WITH-YOUR-MEDITATION-HABIT-UUID",
+      "habitName": "Vipassana",
+      "note": "DELIBERATE AND COUNTER-INTUITIVE. Garmin has no meditation activity, so seated practice is logged on the watch as 'Yoga'. Do not 'correct' this to a habit literally named yoga. Verified over a 50-day sample: avg HR 60-75, 8-62 kcal, 13-27 min, steps always 0 — a seated profile, not a moving one. If you also do physical yoga on the watch, these two collapse into one type and you must disambiguate on duration/HR before trusting it."
+    },
+    "soccer": {
+      "habitId": "REPLACE-WITH-YOUR-FOOTBALL-HABIT-UUID",
+      "habitName": "footy",
+      "note": "Unambiguous. 60-170 min, avg HR 127-160, 1000-1750 kcal."
+    },
+    "strength_training": {
+      "habitId": "REPLACE-WITH-YOUR-GYM-HABIT-UUID",
+      "habitName": "gym",
+      "note": "Unambiguous."
+    },
+    "open_water_swimming": {
+      "habitId": "REPLACE-WITH-YOUR-SWIMMING-HABIT-UUID",
+      "habitName": "swimming",
+      "note": "Pool swims arrive as `lap_swimming` — add that as a second key pointing at the same habit if you swim indoors."
+    },
+    "tennis_v2": {
+      "habitId": "REPLACE-WITH-YOUR-TENNIS-HABIT-UUID",
+      "habitName": "tennis",
+      "note": "Note the _v2 suffix — Garmin's current string. Older activities may be plain `tennis`."
+    }
+  },
+
+  "pending": {
+    "breathwork": {
+      "reason": "Could belong to the meditation habit, or be its own practice. No breathwork habit exists in the garden yet.",
+      "recommendation": "Give it its own habit in the Mindfulness area, rather than folding it into meditation. Three signals separate them: (1) these are Garmin's built-in guided programs — 'Tranquility', 'Coherence', 'Relax and Focus' — started from the watch menu, not a sat practice; (2) HR runs higher (median 79 vs 66 for the meditation sessions), consistent with reactive down-regulation rather than settled sitting; (3) the timing is scattered across the day (05:10, 11:25, 15:04, 18:19, 19:12, 00:16) where meditation clusters in the morning. Folding them together would inflate the meditation streak with stress-response episodes and hide the very signal that makes breathwork worth noticing. If you would rather not add a habit, map it to meditation and accept that cost knowingly.",
+      "candidates": [
+        {
+          "habitId": "REPLACE-WITH-YOUR-MEDITATION-HABIT-UUID",
+          "habitName": "Vipassana"
+        }
+      ]
+    },
+    "running": {
+      "reason": "Three candidate habits — recovery run, long run, speed run — and one Garmin type covering all three.",
+      "recommendation": "Do not split on averages. An interval session and an easy run can share an average pace, so avg-pace rules mislabel exactly the sessions you most want counted. Split on structure instead: call `get_activity_typed_splits` for the activity and treat repeated fast/slow alternation as a speed run. Cheap fallback if you want one call per activity instead of two: distance >= 10 km -> long run; else avg pace <= 5:15 min/km -> speed run; else recovery run. Flagged rather than applied because the evidence is too thin to fit: the account holds only 2 runs in the trailing 12 months (3.2 km @ 6:03/km and 3.8 km @ 6:26/km, both HR ~139). Both would land on recovery run under the fallback, which is plausible but untested against a real long or speed session.",
+      "candidates": [
+        {
+          "habitId": "REPLACE-WITH-YOUR-RECOVERY-RUN-HABIT-UUID",
+          "habitName": "recovery run"
+        },
+        {
+          "habitId": "REPLACE-WITH-YOUR-LONG-RUN-HABIT-UUID",
+          "habitName": "long run"
+        },
+        {
+          "habitId": "REPLACE-WITH-YOUR-SPEED-RUN-HABIT-UUID",
+          "habitName": "speed run"
+        }
+      ]
+    },
+    "cycling": {
+      "reason": "No cycling habit exists in the garden. 8 sessions in the sample.",
+      "recommendation": "Leave unmapped — this is transport, not practice, and the data says so rather than the intuition. The Paris rides average 9-17 km/h with heavy stop-start over flat ground, at commute times (10:34, 17:13, 17:29, 18:23): city-bike journeys. The holiday rides near the lake are faster (20-24 km/h) but last 5-10 minutes and hop between village and water. Not one of the 8 sessions reaches 15 km or 45 minutes. If you later decide cycling IS a practice, create the habit first and gate it on distance >= 15 km or duration >= 45 min — a threshold today's data clears zero times, which is the cleanest evidence that no habit is missing."
+    },
+    "stand_up_paddleboarding_v2": {
+      "reason": "No matching habit exists. 5 sessions in the sample.",
+      "recommendation": "Leave unmapped. All 5 fall inside one 8-day holiday at one lake (2026-07-16 to 07-24), with nothing before or since. A habit is a recurring moment template; this is an episode. Recording it as a habit would create a perennial that wilts permanently the day the holiday ends — manufacturing exactly the false-wilting signal this whole exercise exists to remove. A standalone moment is the right primitive. The nearest existing habit is `beach`, but paddleboarding is not that; do not fold it in without deciding."
+    }
+  }
+}
