@@ -141,6 +141,7 @@ export interface Habit {
   guidance?: string;
   rhythm?: Rhythm;
   schedule?: Schedule;
+  kind?: 'person'; // Absent = habit. Mirrors src/domain/entities/Habit.ts
   createdAt: string;
   updatedAt: string;
 }
@@ -181,6 +182,7 @@ export interface Moment {
   emoji?: string | null;
   customMetric?: CustomMetric;
   tags: string[] | null;
+  personIds?: string[]; // People present. Mirrors src/domain/entities/Moment.ts
   createdAt: string;
   updatedAt: string;
 }
