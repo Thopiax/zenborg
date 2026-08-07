@@ -3,6 +3,7 @@ import {
   daysSinceLastContact,
   hasArrangedContact,
   latestContactDate,
+  overdueRank,
   personHealth,
   personMoments,
 } from './people.js';
@@ -391,5 +392,19 @@ describe('personHealth — silence threshold arithmetic', () => {
       ),
     ).toBe('blooming');
     expect(personHealth(person({ rhythm: WEEKLY }), ms, NOW)).toBe('wilting');
+  });
+});
+
+describe('overdueRank', () => {
+  it('ranks never-contacted above any elapsed count', () => {
+    expect(overdueRank(null)).toBeGreaterThan(overdueRank(3650));
+  });
+
+  it('is finite so two never-contacted people compare to zero, not NaN', () => {
+    expect(overdueRank(null) - overdueRank(null)).toBe(0);
+  });
+
+  it('passes a real day count straight through', () => {
+    expect(overdueRank(12)).toBe(12);
   });
 });

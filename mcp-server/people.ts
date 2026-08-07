@@ -132,3 +132,11 @@ export function personHealth(
     ? 'blooming'
     : 'wilting';
 }
+
+/**
+ * Sort key for the outreach queue. Never-contacted ranks above every elapsed
+ * count, and stays finite so two of them compare to 0 rather than NaN.
+ */
+export function overdueRank(daysSince: number | null): number {
+  return daysSince === null ? Number.MAX_SAFE_INTEGER : daysSince;
+}
