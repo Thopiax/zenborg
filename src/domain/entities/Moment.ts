@@ -43,6 +43,16 @@ export interface Moment {
   customMetric?: CustomMetric; // Keep for PUSHING habit support
   tags: string[] | null; // Flexible organization labels
 
+  /**
+   * People present at this moment. Many people compose under one moment —
+   * a dinner with three friends is ONE moment carrying three ids, not three
+   * moments (which would also collide with the max-3-per-(day,phase) cap).
+   *
+   * Ids reference habit records where `kind === "person"`.
+   * Optional: absent means nobody. There is deliberately no `null` form.
+   */
+  personIds?: string[];
+
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }
