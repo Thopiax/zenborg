@@ -1479,7 +1479,7 @@ server.tool(
 
 server.tool(
   'update_moment',
-  'Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear.',
+  'Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `personIds` replaces the whole guest list — pass null or [] to clear it, omit it to leave it alone.',
   {
     id: z.string(),
     name: z.string().optional(),
@@ -1487,6 +1487,7 @@ server.tool(
     emoji: z.string().nullable().optional(),
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
+    personIds: z.array(z.string()).nullable().optional(),
     customMetric: CustomMetricSchema.optional(),
     startTime: StartTimeSchema.nullable().optional(),
     durationMin: z.number().int().positive().nullable().optional(),
@@ -1528,6 +1529,16 @@ server.tool(
     }
     if (updates.durationMin === null) {
       delete next.durationMin;
+    }
+    if ('personIds' in updates) {
+      // Absent is the single empty representation — the same one `buildMoment`
+      // writes — so an empty list clears the key rather than persisting `[]`.
+      const list = updates.personIds ?? [];
+      if (list.length === 0) {
+        delete next.personIds;
+      } else {
+        next.personIds = list;
+      }
     }
     moments[id] = next;
     writeCollection(VAULT_ROOT, 'moments', moments);
