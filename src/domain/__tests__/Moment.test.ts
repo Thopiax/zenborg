@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   allocateMoment,
   canAllocateToPhase,
@@ -373,5 +373,15 @@ describe("Moment.personIds", () => {
 
   it("is absent on a moment that involves nobody", () => {
     expect(base.personIds).toBeUndefined();
+  });
+
+  it("types personIds as an optional string array", () => {
+    expectTypeOf<Moment["personIds"]>().toEqualTypeOf<string[] | undefined>();
+  });
+
+  it("rejects a non-array personIds at the type level", () => {
+    // @ts-expect-error personIds is string[] — a bare string must not assign
+    const bad: Moment = { ...base, personIds: "p-eli" };
+    expect(bad.personIds).toBe("p-eli");
   });
 });
