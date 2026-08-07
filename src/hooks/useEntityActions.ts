@@ -12,7 +12,10 @@ import { useMemo } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
-import type { Moment } from "@/domain/entities/Moment";
+import {
+  DAY_VIEW_PHASE_CAPACITY,
+  type Moment,
+} from "@/domain/entities/Moment";
 import { getCurrentPhase } from "@/domain/value-objects/Phase";
 import {
   activeCycle$,
@@ -134,7 +137,7 @@ export function useEntityActions(
             (m) => m.day === today && m.phase === currentPhase,
           ).length;
 
-          if (existingCount < 3) {
+          if (existingCount < DAY_VIEW_PHASE_CAPACITY) {
             actions.push({
               id: "moment.allocate-today",
               label: "Allocate to today",
@@ -155,7 +158,7 @@ export function useEntityActions(
               icon: Calendar,
               action: () => {},
               disabled: true,
-              disabledReason: "Current phase is full (3 moments max)",
+              disabledReason: `Current phase already shows ${DAY_VIEW_PHASE_CAPACITY} moments`,
             });
           }
         }

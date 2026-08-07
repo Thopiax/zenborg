@@ -100,8 +100,8 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_habits` | `areaId?, includeArchived?` | |
 | `get_habit` | `id` | |
-| `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, emoji?, description?, guidance?, rhythm?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. |
-| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. |
+| `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, emoji?, description?, guidance?, rhythm?, schedule?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. |
+| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. |
 | `archive_habit` | `id` | **Cascade:** deletes all cycle plans for this habit; allocated moments preserved as historical records (orphan via `habitId`). |
 | `unarchive_habit` | `id` | |
 
@@ -127,14 +127,14 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_moments` | `filter: { areaId?, habitId?, cycleId?, day?, phase?, allocation?: "unallocated"\|"deck"\|"allocated"\|"budgeted"\|"spontaneous" }` | One tool, structured filter. |
 | `get_moment` | `id` | |
-| `create_moment` | `name, areaId, phase?, emoji?, tags?, customMetric?` | Unallocated. |
-| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, customMetric? }` | |
+| `create_moment` | `name, areaId, phase?, emoji?, tags?, customMetric?, startTime?, durationMin?` | Unallocated. |
+| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, customMetric?, startTime?, durationMin? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. |
 | `delete_moment` | `id` | |
-| `allocate_moment` | `id, day, phase, order?` | Enforce 3-per-(day, phase) cap. |
+| `allocate_moment` | `id, day, phase, order?, startTime?, durationMin?` | No cap. Returns `dayViewOverflow` past 3 in the slot. |
 | `unallocate_moment` | `id` | |
-| `allocate_from_plan` | `cycleId, habitId, day, phase` | Materialize a virtual deck card onto a slot. Resolves plan server-side; creates `Moment` with `cyclePlanId` set. |
-| `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags. |
-| `create_standalone_moment` | `name, areaId, day, phase, order?` | Create + allocate in one op. |
+| `allocate_from_plan` | `cycleId, habitId, day, phase` | Materialize a virtual deck card onto a slot. Resolves plan server-side; creates `Moment` with `cyclePlanId` set and the habit's schedule timing inherited. Returns `dayViewOverflow` past 3 in the slot. |
+| `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags, plus the habit's schedule timing. Returns `dayViewOverflow` past 3 in the slot. |
+| `create_standalone_moment` | `name, areaId, day, phase, order?, startTime?, durationMin?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. |
 
 ### Phases (`phaseConfigs.json`) — Should-have
 | Tool | Inputs | Notes |
@@ -148,7 +148,7 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 
 Beyond entity-level validation, these are cross-entity rules currently enforced in services. MCP ports them:
 
-1. **3-moments-per-(day, phase) cap** (`canAllocateToPhase` in `Moment.ts`).
+1. ~~**3-moments-per-(day, phase) cap**~~ — **lifted at the data layer 2026-08-07.** The rule survives as a *day-view display* capacity (`DAY_VIEW_PHASE_CAPACITY` in `Moment.ts`, mirrored in `validation.ts`). Allocation tools never refuse; they attach a `dayViewOverflow` notice past 3 so the `morning` and `cycle-planning` skills keep their anti-over-planning signal.
 2. **One `CyclePlan` per (cycleId, habitId)** — upsert semantics in `budget_habit_to_cycle`.
 3. **Referential integrity on create** — `areaId` must exist and be non-archived; `habitId` likewise; `cycleId` must exist.
 4. **Habit-name 1–3 words** and **moment-name 1–3 words**.
@@ -213,5 +213,15 @@ Current `mcp-server/index.ts` reads penceive's `vault/areas/<key>.md` + YAML fro
 
 ### Known-evolving invariants
 
-- **3-moments-per-(day, phase) cap.** Rafa flagged this will change. MCP mirrors `canAllocateToPhase` today for parity with the desktop app; when the domain loosens, MCP needs a matching update. Marked with a `TODO(moment-cap)` comment in code.
+- ~~**3-moments-per-(day, phase) cap.**~~ **Resolved 2026-08-07.** Relaxed at the data layer, kept as a day-view display concern, per `docs/ideas/2026-06-08-calendar-zoomed-in-mode-and-phase-cap.md` (which warned the cap is load-bearing for `morning` / `cycle-planning`) and `docs/ideas/2026-06-14-remove-the-rule-of-3-moments-per-phase-only-applies-at-day-v.md`. Domain, application and MCP write paths no longer block; the timeline grid, drag validation and entity actions still cap at `DAY_VIEW_PHASE_CAPACITY`.
+
+### Habit schedules (added 2026-08-07)
+
+`Habit.schedule?: { weekdays: Weekday[], startTime: "HH:MM", durationMin: number }` and
+`Moment.startTime?` / `Moment.durationMin?` are **fully optional and purely additive** — no
+migration, existing vault data stays valid, ambient habits are unaffected.
+
+- `rhythm` stays **stored, not derived.** A schedule *fills* it when absent (`{ weekly, weekdays.length }`) and is **rejected** when a weekly rhythm's `count` disagrees with `weekdays.length`. Longer periods are unconstrained — "every other Monday" is `biweekly ×1` on `[MON]`.
+- `phase` stays **stored, not derived.** A schedule fills it from the band `startTime` falls in (read from `phaseConfigs`) and rejects a phase that contradicts it.
+- Moments inherit `startTime`/`durationMin` from the habit's schedule at allocation time and may override either per instance.
 

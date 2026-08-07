@@ -13,7 +13,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
 import { useMemo } from "react";
 import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import {
+  DAY_VIEW_PHASE_CAPACITY,
+  type Moment,
+} from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { selectionState$ } from "@/infrastructure/state/selection";
@@ -43,7 +46,9 @@ interface TimelineCellProps {
   phaseIndex?: number; // Phase row index for alternating greyscale tints (0, 1, 2)
 }
 
-export const MAX_MOMENTS_PER_CELL = 3; // Enforce max 3 moments per cell at the UI level
+// The day view's cell capacity. Display-only: the data layer accepts more,
+// and the excess surfaces in the zoomed-in (time-blocked) view.
+export const MAX_MOMENTS_PER_CELL = DAY_VIEW_PHASE_CAPACITY;
 
 /**
  * TimelineCell - Grid cell that holds 0-3 moments
