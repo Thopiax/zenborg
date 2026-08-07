@@ -20,6 +20,12 @@ import { isValidStartTime } from "../value-objects/Schedule";
  * - customMetric: For PUSHING habit support - user-defined performance tracking
  * - tags: Flexible labels for organization (lowercase, no spaces, alphanumeric + hyphen)
  *
+ * References (optional):
+ * - refs: URLs this moment refers to — the Linear issue, the PR, the doc.
+ *   A pointer and nothing else: not an attachment, not a checklist, and
+ *   carrying no meaning beyond "this moment refers to that". Any parseable
+ *   URL, including app schemes like `things:///show?id=…`.
+ *
  * Note: Attitude now lives at Habit/Area level. Moments inherit attitude via:
  * habit?.attitude ?? area?.attitude ?? null
  */
@@ -42,9 +48,58 @@ export interface Moment {
   emoji?: string | null; // Optional emoji override (inherits from habit or area)
   customMetric?: CustomMetric; // Keep for PUSHING habit support
   tags: string[] | null; // Flexible organization labels
+  refs?: readonly string[]; // URLs this moment refers to. Absent = none.
 
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
+}
+
+/**
+ * Is this string a parseable URL?
+ *
+ * Deliberately permissive about the scheme: `things:///show?id=…`,
+ * `obsidian://open?…` and `https://…` are all legitimate places a moment can
+ * point at. The only thing rejected is a string the URL parser cannot read.
+ */
+export function isParseableRef(ref: string): boolean {
+  try {
+    new URL(ref);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validates a list of refs, naming the first unparseable one.
+ *
+ * @returns an error message, or null when every ref parses
+ */
+export function validateRefs(refs: readonly string[] | undefined): string | null {
+  for (const ref of refs ?? []) {
+    if (!isParseableRef(ref.trim())) {
+      return `Moment ref is not a parseable URL: ${ref}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Trims, drops empties, and de-duplicates refs. Order of first occurrence is
+ * preserved — the list reads as the author wrote it.
+ */
+export function normalizeRefs(refs: readonly string[] | undefined): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of refs ?? []) {
+    const trimmed = raw.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      continue;
+    }
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
 }
 
 /**
@@ -180,6 +235,7 @@ export interface CreateMomentProps {
   customMetric?: CustomMetric; // Keep for habit-inherited PUSHING support
   startTime?: string; // "HH:MM" — usually inherited from the habit's schedule
   durationMin?: number; // positive whole minutes
+  refs?: readonly string[]; // URLs this moment refers to
 }
 
 /**
@@ -220,6 +276,7 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     customMetric, // Keep for habit-inherited PUSHING support
     startTime,
     durationMin,
+    refs,
   } = props;
 
   const validation = validateMomentName(name);
@@ -237,6 +294,12 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     return { error: timingError };
   }
 
+  const refsError = validateRefs(refs);
+  if (refsError) {
+    return { error: refsError };
+  }
+
+  const normalizedRefs = normalizeRefs(refs);
   const now = new Date().toISOString();
 
   return {
@@ -255,6 +318,8 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     // REMOVED: attitude
     customMetric,
     tags: tags.filter(validateTag), // Filter out invalid tags
+    // Absent, not empty: one representation of "this moment refers to nothing".
+    ...(normalizedRefs.length > 0 ? { refs: normalizedRefs } : {}),
     createdAt: now,
     updatedAt: now,
   };

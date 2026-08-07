@@ -4,10 +4,13 @@ import {
   canAllocateToPhase,
   createMoment,
   isMomentError,
+  isParseableRef,
   type Moment,
+  normalizeRefs,
   unallocateMoment,
   updateMomentName,
   validateMomentName,
+  validateRefs,
 } from "../entities/Moment";
 import { Phase } from "../value-objects/Phase";
 
@@ -345,6 +348,65 @@ describe("Moment", () => {
         expect(
           canAllocateToPhase([allocated1, allocated2, allocated3], day, phase)
         ).toBe(true);
+      }
+    });
+  });
+
+  describe("refs", () => {
+    it("accepts any parseable URL, including app schemes", () => {
+      expect(isParseableRef("https://linear.app/acme/issue/ABC-1")).toBe(true);
+      expect(isParseableRef("things:///show?id=abc")).toBe(true);
+      expect(isParseableRef("obsidian://open?vault=v&file=f")).toBe(true);
+    });
+
+    it("rejects a string the URL parser cannot read", () => {
+      expect(isParseableRef("example.com")).toBe(false);
+      expect(isParseableRef("not a url")).toBe(false);
+      expect(validateRefs(["not a url"])).toBe(
+        "Moment ref is not a parseable URL: not a url"
+      );
+      expect(validateRefs(undefined)).toBeNull();
+    });
+
+    it("normalizes: trims, drops empties, de-duplicates, keeps order", () => {
+      expect(
+        normalizeRefs([" https://b.example/2 ", "https://a.example/1", "", "https://b.example/2"])
+      ).toEqual(["https://b.example/2", "https://a.example/1"]);
+    });
+
+    it("stores refs on a created moment", () => {
+      const result = createMoment({
+        name: "Ship refs",
+        areaId: "area-1",
+        refs: ["https://linear.app/acme/issue/ABC-1", "things:///show?id=abc"],
+      });
+      expect(isMomentError(result)).toBe(false);
+      if (!isMomentError(result)) {
+        expect(result.refs).toEqual([
+          "https://linear.app/acme/issue/ABC-1",
+          "things:///show?id=abc",
+        ]);
+      }
+    });
+
+    it("leaves the field absent when no refs are given", () => {
+      const result = createMoment({ name: "Meditation", areaId: "area-1" });
+      expect(isMomentError(result)).toBe(false);
+      if (!isMomentError(result)) {
+        expect(result.refs).toBeUndefined();
+        expect("refs" in result).toBe(false);
+      }
+    });
+
+    it("refuses to create a moment with an unparseable ref", () => {
+      const result = createMoment({
+        name: "Broken ref",
+        areaId: "area-1",
+        refs: ["nope"],
+      });
+      expect(isMomentError(result)).toBe(true);
+      if (isMomentError(result)) {
+        expect(result.error).toBe("Moment ref is not a parseable URL: nope");
       }
     });
   });

@@ -70,6 +70,46 @@ export function normalizeTags(tags: readonly string[] | undefined): string[] {
   return Array.from(new Set(normalized));
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Refs (mirrors src/domain/entities/Moment.ts)
+//
+// A ref is a URL this moment refers to — the Linear issue, the PR, the doc.
+// A pointer, nothing more. Any parseable scheme is accepted, because a moment
+// can just as well point at `things:///show?id=…` as at an https page.
+// ────────────────────────────────────────────────────────────────────────
+
+export function isParseableRef(ref: string): boolean {
+  try {
+    new URL(ref);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** First unparseable ref, named. Null when every ref parses. */
+export function validateRefs(refs: readonly string[] | undefined): string | null {
+  for (const ref of refs ?? []) {
+    if (!isParseableRef(ref.trim())) {
+      return `Moment ref is not a parseable URL: ${ref}`;
+    }
+  }
+  return null;
+}
+
+/** Trims, drops empties, de-duplicates; preserves first-occurrence order. */
+export function normalizeRefs(refs: readonly string[] | undefined): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of refs ?? []) {
+    const trimmed = raw.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
+}
+
 /**
  * Normalizes habit aliases: trims, drops empties, drops any alias
  * case-insensitively equal to the habit name, dedupes case-insensitively,

@@ -59,11 +59,13 @@ import {
   isBudgeted,
   isInDeck,
   isSpontaneous,
+  normalizeRefs,
   normalizeTags,
   requireActiveArea,
   requireActiveHabit,
   requireCycle,
   validateOneToThreeWords,
+  validateRefs,
 } from './validation.js';
 import { computeHealth, daysSinceLast, parseVaultDay, resolveRhythm } from './health.js';
 
@@ -1337,8 +1339,10 @@ function buildMoment(params: {
   customMetric?: Moment['customMetric'];
   startTime?: string;
   durationMin?: number;
+  refs?: readonly string[];
 }): Moment {
   const now = nowIso();
+  const refs = normalizeRefs(params.refs);
   return {
     id: crypto.randomUUID(),
     name: params.name.trim(),
@@ -1356,6 +1360,8 @@ function buildMoment(params: {
     emoji: params.emoji ?? null,
     tags: normalizeTags(params.tags ?? undefined),
     ...(params.customMetric ? { customMetric: params.customMetric } : {}),
+    // Absent, not empty: one representation of "refers to nothing".
+    ...(refs.length > 0 ? { refs } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -1363,7 +1369,7 @@ function buildMoment(params: {
 
 server.tool(
   'create_moment',
-  'Create an unallocated moment (lives in the drawing board). Name must be 1–3 words. `startTime`/`durationMin` are optional clock time — usually inherited from a habit schedule, but settable directly.',
+  'Create an unallocated moment (lives in the drawing board). Name must be 1–3 words. `startTime`/`durationMin` are optional clock time — usually inherited from a habit schedule, but settable directly. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`.',
   {
     name: z.string(),
     areaId: z.string(),
@@ -1373,6 +1379,7 @@ server.tool(
     customMetric: CustomMetricSchema.optional(),
     startTime: StartTimeSchema.optional(),
     durationMin: z.number().int().positive().optional(),
+    refs: z.array(z.string()).optional(),
   },
   async (params): Promise<ToolResult> => {
     const nameError = validateOneToThreeWords(params.name, 'Moment');
@@ -1383,6 +1390,9 @@ server.tool(
       params.durationMin,
     );
     if (timingError) return err(timingError);
+
+    const refsError = validateRefs(params.refs);
+    if (refsError) return err(refsError);
 
     const areas = readCollection(VAULT_ROOT, 'areas');
     const areaCheck = requireActiveArea(areas, params.areaId);
@@ -1398,7 +1408,7 @@ server.tool(
 
 server.tool(
   'update_moment',
-  'Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear.',
+  'Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; pass `[]` to clear.',
   {
     id: z.string(),
     name: z.string().optional(),
@@ -1409,6 +1419,7 @@ server.tool(
     customMetric: CustomMetricSchema.optional(),
     startTime: StartTimeSchema.nullable().optional(),
     durationMin: z.number().int().positive().nullable().optional(),
+    refs: z.array(z.string()).optional(),
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
@@ -1419,6 +1430,10 @@ server.tool(
     if (updates.name !== undefined) {
       const nameError = validateOneToThreeWords(updates.name, 'Moment');
       if (nameError) return err(nameError);
+    }
+    if (updates.refs !== undefined) {
+      const refsError = validateRefs(updates.refs);
+      if (refsError) return err(refsError);
     }
     if (updates.areaId !== undefined) {
       const areas = readCollection(VAULT_ROOT, 'areas');
@@ -1440,6 +1455,7 @@ server.tool(
         : {}),
       ...(updates.startTime ? { startTime: updates.startTime } : {}),
       ...(updates.durationMin ? { durationMin: updates.durationMin } : {}),
+      ...(updates.refs !== undefined ? { refs: normalizeRefs(updates.refs) } : {}),
       updatedAt: nowIso(),
     };
     if (updates.startTime === null) {
@@ -1447,6 +1463,11 @@ server.tool(
     }
     if (updates.durationMin === null) {
       delete next.durationMin;
+    }
+    // An empty replacement clears the field rather than storing `[]`, so
+    // "refers to nothing" has exactly one representation.
+    if (next.refs !== undefined && next.refs.length === 0) {
+      delete next.refs;
     }
     moments[id] = next;
     writeCollection(VAULT_ROOT, 'moments', moments);
@@ -1643,6 +1664,9 @@ server.tool(
       }
     }
 
+    // No refs inherited: Habit has no refs field and does not get one. A
+    // habit is a perennial template; the thing a moment points at (an issue,
+    // a PR, a doc) is particular to that occurrence, not to the template.
     const moment = buildMoment({
       name: habit.name,
       areaId: habit.areaId,
@@ -1668,7 +1692,7 @@ server.tool(
 
 server.tool(
   'create_standalone_moment',
-  'Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.',
+  'Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.',
   {
     name: z.string(),
     areaId: z.string(),
@@ -1679,6 +1703,7 @@ server.tool(
     tags: z.array(z.string()).optional(),
     startTime: StartTimeSchema.optional(),
     durationMin: z.number().int().positive().optional(),
+    refs: z.array(z.string()).optional(),
   },
   async (params): Promise<ToolResult> => {
     const nameError = validateOneToThreeWords(params.name, 'Moment');
@@ -1689,6 +1714,9 @@ server.tool(
       params.durationMin,
     );
     if (timingError) return err(timingError);
+
+    const refsError = validateRefs(params.refs);
+    if (refsError) return err(refsError);
 
     const areas = readCollection(VAULT_ROOT, 'areas');
     const areaCheck = requireActiveArea(areas, params.areaId);
@@ -1711,6 +1739,7 @@ server.tool(
       tags: params.tags,
       startTime: params.startTime,
       durationMin: params.durationMin,
+      refs: params.refs,
     });
     moments[moment.id] = moment;
     writeCollection(VAULT_ROOT, 'moments', moments);
