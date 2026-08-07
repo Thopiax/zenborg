@@ -338,12 +338,20 @@ const migrate = (
         id,
         name: sibling,
         order: nextOrder,
+        // The emoji was chosen for the FIRST-named person, not the pair —
+        // cloning it gives Abuelo a grandmother's 👵 and Mari a Paul's ⭐.
+        // null falls back to the area emoji, the neutral correct default.
+        // The rhythm IS inherited on purpose: a pair seen weekly implies both
+        // are weekly, which is a defensible starting point to adjust.
+        emoji: null,
         createdAt: now,
         updatedAt: now,
       };
       siblings.add(sibling);
       liveNamesByArea.set(h.areaId, siblings);
-      created.push(`${sibling} (new id ${id}, order ${nextOrder})`);
+      created.push(
+        `${sibling} (new id ${id}, order ${nextOrder}, emoji cleared → area default)`,
+      );
       continue;
     }
 

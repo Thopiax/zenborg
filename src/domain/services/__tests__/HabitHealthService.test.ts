@@ -296,3 +296,108 @@ describe("HabitHealthService — migration safety (pre-rhythm habits)", () => {
     expect(service.computeHealth(habit, null, [], new Date())).toBe("unstated");
   });
 });
+
+describe("HabitHealthService — moments attached via personIds", () => {
+  const NOW = new Date("2026-08-07T12:00:00.000Z");
+  const WEEKLY: Rhythm = { period: "weekly", count: 1 }; // 7-day threshold
+  const TWO_DAYS_AGO = new Date("2026-08-05T12:00:00.000Z");
+
+  /** A moment planted against nobody's habit — the composed-moment shape. */
+  const unplanted = (day: Date, overrides: Partial<Moment> = {}): Moment =>
+    allocatedMoment("", day, { habitId: null, ...overrides });
+
+  it("counts a moment that names the habit in personIds toward its health", () => {
+    // People ARE habit records. One dinner with three friends is ONE moment
+    // carrying three ids — it must reach every one of their health reads.
+    const yaya = baseHabit({
+      id: "p-yaya",
+      name: "Yaya",
+      attitude: Attitude.KEEPING,
+      rhythm: WEEKLY,
+    });
+    const groupDinner = unplanted(TWO_DAYS_AGO, {
+      id: "m-group-dinner",
+      personIds: ["p-abuelo", "p-yaya", "p-mari"],
+    });
+
+    expect(service.computeHealth(yaya, null, [], NOW)).toBe("wilting");
+    expect(service.computeHealth(yaya, null, [groupDinner], NOW)).toBe(
+      "blooming"
+    );
+  });
+
+  it("counts personIds moments for RETURNING as well as KEEPING", () => {
+    const mari = baseHabit({
+      id: "p-mari",
+      name: "Mari",
+      attitude: Attitude.RETURNING,
+      rhythm: WEEKLY,
+    });
+    const groupDinner = unplanted(TWO_DAYS_AGO, {
+      id: "m-group-dinner",
+      personIds: ["p-mari"],
+    });
+
+    expect(service.computeHealth(mari, null, [], NOW)).toBe("wilting");
+    expect(service.computeHealth(mari, null, [groupDinner], NOW)).toBe(
+      "blooming"
+    );
+  });
+
+  it("leaves an ordinary habit's health untouched by unrelated personIds", () => {
+    // No-regression pin: `personIds` can never hold an ordinary habit's own id,
+    // so the widened filter is provably inert for every non-person record.
+    const meditation = baseHabit({
+      id: "h-meditation",
+      name: "meditation",
+      attitude: Attitude.KEEPING,
+      rhythm: WEEKLY,
+    });
+    const ownMoment = allocatedMoment("h-meditation", TWO_DAYS_AGO, {
+      id: "m-own",
+    });
+    const otherPeople = unplanted(TWO_DAYS_AGO, {
+      id: "m-other",
+      personIds: ["p-yaya", "p-abuelo", "p-mari"],
+    });
+
+    expect(service.computeHealth(meditation, null, [otherPeople], NOW)).toBe(
+      "wilting"
+    );
+    expect(
+      service.computeHealth(meditation, null, [ownMoment, otherPeople], NOW)
+    ).toBe("blooming");
+  });
+
+  it("does not throw on a moment carrying no personIds at all", () => {
+    // `habitId: null` and no `personIds` — the optional chain is genuinely
+    // exercised here, not short-circuited by a habitId match.
+    const yaya = baseHabit({
+      id: "p-yaya",
+      attitude: Attitude.KEEPING,
+      rhythm: WEEKLY,
+    });
+    const orphan = unplanted(TWO_DAYS_AGO, { id: "m-orphan" });
+    expect(orphan.personIds).toBeUndefined();
+    expect(orphan.habitId).toBeNull();
+
+    expect(() => service.computeHealth(yaya, null, [orphan], NOW)).not.toThrow();
+    expect(service.computeHealth(yaya, null, [orphan], NOW)).toBe("wilting");
+  });
+
+  it("counts personIds moments toward BEGINNING's 5-moment budding gate", () => {
+    const yanik = baseHabit({
+      id: "p-yanik",
+      name: "Yanik",
+      attitude: Attitude.BEGINNING,
+    });
+    const five = [1, 2, 3, 4, 5].map((n) =>
+      unplanted(TWO_DAYS_AGO, { id: `m-${n}`, personIds: ["p-yanik"] })
+    );
+
+    expect(service.computeHealth(yanik, null, five.slice(0, 4), NOW)).toBe(
+      "seedling"
+    );
+    expect(service.computeHealth(yanik, null, five, NOW)).toBe("budding");
+  });
+});
