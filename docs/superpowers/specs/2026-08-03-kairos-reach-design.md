@@ -37,9 +37,17 @@
 > native apps rather than subscription; nomad-first positioning; TRMNL deleted; the
 > 3-per-phase cap deleted.
 >
-> **Still valid below:** the D1 reasoning against calendar-as-write-surface, the
-> rejected-options record for Google Calendar / CalDAV / Elixir, and the feed-URL
-> secret handling.
+> **Superseded again on 2026-08-06 — D3 and D4 specifically.** The server holds no
+> replica and does no writing. A laptop-pushed snapshot plus an append-only intent
+> queue replaces it: the laptop stays the sole writer, so there is no LWW merge, no
+> reconciliation module, and no database — no Neon, no Upstash, no Supabase. Storage
+> is Vercel Blob. The price is that phone writes are queued rather than live. See
+> [`docs/decisions/2026-08-06-reach-via-snapshot-and-intent-queue.md`](../../decisions/2026-08-06-reach-via-snapshot-and-intent-queue.md).
+> **Do not build P1 as costed below.**
+>
+> **Still valid below:** the D1 reasoning against calendar-as-write-surface, D2
+> (shared domain package) and D5 (API-key auth), the rejected-options record for
+> Google Calendar / CalDAV / Elixir, and the feed-URL secret handling.
 
 ---
 
