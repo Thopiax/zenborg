@@ -6,16 +6,14 @@ $signature:
   docHash: sha256:aea06648a02740a7956a9ea6c0268eed1f6fbb46c15e9bd18d2496e696170fb0
   signedAt: 2026-08-07T16:26:53.827772Z
   signature: ed25519:+VdHYb7RMUSmTKtMK5XkNMhK8tsjKAjy4cBcRm6fe+jvMWiujm14tg9/p77WkGApA2trUkV6mgRYI02M5dA1Cw==
-appetite: small
-hard_dependency: the reach `.ics` feed (D1) is unbuilt — this pitch lays the data, the feed delivers it
-slice_id: A''
-source: conversation 2026-08-07 — "can we use google maps links as real spaces?"
-status: draft
-supersedes:
-- 2026-08-07-a-moment-knows-where-it-is.md
-- 2026-08-07-real-places-and-a-support-written-into-the-event.md
-tag: pitch
-type: pitch
+$attestation:
+  $type: tech.equanimi.secretariat.stamp
+  signer: did:key:z6MkjB8PQaN1vuUzdtnJsxyXR2f8d3tckGHkUYZMDytQsfak
+  act: attest
+  docHash: sha256:aea06648a02740a7956a9ea6c0268eed1f6fbb46c15e9bd18d2496e696170fb0
+  docFilename: 2026-08-07-a-pasted-map-link-is-the-place.md
+  stampedAt: 2026-08-07T16:27:38.441146Z
+  signature: ed25519:4UWqcJTNrjg25nSUQTy1H/DMLO7JYc0AdvUtluUAEL8TSHjlaC8DNQ/sA9WmMUMVb/W1qv6NMdveqNkPbzQmBA==
 ---
 
 # Pitch — A pasted map link is the place
