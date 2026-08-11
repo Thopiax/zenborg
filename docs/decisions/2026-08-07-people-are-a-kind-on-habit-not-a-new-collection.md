@@ -6,7 +6,14 @@ $signature:
   docHash: sha256:a1ae1fb174a726f6b855b1613e53f4e13b698825e347938a2179fbc5e7254f4d
   signedAt: 2026-08-07T13:03:28.267714Z
   signature: ed25519:hdCAyCYByd+BepEk6FWHtzos+R2u+n5el/svlVz4tjFApNybcwwM0F49keeO8wG17hRxLeHNWt/30zV2yUWsDQ==
-type: decision
+$attestation:
+  $type: tech.equanimi.secretariat.stamp
+  signer: did:key:z6MkjB8PQaN1vuUzdtnJsxyXR2f8d3tckGHkUYZMDytQsfak
+  act: attest
+  docHash: sha256:a1ae1fb174a726f6b855b1613e53f4e13b698825e347938a2179fbc5e7254f4d
+  docFilename: 2026-08-07-people-are-a-kind-on-habit-not-a-new-collection.md
+  stampedAt: 2026-08-07T13:03:50.941873Z
+  signature: ed25519:rjND0PAAcAy3f2iDOdAZtu6xv8QucNbYKLHzU0hCwzYmypx5zt7JUML+EwcjOC2I2F9QfCHvdk1qE7Sz5O9nDw==
 ---
 # People are a kind on Habit, not a new collection
 
