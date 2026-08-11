@@ -6,7 +6,14 @@ $signature:
   docHash: sha256:f697e0539a1928969b50b73908832864443baa4e69a0bc624621716923f3e15d
   signedAt: 2026-08-07T16:15:21.473159Z
   signature: ed25519:svzib3RcdO0cGVBbSKUhfOtzmsLCOWrENOVwU2Qb7p700lujpudZ1wUH91MvaWU3Zzoi4Fm8Is6O/d40lpqLDQ==
-type: note
+$attestation:
+  $type: tech.equanimi.secretariat.stamp
+  signer: did:key:z6MkjB8PQaN1vuUzdtnJsxyXR2f8d3tckGHkUYZMDytQsfak
+  act: attest
+  docHash: sha256:f697e0539a1928969b50b73908832864443baa4e69a0bc624621716923f3e15d
+  docFilename: 2026-08-07-corrigendum-people-in-zenborg-as-built.md
+  stampedAt: 2026-08-07T16:28:29.982353Z
+  signature: ed25519:haad+e/TWXOHea3WLol4+69hc0rI37fvImmgRcJOAeyMYTmMhXMc637yzafWwGOd5GbiDNFqP+4ranIHfepeCw==
 ---
 # Corrigendum: people in zenborg, as built
 

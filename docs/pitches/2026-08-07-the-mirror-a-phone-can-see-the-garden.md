@@ -6,15 +6,14 @@ $signature:
   docHash: sha256:7ddaf68c8e1e10edf2399b36030bc6707856d316866b790c6136638be108d4d6
   signedAt: 2026-08-07T17:06:20.065026Z
   signature: ed25519:Fvd8dQRk1YtDTNaA4ZQuluY9No4WueZ/yVIPokccCQLpt17MEtH0V6ocLimMcadyIE3QFNAM2WJloX0eUUQtCQ==
-appetite: medium
-related:
-- 2026-08-07-the-relay-a-phone-can-plant-into-the-garden.md
-shapes: docs/ideas/2026-07-02-expo-mobile-client-and-device-sync.md
-slice_id: C
-source: conversation 2026-08-07 — enurgy method, react-native-drax, "could we do it today"
-status: draft
-tag: pitch
-type: pitch
+$attestation:
+  $type: tech.equanimi.secretariat.stamp
+  signer: did:key:z6MkjB8PQaN1vuUzdtnJsxyXR2f8d3tckGHkUYZMDytQsfak
+  act: attest
+  docHash: sha256:7ddaf68c8e1e10edf2399b36030bc6707856d316866b790c6136638be108d4d6
+  docFilename: 2026-08-07-the-mirror-a-phone-can-see-the-garden.md
+  stampedAt: 2026-08-07T17:06:53.483103Z
+  signature: ed25519:d4sL+8DgGjPNDIEr0DKVZCIrsJhB0US67C2PQ56S4d4hHYTVx/HPXSeoYNhSHsT0FhnL+euz6q/sacFwF8V0BQ==
 ---
 
 # Pitch — The mirror: a phone can see the garden
