@@ -6,17 +6,14 @@ $signature:
   docHash: sha256:6eedabd67f11260c9c2946831cc0359d9c9d1d3b69a8d9cc413d7a3165ffc0e2
   signedAt: 2026-08-07T16:31:49.204846Z
   signature: ed25519:/XHN54ZscIakGWZbo/t0bscQ9KDXktiGe8V+G0WmSpSl5naJsxfa4pYg+3uX41LTzCKmhL04I2xslbX6f00lDQ==
-appetite: tiny
-hard_dependency: the reach `.ics` feed (D1) is unbuilt — this pitch lays the data, the feed delivers it
-slice_id: A'''
-source: conversation 2026-08-07 — "let's just keep the url as the place, we can resolve it worst case"
-status: draft
-supersedes:
-- 2026-08-07-a-moment-knows-where-it-is.md
-- 2026-08-07-real-places-and-a-support-written-into-the-event.md
-- 2026-08-07-a-pasted-map-link-is-the-place.md
-tag: pitch
-type: pitch
+$attestation:
+  $type: tech.equanimi.secretariat.stamp
+  signer: did:key:z6MkjB8PQaN1vuUzdtnJsxyXR2f8d3tckGHkUYZMDytQsfak
+  act: attest
+  docHash: sha256:6eedabd67f11260c9c2946831cc0359d9c9d1d3b69a8d9cc413d7a3165ffc0e2
+  docFilename: 2026-08-07-the-place-is-a-url.md
+  stampedAt: 2026-08-07T16:57:37.684183Z
+  signature: ed25519:9eo1+siX9LvpHKsxwOtrvZtoUrHxFHbQEBnEkjNChZeClf1jWETRbbZ4klDnYuEOast+feUu/ovy7uF/dOzHCQ==
 ---
 
 # Pitch — The place is a URL
