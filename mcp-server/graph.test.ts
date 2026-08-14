@@ -64,15 +64,15 @@ const habits = [
 const areas = [area({}), area({ id: "area-friends", name: "Friends" })];
 
 const moments = [
-  // Gym with Yoel in Barcelona, twice; sauna the same days.
-  moment({ id: "m1", habitId: "h-gym", day: "2025-03-10", tags: ["person-yoel", "place-barcelona"] }),
-  moment({ id: "m2", habitId: "h-gym", day: "2025-03-17", tags: ["person-yoel", "place-barcelona"] }),
+  // Gym with Ada in Atlantis, twice; sauna the same days.
+  moment({ id: "m1", habitId: "h-gym", day: "2025-03-10", tags: ["person-ada", "place-atlantis"] }),
+  moment({ id: "m2", habitId: "h-gym", day: "2025-03-17", tags: ["person-ada", "place-atlantis"] }),
   moment({ id: "m3", habitId: "h-sauna", day: "2025-03-10" }),
   moment({ id: "m4", habitId: "h-sauna", day: "2025-03-17" }),
-  // Padel also with Yoel, different day.
-  moment({ id: "m5", habitId: "h-padel", day: "2025-04-01", tags: ["person-yoel"] }),
-  // Swim alone in Paris.
-  moment({ id: "m6", habitId: "h-swim", day: "2026-07-30", tags: ["place-paris"] }),
+  // Padel also with Ada, different day.
+  moment({ id: "m5", habitId: "h-padel", day: "2025-04-01", tags: ["person-ada"] }),
+  // Swim alone in Avalon.
+  moment({ id: "m6", habitId: "h-swim", day: "2026-07-30", tags: ["place-avalon"] }),
 ];
 
 describe("buildRelatedHabits", () => {
@@ -84,7 +84,7 @@ describe("buildRelatedHabits", () => {
     const related = buildRelatedHabits("h-gym", habits, moments, areas)!;
     expect(related.habit).toBe("Gym (Fitness)");
     expect(related.sharedTags).toEqual([
-      { habit: "Padel", tags: ["person-yoel"] },
+      { habit: "Padel", tags: ["person-ada"] },
     ]);
   });
 
@@ -103,12 +103,12 @@ describe("buildRelatedHabits", () => {
 
   it("includes habit-level tags in the signature", () => {
     const tagged = [
-      habit({ id: "h-a", name: "Surf", tags: ["place-itacare"] }),
-      habit({ id: "h-b", name: "Capoeira", tags: ["place-itacare"] }),
+      habit({ id: "h-a", name: "Surf", tags: ["place-arcadia"] }),
+      habit({ id: "h-b", name: "Capoeira", tags: ["place-arcadia"] }),
     ];
     const related = buildRelatedHabits("h-a", tagged, [], [])!;
     expect(related.sharedTags).toEqual([
-      { habit: "Capoeira", tags: ["place-itacare"] },
+      { habit: "Capoeira", tags: ["place-arcadia"] },
     ]);
   });
 

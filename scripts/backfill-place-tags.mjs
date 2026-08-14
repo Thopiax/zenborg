@@ -19,41 +19,29 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 // ── The mapping: cycle name → tags every moment of that cycle inherits ──
-// Edit freely; unknown cycles are listed at the end of every run.
-const CYCLE_TAGS = {
-  'SP cycle': ['place-sao-paulo'],
-  Minas: ['place-minas'],
-  RJ: ['place-rio'],
-  Sampa: ['place-sao-paulo'],
-  sampa: ['place-sao-paulo'],
-  'itacaré': ['place-itacare'],
-  ilhabela: ['place-ilhabela'],
-  'SP - last cycle': ['place-sao-paulo'],
-  Paris: ['place-paris'],
-  'Paris - bday': ['place-paris'],
-  'back 2 barna': ['place-barcelona'],
-  'bye bye barna': ['place-barcelona'],
-  Aiguablava: ['place-aiguablava'],
-  'official parisian': ['place-paris'],
-  'bad bunny marseille': ['place-marseille'],
-  'paris pitstop': ['place-paris'],
-  chindrieux: ['place-chindrieux'],
-  'SP bdays + Lena': ['place-sao-paulo', 'person-lena'],
-  // ── Needs Rafa's call — where were these? ──
-  // 'First Cycle': [],
-  // Christmas: [],
-  // Reveillon: [],
-  // carnaval: [],
-  // Vipassana: [],
-  // 'baemish wedding': [],
-  // 'stefan wedding': [],
-};
+// PERSONAL DATA — lives OUTSIDE version control, in a JSON file:
+//   default: scripts/backfill-tags.local.json (gitignored)
+//   or:      --map /path/to/mapping.json
+// Shape (fictional example):
+//   { "summer sprint": ["place-atlantis"], "ada visit": ["place-avalon", "person-ada"] }
+// Unmapped cycles are listed at the end of every run — add them and rerun.
 
 // Mirrors normalizeSingleTag in mcp-server/validation.ts.
 const TAG_VALID = /^[a-z0-9][a-z0-9-]{0,19}$/;
 
 const APPLY = process.argv.includes('--apply');
 const VAULT = process.env.KAIROS_HOME ?? path.join(os.homedir(), '.kairos');
+
+const mapArgIdx = process.argv.indexOf('--map');
+const MAP_PATH =
+  mapArgIdx !== -1
+    ? process.argv[mapArgIdx + 1]
+    : path.join(import.meta.dirname, 'backfill-tags.local.json');
+if (!fs.existsSync(MAP_PATH)) {
+  console.error(`No mapping file at ${MAP_PATH} — create it (see header) or pass --map <path>.`);
+  process.exit(1);
+}
+const CYCLE_TAGS = JSON.parse(fs.readFileSync(MAP_PATH, 'utf8'));
 
 for (const [cycle, tags] of Object.entries(CYCLE_TAGS)) {
   for (const tag of tags) {

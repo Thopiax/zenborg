@@ -1934,7 +1934,7 @@ server.tool(
 
 server.tool(
   'get_tag_profile',
-  "One tag's neighborhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments (people ↔ places ↔ themes), first/last day, and a recent sample. Answers questions like \"what did I do with person-yoel, and where?\" — the co-occurrence of a `person-` tag with `place-` tags and habits IS that story.",
+  "One tag's neighborhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments (people ↔ places ↔ themes), first/last day, and a recent sample. Answers questions like \"what did I do with person-ada, and where?\" — the co-occurrence of a `person-` tag with `place-` tags and habits IS that story.",
   {
     tag: z.string().min(1),
   },
@@ -1942,7 +1942,7 @@ server.tool(
     const normalized = normalizeTags([tag])[0];
     if (!normalized)
       return err(
-        `Not a valid tag after normalization: "${tag}". Tags are lowercase letters, digits and dashes, max 20 chars — e.g. "person-yoel".`,
+        `Not a valid tag after normalization: "${tag}". Tags are lowercase letters, digits and dashes, max 20 chars — e.g. "person-ada".`,
       );
     const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
     const habits = Object.values(readCollection(VAULT_ROOT, 'habits'));
@@ -1953,7 +1953,7 @@ server.tool(
 
 server.tool(
   'get_related_habits',
-  "A habit's derived edges in the garden graph — no stored relations, computed from existing data: `sharedTags` (habits whose tag signatures overlap — a signature is the habit's tags plus its moments' tags, so person-/place- mediation like \"gym and padel, both with Yoel\" surfaces here), `coOccurrence` (habits allocated on the same days, with the share of this habit's active days), and `areaSiblings` (active habits in the same plot).",
+  "A habit's derived edges in the garden graph — no stored relations, computed from existing data: `sharedTags` (habits whose tag signatures overlap — a signature is the habit's tags plus its moments' tags, so person-/place- mediation like \"gym and padel, both with Ada\" surfaces here), `coOccurrence` (habits allocated on the same days, with the share of this habit's active days), and `areaSiblings` (active habits in the same plot).",
   {
     habitId: z.string(),
   },

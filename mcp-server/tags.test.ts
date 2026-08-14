@@ -54,7 +54,7 @@ function area(overrides: Partial<Area>): Area {
   };
 }
 
-const gymWithYoel = [
+const gymWithAda = [
   moment({
     id: "m-gym-1",
     name: "Gym",
@@ -62,7 +62,7 @@ const gymWithYoel = [
     areaId: "area-fitness",
     day: "2025-03-10",
     phase: "MORNING",
-    tags: ["person-yoel", "place-barcelona"],
+    tags: ["person-ada", "place-atlantis"],
   }),
   moment({
     id: "m-gym-2",
@@ -71,26 +71,26 @@ const gymWithYoel = [
     areaId: "area-fitness",
     day: "2025-03-17",
     phase: "MORNING",
-    tags: ["person-yoel", "place-barcelona"],
+    tags: ["person-ada", "place-atlantis"],
   }),
   moment({
     id: "m-resto",
     name: "Restaurant",
     day: "2025-05-02",
     phase: "EVENING",
-    tags: ["person-yanik", "place-barcelona"],
+    tags: ["person-bea", "place-atlantis"],
   }),
   moment({
     id: "m-altinha",
     name: "Altinha",
     day: "2026-08-15",
     phase: "AFTERNOON",
-    tags: ["person-tiago", "person-greg", "place-la-villette"],
+    tags: ["person-cai", "person-dov", "place-avalon"],
   }),
   moment({ id: "m-untagged", name: "Read", tags: null }),
 ];
 
-const habits = [habit({ id: "h-gym", name: "Gym", tags: ["place-barcelona"] })];
+const habits = [habit({ id: "h-gym", name: "Gym", tags: ["place-atlantis"] })];
 const areas = [
   area({}),
   area({ id: "area-fitness", name: "Fitness", tags: ["wellness"] }),
@@ -98,10 +98,10 @@ const areas = [
 
 describe("buildTagIndex", () => {
   it("counts tag usage across moments, habits and areas with a day range", () => {
-    const index = buildTagIndex(gymWithYoel, habits, areas);
-    const barcelona = index.find((e) => e.tag === "place-barcelona");
-    expect(barcelona).toEqual({
-      tag: "place-barcelona",
+    const index = buildTagIndex(gymWithAda, habits, areas);
+    const atlantis = index.find((e) => e.tag === "place-atlantis");
+    expect(atlantis).toEqual({
+      tag: "place-atlantis",
       moments: 3,
       habits: 1,
       areas: 0,
@@ -113,18 +113,18 @@ describe("buildTagIndex", () => {
   });
 
   it("filters by prefix — the People index", () => {
-    const people = buildTagIndex(gymWithYoel, habits, areas, "person-");
+    const people = buildTagIndex(gymWithAda, habits, areas, "person-");
     expect(people.map((e) => e.tag).sort()).toEqual([
-      "person-greg",
-      "person-tiago",
-      "person-yanik",
-      "person-yoel",
+      "person-ada",
+      "person-bea",
+      "person-cai",
+      "person-dov",
     ]);
   });
 
   it("sorts by total usage descending", () => {
-    const index = buildTagIndex(gymWithYoel, habits, areas);
-    expect(index[0]!.tag).toBe("place-barcelona");
+    const index = buildTagIndex(gymWithAda, habits, areas);
+    expect(index[0]!.tag).toBe("place-atlantis");
   });
 
   it("tolerates null tags and empty collections", () => {
@@ -134,33 +134,33 @@ describe("buildTagIndex", () => {
 });
 
 describe("buildTagProfile", () => {
-  it("tells the person-yoel story: which habit, which place, when", () => {
-    const profile = buildTagProfile("person-yoel", gymWithYoel, habits, areas);
+  it("tells the person-ada story: which habit, which place, when", () => {
+    const profile = buildTagProfile("person-ada", gymWithAda, habits, areas);
     expect(profile.momentCount).toBe(2);
     expect(profile.firstDay).toBe("2025-03-10");
     expect(profile.lastDay).toBe("2025-03-17");
     expect(profile.habits).toEqual([{ name: "Gym", count: 2 }]);
     expect(profile.areas).toEqual([{ name: "Fitness", count: 2 }]);
-    expect(profile.coTags).toEqual([{ tag: "place-barcelona", count: 2 }]);
+    expect(profile.coTags).toEqual([{ tag: "place-atlantis", count: 2 }]);
   });
 
   it("profiles a place across people", () => {
     const profile = buildTagProfile(
-      "place-barcelona",
-      gymWithYoel,
+      "place-atlantis",
+      gymWithAda,
       habits,
       areas,
     );
     expect(profile.momentCount).toBe(3);
     expect(profile.coTags).toEqual([
-      { tag: "person-yoel", count: 2 },
-      { tag: "person-yanik", count: 1 },
+      { tag: "person-ada", count: 2 },
+      { tag: "person-bea", count: 1 },
     ]);
   });
 
   it("lists a habit carrying the tag directly even with zero tagged moments", () => {
     const profile = buildTagProfile(
-      "place-barcelona",
+      "place-atlantis",
       [],
       habits,
       areas,
@@ -173,10 +173,10 @@ describe("buildTagProfile", () => {
       moment({
         id: `m-${i}`,
         day: `2026-01-${String(i + 1).padStart(2, "0")}`,
-        tags: ["person-yoel"],
+        tags: ["person-ada"],
       }),
     );
-    const profile = buildTagProfile("person-yoel", many, [], areas);
+    const profile = buildTagProfile("person-ada", many, [], areas);
     expect(profile.recentMoments).toHaveLength(10);
     expect(profile.recentMoments[0]!.day).toBe("2026-01-12");
     expect(profile.recentMomentsTruncated).toBe(true);
@@ -184,9 +184,9 @@ describe("buildTagProfile", () => {
 
   it("names an archived habit gracefully", () => {
     const orphan = [
-      moment({ id: "m-x", habitId: "h-gone", day: "2025-01-01", tags: ["person-yoel"] }),
+      moment({ id: "m-x", habitId: "h-gone", day: "2025-01-01", tags: ["person-ada"] }),
     ];
-    const profile = buildTagProfile("person-yoel", orphan, [], areas);
+    const profile = buildTagProfile("person-ada", orphan, [], areas);
     expect(profile.habits).toEqual([{ name: "(archived habit)", count: 1 }]);
   });
 });
