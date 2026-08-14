@@ -65,6 +65,10 @@
   #caption .c-name { font:600 17px Georgia, serif; color:var(--accent); }
   #caption .c-dates { color:var(--ink2); font-size:12px; }
   #caption .c-int { color:var(--ink2); font-size:12px; font-style:italic; margin-top:4px; }
+  .c-strip { display:flex; height:8px; border-radius:4px; overflow:hidden; gap:1px; margin:8px auto 2px; max-width:320px; }
+  .c-strip span { display:block; }
+  .c-mix { color:var(--ink3); font-size:11px; }
+  .adot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; vertical-align:baseline; }
 </style>
 </head>
 <body>
@@ -147,7 +151,7 @@ function openCity(c) {
     `${c.people.length} ${c.people.length === 1 ? 'person' : 'people'} · sorted by last seen`;
   document.getElementById('p-people').innerHTML = c.people.map(p => `
     <div class="person" data-name="${p.name}">
-      <div class="nm">${p.name}</div>
+      <div class="nm"><span class="adot" style="background:${p.area?.color ?? '#93a4f5'}" title="${p.area?.name ?? ''}"></span>${p.name}</div>
       <div class="last">${fmt(p.last)}</div>
       <div class="refs" id="refs-${CSS.escape(p.name)}"></div>
     </div>`).join('');
@@ -171,8 +175,13 @@ async function toggleRefs(name) {
 }
 
 // ── Journey mode: a timeline you press play on ──
+// Playback is time-proportional: the whole journey targets TOTAL_MS of wall
+// clock, so every day of life costs the same fraction of a second on screen.
 let JOURNEY = null, MODE = 'people', IDX = -1, PLAYING = false, timer = null;
-const STEP_MS = 2600;
+const TOTAL_MS = 75000, MIN_DWELL = 1400;
+let msPerDay = 200;
+const stopDays = s => Math.max(1, (new Date(s.end ?? s.start) - new Date(s.start)) / 86400000 + 1);
+const dwell = s => Math.max(MIN_DWELL, stopDays(s) * msPerDay);
 
 async function showJourney() {
   MODE = 'journey';
@@ -180,10 +189,12 @@ async function showJourney() {
   panel.classList.remove('open');
   world.controls().autoRotate = false;
   if (!JOURNEY) JOURNEY = await (await fetch('/api/cycles')).json();
+  const totalDays = JOURNEY.stops.reduce((s, x) => s + stopDays(x), 0);
+  msPerDay = TOTAL_MS / totalDays;
   buildTrack();
   document.getElementById('timeline').classList.add('show');
   document.getElementById('subtitle').textContent =
-    `${JOURNEY.stops.length} seasons · press play, or scrub the timeline`;
+    `${JOURNEY.stops.length} seasons over ${Math.round(totalDays)} days · playback: 1s ≈ ${(1000 / msPerDay).toFixed(1)} days`;
   document.getElementById('unplaced').innerHTML = '';
   world.labelsData([]).pointLabel(d => `<b>${d.place}</b>`);
   world.onPointClick(() => {}).onLabelClick(() => {});
@@ -208,16 +219,25 @@ function goTo(i, fly) {
     .pointAltitude(0.008).pointRadius(0.5)
     .ringsData([s]).ringLat('lat').ringLng('lng')
     .ringMaxRadius(3.4).ringPropagationSpeed(1.6).ringRepeatPeriod(900)
-    .ringColor(() => t => `rgba(147,164,245,${1 - t})`)
+    .ringColor(d => {
+      // the season's ring wears its dominant area's color — color names the area
+      const hex = d.areas?.[0]?.color ?? '#93a4f5';
+      const [r, g, b] = [1, 3, 5].map(o => parseInt(hex.slice(o, o + 2), 16));
+      return t => `rgba(${r},${g},${b},${1 - t})`;
+    })
     .arcsData(JOURNEY.arcs.filter(a => a.order <= i))
     .arcDashLength(0.6).arcDashGap(0.25)
     .arcDashAnimateTime(d => d.order === i ? 2200 : 0);
   world.pointOfView({ lat: s.lat, lng: s.lng, altitude: 1.7 }, fly ? 1100 : 0);
   const cap = document.getElementById('caption');
   cap.classList.add('show');
+  const mix = (s.areas ?? []).slice(0, 6);
   cap.innerHTML = `<div class="c-name">${s.n} · ${s.cycle}</div>
     <div class="c-dates">${s.place} — ${s.start} → ${s.end ?? 'open'}</div>
-    ${s.intention ? `<div class="c-int">${s.intention}</div>` : ''}`;
+    ${s.intention ? `<div class="c-int">${s.intention}</div>` : ''}
+    ${mix.length ? `<div class="c-strip">${mix.map(a =>
+        `<span style="flex-grow:${a.count};background:${a.color}" title="${a.name}: ${a.count}"></span>`).join('')}</div>
+      <div class="c-mix">${s.momentCount} moments · ${mix.map(a => `${a.emoji} ${a.count}`).join(' · ')}</div>` : ''}`;
   const segs = document.querySelectorAll('#track .seg');
   segs.forEach((seg, idx) => {
     seg.classList.toggle('done', idx < i);
@@ -231,10 +251,10 @@ function play() {
   const advance = () => {
     if (IDX >= JOURNEY.stops.length - 1) return pause();
     goTo(IDX + 1, true);
-    timer = setTimeout(advance, STEP_MS);
+    timer = setTimeout(advance, dwell(JOURNEY.stops[IDX]));
   };
   if (IDX >= JOURNEY.stops.length - 1) IDX = -1;
-  timer = setTimeout(advance, IDX === -1 ? 200 : STEP_MS / 2);
+  timer = setTimeout(advance, IDX === -1 ? 200 : dwell(JOURNEY.stops[IDX]) / 2);
 }
 function pause() {
   PLAYING = false;
