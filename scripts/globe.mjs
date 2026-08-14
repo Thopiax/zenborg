@@ -204,20 +204,42 @@ function loadPhotos() {
   for (const ext of ['-wal', '-shm']) {
     try { fs.copyFileSync(PHOTOS_DB + ext, tmp + ext); } catch {}
   }
+  // ZSAVEDASSETTYPE=3 is a screenshot — a document, not a memory. Favorites
+  // are curation you already did, so they surface first in a strip.
   const rows = execFileSync('sqlite3', [tmp, `
     select ZUUID, date(datetime(ZDATECREATED + 978307200, 'unixepoch')),
-           coalesce(ZLATITUDE, -999), coalesce(ZLONGITUDE, -999)
-    from ZASSET where ZDATECREATED is not null and ZTRASHEDSTATE = 0;`],
+           coalesce(ZLATITUDE, -999), coalesce(ZLONGITUDE, -999), ZFAVORITE
+    from ZASSET
+    where ZDATECREATED is not null and ZTRASHEDSTATE = 0
+      and coalesce(ZSAVEDASSETTYPE, 0) <> 3;`],
     { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 })
     .trim().split('\n').filter(Boolean)
-    .map((l) => { const [uuid, day, lat, lng] = l.split('|');
-      return { uuid, day, lat: +lat, lng: +lng }; });
+    .map((l) => { const [uuid, day, lat, lng, fav] = l.split('|');
+      return { uuid, day, lat: +lat, lng: +lng, favorite: fav === '1' }; });
   for (const ext of ['', '-wal', '-shm']) { try { fs.unlinkSync(tmp + ext); } catch {} }
   return (photoCache = rows.sort((a, b) => a.day.localeCompare(b.day)));
 }
 
 const thumbPath = (uuid) =>
   path.join(DERIVATIVES, uuid[0], `${uuid}_1_105_c.jpeg`);
+
+// Highlights are a sidecar, not a library write: we never mutate the user's
+// Photos library. { "<cycle startDate>": ["<uuid>", …] }, gitignored.
+const HIGHLIGHTS = path.join(import.meta.dirname, 'highlights.local.json');
+const readHighlights = () => {
+  try { return JSON.parse(fs.readFileSync(HIGHLIGHTS, 'utf8')); } catch { return {}; }
+};
+function toggleHighlight(cycleStart, uuid) {
+  const all = readHighlights();
+  const list = all[cycleStart] ?? [];
+  const i = list.indexOf(uuid);
+  if (i === -1) list.push(uuid); else list.splice(i, 1);
+  if (list.length) all[cycleStart] = list; else delete all[cycleStart];
+  const tmp = `${HIGHLIGHTS}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, `${JSON.stringify(all, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, HIGHLIGHTS);
+  return i === -1;
+}
 
 // Evenly spread picks across a window read better than the first N.
 function spread(list, n) {
@@ -291,13 +313,40 @@ http
         if (!cycle) return send(400, { error: 'unknown cycle' });
         const end = cycle.endDate ?? cycle.startDate;
         const inWindow = loadPhotos().filter((p) => p.day >= cycle.startDate && p.day <= end);
-        // Over-fetch candidates: not every asset has a rendered derivative, and
-        // a strip with holes reads as an error rather than a life.
-        const shown = spread(inWindow, limit * 5)
-          .filter((p) => fs.existsSync(thumbPath(p.uuid)))
-          .slice(0, limit);
-        return send(200, { total: inWindow.length, photos: shown.map((p) => ({ uuid: p.uuid, day: p.day })) });
+        const picked = readHighlights()[start] ?? [];
+        const has = (p) => fs.existsSync(thumbPath(p.uuid));
+        // Three tiers of curation: what you chose for this cycle, then what
+        // you favourited in Photos, then a spread across the window.
+        const chosen = inWindow.filter((p) => picked.includes(p.uuid)).filter(has);
+        const favs = inWindow.filter((p) => p.favorite && !picked.includes(p.uuid)).filter(has);
+        // Over-fetch: not every asset has a rendered derivative, and a strip
+        // with holes reads as an error rather than a life.
+        const rest = spread(inWindow.filter((p) => !p.favorite && !picked.includes(p.uuid)), limit * 5)
+          .filter(has);
+        const shown = [...chosen, ...favs, ...rest].slice(0, limit);
+        return send(200, {
+          total: inWindow.length,
+          favorites: inWindow.filter((p) => p.favorite).length,
+          highlighted: chosen.length,
+          photos: shown.map((p) => ({
+            uuid: p.uuid, day: p.day, favorite: p.favorite, highlighted: picked.includes(p.uuid),
+          })),
+        });
       } catch (e) { return send(500, { error: String(e.message ?? e) }); }
+    }
+    if (req.method === 'POST' && req.url === '/api/highlight') {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        try {
+          const { cycle, uuid } = JSON.parse(body);
+          if (!/^[0-9A-F-]{36}$/i.test(uuid)) return send(400, { error: 'bad id' });
+          if (!Object.values(readJson('cycles')).some((c) => c.startDate === cycle))
+            return send(400, { error: 'unknown cycle' });
+          return send(200, { highlighted: toggleHighlight(cycle, uuid) });
+        } catch (e) { return send(400, { error: String(e.message ?? e) }); }
+      });
+      return;
     }
     if (req.method === 'GET' && req.url?.startsWith('/thumb/')) {
       const uuid = decodeURIComponent(req.url.slice('/thumb/'.length));
