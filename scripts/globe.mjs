@@ -195,6 +195,19 @@ http
     if (req.method === 'GET' && req.url === '/api/network') {
       try { return send(200, network()); } catch (e) { return send(500, { error: String(e.message ?? e) }); }
     }
+    if (req.method === 'GET' && req.url === '/api/reflections') {
+      try {
+        const cycles = Object.values(readJson('cycles'))
+          .filter((c) => c.reflection?.trim())
+          .sort((a, b) => b.startDate.localeCompare(a.startDate))
+          .map((c) => {
+            const [l0, ...rest] = c.reflection.trim().split('\n');
+            return { name: c.name, start: c.startDate, end: c.endDate,
+              l0: l0.trim(), l1: rest.join('\n').trim() };
+          });
+        return send(200, { count: cycles.length, cycles });
+      } catch (e) { return send(500, { error: String(e.message ?? e) }); }
+    }
     if (req.method === 'GET' && req.url === '/api/cycles') {
       try { return send(200, cycleJourney()); } catch (e) { return send(500, { error: String(e.message ?? e) }); }
     }
