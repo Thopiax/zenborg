@@ -97,6 +97,13 @@
   .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(116px,1fr)); gap:5px; margin:14px 0 4px; }
   .grid img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:5px; background:var(--line); }
   .grid img:hover { filter:brightness(1.08); }
+  .shot { position:relative; }
+  .shot .star { position:absolute; top:5px; right:6px; font-size:13px; line-height:1; cursor:pointer;
+                opacity:0; transition:opacity .15s; text-shadow:0 1px 4px #000; user-select:none; }
+  .shot:hover .star, .shot .star.on { opacity:1; }
+  .shot .star.on { color:#f5d393; }
+  .strip img.pick { outline:1.5px solid var(--accent); outline-offset:-1.5px; }
+  .strip img.fav { outline:1.5px solid #f5d39366; outline-offset:-1.5px; }
 </style>
 </head>
 <body>
@@ -348,7 +355,8 @@ async function loadStrip(el) {
   const r = await (await fetch('/api/photos?start=' + encodeURIComponent(el.dataset.start) + '&limit=8')).json();
   if (r.error || !r.photos?.length) { strip.remove(); return; }
   strip.innerHTML = r.photos.map(p =>
-    `<img loading="lazy" src="/thumb/${p.uuid}" alt="" title="${p.day}">`).join('') +
+    `<img loading="lazy" class="${p.highlighted ? 'pick' : p.favorite ? 'fav' : ''}"
+          src="/thumb/${p.uuid}" alt="" title="${p.day}${p.highlighted ? ' · highlighted' : p.favorite ? ' · favourite' : ''}">`).join('') +
     (r.total > r.photos.length ? `<span class="more">+${r.total - r.photos.length}</span>` : '');
 }
 
@@ -364,9 +372,14 @@ async function toggleRaw(el) {
   box.dataset.loaded = '1';
   const photos = await (await fetch('/api/photos?start=' + encodeURIComponent(el.dataset.start) + '&limit=48')).json();
   const grid = photos.photos?.length
-    ? `<div class="loading">${photos.total} photograph${photos.total === 1 ? '' : 's'}</div>
+    ? `<div class="loading">${photos.total} photograph${photos.total === 1 ? '' : 's'}${
+         photos.favorites ? ` · ${photos.favorites} favourite${photos.favorites === 1 ? '' : 's'}` : ''
+       } · click ★ to highlight</div>
        <div class="grid">${photos.photos.map(p =>
-         `<img loading="lazy" src="/thumb/${p.uuid}" alt="" title="${p.day}">`).join('')}</div>`
+         `<div class="shot">
+            <img loading="lazy" src="/thumb/${p.uuid}" alt="" title="${p.day}">
+            <span class="star ${p.highlighted ? 'on' : ''}" data-uuid="${p.uuid}">${p.highlighted ? '★' : '☆'}</span>
+          </div>`).join('')}</div>`
     : '';
   const entries = r.error
     ? `<div class="loading">${r.error}</div>`
@@ -379,6 +392,22 @@ async function toggleRaw(el) {
           </div>`).join('')
       : '<div class="loading">no entries in this window</div>';
   box.innerHTML = grid + entries;
+  // Stars toggle without collapsing the card, and refresh the strip so the
+  // pick shows up where it counts.
+  for (const star of box.querySelectorAll('.star')) {
+    star.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      const r = await (await fetch('/api/highlight', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ cycle: el.dataset.start, uuid: star.dataset.uuid }),
+      })).json();
+      if (r.error) return;
+      star.classList.toggle('on', r.highlighted);
+      star.textContent = r.highlighted ? '★' : '☆';
+      const strip = el.querySelector('.strip');
+      if (strip) loadStrip(el);
+    });
+  }
 }
 function hideSeasons() {
   document.getElementById('seasons').classList.remove('show');
