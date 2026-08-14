@@ -17,7 +17,16 @@ const cycles = Object.values(
   JSON.parse(fs.readFileSync(path.join(VAULT, 'cycles.json'), 'utf8')),
 ).sort((a, b) => a.startDate.localeCompare(b.startDate));
 
-const withRefl = cycles.filter((c) => c.reflection?.trim());
+// --since <minutes> scopes the lint to freshly written reflections, so a
+// prompt or guard change is measurable without legacy output drowning it.
+const sinceArg = process.argv.indexOf('--since');
+const SINCE = sinceArg !== -1 ? Number(process.argv[sinceArg + 1]) : null;
+const cutoff = SINCE ? Date.now() - SINCE * 60000 : null;
+
+const withRefl = cycles.filter(
+  (c) => c.reflection?.trim() && (!cutoff || new Date(c.updatedAt).getTime() >= cutoff),
+);
+if (SINCE) console.log(`\n(scoped to reflections written in the last ${SINCE} min)`);
 const twoRung = withRefl.filter((c) => c.reflection.includes('\n\n'));
 const era = (d) => (d < '2024-01-01' ? 'pre-2024 (saperene)' : d < '2025-10-18' ? '2024→zenborg' : 'zenborg era');
 

@@ -33,7 +33,7 @@ const JOURNALS = arg('journal')
     ].filter((d) => fs.existsSync(d));
 const MODEL = arg('model') ?? 'qwen3.6:35b';
 const LIMIT = Number(arg('limit') ?? Infinity);
-const PER_ENTRY_CAP = 1500, TOTAL_CAP = 12000;
+const PER_ENTRY_CAP = 1500, TOTAL_CAP = 12000, L0_MAX_WORDS = 20;
 
 const cyclesPath = path.join(VAULT, 'cycles.json');
 const cycles = JSON.parse(fs.readFileSync(cyclesPath, 'utf8'));
@@ -107,7 +107,33 @@ Reply with exactly the lede, a blank line, and the body. No preamble, no labels,
   });
   if (!res.ok) throw new Error(`ollama ${res.status}`);
   const out = (await res.json()).response ?? '';
-  return out.replace(/<think>[\s\S]*?<\/think>/g, '').trim() || null;
+  const text = out.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  if (!text) return null;
+
+  // The lede budget is enforced, not requested: bigger models drift long even
+  // when told not to, so an over-budget L0 goes back for one compression pass.
+  const [l0, ...rest] = text.split('\n');
+  if (l0.trim().split(/\s+/).length <= L0_MAX_WORDS) return text;
+  const tighter = await ask(
+    `Compress this to ONE sentence of at most ${L0_MAX_WORDS} words, first person, past tense, keeping the specifics. Reply with the sentence only.\n\n${l0.trim()}`,
+  );
+  const clean = tighter?.split('\n')[0]?.trim();
+  return clean && clean.split(/\s+/).length < l0.trim().split(/\s+/).length
+    ? [clean, ...rest].join('\n')
+    : text;
+}
+
+async function ask(prompt) {
+  const res = await fetch('http://localhost:11434/api/generate', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ model: MODEL, prompt, stream: false }),
+  });
+  if (!res.ok) return null;
+  return ((await res.json()).response ?? '')
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/^["']|["']$/g, '')
+    .trim();
 }
 
 // --redo regenerates model-written reflections (e.g. after a prompt fix).
