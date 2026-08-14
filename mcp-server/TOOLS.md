@@ -32,6 +32,7 @@ before the agent commits).
 - `list_tags`, `get_tag_profile`
 - `get_active_moment`
 - `list_wilting_habits`
+- `list_people_to_reach`
 - `get_cycle_planning_proposals`
 - `get_cycle_review`
 
@@ -103,8 +104,8 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_habits` | `areaId?, includeArchived?` | |
 | `get_habit` | `id` | |
-| `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, emoji?, description?, guidance?, rhythm?, schedule?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. |
-| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. |
+| `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, kind?, emoji?, description?, guidance?, rhythm?, schedule?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. `kind: "person"` marks the record as a person; absent means an ordinary habit. |
+| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear; `kind?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. `kind: null` untags a mistagged person back into an ordinary habit. |
 | `archive_habit` | `id` | **Cascade:** deletes all cycle plans for this habit; allocated moments preserved as historical records (orphan via `habitId`). |
 | `unarchive_habit` | `id` | |
 
@@ -130,14 +131,14 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_moments` | `filter: { areaId?, habitId?, cycleId?, day?, phase?, allocation?: "unallocated"\|"deck"\|"allocated"\|"budgeted"\|"spontaneous", tags? }` | One tool, structured filter. `tags` = AND over normalized tags. |
 | `get_moment` | `id` | |
-| `create_moment` | `name, areaId, phase?, emoji?, tags?, customMetric?, startTime?, durationMin?, refs?` | Unallocated. `refs` = URLs this moment refers to (pointers only). |
-| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, customMetric?, startTime?, durationMin?, refs? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. `refs` replaces the list; `[]` clears it. |
+| `create_moment` | `name, areaId, phase?, emoji?, tags?, personIds?, customMetric?, startTime?, durationMin?, refs?` | Unallocated. `refs` = URLs this moment refers to (pointers only). `personIds` are the people present; an empty array writes nothing (absent means nobody). |
+| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, personIds?, customMetric?, startTime?, durationMin?, refs? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. `refs` replaces the list; `[]` clears it. `personIds` replaces the whole list; pass `null` or `[]` to clear it (absent means nobody — the same single empty representation `create_moment` writes); omit it to leave the existing list untouched. |
 | `delete_moment` | `id` | |
 | `allocate_moment` | `id, day, phase, order?, startTime?, durationMin?` | No cap. Returns `dayViewOverflow` past 3 in the slot. |
 | `unallocate_moment` | `id` | |
 | `allocate_from_plan` | `cycleId, habitId, day, phase` | Materialize a virtual deck card onto a slot. Resolves plan server-side; creates `Moment` with `cyclePlanId` set and the habit's schedule timing inherited. Returns `dayViewOverflow` past 3 in the slot. |
 | `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags, plus the habit's schedule timing. No `refs`: a habit has none — what a moment points at is particular to the occurrence. Returns `dayViewOverflow` past 3 in the slot. |
-| `create_standalone_moment` | `name, areaId, day, phase, order?, startTime?, durationMin?, refs?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. |
+| `create_standalone_moment` | `name, areaId, day, phase, order?, emoji?, tags?, personIds?, startTime?, durationMin?, refs?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. `personIds` are the people present; an empty array writes nothing (absent means nobody). |
 
 ### Active moment (`activeMoment.json`)
 
@@ -170,6 +171,13 @@ the only namespacing that survives.
 |---|---|---|
 | `list_phase_configs` | — | Sorted by `order`. |
 | `update_phase_config` | `id, { label?, emoji?, color?, startHour?, endHour?, isVisible?, order? }` | Configs are seeded; only update surface. |
+
+### Health + outreach (derived, read-only)
+| Tool | Inputs | Notes |
+|---|---|---|
+| `get_habit_health` | `habitId` | Health is never stored — recomputed on every read. |
+| `list_wilting_habits` | `areaId?, attitude?` | Habits whose current health is `wilting`. |
+| `list_people_to_reach` | `areaId?, tag?, limit?` | The outreach queue: people (`kind: "person"`, non-archived) whose `personHealth` is `wilting` and who have **nothing already arranged** — anyone with a future-dated moment is excluded, so the queue stays quiet about someone you are already seeing on Thursday. `areaId` narrows to one plot; `tag` narrows to a place tag such as `paris`, `bcn`, `sp`, `london`, `nyc`; `limit` truncates *after* sorting, so it always returns the most overdue. **Ordered by `overdueRatio` — how far past their OWN rhythm they are, as a multiple of it — not by raw elapsed days.** A `{weekly,2}` friend at 20 days (5.71x) outranks an `{annually,1}` one at 400 days (1.1x); ranking by raw days would park the long-rhythm tail at the head of the queue forever and bury exactly the people the feature exists to protect. Every row carries `overdueRatio` beside `daysSinceLastContact`, so the ordering is explicable ("5.7x past their rhythm") rather than mysterious. Never-contacted people (`daysSinceLastContact: null`, `overdueRatio: null`) come first. People with no `rhythm` are `unstated`, never wilting, and never appear. |
 
 ---
 

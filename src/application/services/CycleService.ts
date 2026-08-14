@@ -15,6 +15,7 @@ import {
   allocateMoment,
   createMoment,
   type Moment,
+  momentInvolvesHabit,
   type MomentResult,
 } from "@/domain/entities/Moment";
 import {
@@ -874,7 +875,10 @@ export class CycleService {
     moments: Moment[],
     now: Date
   ): number | null {
-    const habitMoments = moments.filter((m) => m.habitId === habitId);
+    // Same selection `computeHealth` uses, via the one shared predicate. Both
+    // land in the SAME proposal object, so a narrower filter here would report
+    // "400 days" next to a "blooming" derived from the very same moments.
+    const habitMoments = moments.filter((m) => momentInvolvesHabit(m, habitId));
     const latest = habitHealthService.latestAllocationDate(habitMoments, now);
     if (latest === null) return null;
     const ms = now.getTime() - latest.getTime();

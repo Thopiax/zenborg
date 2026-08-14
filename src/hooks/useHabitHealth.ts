@@ -1,6 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import { momentInvolvesHabit } from "@/domain/entities/Moment";
 import { habitHealthService } from "@/domain/services/HabitHealthService";
 import type { Health } from "@/domain/value-objects/Health";
 import {
@@ -40,7 +41,12 @@ export function useHabitHealth(habitId: string): HabitHealthSnapshot {
 
   const health = habitHealthService.computeHealth(habit, plan, momentsList, now);
 
-  const habitMoments = momentsList.filter((m) => m.habitId === habitId);
+  // Same selection `computeHealth` just used, via the one shared predicate.
+  // A narrower filter here would render "·400d" on the card of someone whose
+  // group dinner two days ago already made them blooming above.
+  const habitMoments = momentsList.filter((m) =>
+    momentInvolvesHabit(m, habitId)
+  );
   const latest = habitHealthService.latestAllocationDate(habitMoments, now);
   const daysSinceLast =
     latest === null

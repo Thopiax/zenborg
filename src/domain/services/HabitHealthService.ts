@@ -1,6 +1,6 @@
 import type { CyclePlan } from "@/domain/entities/CyclePlan";
 import type { Habit } from "@/domain/entities/Habit";
-import type { Moment } from "@/domain/entities/Moment";
+import { type Moment, momentInvolvesHabit } from "@/domain/entities/Moment";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import type { Health } from "@/domain/value-objects/Health";
 import {
@@ -42,7 +42,13 @@ export class HabitHealthService {
     if (attitude === Attitude.BEING) return "evergreen";
 
     const rhythm = this.resolveRhythm(habit, cyclePlan);
-    const habitMoments = moments.filter((m) => m.habitId === habit.id);
+    // A moment belongs to this habit when it was planted against it OR when it
+    // names it among the people present — see `momentInvolvesHabit`. Every read
+    // that derives history from the moment log shares that one predicate, so
+    // health and the `daysSinceLast` emitted beside it cannot disagree.
+    // The attitude gate above is untouched: person health still lives in
+    // PersonService, standalone and attitude-free.
+    const habitMoments = moments.filter((m) => momentInvolvesHabit(m, habit.id));
 
     switch (attitude) {
       case Attitude.BEGINNING:

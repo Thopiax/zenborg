@@ -50,6 +50,16 @@ export interface Moment {
   tags: string[] | null; // Flexible organization labels
   refs?: readonly string[]; // URLs this moment refers to. Absent = none.
 
+  /**
+   * People present at this moment. Many people compose under one moment —
+   * a dinner with three friends is ONE moment carrying three ids, not three
+   * moments (which would also collide with the max-3-per-(day,phase) cap).
+   *
+   * Ids reference habit records where `kind === "person"`.
+   * Optional: absent means nobody. There is deliberately no `null` form.
+   */
+  personIds?: string[];
+
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }
@@ -568,4 +578,28 @@ export function isBudgeted(moment: Moment): boolean {
  */
 export function isSpontaneous(moment: Moment): boolean {
   return moment.cyclePlanId === null;
+}
+
+// ============================================================================
+// Habit membership
+// ============================================================================
+
+/**
+ * True when a moment belongs to a habit — either it was planted against it, or
+ * it names it among the people present.
+ *
+ * People ARE habit records, so one dinner with three friends is ONE moment
+ * carrying three `personIds`; a health read of any of those three must see it.
+ * For an ordinary habit `personIds` can never hold its own id, so the second
+ * clause is provably inert there.
+ *
+ * Every read that derives a habit's history from the moment log selects with
+ * this — `computeHealth` and the `daysSinceLast` emitted beside it — so the two
+ * can never disagree about the same person. Mirrored in `mcp-server/health.ts`,
+ * a separate package that deliberately does not import from `src/domain`.
+ */
+export function momentInvolvesHabit(moment: Moment, habitId: string): boolean {
+  return (
+    moment.habitId === habitId || (moment.personIds?.includes(habitId) ?? false)
+  );
 }
