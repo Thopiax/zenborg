@@ -69,6 +69,16 @@
   .c-strip span { display:block; }
   .c-mix { color:var(--ink3); font-size:11px; }
   .adot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; vertical-align:baseline; }
+  #seasons { position:fixed; inset:0; z-index:8; background:#0b0d16f2; backdrop-filter:blur(10px);
+             overflow-y:auto; display:none; padding:88px 24px 60px; }
+  #seasons.show { display:block; }
+  #seasons-inner { max-width:680px; margin:0 auto; }
+  .season { padding:20px 0; border-bottom:1px solid var(--line); }
+  .season .hdr { color:var(--ink3); font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
+  .season .l0 { font:600 19px/1.45 Georgia, serif; color:var(--ink); margin:6px 0 8px; }
+  .season .l1 { color:var(--ink2); font-size:14px; line-height:1.65; }
+  #seasons h2 { font:600 22px Georgia, serif; color:var(--accent); margin-bottom:4px; }
+  #seasons .note { color:var(--ink3); font-size:12px; margin-bottom:18px; }
 </style>
 </head>
 <body>
@@ -77,7 +87,9 @@
 <div id="modes">
   <button id="m-people" class="on">People</button>
   <button id="m-journey">Journey</button>
+  <button id="m-seasons">Seasons</button>
 </div>
+<section id="seasons"><div id="seasons-inner"></div></section>
 <aside id="panel">
   <button class="close" onclick="panel.classList.remove('open')">✕</button>
   <h2 id="p-city"></h2>
@@ -285,8 +297,35 @@ function setModeButtons() {
   document.getElementById('m-people').classList.toggle('on', MODE === 'people');
   document.getElementById('m-journey').classList.toggle('on', MODE === 'journey');
 }
-document.getElementById('m-people').addEventListener('click', showPeople);
-document.getElementById('m-journey').addEventListener('click', showJourney);
+// ── Seasons: the reflections, read here and nowhere else ──
+async function showSeasons() {
+  pause();
+  panel.classList.remove('open');
+  const box = document.getElementById('seasons');
+  const inner = document.getElementById('seasons-inner');
+  box.classList.add('show');
+  document.getElementById('m-seasons').classList.add('on');
+  inner.innerHTML = '<div class="note">reading the vault…</div>';
+  const r = await (await fetch('/api/reflections')).json();
+  inner.innerHTML = `<h2>Seasons</h2>
+    <div class="note">${r.count} reflections · newest first · L0 lede, then the tldr · press Escape to close</div>` +
+    r.cycles.map(c => `
+      <div class="season">
+        <div class="hdr">${c.start} → ${c.end ?? 'open'} · ${c.name}</div>
+        <div class="l0">${c.l0}</div>
+        ${c.l1 ? `<div class="l1">${c.l1.replace(/\n/g, '<br>')}</div>` : ''}
+      </div>`).join('');
+}
+function hideSeasons() {
+  document.getElementById('seasons').classList.remove('show');
+  document.getElementById('m-seasons').classList.remove('on');
+}
+document.getElementById('m-seasons').addEventListener('click', () =>
+  document.getElementById('seasons').classList.contains('show') ? hideSeasons() : showSeasons());
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideSeasons(); });
+
+document.getElementById('m-people').addEventListener('click', () => { hideSeasons(); showPeople(); });
+document.getElementById('m-journey').addEventListener('click', () => { hideSeasons(); showJourney(); });
 
 document.getElementById('p-form').addEventListener('submit', async (e) => {
   e.preventDefault();
