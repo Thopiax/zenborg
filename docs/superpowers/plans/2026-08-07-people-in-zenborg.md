@@ -34,8 +34,12 @@ One deviation from the doc's field signature: `Moment.personIds` is declared `pe
 - **Code style:** functional preferred; `for...of` never `forEach`; always braced blocks, no braceless `if`/`for`; `pnpm` never npm/yarn.
 - **Habit and moment names are 1–3 words.** Enforced by existing validators; the migration must not violate it.
 - **Test runner:** root `vitest.config.mts` includes both `src/**/*.test.ts` and `mcp-server/**/*.test.ts`. Single-run form is `pnpm test run <path>` (bare `pnpm test` is watch mode).
+- **`pnpm lint` is RED at baseline and is NOT a gate.** Measured at `b337dea`: 205 errors and 116 warnings across 242 files, none of them ours. Never run `pnpm lint` expecting green, and never "fix" findings in files you did not touch. The gate is instead: `pnpm exec biome check <the exact paths you changed>` must introduce **no new diagnostic** relative to the same paths at the task's base commit. Compare explicitly when in doubt — `git show <base>:<path> > /tmp/base-<name>` then biome-check both.
+- **`pnpm exec tsc --noEmit` IS a gate** and is green at baseline. So is `pnpm test run`.
+- **A husky pre-commit hook runs the full vitest suite on every commit** (~30s). Expected, not a hang.
+- **`mcp-server/` is a separate package** with its own `package.json`, `pnpm-lock.yaml` and `node_modules` — it is not a pnpm workspace member. Its deps are already installed in this worktree. `pnpm --filter ./mcp-server typecheck` and `cd mcp-server && pnpm typecheck` both work.
 - **Do not run `pnpm dev`, `tauri dev`, or any dev server.** The user runs those manually.
-- **Commit only your own paths.** The working tree carries unrelated in-progress DayNote work (`src/application/services/DayNoteService.ts`, `src/components/Timeline.tsx`, `src/domain/entities/DayNote.ts`, `src/components/DayNoteBody.tsx`, `src/domain/__tests__/DayNote.test.ts`, `docs/superpowers/specs/2026-08-03-kairos-reach-design.md`). Never `git add -A`, never `git add .`, never `git checkout`/`restore`/`stash` those paths. Stage exact paths only.
+- **Commit only your own paths.** Never `git add -A`, never `git add .`, never `git checkout`/`restore`/`stash` any file. Stage exact paths only. This is a live user's repository.
 
 ---
 
@@ -286,7 +290,7 @@ function moment(over: Partial<Moment> = {}): Moment {
     habitId: null,
     cycleId: null,
     cyclePlanId: null,
-    phase: "EVENING",
+    phase: Phase.EVENING,
     day: "2026-08-01",
     order: 0,
     tags: null,
@@ -295,7 +299,19 @@ function moment(over: Partial<Moment> = {}): Moment {
     ...over,
   };
 }
+```
 
+**`Phase` on the domain side is a TypeScript `enum`, not a string-literal union** (`src/domain/value-objects/Phase.ts`). `phase: "EVENING"` does NOT typecheck here — it must be `Phase.EVENING`, and the test file needs:
+
+```ts
+import { Phase } from "@/domain/value-objects/Phase";
+```
+
+This differs from the MCP server, where `Phase` is `z.infer<typeof z.enum(PHASES)>` — a string union where `'EVENING'` is correct. Do not "fix" Task 4's fixture to match this one.
+
+The rest of the test file continues in the same module:
+
+```ts
 describe("personMoments", () => {
   it("matches a moment that carries the person in personIds", () => {
     const m = moment({ personIds: ["p-eli", "p-fox"] });
@@ -1260,7 +1276,13 @@ cp ~/.kairos/areas.json ~/.kairos/habits.json /tmp/kairos-migration-test/
 KAIROS_HOME=/tmp/kairos-migration-test node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/people-migration.mts
 ```
 
-Expected: `marked kind="person": 46` and `created from splits: 2`, for 48 people total. The four ritual names must NOT appear in the marked list. If the count differs, stop and reconcile against the vault before going further — do not "fix" it by loosening the filter.
+Expected, **re-derived from the live vault on 2026-08-07**: `marked kind="person": 42` and `created from splits: 2`, for **44 people total**.
+
+The decision doc's figure of 48 is wrong and this supersedes it. That count was taken with `v.get("archived")`, but the real field is **`isArchived`** — so it silently included four archived records. The social areas hold 48 records, of which 4 are archived (`Mio`, `colloc auber`, `dad`, `family breakfast`), leaving 44 live. Two of those are rituals (`poetry`, `tantric`), so 42 get marked, and the two pair records split into four, giving 44 people. Only **12** of them carry a rhythm, so the outreach queue will be short until more are set.
+
+`NOT_PEOPLE` deliberately keeps all four ritual names even though `colloc auber` and `family breakfast` are currently archived — harmless now, and correct if either is ever unarchived.
+
+The ritual names must NOT appear in the marked list. **Do not trust these numbers either — re-derive them from the vault at run time.** The vault is live and changes between sessions (habit count moved 126 → 130 while this plan was being executed). If your count differs, reconcile against the actual data and report the discrepancy; never "fix" it by loosening the filter.
 
 - [ ] **Step 3: Apply to the copy and verify the result**
 
@@ -1321,10 +1343,9 @@ Then call `list_people_to_reach` from a Claude session and confirm it returns pe
 ```bash
 pnpm test run
 pnpm exec tsc --noEmit
-pnpm lint
 ```
 
-Expected: all pass. Nothing further to commit unless lint reformatted a file you own — in which case stage only those exact paths.
+Expected: both green. Do NOT run `pnpm lint` as a gate — it is red at baseline with 205 pre-existing errors (see Global Constraints). Instead biome-check only the paths this plan created or modified and confirm no new diagnostic against their base versions.
 
 ---
 
