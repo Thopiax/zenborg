@@ -68,6 +68,7 @@ import {
   validateRefs,
 } from './validation.js';
 import { computeHealth, daysSinceLast, parseVaultDay, resolveRhythm } from './health.js';
+import { buildTagIndex, buildTagProfile } from './tags.js';
 
 // ────────────────────────────────────────────────────────────────────────
 // Boot
@@ -1266,7 +1267,7 @@ const MomentAllocationFilter = z.enum([
 
 server.tool(
   'list_moments',
-  'List moments with optional structured filters.',
+  'List moments with optional structured filters. `tags` requires ALL given tags on a moment (AND) — the way to pull every moment with a `person-<name>` / `place-<name>` tag.',
   {
     filter: z
       .object({
@@ -1276,11 +1277,13 @@ server.tool(
         day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
         phase: PhaseSchema.optional(),
         allocation: MomentAllocationFilter.optional(),
+        tags: z.array(z.string()).nonempty().optional(),
       })
       .optional(),
   },
   async ({ filter }): Promise<ToolResult> => {
     const moments = readCollection(VAULT_ROOT, 'moments');
+    const wantedTags = filter?.tags ? normalizeTags(filter.tags) : null;
     const list = Object.values(moments).filter((m) => {
       if (!filter) return true;
       if (filter.areaId && m.areaId !== filter.areaId) return false;
@@ -1288,6 +1291,8 @@ server.tool(
       if (filter.cycleId && m.cycleId !== filter.cycleId) return false;
       if (filter.day && m.day !== filter.day) return false;
       if (filter.phase && m.phase !== filter.phase) return false;
+      if (wantedTags && !wantedTags.every((t) => (m.tags ?? []).includes(t)))
+        return false;
       if (filter.allocation) {
         switch (filter.allocation) {
           case 'unallocated':
@@ -1905,6 +1910,43 @@ server.tool(
     configs[id] = next;
     writeCollection(VAULT_ROOT, 'phaseConfigs', configs);
     return ok({ updated: next });
+  },
+);
+
+// ────────────────────────────────────────────────────────────────────────
+// TAGS — derived people/place/theme index (read-side, computed, no storage)
+// ────────────────────────────────────────────────────────────────────────
+
+server.tool(
+  'list_tags',
+  'The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read a namespace as an index — `person-` = the People index, `place-` = the Places index. Sorted by total usage.',
+  {
+    prefix: z.string().optional(),
+  },
+  async ({ prefix }): Promise<ToolResult> => {
+    const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
+    const habits = Object.values(readCollection(VAULT_ROOT, 'habits'));
+    const areas = Object.values(readCollection(VAULT_ROOT, 'areas'));
+    return ok(buildTagIndex(moments, habits, areas, prefix));
+  },
+);
+
+server.tool(
+  'get_tag_profile',
+  "One tag's neighborhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments (people ↔ places ↔ themes), first/last day, and a recent sample. Answers questions like \"what did I do with person-yoel, and where?\" — the co-occurrence of a `person-` tag with `place-` tags and habits IS that story.",
+  {
+    tag: z.string().min(1),
+  },
+  async ({ tag }): Promise<ToolResult> => {
+    const normalized = normalizeTags([tag])[0];
+    if (!normalized)
+      return err(
+        `Not a valid tag after normalization: "${tag}". Tags are lowercase letters, digits and dashes, max 20 chars — e.g. "person-yoel".`,
+      );
+    const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
+    const habits = Object.values(readCollection(VAULT_ROOT, 'habits'));
+    const areas = Object.values(readCollection(VAULT_ROOT, 'areas'));
+    return ok(buildTagProfile(normalized, moments, habits, areas));
   },
 );
 
