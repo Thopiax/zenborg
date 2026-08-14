@@ -29,6 +29,7 @@ before the agent commits).
 - `list_areas`, `list_habits`, `list_cycles`, `list_moments`, `list_cycle_plans`, `list_phase_configs`
 - `get_area`, `get_habit`, `get_cycle`, `get_moment`, `get_cycle_plan`
 - `get_habit_health`
+- `list_tags`, `get_tag_profile`
 - `get_active_moment`
 - `list_wilting_habits`
 - `get_cycle_planning_proposals`
@@ -127,7 +128,7 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 ### Moments (`moments.json`)
 | Tool | Inputs | Notes |
 |---|---|---|
-| `list_moments` | `filter: { areaId?, habitId?, cycleId?, day?, phase?, allocation?: "unallocated"\|"deck"\|"allocated"\|"budgeted"\|"spontaneous" }` | One tool, structured filter. |
+| `list_moments` | `filter: { areaId?, habitId?, cycleId?, day?, phase?, allocation?: "unallocated"\|"deck"\|"allocated"\|"budgeted"\|"spontaneous", tags? }` | One tool, structured filter. `tags` = AND over normalized tags. |
 | `get_moment` | `id` | |
 | `create_moment` | `name, areaId, phase?, emoji?, tags?, customMetric?, startTime?, durationMin?, refs?` | Unallocated. `refs` = URLs this moment refers to (pointers only). |
 | `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, customMetric?, startTime?, durationMin?, refs? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. `refs` replaces the list; `[]` clears it. |
@@ -149,6 +150,19 @@ The one moment that is *what I'm doing now*. A singleton pointer — `{ momentId
 | `set_active_moment` | `momentIdOrName` | An id, or a name matched against today's board. Refuses a moment not allocated to today (keel would ignore it), and refuses an ambiguous name, listing the candidate ids. |
 | `get_active_moment` | — | Resolved to its moment and area. `{ active: null }` when nothing is set. Reports `stale: true` when the moment was deleted or has rolled off today. |
 | `clear_active_moment` | — | Releases the intention. Removing the pointer IS the empty state. |
+
+### Tags — derived index (added 2026-08-14)
+
+People and places are **dash-namespaced tags** (`person-<name>`, `place-<name>`) on moments
+and habits — the stopgap for first-class Person/Place entities. These tools derive the index
+at read time from the existing collections: **no stored index, no vault shape change**, so
+neither vault implementation pays a cost. `normalizeTags` strips `/` and `:` — dashes are
+the only namespacing that survives.
+
+| Tool | Inputs | Notes |
+|---|---|---|
+| `list_tags` | `prefix?` | Every tag in use with moment/habit/area counts + first/last allocated day. `prefix: "person-"` = the People index, `"place-"` = the Places index. Sorted by total usage. |
+| `get_tag_profile` | `tag` | One tag's graph neighborhood: habits, areas, co-tags (people ↔ places ↔ themes), date range, recent sample (cap 10, truncation flagged). |
 
 ### Phases (`phaseConfigs.json`) — Should-have
 | Tool | Inputs | Notes |
