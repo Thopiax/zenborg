@@ -137,11 +137,13 @@ async function ask(prompt) {
 }
 
 // --redo regenerates model-written reflections (e.g. after a prompt fix).
-// Human-written ones are protected: a reflection whose L0 fits the sentence
-// budget and that carries no blank-line split is treated as hand-written.
+// Human-written ones are protected. Provenance is now stamped explicitly at
+// write time (`reflectionSource`), so the blank-line heuristic below is only
+// the fallback for the reflections written before the field existed.
 const REDO = process.argv.includes('--redo');
 const modelWritten = (c) => {
-  if (c.reflectionSource === 'human') return false; // edited in the Observatory
+  if (c.reflectionSource === 'human') return false; // your words win
+  if (c.reflectionSource === 'machine') return true; // stamped, no guessing
   const r = c.reflection?.trim();
   return !!r && r.includes('\n\n');
 };
@@ -169,7 +171,14 @@ for (const { c, files } of candidates) {
   try {
     const reflection = await summarize(c, files);
     if (!reflection) { console.log(`  ~ ${c.name}: empty corpus, skipped`); continue; }
-    cycles[c.id] = { ...c, reflection, updatedAt: new Date().toISOString() };
+    // Stamp the draft as a draft. Harvest renders it differently from your
+    // own words, and a later --redo can tell the two apart without guessing.
+    cycles[c.id] = {
+      ...c,
+      reflection,
+      reflectionSource: 'machine',
+      updatedAt: new Date().toISOString(),
+    };
     written += 1;
     console.log(`  ✓ ${c.startDate} ${c.name} — ${files.length} entries → ${reflection.length} chars`);
     // write incrementally so a long batch survives interruption
