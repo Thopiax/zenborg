@@ -163,6 +163,7 @@ the only namespacing that survives.
 |---|---|---|
 | `list_tags` | `prefix?` | Every tag in use with moment/habit/area counts + first/last allocated day. `prefix: "person-"` = the People index, `"place-"` = the Places index. Sorted by total usage. |
 | `get_tag_profile` | `tag` | One tag's graph neighborhood: habits, areas, co-tags (people ↔ places ↔ themes), date range, recent sample (cap 10, truncation flagged). |
+| `get_related_habits` | `habitId` | A habit's derived edges: `sharedTags` (signature overlap incl. person-/place- mediation), `coOccurrence` (same-day allocation, cap 10), `areaSiblings` (active, same plot). Descriptive only — intentional relations (substitution groups, "enables") are not derivable and would be a vault shape change. |
 
 ### Phases (`phaseConfigs.json`) — Should-have
 | Tool | Inputs | Notes |
