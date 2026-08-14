@@ -197,3 +197,28 @@ export function pickHarvestSeason(
 
   return byStart[byStart.length - 1] ?? null;
 }
+
+/**
+ * Which season harvest is showing: the one picked from the index, or the
+ * default when nothing has been picked.
+ *
+ * A picked id that no longer resolves — the season was deleted from another
+ * pane while harvest held its id — falls back to the default rather than
+ * emptying the surface. Fail soft: a missing record means "not there", never
+ * an error.
+ *
+ * @param cycles - Every season in the garden
+ * @param selectedCycleId - The season picked from the index, or null
+ * @param today - ISO date the read-back happens on
+ */
+export function resolveHarvestCycle(
+  cycles: readonly Cycle[],
+  selectedCycleId: string | null,
+  today: string,
+): Cycle | null {
+  const selected = selectedCycleId
+    ? cycles.find((c) => c.id === selectedCycleId)
+    : undefined;
+
+  return selected ?? pickHarvestSeason(cycles, today);
+}
