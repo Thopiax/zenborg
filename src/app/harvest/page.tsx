@@ -2,10 +2,11 @@
 
 import { useValue } from "@legendapp/state/react";
 import { useMemo } from "react";
+import { BandedHeatmap } from "@/components/banded-heatmap/BandedHeatmap";
 import { SeasonReadback } from "@/components/harvest/SeasonReadback";
 import {
   deriveHarvestSeason,
-  pickHarvestSeason,
+  resolveHarvestCycle,
 } from "@/infrastructure/state/harvestViewModel";
 import {
   areas$,
@@ -14,6 +15,7 @@ import {
   moments$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
+import { harvestSelectedCycleId$ } from "@/infrastructure/state/ui-store";
 import { getTodayISO } from "@/lib/dates";
 
 /**
@@ -24,8 +26,9 @@ import { getTodayISO } from "@/lib/dates";
  * network, no model, no photo permission. A garden with nothing closed yet
  * gets an empty state, never an error.
  *
- * Which season it opens on is `pickHarvestSeason`. Navigating between seasons
- * is a separate slice — the banded heatmap is harvest's index.
+ * The index is the banded heatmap, not a new timeline: the seasons are
+ * already drawn there, so navigating them is picking one. Harvest opens on
+ * the most recently closed season until you pick another.
  */
 export default function HarvestPage() {
   const cycles = useValue(cycles$);
@@ -33,25 +36,51 @@ export default function HarvestPage() {
   const areas = useValue(areas$);
   const habits = useValue(habits$);
   const phaseConfigs = useValue(phaseConfigs$);
+  const selectedCycleId = useValue(harvestSelectedCycleId$);
+
+  const today = getTodayISO();
+
+  const cycleList = useMemo(() => Object.values(cycles), [cycles]);
+  const momentList = useMemo(() => Object.values(moments), [moments]);
+  const areaList = useMemo(() => Object.values(areas), [areas]);
+  const phaseConfigList = useMemo(
+    () => Object.values(phaseConfigs),
+    [phaseConfigs],
+  );
+
+  const cycle = useMemo(
+    () => resolveHarvestCycle(cycleList, selectedCycleId, today),
+    [cycleList, selectedCycleId, today],
+  );
 
   const season = useMemo(() => {
-    const cycle = pickHarvestSeason(Object.values(cycles), getTodayISO());
-
     if (!cycle) {
       return null;
     }
 
     return deriveHarvestSeason({
       cycle,
-      moments: Object.values(moments),
-      areas: Object.values(areas),
+      moments: momentList,
+      areas: areaList,
       habits: Object.values(habits),
-      phaseConfigs: Object.values(phaseConfigs),
+      phaseConfigs: phaseConfigList,
     });
-  }, [cycles, moments, areas, habits, phaseConfigs]);
+  }, [cycle, momentList, areaList, habits, phaseConfigList]);
 
   return (
     <div className="h-full bg-background transition-colors flex flex-col overflow-hidden">
+      <div className="flex-shrink-0 border-b border-stone-200 px-4 py-3 dark:border-stone-800">
+        <BandedHeatmap
+          areas={areaList}
+          cycles={cycleList}
+          moments={momentList}
+          onCycleSelect={(id) => harvestSelectedCycleId$.set(id)}
+          phaseConfigs={phaseConfigList}
+          selectedCycleId={cycle?.id ?? null}
+          today={today}
+        />
+      </div>
+
       <main className="flex-1 overflow-y-auto">
         <SeasonReadback season={season} />
       </main>

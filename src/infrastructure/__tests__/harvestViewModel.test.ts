@@ -7,6 +7,7 @@ import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
 import {
   deriveHarvestSeason,
   pickHarvestSeason,
+  resolveHarvestCycle,
 } from "../state/harvestViewModel";
 
 const area = (id: string, name = `area-${id}`, order = 0): Area => ({
@@ -340,5 +341,32 @@ describe("pickHarvestSeason", () => {
 
   it("returns null for an empty garden", () => {
     expect(pickHarvestSeason([], "2026-03-15")).toBeNull();
+  });
+});
+
+describe("resolveHarvestCycle", () => {
+  const seasons = [
+    cycle("closed", "2026-01-01", "2026-01-31"),
+    cycle("chosen", "2026-02-01", "2026-02-28"),
+    cycle("now", "2026-03-01", null),
+  ];
+
+  it("shows the season you picked from the index", () => {
+    expect(resolveHarvestCycle(seasons, "now", "2026-03-15")?.id).toBe("now");
+  });
+
+  it("opens on the default season when you have picked nothing", () => {
+    expect(resolveHarvestCycle(seasons, null, "2026-03-15")?.id).toBe("chosen");
+  });
+
+  it("falls back to the default when the picked season is gone", () => {
+    // Deleted from another pane while harvest held its id — fail soft.
+    expect(resolveHarvestCycle(seasons, "deleted", "2026-03-15")?.id).toBe(
+      "chosen",
+    );
+  });
+
+  it("returns null for an empty garden", () => {
+    expect(resolveHarvestCycle([], "anything", "2026-03-15")).toBeNull();
   });
 });
