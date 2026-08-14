@@ -79,6 +79,15 @@
   .season .l1 { color:var(--ink2); font-size:14px; line-height:1.65; }
   #seasons h2 { font:600 22px Georgia, serif; color:var(--accent); margin-bottom:4px; }
   #seasons .note { color:var(--ink3); font-size:12px; margin-bottom:18px; }
+  .season { cursor:pointer; }
+  .season:hover .l0 { color:var(--accent); }
+  .season .raw { display:none; margin-top:14px; border-left:2px solid var(--line); padding-left:16px; }
+  .season .raw.show { display:block; }
+  .entry { margin-bottom:18px; }
+  .entry .eh { color:var(--accent); font-size:11px; letter-spacing:.05em; text-transform:uppercase; }
+  .entry .eh span { color:var(--ink3); text-transform:none; letter-spacing:0; margin-left:8px; }
+  .entry pre { white-space:pre-wrap; font:13px/1.7 Georgia, serif; color:var(--ink2); margin-top:5px; }
+  .raw .loading { color:var(--ink3); font-style:italic; font-size:12px; }
 </style>
 </head>
 <body>
@@ -310,11 +319,36 @@ async function showSeasons() {
   inner.innerHTML = `<h2>Seasons</h2>
     <div class="note">${r.count} reflections · newest first · L0 lede, then the tldr · press Escape to close</div>` +
     r.cycles.map(c => `
-      <div class="season">
+      <div class="season" data-start="${c.start}">
         <div class="hdr">${c.start} → ${c.end ?? 'open'} · ${c.name}</div>
         <div class="l0">${c.l0}</div>
         ${c.l1 ? `<div class="l1">${c.l1.replace(/\n/g, '<br>')}</div>` : ''}
+        <div class="raw"></div>
       </div>`).join('');
+  for (const el of inner.querySelectorAll('.season'))
+    el.addEventListener('click', () => toggleRaw(el));
+}
+
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+async function toggleRaw(el) {
+  const box = el.querySelector('.raw');
+  if (box.classList.contains('show')) { box.classList.remove('show'); return; }
+  box.classList.add('show');
+  if (box.dataset.loaded) return;
+  box.innerHTML = '<div class="loading">opening the days…</div>';
+  const r = await (await fetch('/api/entries?start=' + encodeURIComponent(el.dataset.start))).json();
+  box.dataset.loaded = '1';
+  box.innerHTML = r.error
+    ? `<div class="loading">${r.error}</div>`
+    : r.entries.length
+      ? `<div class="loading">${r.entries.length} ${r.entries.length === 1 ? 'entry' : 'entries'} — the raw material</div>` +
+        r.entries.map(e => `
+          <div class="entry">
+            <div class="eh">${e.weekday} ${e.day}<span>${e.source}</span></div>
+            <pre>${esc(e.text)}</pre>
+          </div>`).join('')
+      : '<div class="loading">no entries found in this window</div>';
 }
 function hideSeasons() {
   document.getElementById('seasons').classList.remove('show');
