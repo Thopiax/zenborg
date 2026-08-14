@@ -33,6 +33,8 @@ function cycleJourney() {
   const cycles = Object.values(readJson('cycles')).sort((a, b) =>
     a.startDate.localeCompare(b.startDate),
   );
+  const areasById = readJson('areas');
+  const moments = Object.values(readJson('moments'));
   let mapping = {};
   try {
     mapping = JSON.parse(
@@ -44,10 +46,27 @@ function cycleJourney() {
   for (const c of cycles) {
     const placeTag = (mapping[c.name] ?? []).find((t) => CITY_COORDS[t]);
     if (!placeTag) { skipped.push(c.name); continue; }
+    // The season's allocation mix, colored by area — the one sanctioned use
+    // of color in the design grammar (kernel areas.md).
+    const byArea = new Map();
+    for (const m of moments) {
+      if (m.day === null) continue;
+      const inCycle = m.cycleId === c.id ||
+        (m.day >= c.startDate && (c.endDate === null || m.day <= c.endDate));
+      if (!inCycle) continue;
+      byArea.set(m.areaId, (byArea.get(m.areaId) ?? 0) + 1);
+    }
+    const areas = Array.from(byArea.entries())
+      .map(([id, count]) => {
+        const a = areasById[id];
+        return { name: a?.name ?? '?', color: a?.color ?? '#93a4f5', emoji: a?.emoji ?? '', count };
+      })
+      .sort((x, y) => y.count - x.count);
     stops.push({
       n: stops.length + 1, cycle: c.name, place: CITY_COORDS[placeTag].name,
       lat: CITY_COORDS[placeTag].lat, lng: CITY_COORDS[placeTag].lng,
       start: c.startDate, end: c.endDate, intention: c.intention ?? null,
+      areas, momentCount: areas.reduce((s, a) => s + a.count, 0),
     });
   }
   const arcs = [];
@@ -78,11 +97,14 @@ function network() {
     }
   }
 
+  const areasById = readJson('areas');
   const cities = new Map();
   const unplaced = [];
   for (const p of people) {
     const cityTag = (p.tags ?? []).find((t) => CITY_COORDS[t]);
-    const entry = { name: p.name, last: lastSeen.get(p.id) ?? null };
+    const area = areasById[p.areaId];
+    const entry = { name: p.name, last: lastSeen.get(p.id) ?? null,
+      area: { name: area?.name ?? '?', color: area?.color ?? '#93a4f5' } };
     if (!cityTag) {
       unplaced.push(entry);
       continue;
