@@ -69,6 +69,7 @@ import {
 } from './validation.js';
 import { computeHealth, daysSinceLast, parseVaultDay, resolveRhythm } from './health.js';
 import { buildTagIndex, buildTagProfile } from './tags.js';
+import { buildRelatedHabits } from './graph.js';
 
 // ────────────────────────────────────────────────────────────────────────
 // Boot
@@ -1947,6 +1948,22 @@ server.tool(
     const habits = Object.values(readCollection(VAULT_ROOT, 'habits'));
     const areas = Object.values(readCollection(VAULT_ROOT, 'areas'));
     return ok(buildTagProfile(normalized, moments, habits, areas));
+  },
+);
+
+server.tool(
+  'get_related_habits',
+  "A habit's derived edges in the garden graph — no stored relations, computed from existing data: `sharedTags` (habits whose tag signatures overlap — a signature is the habit's tags plus its moments' tags, so person-/place- mediation like \"gym and padel, both with Fox\" surfaces here), `coOccurrence` (habits allocated on the same days, with the share of this habit's active days), and `areaSiblings` (active habits in the same plot).",
+  {
+    habitId: z.string(),
+  },
+  async ({ habitId }): Promise<ToolResult> => {
+    const habits = Object.values(readCollection(VAULT_ROOT, 'habits'));
+    const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
+    const areas = Object.values(readCollection(VAULT_ROOT, 'areas'));
+    const related = buildRelatedHabits(habitId, habits, moments, areas);
+    if (!related) return err(`Habit not found: ${habitId}`);
+    return ok(related);
   },
 );
 
