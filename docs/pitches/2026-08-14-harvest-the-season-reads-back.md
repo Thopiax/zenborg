@@ -6,12 +6,14 @@ $signature:
   docHash: sha256:a2e7353d99da6babc9ab87e45ea7d4e1439205d0f7b0b2ecc98a495cabac3ffc
   signedAt: 2026-08-14T16:35:45.828254Z
   signature: ed25519:OsduLYFrnCXXneVWou7hDn/AZFHT0CoXLK2BxzMbGODnjxuFDQGsNExjbcycMxS/8iSKFLu4Upogq/c35/HoAg==
-appetite: big
-hard_dependency: kernel/entities.md stamped before slice 6 (places resolve to registry keys). Slices 1–5 are unblocked.
-source: the Observatory pilot — 14 commits, 2fd43d8…6271a98, 2026-08-14
-status: draft
-tag: pitch
-type: pitch
+$attestation:
+  $type: tech.equanimi.secretariat.stamp
+  signer: did:key:z6MkjB8PQaN1vuUzdtnJsxyXR2f8d3tckGHkUYZMDytQsfak
+  act: attest
+  docHash: sha256:a2e7353d99da6babc9ab87e45ea7d4e1439205d0f7b0b2ecc98a495cabac3ffc
+  docFilename: 2026-08-14-harvest-the-season-reads-back.md
+  stampedAt: 2026-08-14T16:36:51.698852Z
+  signature: ed25519:czMfMfZNaFgaMqyS+u3L5XQ4HIwhhzLcIFpTZv7uAkusF3f0xzf60YsFmzcadJs9BcFYjwIRXtjL/1eL8Au4Ag==
 ---
 
 # Pitch — Harvest: the season reads back
