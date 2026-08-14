@@ -18,7 +18,7 @@ import * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 
 const PORT = Number(process.env.PORT ?? 8748);
 const VAULT = process.env.KAIROS_HOME ?? path.join(os.homedir(), '.kairos');
@@ -190,6 +190,42 @@ function entriesInWindow(cycle) {
   return out.sort((a, b) => a.day.localeCompare(b.day) || a.file.localeCompare(b.file));
 }
 
+// ── Photos: the Apple library, read-only, thumbnails served to the page ──
+const PHOTOS_LIB = path.join(os.homedir(), 'Pictures/Photos Library.photoslibrary');
+const PHOTOS_DB = path.join(PHOTOS_LIB, 'database/Photos.sqlite');
+const DERIVATIVES = path.join(PHOTOS_LIB, 'resources/derivatives');
+let photoCache = null;
+
+function loadPhotos() {
+  if (photoCache) return photoCache;
+  if (!fs.existsSync(PHOTOS_DB)) return (photoCache = []);
+  const tmp = path.join(os.tmpdir(), `obs-photos-${process.pid}.sqlite`);
+  fs.copyFileSync(PHOTOS_DB, tmp);
+  for (const ext of ['-wal', '-shm']) {
+    try { fs.copyFileSync(PHOTOS_DB + ext, tmp + ext); } catch {}
+  }
+  const rows = execFileSync('sqlite3', [tmp, `
+    select ZUUID, date(datetime(ZDATECREATED + 978307200, 'unixepoch')),
+           coalesce(ZLATITUDE, -999), coalesce(ZLONGITUDE, -999)
+    from ZASSET where ZDATECREATED is not null and ZTRASHEDSTATE = 0;`],
+    { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 })
+    .trim().split('\n').filter(Boolean)
+    .map((l) => { const [uuid, day, lat, lng] = l.split('|');
+      return { uuid, day, lat: +lat, lng: +lng }; });
+  for (const ext of ['', '-wal', '-shm']) { try { fs.unlinkSync(tmp + ext); } catch {} }
+  return (photoCache = rows.sort((a, b) => a.day.localeCompare(b.day)));
+}
+
+const thumbPath = (uuid) =>
+  path.join(DERIVATIVES, uuid[0], `${uuid}_1_105_c.jpeg`);
+
+// Evenly spread picks across a window read better than the first N.
+function spread(list, n) {
+  if (list.length <= n) return list;
+  const step = list.length / n;
+  return Array.from({ length: n }, (_, i) => list[Math.floor(i * step)]);
+}
+
 // Ponds from ~/.wake/sources.yaml — searched via `wake search` so journal
 // prose renders only in the local page, never in any agent context.
 const PONDS = [
@@ -245,6 +281,31 @@ http
           });
         return send(200, { count: cycles.length, cycles });
       } catch (e) { return send(500, { error: String(e.message ?? e) }); }
+    }
+    if (req.method === 'GET' && req.url?.startsWith('/api/photos')) {
+      try {
+        const q = new URL(req.url, 'http://localhost').searchParams;
+        const start = q.get('start');
+        const limit = Math.min(60, Number(q.get('limit') ?? 8));
+        const cycle = Object.values(readJson('cycles')).find((c) => c.startDate === start);
+        if (!cycle) return send(400, { error: 'unknown cycle' });
+        const end = cycle.endDate ?? cycle.startDate;
+        const inWindow = loadPhotos().filter((p) => p.day >= cycle.startDate && p.day <= end);
+        // Over-fetch candidates: not every asset has a rendered derivative, and
+        // a strip with holes reads as an error rather than a life.
+        const shown = spread(inWindow, limit * 5)
+          .filter((p) => fs.existsSync(thumbPath(p.uuid)))
+          .slice(0, limit);
+        return send(200, { total: inWindow.length, photos: shown.map((p) => ({ uuid: p.uuid, day: p.day })) });
+      } catch (e) { return send(500, { error: String(e.message ?? e) }); }
+    }
+    if (req.method === 'GET' && req.url?.startsWith('/thumb/')) {
+      const uuid = decodeURIComponent(req.url.slice('/thumb/'.length));
+      if (!/^[0-9A-F-]{36}$/i.test(uuid)) return send(400, { error: 'bad id' });
+      const fp = thumbPath(uuid);
+      if (!fs.existsSync(fp)) return send(404, { error: 'no thumbnail' });
+      res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'max-age=86400' });
+      return fs.createReadStream(fp).pipe(res);
     }
     if (req.method === 'GET' && req.url?.startsWith('/api/entries')) {
       // The raw material behind a reflection: the journal entries in the

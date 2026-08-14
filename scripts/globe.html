@@ -88,6 +88,15 @@
   .entry .eh span { color:var(--ink3); text-transform:none; letter-spacing:0; margin-left:8px; }
   .entry pre { white-space:pre-wrap; font:13px/1.7 Georgia, serif; color:var(--ink2); margin-top:5px; }
   .raw .loading { color:var(--ink3); font-style:italic; font-size:12px; }
+  .strip { display:flex; gap:4px; margin-top:12px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
+  .strip::-webkit-scrollbar { display:none; }
+  .strip img { height:78px; width:78px; object-fit:cover; border-radius:5px; flex:none;
+               filter:saturate(.85) brightness(.92); transition:filter .2s, transform .2s; background:var(--line); }
+  .season:hover .strip img { filter:saturate(1) brightness(1); }
+  .strip .more { flex:none; align-self:center; color:var(--ink3); font-size:11px; padding-left:6px; white-space:nowrap; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(116px,1fr)); gap:5px; margin:14px 0 4px; }
+  .grid img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:5px; background:var(--line); }
+  .grid img:hover { filter:brightness(1.08); }
 </style>
 </head>
 <body>
@@ -96,7 +105,7 @@
 <div id="modes">
   <button id="m-people" class="on">People</button>
   <button id="m-journey">Journey</button>
-  <button id="m-seasons">Seasons</button>
+  <button id="m-seasons">Cycles</button>
 </div>
 <section id="seasons"><div id="seasons-inner"></div></section>
 <aside id="panel">
@@ -215,7 +224,7 @@ async function showJourney() {
   buildTrack();
   document.getElementById('timeline').classList.add('show');
   document.getElementById('subtitle').textContent =
-    `${JOURNEY.stops.length} seasons over ${Math.round(totalDays)} days · playback: 1s ≈ ${(1000 / msPerDay).toFixed(1)} days`;
+    `${JOURNEY.stops.length} cycles over ${Math.round(totalDays)} days · playback: 1s ≈ ${(1000 / msPerDay).toFixed(1)} days`;
   document.getElementById('unplaced').innerHTML = '';
   world.labelsData([]).pointLabel(d => `<b>${d.place}</b>`);
   world.onPointClick(() => {}).onLabelClick(() => {});
@@ -316,17 +325,31 @@ async function showSeasons() {
   document.getElementById('m-seasons').classList.add('on');
   inner.innerHTML = '<div class="note">reading the vault…</div>';
   const r = await (await fetch('/api/reflections')).json();
-  inner.innerHTML = `<h2>Seasons</h2>
+  inner.innerHTML = `<h2>Cycles</h2>
     <div class="note">${r.count} reflections · newest first · L0 lede, then the tldr · press Escape to close</div>` +
     r.cycles.map(c => `
       <div class="season" data-start="${c.start}">
         <div class="hdr">${c.start} → ${c.end ?? 'open'} · ${c.name}</div>
         <div class="l0">${c.l0}</div>
         ${c.l1 ? `<div class="l1">${c.l1.replace(/\n/g, '<br>')}</div>` : ''}
+        <div class="strip"></div>
         <div class="raw"></div>
       </div>`).join('');
-  for (const el of inner.querySelectorAll('.season'))
+  for (const el of inner.querySelectorAll('.season')) {
     el.addEventListener('click', () => toggleRaw(el));
+    loadStrip(el);
+  }
+}
+
+// A cycle's photographs: a few spread across its window, as the card's own
+// evidence that it happened.
+async function loadStrip(el) {
+  const strip = el.querySelector('.strip');
+  const r = await (await fetch('/api/photos?start=' + encodeURIComponent(el.dataset.start) + '&limit=8')).json();
+  if (r.error || !r.photos?.length) { strip.remove(); return; }
+  strip.innerHTML = r.photos.map(p =>
+    `<img loading="lazy" src="/thumb/${p.uuid}" alt="" title="${p.day}">`).join('') +
+    (r.total > r.photos.length ? `<span class="more">+${r.total - r.photos.length}</span>` : '');
 }
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -339,7 +362,13 @@ async function toggleRaw(el) {
   box.innerHTML = '<div class="loading">opening the days…</div>';
   const r = await (await fetch('/api/entries?start=' + encodeURIComponent(el.dataset.start))).json();
   box.dataset.loaded = '1';
-  box.innerHTML = r.error
+  const photos = await (await fetch('/api/photos?start=' + encodeURIComponent(el.dataset.start) + '&limit=48')).json();
+  const grid = photos.photos?.length
+    ? `<div class="loading">${photos.total} photograph${photos.total === 1 ? '' : 's'}</div>
+       <div class="grid">${photos.photos.map(p =>
+         `<img loading="lazy" src="/thumb/${p.uuid}" alt="" title="${p.day}">`).join('')}</div>`
+    : '';
+  const entries = r.error
     ? `<div class="loading">${r.error}</div>`
     : r.entries.length
       ? `<div class="loading">${r.entries.length} ${r.entries.length === 1 ? 'entry' : 'entries'} — the raw material</div>` +
@@ -348,7 +377,8 @@ async function toggleRaw(el) {
             <div class="eh">${e.weekday} ${e.day}<span>${e.source}</span></div>
             <pre>${esc(e.text)}</pre>
           </div>`).join('')
-      : '<div class="loading">no entries found in this window</div>';
+      : '<div class="loading">no entries in this window</div>';
+  box.innerHTML = grid + entries;
 }
 function hideSeasons() {
   document.getElementById('seasons').classList.remove('show');
