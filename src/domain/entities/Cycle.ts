@@ -11,9 +11,19 @@ export interface Cycle {
   endDate: string | null; // null for ongoing cycles
   intention: string | null; // Why this chapter — set at creation, editable later
   reflection: string | null; // Populated in harvest when the cycle closes
+  reflectionSource?: ReflectionSource | null; // Who wrote it. Absent = unknown
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Who wrote the reflection.
+ *
+ * Absent means *unknown*, not machine — but harvest reads unknown as a draft.
+ * The failure that matters is a machine draft passing as your own words; the
+ * reverse costs nothing. See `isHumanWritten`.
+ */
+export type ReflectionSource = "human" | "machine";
 
 /**
  * Props for creating a new cycle
@@ -34,6 +44,7 @@ export interface UpdateCycleProps {
   endDate?: string | null;
   intention?: string | null;
   reflection?: string | null;
+  reflectionSource?: ReflectionSource | null;
 }
 
 /**
@@ -99,7 +110,10 @@ export function createCycle(props: CreateCycleProps): CycleResult {
  * @param props - Update properties
  * @returns Updated cycle or error
  */
-export function updateCycle(cycle: Cycle, props: UpdateCycleProps): CycleResult {
+export function updateCycle(
+  cycle: Cycle,
+  props: UpdateCycleProps,
+): CycleResult {
   if (props.name !== undefined) {
     const trimmedName = props.name.trim();
     if (!trimmedName) {
@@ -184,6 +198,59 @@ export function isCycleError(result: CycleResult): result is { error: string } {
 }
 
 // ============================================================================
+// Reflection provenance
+// ============================================================================
+
+/**
+ * Did the person whose season this is write the reflection themselves?
+ *
+ * Only an explicit `"human"` stamp counts. Unknown provenance — every
+ * reflection written before this field existed — reads as NOT human, so a
+ * draft is never presented as your own words. The asymmetry is deliberate:
+ * mislabelling your words as drafted is a small insult, mislabelling a
+ * draft as yours is a lie about the record.
+ *
+ * @param cycle - The season to check
+ */
+export function isHumanWritten(cycle: Cycle): boolean {
+  return cycle.reflectionSource === "human";
+}
+
+/**
+ * May a machine draft be written over what is already here?
+ *
+ * Never over a person's own words. A re-run may replace an earlier draft or
+ * fill an empty season, and stops at anything you wrote yourself.
+ *
+ * @param cycle - The season a draft would be written into
+ */
+export function acceptsMachineDraft(cycle: Cycle): boolean {
+  return !isHumanWritten(cycle);
+}
+
+/**
+ * Writes a reflection and records who wrote it.
+ *
+ * Clearing the reflection clears the stamp with it: no reflection, no author.
+ *
+ * @param cycle - The season being written into
+ * @param reflection - The prose, or null to clear it
+ * @param source - Who is writing
+ */
+export function writeReflection(
+  cycle: Cycle,
+  reflection: string | null,
+  source: ReflectionSource,
+): Cycle {
+  return {
+    ...cycle,
+    reflection,
+    reflectionSource: reflection === null ? null : source,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// ============================================================================
 // Cycle Helpers
 // ============================================================================
 
@@ -197,13 +264,13 @@ export function isCycleError(result: CycleResult): result is { error: string } {
  */
 export function calculateCycleBandwidth(
   cycle: Cycle,
-  momentsPerDay: 1 | 2 | 3
+  momentsPerDay: 1 | 2 | 3,
 ): number {
   const startDate = new Date(cycle.startDate);
   const endDate = cycle.endDate ? new Date(cycle.endDate) : new Date();
   const days =
     Math.ceil(
-      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
     ) + 1;
   return days * 3 * momentsPerDay; // 3 phases per day
 }

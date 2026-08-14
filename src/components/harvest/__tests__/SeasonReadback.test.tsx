@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
 import { Phase } from "@/domain/value-objects/Phase";
@@ -38,6 +38,7 @@ const season = (extra: Partial<HarvestSeason> = {}): HarvestSeason => ({
   endDate: "2026-03-31",
   intention: "Read the tide.",
   reflection: { l0: "The season held Avalon.", l1: "And the long walks." },
+  reflectionIsHuman: true,
   days: [
     {
       date: "2026-03-01",
@@ -143,5 +144,130 @@ describe("SeasonReadback", () => {
     expect(container.querySelector("[role='progressbar']")).toBeNull();
     expect(container.querySelector("progress")).toBeNull();
     expect(container.textContent).not.toMatch(/%/);
+  });
+
+  describe("provenance", () => {
+    it("marks a machine draft as drafted, so it cannot pass as your words", () => {
+      // Acceptance 3. This is the whole point of the field.
+      render(<SeasonReadback season={season({ reflectionIsHuman: false })} />);
+
+      expect(screen.getByText(/drafted/i)).toBeInTheDocument();
+    });
+
+    it("says nothing about provenance when you wrote it yourself", () => {
+      render(<SeasonReadback season={season({ reflectionIsHuman: true })} />);
+
+      expect(screen.queryByText(/drafted/i)).not.toBeInTheDocument();
+    });
+
+    it("says nothing when there is no reflection to attribute", () => {
+      render(
+        <SeasonReadback
+          season={season({ reflection: null, reflectionIsHuman: false })}
+        />,
+      );
+
+      expect(screen.queryByText(/drafted/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("editing", () => {
+    it("stays read-only when no editor is wired", () => {
+      render(<SeasonReadback season={season()} />);
+
+      expect(
+        screen.queryByRole("button", { name: /edit/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the two rungs for editing", () => {
+      render(<SeasonReadback onEditReflection={() => {}} season={season()} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+
+      expect(screen.getByLabelText(/the line/i)).toHaveValue(
+        "The season held Avalon.",
+      );
+      expect(screen.getByLabelText(/behind it/i)).toHaveValue(
+        "And the long walks.",
+      );
+    });
+
+    it("composes the two rungs back into one stored string on save", () => {
+      const onEditReflection = vi.fn();
+      render(
+        <SeasonReadback
+          onEditReflection={onEditReflection}
+          season={season()}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+      fireEvent.change(screen.getByLabelText(/the line/i), {
+        target: { value: "My own line." },
+      });
+      fireEvent.change(screen.getByLabelText(/behind it/i), {
+        target: { value: "My own body." },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+      expect(onEditReflection).toHaveBeenCalledWith(
+        "My own line.\n\nMy own body.",
+      );
+    });
+
+    it("hands back null when both rungs are emptied", () => {
+      const onEditReflection = vi.fn();
+      render(
+        <SeasonReadback
+          onEditReflection={onEditReflection}
+          season={season()}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+      fireEvent.change(screen.getByLabelText(/the line/i), {
+        target: { value: "  " },
+      });
+      fireEvent.change(screen.getByLabelText(/behind it/i), {
+        target: { value: "" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+      expect(onEditReflection).toHaveBeenCalledWith(null);
+    });
+
+    it("discards the edit on cancel", () => {
+      const onEditReflection = vi.fn();
+      render(
+        <SeasonReadback
+          onEditReflection={onEditReflection}
+          season={season()}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+      fireEvent.change(screen.getByLabelText(/the line/i), {
+        target: { value: "Never mind." },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+      expect(onEditReflection).not.toHaveBeenCalled();
+      expect(screen.getByText("The season held Avalon.")).toBeInTheDocument();
+    });
+
+    it("invites you to write one when the season has no reflection", () => {
+      // Editing is the expected act, not a repair.
+      render(
+        <SeasonReadback
+          onEditReflection={() => {}}
+          season={season({ reflection: null, reflectionIsHuman: false })}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: /write/i }),
+      ).toBeInTheDocument();
+    });
   });
 });
