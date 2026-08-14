@@ -152,6 +152,44 @@ function addPerson(name, cityTag) {
   return habit.name;
 }
 
+// Journal dirs, newest pond first — supernote carries recent seasons, the
+// saperene backup the older eras.
+const JOURNAL_DIRS = [
+  path.join(os.homedir(), 'Documents/Supernote/journals'),
+  path.join(os.homedir(), 'Developer/sandbox/saperene-obsidian-backup/Journal'),
+].filter((d) => fs.existsSync(d));
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const ENTRY_CAP = 20000;
+
+function entriesInWindow(cycle) {
+  const end = cycle.endDate ?? cycle.startDate;
+  const out = [];
+  for (const dir of JOURNAL_DIRS) {
+    for (const fn of fs.readdirSync(dir)) {
+      if (!fn.endsWith('.md') && !fn.endsWith('.txt')) continue;
+      const m = fn.match(/^(\d{4})[-_.]?(\d{2})[-_.]?(\d{2})/);
+      if (!m) continue;
+      const day = `${m[1]}-${m[2]}-${m[3]}`;
+      if (day < cycle.startDate || day > end) continue;
+      const text = fs
+        .readFileSync(path.join(dir, fn), 'utf8')
+        .replace(/^﻿/, '').replace(/\r\n/g, '\n')
+        .replace(/^---\n[\s\S]*?\n---\n?/, '')
+        .trim()
+        .slice(0, ENTRY_CAP);
+      if (!text) continue;
+      out.push({
+        day,
+        weekday: WEEKDAYS[new Date(`${day}T12:00:00`).getDay()],
+        source: path.basename(dir) === 'journals' ? 'supernote' : 'saperene',
+        file: fn,
+        text,
+      });
+    }
+  }
+  return out.sort((a, b) => a.day.localeCompare(b.day) || a.file.localeCompare(b.file));
+}
+
 // Ponds from ~/.wake/sources.yaml — searched via `wake search` so journal
 // prose renders only in the local page, never in any agent context.
 const PONDS = [
@@ -206,6 +244,17 @@ http
               l0: l0.trim(), l1: rest.join('\n').trim() };
           });
         return send(200, { count: cycles.length, cycles });
+      } catch (e) { return send(500, { error: String(e.message ?? e) }); }
+    }
+    if (req.method === 'GET' && req.url?.startsWith('/api/entries')) {
+      // The raw material behind a reflection: the journal entries in the
+      // cycle's window. Read by this local server, rendered in the browser,
+      // never returned into an agent's context.
+      try {
+        const start = new URL(req.url, 'http://localhost').searchParams.get('start');
+        const cycle = Object.values(readJson('cycles')).find((c) => c.startDate === start);
+        if (!cycle) return send(400, { error: 'unknown cycle' });
+        return send(200, { cycle: cycle.name, entries: entriesInWindow(cycle) });
       } catch (e) { return send(500, { error: String(e.message ?? e) }); }
     }
     if (req.method === 'GET' && req.url === '/api/cycles') {
