@@ -104,6 +104,19 @@
   .shot .star.on { color:#f5d393; }
   .strip img.pick { outline:1.5px solid var(--accent); outline-offset:-1.5px; }
   .strip img.fav { outline:1.5px solid #f5d39366; outline-offset:-1.5px; }
+  /* Curated photographs earn scale: a carousel, not a strip. */
+  .carousel { display:flex; gap:10px; margin-top:14px; overflow-x:auto; scroll-snap-type:x mandatory;
+              scrollbar-width:none; padding-bottom:6px; }
+  .carousel::-webkit-scrollbar { display:none; }
+  .carousel figure { flex:none; scroll-snap-align:start; margin:0; }
+  .carousel img { height:300px; max-width:74vw; width:auto; object-fit:cover; border-radius:9px;
+                  background:var(--line); display:block; box-shadow:0 8px 28px #0008; }
+  .carousel figcaption { color:var(--ink3); font-size:11px; margin-top:6px; letter-spacing:.04em; }
+  .curation { color:var(--ink3); font-size:11px; margin-top:12px; letter-spacing:.05em;
+              text-transform:uppercase; }
+  .curation b { color:#f5d393; font-weight:500; }
+  .curation i { color:var(--accent); font-style:normal; }
+  @media (max-width: 700px) { .carousel img { height:220px; } }
 </style>
 </head>
 <body>
@@ -352,12 +365,32 @@ async function showSeasons() {
 // evidence that it happened.
 async function loadStrip(el) {
   const strip = el.querySelector('.strip');
-  const r = await (await fetch('/api/photos?start=' + encodeURIComponent(el.dataset.start) + '&limit=8')).json();
+  if (!strip) return;
+  const r = await (await fetch('/api/photos?start=' + encodeURIComponent(el.dataset.start) + '&limit=24')).json();
   if (r.error || !r.photos?.length) { strip.remove(); return; }
-  strip.innerHTML = r.photos.map(p =>
-    `<img loading="lazy" class="${p.highlighted ? 'pick' : p.favorite ? 'fav' : ''}"
-          src="/thumb/${p.uuid}" alt="" title="${p.day}${p.highlighted ? ' · highlighted' : p.favorite ? ' · favourite' : ''}">`).join('') +
-    (r.total > r.photos.length ? `<span class="more">+${r.total - r.photos.length}</span>` : '');
+
+  // Curated cycles get the carousel — and only the curated photographs.
+  if (r.mode !== 'spread') {
+    strip.className = 'carousel';
+    strip.innerHTML = r.hero.map(p => `
+      <figure>
+        <img loading="lazy" src="/thumb/${p.uuid}" alt="">
+        <figcaption>${p.day}${p.highlighted ? ' · highlighted' : ''}</figcaption>
+      </figure>`).join('');
+    el.querySelector('.curation')?.remove();
+    const note = document.createElement('div');
+    note.className = 'curation';
+    note.innerHTML = r.mode === 'highlights'
+      ? `<i>${r.highlighted} highlighted</i> of ${r.total} photographs`
+      : `<b>${r.favorites} favourite${r.favorites === 1 ? '' : 's'}</b> of ${r.total} photographs`;
+    strip.after(note);
+    return;
+  }
+
+  strip.className = 'strip';
+  strip.innerHTML = r.photos.slice(0, 8).map(p =>
+    `<img loading="lazy" src="/thumb/${p.uuid}" alt="" title="${p.day}">`).join('') +
+    (r.total > 8 ? `<span class="more">+${r.total - 8}</span>` : '');
 }
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
