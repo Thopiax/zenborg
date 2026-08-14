@@ -66,6 +66,7 @@ function cycleJourney() {
       n: stops.length + 1, cycle: c.name, place: CITY_COORDS[placeTag].name,
       lat: CITY_COORDS[placeTag].lat, lng: CITY_COORDS[placeTag].lng,
       start: c.startDate, end: c.endDate, intention: c.intention ?? null,
+      l0: c.reflection?.split('\n')[0]?.trim() ?? null,
       areas, momentCount: areas.reduce((s, a) => s + a.count, 0),
     });
   }

@@ -234,7 +234,7 @@ function goTo(i, fly) {
   const mix = (s.areas ?? []).slice(0, 6);
   cap.innerHTML = `<div class="c-name">${s.n} · ${s.cycle}</div>
     <div class="c-dates">${s.place} — ${s.start} → ${s.end ?? 'open'}</div>
-    ${s.intention ? `<div class="c-int">${s.intention}</div>` : ''}
+    ${s.intention || s.l0 ? `<div class="c-int">${s.intention ?? s.l0}</div>` : ''}
     ${mix.length ? `<div class="c-strip">${mix.map(a =>
         `<span style="flex-grow:${a.count};background:${a.color}" title="${a.name}: ${a.count}"></span>`).join('')}</div>
       <div class="c-mix">${s.momentCount} moments · ${mix.map(a => `${a.emoji} ${a.count}`).join(' · ')}</div>` : ''}`;
