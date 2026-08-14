@@ -146,6 +146,15 @@ export interface Habit {
   updatedAt: string;
 }
 
+/**
+ * Who wrote a cycle's reflection. Mirrors `ReflectionSource` in
+ * `src/domain/entities/Cycle.ts` — this is the second vault implementation,
+ * and the two must agree on the field's spelling and its values.
+ *
+ * Absent means unknown, and every reader must treat unknown as NOT human.
+ */
+export type ReflectionSource = 'human' | 'machine';
+
 export interface Cycle {
   id: string;
   name: string;
@@ -153,6 +162,7 @@ export interface Cycle {
   endDate: string | null;
   intention?: string;
   reflection?: string;
+  reflectionSource?: ReflectionSource | null;
   createdAt: string;
   updatedAt: string;
 }

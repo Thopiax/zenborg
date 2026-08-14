@@ -116,7 +116,7 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 | `get_cycle` | `id` | |
 | `plan_cycle` | `name, templateDuration?, startDate?, endDate?, intention?` | Mirrors `CycleService.planCycle`. |
 | `quick_create_cycle` | `template` | Should-have. |
-| `update_cycle` | `id, updates` | |
+| `update_cycle` | `id, updates` | Writing `reflection` stamps `reflectionSource: "machine"` — an agent writing is a machine writing, whoever asked for it. Only a hand edit in the app stamps `"human"`; harvest marks everything else as drafted. |
 | `end_cycle` | `id, endDate?` | Sets `endDate`; keeps cycle. |
 | `delete_cycle` | `id` | **Cascade:** plans + moments scoped to cycle. |
 | `list_cycle_plans` | `cycleId?` | |

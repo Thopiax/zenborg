@@ -110,6 +110,14 @@ export function flashCycleClamp(cycleId: string): void {
  */
 export const cycleDeckSelectedCycleId$ = observable<string | null>(null);
 
+/**
+ * Currently selected season for the Harvest pane
+ * When null, harvest opens on the most recently closed season
+ * Ephemeral - not persisted: which season you last read back is not a
+ * preference, and harvest should open on what just closed
+ */
+export const harvestSelectedCycleId$ = observable<string | null>(null);
+
 // ============================================================================
 // Focus State (for keyboard navigation)
 // ============================================================================
