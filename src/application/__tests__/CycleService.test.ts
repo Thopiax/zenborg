@@ -3,7 +3,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import { Phase } from "@/domain/value-objects/Phase";
-import { rhythmToCycleBudget, type Rhythm } from "@/domain/value-objects/Rhythm";
+import {
+  type Rhythm,
+  rhythmToCycleBudget,
+} from "@/domain/value-objects/Rhythm";
 import { Weekday } from "@/domain/value-objects/Schedule";
 import {
   activeCycleId$,
@@ -201,9 +204,7 @@ describe("CycleService.endCycle", () => {
 
   it("defaults endDate to day before next cycle when next cycle is inside today", () => {
     cycles$["vipassana"].set(makeOngoingCycle("vipassana", "2026-03-31"));
-    cycles$["paris"].set(
-      makeFiniteCycle("paris", "2026-04-11", "2026-04-16")
-    );
+    cycles$["paris"].set(makeFiniteCycle("paris", "2026-04-11", "2026-04-16"));
 
     const result = service.endCycle("vipassana");
 
@@ -222,9 +223,7 @@ describe("CycleService.endCycle", () => {
 
   it("surfaces a descriptive error when the chosen endDate overlaps", () => {
     cycles$["vipassana"].set(makeOngoingCycle("vipassana", "2026-03-31"));
-    cycles$["paris"].set(
-      makeFiniteCycle("paris", "2026-04-11", "2026-04-16")
-    );
+    cycles$["paris"].set(makeFiniteCycle("paris", "2026-04-11", "2026-04-16"));
 
     const result = service.endCycle("vipassana", "2026-04-19");
 
@@ -274,7 +273,7 @@ describe("CycleService.budgetHabitToCycleWithOptions — rhythm derivation", () 
     const result = service.budgetHabitToCycleWithOptions(
       "cycle-1",
       "habit-1",
-      {}
+      {},
     );
 
     expect("error" in result).toBe(false);
@@ -293,11 +292,9 @@ describe("CycleService.budgetHabitToCycleWithOptions — rhythm derivation", () 
     });
 
     const momentsBefore = Object.keys(moments$.get()).length;
-    const result = service.budgetHabitToCycleWithOptions(
-      "cycle-1",
-      "habit-1",
-      { count: 5 }
-    );
+    const result = service.budgetHabitToCycleWithOptions("cycle-1", "habit-1", {
+      count: 5,
+    });
     expect("error" in result).toBe(false);
     if ("error" in result) return;
     expect(result.budgetedCount).toBe(5);
@@ -309,11 +306,9 @@ describe("CycleService.budgetHabitToCycleWithOptions — rhythm derivation", () 
     habits$["habit-1"].set(makeHabit("habit-1"));
     const override: Rhythm = { period: "monthly", count: 2 };
 
-    const result = service.budgetHabitToCycleWithOptions(
-      "cycle-1",
-      "habit-1",
-      { rhythmOverride: override }
-    );
+    const result = service.budgetHabitToCycleWithOptions("cycle-1", "habit-1", {
+      rhythmOverride: override,
+    });
 
     expect("error" in result).toBe(false);
     if ("error" in result) return;
@@ -325,7 +320,7 @@ describe("CycleService.budgetHabitToCycleWithOptions — rhythm derivation", () 
     const result = service.budgetHabitToCycleWithOptions(
       "cycle-1",
       "habit-1",
-      {}
+      {},
     );
     expect("error" in result).toBe(true);
   });
@@ -422,7 +417,7 @@ describe("CycleService.getCycleReview", () => {
 
   const makeMoment = (
     id: string,
-    overrides: Partial<ReturnType<typeof makeBaseMoment>> = {}
+    overrides: Partial<ReturnType<typeof makeBaseMoment>> = {},
   ) => ({
     ...makeBaseMoment(id),
     ...overrides,
@@ -459,21 +454,21 @@ describe("CycleService.getCycleReview", () => {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-05",
-      })
+      }),
     );
     moments$["m2"].set(
       makeMoment("m2", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-10",
-      })
+      }),
     );
     moments$["m3"].set(
       makeMoment("m3", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-20",
-      })
+      }),
     );
 
     const review = service.getCycleReview("cycle-1");
@@ -487,14 +482,14 @@ describe("CycleService.getCycleReview", () => {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-05",
-      })
+      }),
     );
     moments$["m2"].set(
       makeMoment("m2", {
         habitId: "habit-1",
         cyclePlanId: null,
         day: "2026-02-10",
-      })
+      }),
     );
 
     const review = service.getCycleReview("cycle-1");
@@ -508,14 +503,14 @@ describe("CycleService.getCycleReview", () => {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-05",
-      })
+      }),
     );
     moments$["m2"].set(
       makeMoment("m2", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-25",
-      })
+      }),
     );
 
     const review = service.getCycleReview("cycle-1");
@@ -529,21 +524,21 @@ describe("CycleService.getCycleReview", () => {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-01",
-      })
+      }),
     );
     moments$["m2"].set(
       makeMoment("m2", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-05",
-      })
+      }),
     );
     moments$["m3"].set(
       makeMoment("m3", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-20",
-      })
+      }),
     );
 
     const review = service.getCycleReview("cycle-1");
@@ -1188,7 +1183,7 @@ describe("CycleService.getCyclePlanningProposals — daysSinceLast agrees with c
       habitId: string | null;
       day: string | null;
       personIds: string[];
-    }> = {}
+    }> = {},
   ) => ({
     id,
     name: "dinner",
@@ -1227,7 +1222,7 @@ describe("CycleService.getCyclePlanningProposals — daysSinceLast agrees with c
     // short-circuit on a habitId match, so this exercises the widened clause.
     habits$["p-yaya"].set(makePerson("p-yaya", "Yaya"));
     moments$["m-group-dinner"].set(
-      makeMoment("m-group-dinner", { personIds: ["p-abuelo", "p-yaya"] })
+      makeMoment("m-group-dinner", { personIds: ["p-abuelo", "p-yaya"] }),
     );
 
     const row = service
@@ -1245,10 +1240,10 @@ describe("CycleService.getCyclePlanningProposals — daysSinceLast agrees with c
     // directly-planted moment is 400 days old, read as blooming / 400 days.
     habits$["p-yaya"].set(makePerson("p-yaya", "Yaya"));
     moments$["m-stale"].set(
-      makeMoment("m-stale", { habitId: "p-yaya", day: daysAgo(400) })
+      makeMoment("m-stale", { habitId: "p-yaya", day: daysAgo(400) }),
     );
     moments$["m-group-dinner"].set(
-      makeMoment("m-group-dinner", { personIds: ["p-yaya"] })
+      makeMoment("m-group-dinner", { personIds: ["p-yaya"] }),
     );
 
     const row = service
@@ -1268,14 +1263,12 @@ describe("CycleService.getCyclePlanningProposals — daysSinceLast agrees with c
       attitude: Attitude.KEEPING,
       rhythm: WEEKLY,
     });
-    moments$["m-own"].set(
-      makeMoment("m-own", { habitId: "h-meditation" })
-    );
+    moments$["m-own"].set(makeMoment("m-own", { habitId: "h-meditation" }));
     moments$["m-other"].set(
       makeMoment("m-other", {
         day: daysAgo(1),
         personIds: ["p-yaya", "p-abuelo"],
-      })
+      }),
     );
 
     const row = service
@@ -1294,7 +1287,7 @@ describe("CycleService.getCyclePlanningProposals — daysSinceLast agrees with c
       rhythm: WEEKLY,
     });
     moments$["m-other"].set(
-      makeMoment("m-other", { personIds: ["p-yaya", "p-abuelo"] })
+      makeMoment("m-other", { personIds: ["p-yaya", "p-abuelo"] }),
     );
 
     const row = service
@@ -1303,5 +1296,88 @@ describe("CycleService.getCyclePlanningProposals — daysSinceLast agrees with c
 
     expect(row?.daysSinceLast).toBeNull();
     expect(row?.currentHealth).toBe("wilting");
+  });
+});
+
+describe("CycleService.updateCycle — reflection provenance", () => {
+  let service: CycleService;
+
+  const season = (over: Record<string, unknown> = {}) => ({
+    id: "c",
+    name: "Avalon Spring",
+    startDate: "2026-03-01",
+    endDate: "2026-03-31",
+    intention: null,
+    reflection: null,
+    createdAt: "",
+    updatedAt: "",
+    ...over,
+  });
+
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    habits$.set({});
+
+    service = new CycleService();
+  });
+
+  it("stamps a reflection edited in the app as human-written", () => {
+    cycles$.set({ c: season() as never });
+
+    service.updateCycle("c", { reflection: "The season held Avalon." });
+
+    expect(cycles$.c.reflectionSource.get()).toBe("human");
+  });
+
+  it("promotes a machine draft to human once you edit it", () => {
+    cycles$.set({
+      c: season({
+        reflection: "Drafted prose.",
+        reflectionSource: "machine",
+      }) as never,
+    });
+
+    service.updateCycle("c", { reflection: "My own words." });
+
+    expect(cycles$.c.reflectionSource.get()).toBe("human");
+  });
+
+  it("clears the stamp when the reflection is cleared", () => {
+    cycles$.set({
+      c: season({ reflection: "Gone.", reflectionSource: "human" }) as never,
+    });
+
+    service.updateCycle("c", { reflection: null });
+
+    expect(cycles$.c.reflectionSource.get()).toBeNull();
+  });
+
+  it("leaves provenance alone when editing something else", () => {
+    cycles$.set({
+      c: season({
+        reflection: "Drafted prose.",
+        reflectionSource: "machine",
+      }) as never,
+    });
+
+    service.updateCycle("c", { intention: "Read the tide." });
+
+    expect(cycles$.c.reflectionSource.get()).toBe("machine");
+    expect(cycles$.c.reflection.get()).toBe("Drafted prose.");
+  });
+
+  it("lets a caller name the author explicitly", () => {
+    cycles$.set({ c: season() as never });
+
+    service.updateCycle("c", {
+      reflection: "Drafted prose.",
+      reflectionSource: "machine",
+    });
+
+    expect(cycles$.c.reflectionSource.get()).toBe("machine");
   });
 });

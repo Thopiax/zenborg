@@ -281,6 +281,41 @@ describe("deriveHarvestSeason — what the season says", () => {
     });
   });
 
+  it("marks a machine draft as not the person's own words", () => {
+    const season = derive(
+      cycle("c", "2026-03-01", "2026-03-31", {
+        reflection: "Drafted prose.",
+        reflectionSource: "machine",
+      }),
+      [],
+    );
+
+    expect(season.reflectionIsHuman).toBe(false);
+  });
+
+  it("marks what the person wrote as theirs", () => {
+    const season = derive(
+      cycle("c", "2026-03-01", "2026-03-31", {
+        reflection: "My own words.",
+        reflectionSource: "human",
+      }),
+      [],
+    );
+
+    expect(season.reflectionIsHuman).toBe(true);
+  });
+
+  it("treats unknown provenance as not the person's own words", () => {
+    // Every reflection written before the field existed. Reading unknown as
+    // "yours" would let a draft pass as something you wrote.
+    const season = derive(
+      cycle("c", "2026-03-01", "2026-03-31", { reflection: "Legacy prose." }),
+      [],
+    );
+
+    expect(season.reflectionIsHuman).toBe(false);
+  });
+
   it("reads back a season with no reflection, no intention and no moments", () => {
     // Acceptance 1: harvest renders with no journals, no ollama, no photos.
     const season = derive(cycle("c", "2026-03-01", "2026-03-31"), []);

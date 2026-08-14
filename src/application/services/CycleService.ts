@@ -1,9 +1,11 @@
+import { differenceInCalendarDays } from "date-fns";
 import type { Area } from "@/domain/entities/Area";
 import {
   type Cycle,
   type CycleResult,
   createCycle,
   isDateInCycle,
+  type ReflectionSource,
 } from "@/domain/entities/Cycle";
 import {
   type CyclePlan,
@@ -15,18 +17,9 @@ import {
   allocateMoment,
   createMoment,
   type Moment,
-  momentInvolvesHabit,
   type MomentResult,
+  momentInvolvesHabit,
 } from "@/domain/entities/Moment";
-import {
-  activeCycle$,
-  activeCycleId$,
-  areas$,
-  cyclePlans$,
-  cycles$,
-  habits$,
-  moments$,
-} from "@/infrastructure/state/store";
 import {
   calculateDefaultEndDate,
   calculateDefaultStartDate,
@@ -36,17 +29,25 @@ import {
   getDayBefore,
   type TemplateDuration,
 } from "@/domain/services/CycleDateService";
-import {
-  rhythmToCycleBudget,
-  type Rhythm,
-} from "@/domain/value-objects/Rhythm";
-import { Attitude } from "@/domain/value-objects/Attitude";
-import type { Phase } from "@/domain/value-objects/Phase";
-import { timingFromSchedule } from "@/domain/value-objects/Schedule";
 import { habitHealthService } from "@/domain/services/HabitHealthService";
+import { Attitude } from "@/domain/value-objects/Attitude";
 import type { Health } from "@/domain/value-objects/Health";
+import type { Phase } from "@/domain/value-objects/Phase";
+import {
+  type Rhythm,
+  rhythmToCycleBudget,
+} from "@/domain/value-objects/Rhythm";
+import { timingFromSchedule } from "@/domain/value-objects/Schedule";
+import {
+  activeCycle$,
+  activeCycleId$,
+  areas$,
+  cyclePlans$,
+  cycles$,
+  habits$,
+  moments$,
+} from "@/infrastructure/state/store";
 import { formatCycleDateRange, fromISODate, toISODate } from "@/lib/dates";
-import { differenceInCalendarDays } from "date-fns";
 
 // Re-export TemplateDuration for backward compatibility
 export type { TemplateDuration };
@@ -153,7 +154,7 @@ export class CycleService {
     templateDuration?: TemplateDuration,
     startDate?: string,
     endDate?: string,
-    intention?: string | null
+    intention?: string | null,
   ): CycleResult {
     let calculatedStartDate: string;
     let calculatedEndDate: string | null;
@@ -178,13 +179,13 @@ export class CycleService {
     const overlapping = findOverlappingCycle(
       updatedCycles,
       calculatedStartDate,
-      calculatedEndDate
+      calculatedEndDate,
     );
 
     if (overlapping) {
       const range = formatCycleDateRange(
         overlapping.startDate,
-        overlapping.endDate
+        overlapping.endDate,
       );
       return {
         error: `Cycle dates overlap with "${overlapping.name}" (${range})`,
@@ -209,7 +210,6 @@ export class CycleService {
     return result;
   }
 
-
   /**
    * Updates a cycle's name and/or dates
    *
@@ -225,7 +225,9 @@ export class CycleService {
       endDate?: string | null;
       intention?: string | null;
       reflection?: string | null;
-    }
+      /** Override the author. Omit for app edits — those are always human. */
+      reflectionSource?: ReflectionSource | null;
+    },
   ): CycleResult {
     const cycle = cycles$[cycleId].get();
     if (!cycle) {
@@ -239,25 +241,37 @@ export class CycleService {
       ...(updates.startDate !== undefined && { startDate: updates.startDate }),
       ...(updates.endDate !== undefined && { endDate: updates.endDate }),
       ...(updates.intention !== undefined && { intention: updates.intention }),
-      ...(updates.reflection !== undefined && { reflection: updates.reflection }),
+      ...(updates.reflection !== undefined && {
+        reflection: updates.reflection,
+      }),
+      // A reflection written through the app was written by a person. Stamping
+      // here rather than at the call site closes the hole: every path into the
+      // app's write ends up in this method, so no edit can land unattributed.
+      // Clearing it clears the stamp — no reflection, no author.
+      ...(updates.reflection !== undefined && {
+        reflectionSource: updates.reflection === null ? null : "human",
+      }),
+      ...(updates.reflectionSource !== undefined && {
+        reflectionSource: updates.reflectionSource,
+      }),
       updatedAt: new Date().toISOString(),
     };
 
     // If dates changed, validate non-overlapping with other cycles
     if (updates.startDate || updates.endDate !== undefined) {
       const allCycles = Object.values(cycles$.get()).filter(
-        (c) => c.id !== cycleId
+        (c) => c.id !== cycleId,
       );
       const overlapping = findOverlappingCycle(
         allCycles,
         updatedCycle.startDate,
-        updatedCycle.endDate
+        updatedCycle.endDate,
       );
 
       if (overlapping) {
         const range = formatCycleDateRange(
           overlapping.startDate,
-          overlapping.endDate
+          overlapping.endDate,
         );
         return {
           error: `Cycle dates overlap with "${overlapping.name}" (${range})`,
@@ -308,7 +322,7 @@ export class CycleService {
     // Delete all cycle plans for this cycle
     const allCyclePlans = Object.values(cyclePlans$.get());
     const cyclePlansToDelete = allCyclePlans.filter(
-      (cp) => cp.cycleId === cycleId
+      (cp) => cp.cycleId === cycleId,
     );
 
     for (const plan of cyclePlansToDelete) {
@@ -368,7 +382,7 @@ export class CycleService {
     const today = new Date().toISOString().split("T")[0];
     const allCycles = Object.values(cycles$.get());
 
-    return allCycles.find(cycle => isDateInCycle(cycle, today)) || null;
+    return allCycles.find((cycle) => isDateInCycle(cycle, today)) || null;
   }
 
   /**
@@ -389,9 +403,7 @@ export class CycleService {
     const moments = Object.values(moments$.get());
     return moments.filter(
       (m) =>
-        m.cyclePlanId === cyclePlanId &&
-        m.day !== null &&
-        m.phase !== null,
+        m.cyclePlanId === cyclePlanId && m.day !== null && m.phase !== null,
     ).length;
   }
 
@@ -577,11 +589,11 @@ export class CycleService {
           m.cycleId === cycleId &&
           m.cyclePlanId !== null &&
           m.day === null &&
-          m.phase === null
+          m.phase === null,
       )
       .sort(
         (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
   }
 
@@ -596,7 +608,7 @@ export class CycleService {
   budgetHabitToCycle(
     cycleId: string,
     habitId: string,
-    count: number
+    count: number,
   ): CyclePlanResult {
     // Validate cycle exists
     const cycle = cycles$[cycleId].get();
@@ -652,7 +664,7 @@ export class CycleService {
   budgetHabitToCycleWithOptions(
     cycleId: string,
     habitId: string,
-    options: { count?: number; rhythmOverride?: Rhythm }
+    options: { count?: number; rhythmOverride?: Rhythm },
   ): CyclePlanResult {
     const cycle = cycles$[cycleId].get();
     if (!cycle) {
@@ -721,22 +733,21 @@ export class CycleService {
       if (habit.attitude === Attitude.BEING) continue;
 
       const plan =
-        allPlans.find(
-          (p) => p.cycleId === cycleId && p.habitId === habit.id
-        ) ?? null;
+        allPlans.find((p) => p.cycleId === cycleId && p.habitId === habit.id) ??
+        null;
 
       const effectiveRhythm = habitHealthService.resolveRhythm(habit, plan);
       const currentHealth = habitHealthService.computeHealth(
         habit,
         plan,
         allMoments,
-        now
+        now,
       );
 
       const daysSinceLast = this.computeDaysSinceLastAllocation(
         habit.id,
         allMoments,
-        now
+        now,
       );
 
       if (habit.attitude === Attitude.BEGINNING) {
@@ -798,9 +809,7 @@ export class CycleService {
     const allPlans = Object.values(cyclePlans$.get());
     const cyclePlansForCycle = allPlans.filter((p) => p.cycleId === cycleId);
     const cycleMoments = allMoments.filter((m) => m.cycleId === cycleId);
-    const unplannedMoments = cycleMoments.filter(
-      (m) => m.cyclePlanId === null
-    );
+    const unplannedMoments = cycleMoments.filter((m) => m.cyclePlanId === null);
     const startDate = fromISODate(cycle.startDate);
     const endDate = cycle.endDate ? fromISODate(cycle.endDate) : new Date();
 
@@ -810,7 +819,7 @@ export class CycleService {
       if (!habit) continue;
 
       const momentsForHabit = cycleMoments.filter(
-        (m) => m.habitId === habit.id
+        (m) => m.habitId === habit.id,
       );
       const allocatedMoments = momentsForHabit.filter((m) => m.day !== null);
       const dates = allocatedMoments
@@ -828,19 +837,19 @@ export class CycleService {
       }
 
       const priorMoments = allMoments.filter(
-        (m) => m.day !== null && fromISODate(m.day) < startDate
+        (m) => m.day !== null && fromISODate(m.day) < startDate,
       );
       const startHealth = habitHealthService.computeHealth(
         habit,
         plan,
         priorMoments,
-        startDate
+        startDate,
       );
       const endHealth = habitHealthService.computeHealth(
         habit,
         plan,
         allMoments,
-        endDate
+        endDate,
       );
 
       habits.push({
@@ -873,7 +882,7 @@ export class CycleService {
   private computeDaysSinceLastAllocation(
     habitId: string,
     moments: Moment[],
-    now: Date
+    now: Date,
   ): number | null {
     // Same selection `computeHealth` uses, via the one shared predicate. Both
     // land in the SAME proposal object, so a narrower filter here would report
@@ -929,43 +938,55 @@ export class CycleService {
    * Allocated moments on the timeline survive.
    */
   removeHabitFromDeck(cycleId: string, habitId: string): CyclePlanResult {
-    const allocatedCount = this.countAllocatedMomentsForHabitInCycle(cycleId, habitId);
+    const allocatedCount = this.countAllocatedMomentsForHabitInCycle(
+      cycleId,
+      habitId,
+    );
     return this.budgetHabitToCycle(cycleId, habitId, allocatedCount);
   }
 
   /**
    * Counts all moments (allocated + deck) for a habit in a cycle.
    */
-  private countMomentsForHabitInCycle(cycleId: string, habitId: string): number {
+  private countMomentsForHabitInCycle(
+    cycleId: string,
+    habitId: string,
+  ): number {
     return Object.values(moments$.get()).filter(
-      (m) => m.cycleId === cycleId && m.habitId === habitId
+      (m) => m.cycleId === cycleId && m.habitId === habitId,
     ).length;
   }
 
   /**
    * Counts only allocated (on timeline) moments for a habit in a cycle.
    */
-  private countAllocatedMomentsForHabitInCycle(cycleId: string, habitId: string): number {
+  private countAllocatedMomentsForHabitInCycle(
+    cycleId: string,
+    habitId: string,
+  ): number {
     return Object.values(moments$.get()).filter(
       (m) =>
         m.cycleId === cycleId &&
         m.habitId === habitId &&
         m.day !== null &&
-        m.phase !== null
+        m.phase !== null,
     ).length;
   }
 
   /**
    * Counts only deck (unallocated) moments for a habit in a cycle.
    */
-  private countDeckMomentsForHabitInCycle(cycleId: string, habitId: string): number {
+  private countDeckMomentsForHabitInCycle(
+    cycleId: string,
+    habitId: string,
+  ): number {
     return Object.values(moments$.get()).filter(
       (m) =>
         m.cycleId === cycleId &&
         m.habitId === habitId &&
         m.cyclePlanId !== null &&
         m.day === null &&
-        m.phase === null
+        m.phase === null,
     ).length;
   }
 
@@ -978,11 +999,11 @@ export class CycleService {
    */
   private findCyclePlan(
     cycleId: string,
-    habitId: string
+    habitId: string,
   ): CyclePlan | undefined {
     const allPlans = Object.values(cyclePlans$.get());
     return allPlans.find(
-      (plan) => plan.cycleId === cycleId && plan.habitId === habitId
+      (plan) => plan.cycleId === cycleId && plan.habitId === habitId,
     );
   }
 
@@ -1018,7 +1039,7 @@ export class CycleService {
     momentId: string,
     day: string,
     phase: string,
-    order: number
+    order: number,
   ): MomentResult {
     const moment = moments$[momentId].get();
     if (!moment) {
@@ -1060,7 +1081,7 @@ export class CycleService {
     habitId: string,
     day: string,
     phase: string,
-    order: number
+    order: number,
   ): MomentResult {
     const habit = habits$[habitId].get();
     if (!habit) {
@@ -1114,7 +1135,7 @@ export class CycleService {
     areaId: string,
     day: string | null,
     phase: string | null,
-    order: number
+    order: number,
   ): MomentResult {
     const activeCycle = activeCycle$.get();
 
@@ -1157,7 +1178,7 @@ export class CycleService {
    * @returns Array of areas with their habit-grouped moments, sorted by area order
    */
   getAreasWithDeckMoments(
-    deckMomentsByAreaAndHabit: Record<string, Record<string, Moment[]>>
+    deckMomentsByAreaAndHabit: Record<string, Record<string, Moment[]>>,
   ): Array<{ area: Area; habits: Record<string, Moment[]> }> {
     const allAreas = areas$.get();
     const areasMap: Record<string, Area> = allAreas;
