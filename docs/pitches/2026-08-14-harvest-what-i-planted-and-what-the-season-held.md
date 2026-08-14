@@ -6,13 +6,14 @@ $signature:
   docHash: sha256:64ebe62d576c434cc79c4bcd920e30cdf225ba675f7a28f0bb044879d75874e0
   signedAt: 2026-08-14T16:48:31.888802Z
   signature: ed25519:mslGzWjG6H7txpakM/KqBeK/Lnmko7fnHIc3jNV9EyIBiwrMnEIrsgSZL1VMXHvipJWbElrpfud4zR4Jy0hzDg==
-appetite: big
-hard_dependency: kernel/entities.md stamped before slice 6 (places resolve to registry keys). Slices 1–5 are unblocked.
-source: the Observatory pilot — 14 commits, 2fd43d8…6271a98, 2026-08-14
-status: draft
-supersedes: 2026-08-14-harvest-the-season-reads-back.md
-tag: pitch
-type: pitch
+$attestation:
+  $type: tech.equanimi.secretariat.stamp
+  signer: did:key:z6MkjB8PQaN1vuUzdtnJsxyXR2f8d3tckGHkUYZMDytQsfak
+  act: attest
+  docHash: sha256:64ebe62d576c434cc79c4bcd920e30cdf225ba675f7a28f0bb044879d75874e0
+  docFilename: 2026-08-14-harvest-what-i-planted-and-what-the-season-held.md
+  stampedAt: 2026-08-14T16:48:59.463618Z
+  signature: ed25519:wRdNhghUqOVOustBnlACphN8CQi1uI06QeV645zmh8Q+6uMvT9L7lHMX4akaI9hGJBiLvnVXbeUO09esrxFrDg==
 ---
 
 # Pitch — Harvest: what I planted and what the season held
