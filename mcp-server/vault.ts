@@ -141,6 +141,7 @@ export interface Habit {
   guidance?: string;
   rhythm?: Rhythm;
   schedule?: Schedule;
+  kind?: 'person'; // Absent = habit. Mirrors src/domain/entities/Habit.ts
   createdAt: string;
   updatedAt: string;
 }
@@ -186,6 +187,7 @@ export interface Moment {
    * and nothing else. Absent when the moment refers to nothing.
    */
   refs?: readonly string[];
+  personIds?: string[]; // People present. Mirrors src/domain/entities/Moment.ts
   createdAt: string;
   updatedAt: string;
 }

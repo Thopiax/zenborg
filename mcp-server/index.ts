@@ -70,6 +70,7 @@ import {
 import { computeHealth, daysSinceLast, parseVaultDay, resolveRhythm } from './health.js';
 import { buildTagIndex, buildTagProfile } from './tags.js';
 import { buildRelatedHabits } from './graph.js';
+import { selectPeopleToReach } from './people.js';
 
 // ────────────────────────────────────────────────────────────────────────
 // Boot
@@ -374,6 +375,7 @@ server.tool(
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
     aliases: z.array(z.string()).optional(),
+    kind: z.literal('person').optional(),
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
@@ -419,6 +421,7 @@ server.tool(
       isArchived: false,
       order: params.order,
       ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
+      ...(params.kind ? { kind: params.kind } : {}),
       ...(params.description?.trim()
         ? { description: params.description.trim() }
         : {}),
@@ -446,6 +449,7 @@ server.tool(
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
     aliases: z.array(z.string()).nullable().optional(),
+    kind: z.literal('person').nullable().optional(),
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
@@ -500,6 +504,13 @@ server.tool(
         delete next.rhythm;
       } else if (updates.rhythm !== undefined) {
         next.rhythm = updates.rhythm;
+      }
+    }
+    if ('kind' in updates) {
+      if (updates.kind === null) {
+        delete next.kind;
+      } else if (updates.kind !== undefined) {
+        next.kind = updates.kind;
       }
     }
     if ('aliases' in updates) {
@@ -681,6 +692,23 @@ server.tool(
     }
 
     return ok(results);
+  },
+);
+
+server.tool(
+  'list_people_to_reach',
+  'List people who have gone quiet past their rhythm and have nothing already arranged. Ordered by how far past their OWN rhythm they are (`overdueRatio`, a multiple of their threshold — 5.71 means five and a half times overdue), NOT by raw elapsed days, so a weekly friend at 20 days outranks an annual one at 400. Never-contacted people come first. Filter by areaId or by a place tag such as paris, bcn, sp, london, nyc.',
+  {
+    areaId: z.string().optional(),
+    tag: z.string().optional(),
+    limit: z.number().int().positive().optional(),
+  },
+  async ({ areaId, tag, limit }): Promise<ToolResult> => {
+    const habits = readCollection(VAULT_ROOT, 'habits');
+    const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
+    return ok(
+      selectPeopleToReach(habits, moments, new Date(), { areaId, tag, limit }),
+    );
   },
 );
 
@@ -1342,6 +1370,7 @@ function buildMoment(params: {
   order?: number;
   emoji?: string | null;
   tags?: string[] | null;
+  personIds?: string[];
   customMetric?: Moment['customMetric'];
   startTime?: string;
   durationMin?: number;
@@ -1365,6 +1394,9 @@ function buildMoment(params: {
       : {}),
     emoji: params.emoji ?? null,
     tags: normalizeTags(params.tags ?? undefined),
+    ...(params.personIds && params.personIds.length > 0
+      ? { personIds: params.personIds }
+      : {}),
     ...(params.customMetric ? { customMetric: params.customMetric } : {}),
     // Absent, not empty: one representation of "refers to nothing".
     ...(refs.length > 0 ? { refs } : {}),
@@ -1382,6 +1414,7 @@ server.tool(
     phase: PhaseSchema.nullable().optional(),
     emoji: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
+    personIds: z.array(z.string()).optional(),
     customMetric: CustomMetricSchema.optional(),
     startTime: StartTimeSchema.optional(),
     durationMin: z.number().int().positive().optional(),
@@ -1414,7 +1447,7 @@ server.tool(
 
 server.tool(
   'update_moment',
-  'Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; pass `[]` to clear.',
+  'Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, pass `[]` to clear. `personIds` replaces the whole guest list — pass null or [] to clear it, omit it to leave it alone.',
   {
     id: z.string(),
     name: z.string().optional(),
@@ -1422,6 +1455,7 @@ server.tool(
     emoji: z.string().nullable().optional(),
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
+    personIds: z.array(z.string()).nullable().optional(),
     customMetric: CustomMetricSchema.optional(),
     startTime: StartTimeSchema.nullable().optional(),
     durationMin: z.number().int().positive().nullable().optional(),
@@ -1474,6 +1508,16 @@ server.tool(
     // "refers to nothing" has exactly one representation.
     if (next.refs !== undefined && next.refs.length === 0) {
       delete next.refs;
+    }
+    if ('personIds' in updates) {
+      // Absent is the single empty representation — the same one `buildMoment`
+      // writes — so an empty list clears the key rather than persisting `[]`.
+      const list = updates.personIds ?? [];
+      if (list.length === 0) {
+        delete next.personIds;
+      } else {
+        next.personIds = list;
+      }
     }
     moments[id] = next;
     writeCollection(VAULT_ROOT, 'moments', moments);
@@ -1707,6 +1751,7 @@ server.tool(
     order: z.number().int().nonnegative().optional(),
     emoji: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
+    personIds: z.array(z.string()).optional(),
     startTime: StartTimeSchema.optional(),
     durationMin: z.number().int().positive().optional(),
     refs: z.array(z.string()).optional(),
@@ -1743,6 +1788,7 @@ server.tool(
       order: params.order ?? slotCount,
       emoji: params.emoji ?? null,
       tags: params.tags,
+      personIds: params.personIds,
       startTime: params.startTime,
       durationMin: params.durationMin,
       refs: params.refs,
