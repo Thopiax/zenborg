@@ -45,6 +45,26 @@
   #msg { font-size:12px; color:var(--ink2); margin-top:8px; min-height:16px; }
   #unplaced { position:fixed; left:24px; bottom:20px; z-index:5; color:var(--ink3); font-size:12px; max-width:420px; }
   #unplaced b { color:var(--ink2); font-weight:500; }
+  #timeline { position:fixed; left:24px; right:24px; bottom:18px; z-index:6; display:none;
+              align-items:center; gap:12px; }
+  #timeline.show { display:flex; }
+  #play { width:38px; height:38px; border-radius:50%; background:#0b0d16cc; border:1px solid var(--accent);
+          color:var(--accent); font-size:14px; cursor:pointer; flex:none; }
+  #track { flex:1; display:flex; gap:2px; height:26px; align-items:stretch; }
+  #track .seg { flex-grow:1; background:var(--line); border-radius:3px; cursor:pointer; min-width:4px;
+                transition:background .2s; position:relative; }
+  #track .seg.done { background:#4a5578; }
+  #track .seg.now { background:var(--accent); }
+  #track .seg:hover::after { content:attr(data-tip); position:absolute; bottom:32px; left:50%;
+      transform:translateX(-50%); white-space:nowrap; background:#0b0d16ee; border:1px solid var(--line);
+      border-radius:6px; padding:4px 8px; font-size:11px; color:var(--ink); }
+  #caption { position:fixed; left:50%; transform:translateX(-50%); bottom:64px; z-index:6; display:none;
+             text-align:center; background:#0b0d16bb; backdrop-filter:blur(8px); border:1px solid var(--line);
+             border-radius:10px; padding:10px 22px; max-width:560px; }
+  #caption.show { display:block; }
+  #caption .c-name { font:600 17px Georgia, serif; color:var(--accent); }
+  #caption .c-dates { color:var(--ink2); font-size:12px; }
+  #caption .c-int { color:var(--ink2); font-size:12px; font-style:italic; margin-top:4px; }
 </style>
 </head>
 <body>
@@ -66,6 +86,8 @@
   <div id="msg"></div>
 </aside>
 <div id="unplaced"></div>
+<div id="caption"></div>
+<div id="timeline"><button id="play">▶</button><div id="track"></div></div>
 
 <script src="https://unpkg.com/globe.gl@2.34.4/dist/globe.gl.min.js"
         integrity="sha384-boR1tzK+m2z3pM2fQMq+PoYI0pIQmU+zWj+z3Oy5czzi97itGHXoL/YTj4ypMFbq"
@@ -79,9 +101,9 @@ const world = Globe()(document.getElementById('globe'))
   .backgroundColor('#0b0d16')
   .atmosphereColor('#93a4f5')
   .atmosphereAltitude(0.18)
-  .pointAltitude(d => 0.02 + d.people.length * 0.012)
+  .pointAltitude(0.01)
   .pointColor(() => '#93a4f5')
-  .pointRadius(0.45)
+  .pointRadius(d => 0.4 + Math.sqrt(d.people.length) * 0.22)
   .pointLabel(d => `<b>${d.name}</b> · ${d.people.length}`)
   .labelText('name')
   .labelSize(1.1)
@@ -148,51 +170,93 @@ async function toggleRefs(name) {
     : r.results.map(p => `<h4>${p.pond}</h4><pre>${p.output.replace(/</g, '&lt;')}</pre>`).join('');
 }
 
-// ── Journey mode: cycles as stops, transitions as ordered arcs ──
-let JOURNEY = null, MODE = 'people';
+// ── Journey mode: a timeline you press play on ──
+let JOURNEY = null, MODE = 'people', IDX = -1, PLAYING = false, timer = null;
+const STEP_MS = 2600;
+
 async function showJourney() {
   MODE = 'journey';
   setModeButtons();
   panel.classList.remove('open');
-  if (!JOURNEY) JOURNEY = await (await fetch('/api/cycles')).json();
-  const seen = new Map();
-  for (const s of JOURNEY.stops) seen.set(s.place, { ...s, visits: (seen.get(s.place)?.visits ?? 0) + 1 });
-  const stops = Array.from(seen.values());
-  world.pointsData(stops)
-    .pointAltitude(d => 0.02 + d.visits * 0.02)
-    .pointLabel(d => `<b>${d.place}</b> · ${d.visits} ${d.visits === 1 ? 'season' : 'seasons'}`)
-    .labelsData(stops).labelText('place')
-    .arcsData(JOURNEY.arcs)
-    .arcLabel(d => `${JOURNEY.stops[d.order - 1].cycle} → ${JOURNEY.stops[d.order]?.cycle ?? ''}`);
-  world.onPointClick(openJourneyPanel).onLabelClick(openJourneyPanel);
-  document.getElementById('subtitle').textContent =
-    `${JOURNEY.stops.length} seasons across ${stops.length} places · transitions in order · click a stop`;
-  document.getElementById('unplaced').innerHTML = JOURNEY.skipped.length
-    ? `<b>place unknown:</b> ${JOURNEY.skipped.join(' · ')}` : '';
-}
-function openJourneyPanel(d) {
   world.controls().autoRotate = false;
-  const visits = JOURNEY.stops.filter(s => s.place === d.place);
-  document.getElementById('p-city').textContent = d.place;
-  document.getElementById('p-meta').textContent = `${visits.length} ${visits.length === 1 ? 'season' : 'seasons'} here`;
-  document.getElementById('p-people').innerHTML = visits.map(s => `
-    <div class="person">
-      <div class="nm">${s.n}. ${s.cycle}</div>
-      <div class="last"><b>${s.start}</b> → ${s.end ?? 'open'}</div>
-      ${s.intention ? `<div class="last" style="margin-top:4px">${s.intention}</div>` : ''}
-    </div>`).join('');
-  document.getElementById('p-form').style.display = 'none';
-  panel.classList.add('open');
+  if (!JOURNEY) JOURNEY = await (await fetch('/api/cycles')).json();
+  buildTrack();
+  document.getElementById('timeline').classList.add('show');
+  document.getElementById('subtitle').textContent =
+    `${JOURNEY.stops.length} seasons · press play, or scrub the timeline`;
+  document.getElementById('unplaced').innerHTML = '';
+  world.labelsData([]).pointLabel(d => `<b>${d.place}</b>`);
+  world.onPointClick(() => {}).onLabelClick(() => {});
+  goTo(IDX === -1 ? 0 : IDX, false);
 }
+
+function buildTrack() {
+  const track = document.getElementById('track');
+  const days = s => Math.max(2, (new Date(s.end ?? s.start) - new Date(s.start)) / 86400000 + 1);
+  track.innerHTML = JOURNEY.stops.map((s, i) =>
+    `<div class="seg" style="flex-grow:${days(s)}" data-i="${i}" data-tip="${s.cycle} · ${s.place}"></div>`).join('');
+  for (const seg of track.children)
+    seg.addEventListener('click', () => { pause(); goTo(Number(seg.dataset.i), true); });
+}
+
+function goTo(i, fly) {
+  IDX = i;
+  const s = JOURNEY.stops[i];
+  const visited = JOURNEY.stops.slice(0, i + 1)
+    .filter((v, idx, arr) => arr.findIndex(x => x.place === v.place) === idx);
+  world.pointsData(visited)
+    .pointAltitude(0.008).pointRadius(0.5)
+    .ringsData([s]).ringLat('lat').ringLng('lng')
+    .ringMaxRadius(3.4).ringPropagationSpeed(1.6).ringRepeatPeriod(900)
+    .ringColor(() => t => `rgba(147,164,245,${1 - t})`)
+    .arcsData(JOURNEY.arcs.filter(a => a.order <= i))
+    .arcDashLength(0.6).arcDashGap(0.25)
+    .arcDashAnimateTime(d => d.order === i ? 2200 : 0);
+  world.pointOfView({ lat: s.lat, lng: s.lng, altitude: 1.7 }, fly ? 1100 : 0);
+  const cap = document.getElementById('caption');
+  cap.classList.add('show');
+  cap.innerHTML = `<div class="c-name">${s.n} · ${s.cycle}</div>
+    <div class="c-dates">${s.place} — ${s.start} → ${s.end ?? 'open'}</div>
+    ${s.intention ? `<div class="c-int">${s.intention}</div>` : ''}`;
+  const segs = document.querySelectorAll('#track .seg');
+  segs.forEach((seg, idx) => {
+    seg.classList.toggle('done', idx < i);
+    seg.classList.toggle('now', idx === i);
+  });
+}
+
+function play() {
+  PLAYING = true;
+  document.getElementById('play').textContent = '⏸';
+  const advance = () => {
+    if (IDX >= JOURNEY.stops.length - 1) return pause();
+    goTo(IDX + 1, true);
+    timer = setTimeout(advance, STEP_MS);
+  };
+  if (IDX >= JOURNEY.stops.length - 1) IDX = -1;
+  timer = setTimeout(advance, IDX === -1 ? 200 : STEP_MS / 2);
+}
+function pause() {
+  PLAYING = false;
+  clearTimeout(timer);
+  document.getElementById('play').textContent = '▶';
+}
+document.getElementById('play').addEventListener('click', () => (PLAYING ? pause() : play()));
+
 function showPeople() {
   MODE = 'people';
   setModeButtons();
+  pause();
   panel.classList.remove('open');
   document.getElementById('p-form').style.display = '';
-  world.pointsData([]).arcsData([]).labelsData([]);
-  world.pointAltitude(d => 0.02 + d.people.length * 0.012)
+  document.getElementById('timeline').classList.remove('show');
+  document.getElementById('caption').classList.remove('show');
+  world.pointsData([]).arcsData([]).labelsData([]).ringsData([]);
+  world.pointAltitude(0.01)
+    .pointRadius(d => 0.4 + Math.sqrt(d.people.length) * 0.22)
     .pointLabel(d => `<b>${d.name}</b> · ${d.people.length}`)
-    .labelText('name');
+    .labelText('name')
+    .arcDashLength(0.5).arcDashGap(0.2).arcDashAnimateTime(4000);
   world.onPointClick(openCity).onLabelClick(openCity);
   document.getElementById('subtitle').textContent = 'people of the garden, live from the vault · click a city';
   load();
