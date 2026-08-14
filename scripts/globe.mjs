@@ -315,22 +315,27 @@ http
         const inWindow = loadPhotos().filter((p) => p.day >= cycle.startDate && p.day <= end);
         const picked = readHighlights()[start] ?? [];
         const has = (p) => fs.existsSync(thumbPath(p.uuid));
-        // Three tiers of curation: what you chose for this cycle, then what
-        // you favourited in Photos, then a spread across the window.
+        const shape = (p) => ({
+          uuid: p.uuid, day: p.day, favorite: p.favorite, highlighted: picked.includes(p.uuid),
+        });
+        // Curation wins outright: if this cycle has picks, the carousel is
+        // only the picks; failing that, only the favourites. A spread is the
+        // fallback for a cycle nobody has curated yet.
         const chosen = inWindow.filter((p) => picked.includes(p.uuid)).filter(has);
-        const favs = inWindow.filter((p) => p.favorite && !picked.includes(p.uuid)).filter(has);
+        const favs = inWindow.filter((p) => p.favorite).filter(has);
+        const hero = chosen.length ? chosen : favs;
+        const mode = chosen.length ? 'highlights' : favs.length ? 'favourites' : 'spread';
         // Over-fetch: not every asset has a rendered derivative, and a strip
         // with holes reads as an error rather than a life.
         const rest = spread(inWindow.filter((p) => !p.favorite && !picked.includes(p.uuid)), limit * 5)
-          .filter(has);
-        const shown = [...chosen, ...favs, ...rest].slice(0, limit);
+          .filter(has).slice(0, limit);
         return send(200, {
           total: inWindow.length,
-          favorites: inWindow.filter((p) => p.favorite).length,
+          favorites: favs.length,
           highlighted: chosen.length,
-          photos: shown.map((p) => ({
-            uuid: p.uuid, day: p.day, favorite: p.favorite, highlighted: picked.includes(p.uuid),
-          })),
+          mode,
+          hero: hero.map(shape),
+          photos: (hero.length ? hero : rest).slice(0, limit).map(shape),
         });
       } catch (e) { return send(500, { error: String(e.message ?? e) }); }
     }
