@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Observatory</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#0b0d16; --panel:#12152290; --ink:#e8e6e1; --ink2:#9b98a8; --ink3:#5d5a6b;
+          --accent:#93a4f5; --line:#272b3d; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink); font:14px/1.5 "Helvetica Neue", system-ui, sans-serif; overflow:hidden; }
+  #globe { position:fixed; inset:0; }
+  header { position:fixed; top:0; left:0; right:0; padding:18px 24px; z-index:5; pointer-events:none; }
+  header h1 { font:600 20px Georgia, serif; letter-spacing:.02em; }
+  header .sub { color:var(--ink2); font-size:12px; }
+  #modes { position:fixed; top:20px; right:24px; z-index:7; display:flex; gap:6px; }
+  #modes button { background:#0b0d16cc; border:1px solid var(--line); color:var(--ink2);
+                  border-radius:99px; padding:6px 14px; font-size:12px; cursor:pointer; }
+  #modes button.on { color:var(--accent); border-color:var(--accent); }
+  #panel { position:fixed; top:0; right:0; bottom:0; width:340px; z-index:6;
+           background:var(--panel); backdrop-filter: blur(14px); border-left:1px solid var(--line);
+           padding:22px; overflow-y:auto; transform:translateX(100%); transition:transform .25s ease; }
+  #panel.open { transform:none; }
+  #panel h2 { font:600 18px Georgia, serif; color:var(--accent); }
+  #panel .meta { color:var(--ink2); font-size:12px; margin:2px 0 16px; }
+  #panel .close { position:absolute; top:14px; right:16px; background:none; border:none;
+                  color:var(--ink2); font-size:18px; cursor:pointer; }
+  .person { padding:9px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+  .person:hover .nm { color:var(--accent); }
+  .person .nm { font-size:15px; }
+  .person .last { color:var(--ink2); font-size:12px; }
+  .person .last b { color:var(--ink); font-weight:500; }
+  .refs { display:none; margin:8px 0 4px; padding:10px; background:#0b0d16aa; border:1px solid var(--line);
+          border-radius:6px; font-size:12px; }
+  .refs.show { display:block; }
+  .refs h4 { color:var(--accent); font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin:8px 0 3px; }
+  .refs h4:first-child { margin-top:0; }
+  .refs pre { white-space:pre-wrap; color:var(--ink2); font:11px/1.5 ui-monospace, monospace; max-height:180px; overflow:auto; }
+  .refs .loading { color:var(--ink3); font-style:italic; }
+  form { margin-top:18px; display:flex; gap:6px; }
+  input, select, button { background:#0b0d16; border:1px solid var(--line); color:var(--ink);
+          border-radius:6px; padding:7px 9px; font-size:13px; }
+  input { flex:1; min-width:0; }
+  button { cursor:pointer; color:var(--accent); border-color:var(--accent); }
+  #msg { font-size:12px; color:var(--ink2); margin-top:8px; min-height:16px; }
+  #unplaced { position:fixed; left:24px; bottom:20px; z-index:5; color:var(--ink3); font-size:12px; max-width:420px; }
+  #unplaced b { color:var(--ink2); font-weight:500; }
+</style>
+</head>
+<body>
+<div id="globe"></div>
+<header><h1>The Observatory</h1><div class="sub" id="subtitle">people of the garden, live from the vault · click a city</div></header>
+<div id="modes">
+  <button id="m-people" class="on">People</button>
+  <button id="m-journey">Journey</button>
+</div>
+<aside id="panel">
+  <button class="close" onclick="panel.classList.remove('open')">✕</button>
+  <h2 id="p-city"></h2>
+  <div class="meta" id="p-meta"></div>
+  <div id="p-people"></div>
+  <form id="p-form">
+    <input id="p-name" placeholder="add a person…" autocomplete="off">
+    <button>plant</button>
+  </form>
+  <div id="msg"></div>
+</aside>
+<div id="unplaced"></div>
+
+<script src="https://unpkg.com/globe.gl@2.34.4/dist/globe.gl.min.js"
+        integrity="sha384-boR1tzK+m2z3pM2fQMq+PoYI0pIQmU+zWj+z3Oy5czzi97itGHXoL/YTj4ypMFbq"
+        crossorigin="anonymous"></script>
+<script>
+const panel = document.getElementById('panel');
+let NET = null, currentCity = null;
+
+const world = Globe()(document.getElementById('globe'))
+  .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+  .backgroundColor('#0b0d16')
+  .atmosphereColor('#93a4f5')
+  .atmosphereAltitude(0.18)
+  .pointAltitude(d => 0.02 + d.people.length * 0.012)
+  .pointColor(() => '#93a4f5')
+  .pointRadius(0.45)
+  .pointLabel(d => `<b>${d.name}</b> · ${d.people.length}`)
+  .labelText('name')
+  .labelSize(1.1)
+  .labelDotRadius(0)
+  .labelColor(() => '#e8e6e1')
+  .labelAltitude(0.015)
+  .arcColor(() => ['#93a4f5', '#93a4f522'])
+  .arcStroke(0.35)
+  .arcDashLength(0.5).arcDashGap(0.2).arcDashAnimateTime(4000)
+  .onPointClick(openCity)
+  .onLabelClick(openCity);
+
+world.controls().autoRotate = true;
+world.controls().autoRotateSpeed = 0.4;
+
+async function load() {
+  NET = await (await fetch('/api/network')).json();
+  world.pointsData(NET.cities).labelsData(NET.cities);
+  const home = NET.cities.find(c => c.tag === NET.home);
+  if (home) {
+    world.arcsData(NET.cities.filter(c => c.tag !== NET.home).map(c => ({
+      startLat: home.lat, startLng: home.lng, endLat: c.lat, endLng: c.lng })));
+    world.pointOfView({ lat: home.lat, lng: home.lng, altitude: 2.1 }, 0);
+  }
+  document.getElementById('unplaced').innerHTML = NET.unplaced.length
+    ? `<b>unplaced:</b> ${NET.unplaced.map(p => p.name).join(' · ')}`
+    : '';
+  if (currentCity) openCity(NET.cities.find(c => c.tag === currentCity) ?? null);
+}
+
+function fmt(last) {
+  return last ? `<b>${last.what}</b> · ${last.day}` : '<i>no moment yet</i>';
+}
+
+function openCity(c) {
+  if (!c) return;
+  currentCity = c.tag;
+  world.controls().autoRotate = false;
+  document.getElementById('p-city').textContent = c.name;
+  document.getElementById('p-meta').textContent =
+    `${c.people.length} ${c.people.length === 1 ? 'person' : 'people'} · sorted by last seen`;
+  document.getElementById('p-people').innerHTML = c.people.map(p => `
+    <div class="person" data-name="${p.name}">
+      <div class="nm">${p.name}</div>
+      <div class="last">${fmt(p.last)}</div>
+      <div class="refs" id="refs-${CSS.escape(p.name)}"></div>
+    </div>`).join('');
+  for (const el of document.querySelectorAll('.person'))
+    el.addEventListener('click', () => toggleRefs(el.dataset.name));
+  panel.classList.add('open');
+  document.getElementById('msg').textContent = '';
+}
+
+async function toggleRefs(name) {
+  const box = document.getElementById('refs-' + CSS.escape(name));
+  if (box.classList.contains('show')) { box.classList.remove('show'); return; }
+  box.classList.add('show');
+  if (box.dataset.loaded) return;
+  box.innerHTML = '<div class="loading">searching the ponds…</div>';
+  const r = await (await fetch('/api/references?name=' + encodeURIComponent(name))).json();
+  box.dataset.loaded = '1';
+  box.innerHTML = r.error
+    ? `<div class="loading">${r.error}</div>`
+    : r.results.map(p => `<h4>${p.pond}</h4><pre>${p.output.replace(/</g, '&lt;')}</pre>`).join('');
+}
+
+// ── Journey mode: cycles as stops, transitions as ordered arcs ──
+let JOURNEY = null, MODE = 'people';
+async function showJourney() {
+  MODE = 'journey';
+  setModeButtons();
+  panel.classList.remove('open');
+  if (!JOURNEY) JOURNEY = await (await fetch('/api/cycles')).json();
+  const seen = new Map();
+  for (const s of JOURNEY.stops) seen.set(s.place, { ...s, visits: (seen.get(s.place)?.visits ?? 0) + 1 });
+  const stops = Array.from(seen.values());
+  world.pointsData(stops)
+    .pointAltitude(d => 0.02 + d.visits * 0.02)
+    .pointLabel(d => `<b>${d.place}</b> · ${d.visits} ${d.visits === 1 ? 'season' : 'seasons'}`)
+    .labelsData(stops).labelText('place')
+    .arcsData(JOURNEY.arcs)
+    .arcLabel(d => `${JOURNEY.stops[d.order - 1].cycle} → ${JOURNEY.stops[d.order]?.cycle ?? ''}`);
+  world.onPointClick(openJourneyPanel).onLabelClick(openJourneyPanel);
+  document.getElementById('subtitle').textContent =
+    `${JOURNEY.stops.length} seasons across ${stops.length} places · transitions in order · click a stop`;
+  document.getElementById('unplaced').innerHTML = JOURNEY.skipped.length
+    ? `<b>place unknown:</b> ${JOURNEY.skipped.join(' · ')}` : '';
+}
+function openJourneyPanel(d) {
+  world.controls().autoRotate = false;
+  const visits = JOURNEY.stops.filter(s => s.place === d.place);
+  document.getElementById('p-city').textContent = d.place;
+  document.getElementById('p-meta').textContent = `${visits.length} ${visits.length === 1 ? 'season' : 'seasons'} here`;
+  document.getElementById('p-people').innerHTML = visits.map(s => `
+    <div class="person">
+      <div class="nm">${s.n}. ${s.cycle}</div>
+      <div class="last"><b>${s.start}</b> → ${s.end ?? 'open'}</div>
+      ${s.intention ? `<div class="last" style="margin-top:4px">${s.intention}</div>` : ''}
+    </div>`).join('');
+  document.getElementById('p-form').style.display = 'none';
+  panel.classList.add('open');
+}
+function showPeople() {
+  MODE = 'people';
+  setModeButtons();
+  panel.classList.remove('open');
+  document.getElementById('p-form').style.display = '';
+  world.pointsData([]).arcsData([]).labelsData([]);
+  world.pointAltitude(d => 0.02 + d.people.length * 0.012)
+    .pointLabel(d => `<b>${d.name}</b> · ${d.people.length}`)
+    .labelText('name');
+  world.onPointClick(openCity).onLabelClick(openCity);
+  document.getElementById('subtitle').textContent = 'people of the garden, live from the vault · click a city';
+  load();
+}
+function setModeButtons() {
+  document.getElementById('m-people').classList.toggle('on', MODE === 'people');
+  document.getElementById('m-journey').classList.toggle('on', MODE === 'journey');
+}
+document.getElementById('m-people').addEventListener('click', showPeople);
+document.getElementById('m-journey').addEventListener('click', showJourney);
+
+document.getElementById('p-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('p-name').value;
+  const res = await fetch('/api/person', { method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name, city: currentCity }) });
+  const out = await res.json();
+  document.getElementById('msg').textContent = out.error ? `✗ ${out.error}` : `✓ ${out.created} planted in ${document.getElementById('p-city').textContent}`;
+  if (!out.error) { document.getElementById('p-name').value = ''; load(); }
+});
+
+load();
+</script>
+</body>
+</html>
