@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   allocateMoment,
   canAllocateToPhase,
@@ -409,5 +409,41 @@ describe("Moment", () => {
         expect(result.error).toBe("Moment ref is not a parseable URL: nope");
       }
     });
+  });
+});
+
+describe("Moment.personIds", () => {
+  const base: Moment = {
+    id: "m1",
+    name: "dinner bcn",
+    areaId: "a1",
+    habitId: null,
+    cycleId: null,
+    cyclePlanId: null,
+    phase: Phase.EVENING,
+    day: "2026-08-07",
+    order: 0,
+    tags: null,
+    createdAt: "2026-08-07T00:00:00.000Z",
+    updatedAt: "2026-08-07T00:00:00.000Z",
+  };
+
+  it("composes several people under one moment", () => {
+    const m: Moment = { ...base, personIds: ["p-yanik", "p-yoel", "p-manu"] };
+    expect(m.personIds).toHaveLength(3);
+  });
+
+  it("is absent on a moment that involves nobody", () => {
+    expect(base.personIds).toBeUndefined();
+  });
+
+  it("types personIds as an optional string array", () => {
+    expectTypeOf<Moment["personIds"]>().toEqualTypeOf<string[] | undefined>();
+  });
+
+  it("rejects a non-array personIds at the type level", () => {
+    // @ts-expect-error personIds is string[] — a bare string must not assign
+    const bad: Moment = { ...base, personIds: "p-yanik" };
+    expect(bad.personIds).toBe("p-yanik");
   });
 });

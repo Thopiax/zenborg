@@ -45,7 +45,16 @@ export function computeHealth(
   if (habit.attitude === 'BEING') return 'evergreen';
 
   const rhythm = resolveRhythm(habit, plan);
-  const habitMoments = moments.filter((m) => m.habitId === habit.id);
+  // A moment belongs to this habit when it was planted against it OR when it
+  // names it among the people present. People ARE habit records, so one dinner
+  // with three friends is ONE moment carrying three `personIds` — without the
+  // second clause that dinner would be invisible here while list_people_to_reach
+  // counts it, and the two read-paths would disagree about the same person.
+  // For an ordinary habit `personIds` can never hold its own id, so this is
+  // provably inert there. Mirrors src/domain/services/HabitHealthService.ts.
+  const habitMoments = moments.filter(
+    (m) => m.habitId === habit.id || (m.personIds?.includes(habit.id) ?? false),
+  );
 
   if (habit.attitude === 'BEGINNING') {
     return habitMoments.length >= 5 ? 'budding' : 'seedling';
@@ -108,7 +117,12 @@ export function daysSinceLast(
   moments: Moment[],
   now: Date,
 ): number | null {
-  const habitMoments = moments.filter((m) => m.habitId === habitId);
+  // Same widening as `computeHealth` — these two are emitted side by side in
+  // get_habit_health / list_wilting_habits, so a narrower filter here would
+  // report "90 days" next to a "blooming" derived from the very same moments.
+  const habitMoments = moments.filter(
+    (m) => m.habitId === habitId || (m.personIds?.includes(habitId) ?? false),
+  );
   const last = latestAllocationDate(habitMoments);
   if (last === null) return null;
   return Math.floor((now.getTime() - last.getTime()) / MS_PER_DAY);

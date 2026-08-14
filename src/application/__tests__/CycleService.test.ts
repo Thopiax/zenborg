@@ -1147,3 +1147,161 @@ describe("budgetHabitToCycle (derive paradigm)", () => {
     expect(result.budgetedCount).toBe(5);
   });
 });
+
+describe("CycleService.getCyclePlanningProposals — daysSinceLast agrees with currentHealth", () => {
+  let service: CycleService;
+
+  /**
+   * Proposals read the wall clock (`new Date()`), so days are expressed
+   * relative to the real today rather than a frozen instant.
+   */
+  const isoDay = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  /**
+   * The day `n` local calendar days before today. Shifts the calendar date
+   * rather than subtracting milliseconds, so a DST boundary cannot slide it.
+   */
+  const daysAgo = (n: number) => {
+    const shifted = new Date();
+    shifted.setDate(shifted.getDate() - n);
+    return isoDay(shifted);
+  };
+
+  const WEEKLY: Rhythm = { period: "weekly", count: 1 }; // 7-day threshold
+
+  const makePerson = (id: string, name: string) => ({
+    ...makeHabit(id),
+    name,
+    attitude: Attitude.KEEPING,
+    rhythm: WEEKLY,
+    kind: "person" as const,
+  });
+
+  const makeMoment = (
+    id: string,
+    overrides: Partial<{
+      habitId: string | null;
+      day: string | null;
+      personIds: string[];
+    }> = {}
+  ) => ({
+    id,
+    name: "dinner",
+    areaId: "area-1",
+    habitId: null as string | null,
+    cycleId: null as string | null,
+    cyclePlanId: null as string | null,
+    phase: Phase.EVENING as Phase,
+    day: daysAgo(2) as string | null,
+    order: 0,
+    emoji: null,
+    tags: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    moments$.set({});
+    cyclePlans$.set({});
+    cycles$.set({});
+    habits$.set({});
+    activeCycleId$.set(null);
+    storeHydrated$.set(false);
+    cycles$["cycle-1"].set({
+      ...makeCycle("cycle-1"),
+      startDate: "2026-02-01",
+      endDate: "2026-02-28",
+    });
+    activeCycleId$.set("cycle-1");
+    service = new CycleService();
+  });
+
+  it("counts a moment that names the habit only in personIds", () => {
+    // `habitId: null` and the id only in `personIds` — the `||` cannot
+    // short-circuit on a habitId match, so this exercises the widened clause.
+    habits$["p-yaya"].set(makePerson("p-yaya", "Yaya"));
+    moments$["m-group-dinner"].set(
+      makeMoment("m-group-dinner", { personIds: ["p-abuelo", "p-yaya"] })
+    );
+
+    const row = service
+      .getCyclePlanningProposals("cycle-1")
+      .find((p) => p.habitId === "p-yaya");
+
+    expect(row).toBeDefined();
+    expect(row?.daysSinceLast).toBe(2);
+    expect(row?.currentHealth).toBe("blooming");
+  });
+
+  it("no longer emits a stale pre-migration day count beside a blooming", () => {
+    // The reported defect: currentHealth and daysSinceLast land in the SAME
+    // proposal object. A person seen at a group dinner two days ago, whose last
+    // directly-planted moment is 400 days old, read as blooming / 400 days.
+    habits$["p-yaya"].set(makePerson("p-yaya", "Yaya"));
+    moments$["m-stale"].set(
+      makeMoment("m-stale", { habitId: "p-yaya", day: daysAgo(400) })
+    );
+    moments$["m-group-dinner"].set(
+      makeMoment("m-group-dinner", { personIds: ["p-yaya"] })
+    );
+
+    const row = service
+      .getCyclePlanningProposals("cycle-1")
+      .find((p) => p.habitId === "p-yaya");
+
+    expect(row?.currentHealth).toBe("blooming");
+    expect(row?.daysSinceLast).toBe(2);
+  });
+
+  it("leaves an ordinary habit's daysSinceLast untouched", () => {
+    // No-regression pin: `personIds` can never hold an ordinary habit's own id,
+    // so the widened predicate is inert for every non-person record.
+    habits$["h-meditation"].set({
+      ...makeHabit("h-meditation"),
+      name: "meditation",
+      attitude: Attitude.KEEPING,
+      rhythm: WEEKLY,
+    });
+    moments$["m-own"].set(
+      makeMoment("m-own", { habitId: "h-meditation" })
+    );
+    moments$["m-other"].set(
+      makeMoment("m-other", {
+        day: daysAgo(1),
+        personIds: ["p-yaya", "p-abuelo"],
+      })
+    );
+
+    const row = service
+      .getCyclePlanningProposals("cycle-1")
+      .find((p) => p.habitId === "h-meditation");
+
+    expect(row?.daysSinceLast).toBe(2);
+    expect(row?.currentHealth).toBe("blooming");
+  });
+
+  it("stays null for a habit whose only moments name other people", () => {
+    habits$["h-meditation"].set({
+      ...makeHabit("h-meditation"),
+      name: "meditation",
+      attitude: Attitude.KEEPING,
+      rhythm: WEEKLY,
+    });
+    moments$["m-other"].set(
+      makeMoment("m-other", { personIds: ["p-yaya", "p-abuelo"] })
+    );
+
+    const row = service
+      .getCyclePlanningProposals("cycle-1")
+      .find((p) => p.habitId === "h-meditation");
+
+    expect(row?.daysSinceLast).toBeNull();
+    expect(row?.currentHealth).toBe("wilting");
+  });
+});
