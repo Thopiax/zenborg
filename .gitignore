@@ -64,3 +64,4 @@ mcp-server/bun.lock
 .local/
 *.local.json
 .claude/*.local.md
+*.local.csv
