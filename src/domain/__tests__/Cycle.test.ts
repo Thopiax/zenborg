@@ -1,325 +1,467 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from "vitest";
 import {
-  createCycle,
-  updateCycle,
+  acceptsMachineDraft,
+  type Cycle,
   completeCycle,
+  createCycle,
+  isCycleError,
   isDateInCycle,
-  isCycleError
-} from '../entities/Cycle'
+  isHumanWritten,
+  updateCycle,
+  writeReflection,
+} from "../entities/Cycle";
 
-describe('Cycle', () => {
-  describe('createCycle', () => {
-    it('should create a valid cycle', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
+describe("Cycle", () => {
+  describe("createCycle", () => {
+    it("should create a valid cycle", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
 
-      expect(isCycleError(result)).toBe(false)
+      expect(isCycleError(result)).toBe(false);
       if (!isCycleError(result)) {
-        expect(result.id).toBeDefined()
-        expect(result.name).toBe('Q1 2025')
-        expect(result.startDate).toBe('2025-01-01')
-        expect(result.endDate).toBeNull()
-        expect(result.createdAt).toBeDefined()
-        expect(result.updatedAt).toBeDefined()
+        expect(result.id).toBeDefined();
+        expect(result.name).toBe("Q1 2025");
+        expect(result.startDate).toBe("2025-01-01");
+        expect(result.endDate).toBeNull();
+        expect(result.createdAt).toBeDefined();
+        expect(result.updatedAt).toBeDefined();
       }
-    })
+    });
 
-    it('should create cycle with end date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-03-31' })
-
-      expect(isCycleError(result)).toBe(false)
-      if (!isCycleError(result)) {
-        expect(result.startDate).toBe('2025-01-01')
-        expect(result.endDate).toBe('2025-03-31')
-      }
-    })
-
-    it('defaults intention and reflection to null', () => {
-      const result = createCycle({ name: 'Paris', startDate: '2026-03-12' })
-
-      expect(isCycleError(result)).toBe(false)
-      if (!isCycleError(result)) {
-        expect(result.intention).toBeNull()
-        expect(result.reflection).toBeNull()
-      }
-    })
-
-    it('stores intention when provided at creation', () => {
+    it("should create cycle with end date", () => {
       const result = createCycle({
-        name: 'Paris',
-        startDate: '2026-03-12',
-        intention: 'Ship the rework; rest in the evenings.',
-      })
+        name: "Q1 2025",
+        startDate: "2025-01-01",
+        endDate: "2025-03-31",
+      });
 
-      expect(isCycleError(result)).toBe(false)
+      expect(isCycleError(result)).toBe(false);
       if (!isCycleError(result)) {
-        expect(result.intention).toBe('Ship the rework; rest in the evenings.')
-        expect(result.reflection).toBeNull()
+        expect(result.startDate).toBe("2025-01-01");
+        expect(result.endDate).toBe("2025-03-31");
       }
-    })
+    });
 
-    it('should reject empty name', () => {
-      const result = createCycle({ name: '', startDate: '2025-01-01' })
+    it("defaults intention and reflection to null", () => {
+      const result = createCycle({ name: "Paris", startDate: "2026-03-12" });
 
-      expect(isCycleError(result)).toBe(true)
-      if (isCycleError(result)) {
-        expect(result.error).toBe('Cycle name cannot be empty')
-      }
-    })
-
-    it('should reject whitespace-only name', () => {
-      const result = createCycle({ name: '   ', startDate: '2025-01-01' })
-
-      expect(isCycleError(result)).toBe(true)
-      if (isCycleError(result)) {
-        expect(result.error).toBe('Cycle name cannot be empty')
-      }
-    })
-
-    it('should reject empty start date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '' })
-
-      expect(isCycleError(result)).toBe(true)
-      if (isCycleError(result)) {
-        expect(result.error).toBe('Cycle must have a start date')
-      }
-    })
-
-    it('should reject invalid start date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: 'invalid-date' })
-
-      expect(isCycleError(result)).toBe(true)
-      if (isCycleError(result)) {
-        expect(result.error).toContain('valid ISO date')
-      }
-    })
-
-    it('should reject invalid end date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: 'invalid-date' })
-
-      expect(isCycleError(result)).toBe(true)
-      if (isCycleError(result)) {
-        expect(result.error).toContain('valid ISO date')
-      }
-    })
-
-    it('should reject end date before start date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-03-31', endDate: '2025-01-01' })
-
-      expect(isCycleError(result)).toBe(true)
-      if (isCycleError(result)) {
-        expect(result.error).toBe('End date must be after start date')
-      }
-    })
-
-    it('should reject end date equal to start date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-01-01' })
-
-      expect(isCycleError(result)).toBe(true)
-      if (isCycleError(result)) {
-        expect(result.error).toBe('End date must be after start date')
-      }
-    })
-
-    it('should trim name', () => {
-      const result = createCycle({ name: '  Q1 2025  ', startDate: '2025-01-01' })
-
-      expect(isCycleError(result)).toBe(false)
+      expect(isCycleError(result)).toBe(false);
       if (!isCycleError(result)) {
-        expect(result.name).toBe('Q1 2025')
+        expect(result.intention).toBeNull();
+        expect(result.reflection).toBeNull();
       }
-    })
-  })
+    });
 
-  describe('updateCycle', () => {
-    it('should update cycle name', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
+    it("stores intention when provided at creation", () => {
+      const result = createCycle({
+        name: "Paris",
+        startDate: "2026-03-12",
+        intention: "Ship the rework; rest in the evenings.",
+      });
+
+      expect(isCycleError(result)).toBe(false);
+      if (!isCycleError(result)) {
+        expect(result.intention).toBe("Ship the rework; rest in the evenings.");
+        expect(result.reflection).toBeNull();
+      }
+    });
+
+    it("should reject empty name", () => {
+      const result = createCycle({ name: "", startDate: "2025-01-01" });
+
+      expect(isCycleError(result)).toBe(true);
+      if (isCycleError(result)) {
+        expect(result.error).toBe("Cycle name cannot be empty");
+      }
+    });
+
+    it("should reject whitespace-only name", () => {
+      const result = createCycle({ name: "   ", startDate: "2025-01-01" });
+
+      expect(isCycleError(result)).toBe(true);
+      if (isCycleError(result)) {
+        expect(result.error).toBe("Cycle name cannot be empty");
+      }
+    });
+
+    it("should reject empty start date", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "" });
+
+      expect(isCycleError(result)).toBe(true);
+      if (isCycleError(result)) {
+        expect(result.error).toBe("Cycle must have a start date");
+      }
+    });
+
+    it("should reject invalid start date", () => {
+      const result = createCycle({
+        name: "Q1 2025",
+        startDate: "invalid-date",
+      });
+
+      expect(isCycleError(result)).toBe(true);
+      if (isCycleError(result)) {
+        expect(result.error).toContain("valid ISO date");
+      }
+    });
+
+    it("should reject invalid end date", () => {
+      const result = createCycle({
+        name: "Q1 2025",
+        startDate: "2025-01-01",
+        endDate: "invalid-date",
+      });
+
+      expect(isCycleError(result)).toBe(true);
+      if (isCycleError(result)) {
+        expect(result.error).toContain("valid ISO date");
+      }
+    });
+
+    it("should reject end date before start date", () => {
+      const result = createCycle({
+        name: "Q1 2025",
+        startDate: "2025-03-31",
+        endDate: "2025-01-01",
+      });
+
+      expect(isCycleError(result)).toBe(true);
+      if (isCycleError(result)) {
+        expect(result.error).toBe("End date must be after start date");
+      }
+    });
+
+    it("should reject end date equal to start date", () => {
+      const result = createCycle({
+        name: "Q1 2025",
+        startDate: "2025-01-01",
+        endDate: "2025-01-01",
+      });
+
+      expect(isCycleError(result)).toBe(true);
+      if (isCycleError(result)) {
+        expect(result.error).toBe("End date must be after start date");
+      }
+    });
+
+    it("should trim name", () => {
+      const result = createCycle({
+        name: "  Q1 2025  ",
+        startDate: "2025-01-01",
+      });
+
+      expect(isCycleError(result)).toBe(false);
+      if (!isCycleError(result)) {
+        expect(result.name).toBe("Q1 2025");
+      }
+    });
+  });
+
+  describe("updateCycle", () => {
+    it("should update cycle name", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        const updated = updateCycle(result, { name: 'First Quarter' })
+        const updated = updateCycle(result, { name: "First Quarter" });
 
-        expect(isCycleError(updated)).toBe(false)
+        expect(isCycleError(updated)).toBe(false);
         if (!isCycleError(updated)) {
-          expect(updated.name).toBe('First Quarter')
-          expect(updated.startDate).toBe(result.startDate)
-          expect(updated.endDate).toBe(result.endDate)
-          expect(updated.updatedAt).toBeDefined()
+          expect(updated.name).toBe("First Quarter");
+          expect(updated.startDate).toBe(result.startDate);
+          expect(updated.endDate).toBe(result.endDate);
+          expect(updated.updatedAt).toBeDefined();
         }
       }
-    })
+    });
 
-    it('should update start date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
-
-      if (!isCycleError(result)) {
-        const updated = updateCycle(result, { startDate: '2025-01-15' })
-
-        expect(isCycleError(updated)).toBe(false)
-        if (!isCycleError(updated)) {
-          expect(updated.startDate).toBe('2025-01-15')
-        }
-      }
-    })
-
-    it('should update end date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
+    it("should update start date", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        const updated = updateCycle(result, { endDate: '2025-03-31' })
+        const updated = updateCycle(result, { startDate: "2025-01-15" });
 
-        expect(isCycleError(updated)).toBe(false)
+        expect(isCycleError(updated)).toBe(false);
         if (!isCycleError(updated)) {
-          expect(updated.endDate).toBe('2025-03-31')
+          expect(updated.startDate).toBe("2025-01-15");
         }
       }
-    })
+    });
 
-    it('should update multiple fields at once', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
+    it("should update end date", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
+
+      if (!isCycleError(result)) {
+        const updated = updateCycle(result, { endDate: "2025-03-31" });
+
+        expect(isCycleError(updated)).toBe(false);
+        if (!isCycleError(updated)) {
+          expect(updated.endDate).toBe("2025-03-31");
+        }
+      }
+    });
+
+    it("should update multiple fields at once", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
         const updated = updateCycle(result, {
-          name: 'First Quarter',
-          endDate: '2025-03-31',
-        })
+          name: "First Quarter",
+          endDate: "2025-03-31",
+        });
 
-        expect(isCycleError(updated)).toBe(false)
+        expect(isCycleError(updated)).toBe(false);
         if (!isCycleError(updated)) {
-          expect(updated.name).toBe('First Quarter')
-          expect(updated.endDate).toBe('2025-03-31')
+          expect(updated.name).toBe("First Quarter");
+          expect(updated.endDate).toBe("2025-03-31");
         }
       }
-    })
+    });
 
-    it('should reject empty name update', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
+    it("should reject empty name update", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        const updated = updateCycle(result, { name: '' })
+        const updated = updateCycle(result, { name: "" });
 
-        expect(isCycleError(updated)).toBe(true)
+        expect(isCycleError(updated)).toBe(true);
         if (isCycleError(updated)) {
-          expect(updated.error).toBe('Cycle name cannot be empty')
+          expect(updated.error).toBe("Cycle name cannot be empty");
         }
       }
-    })
+    });
 
-    it('should reject invalid start date update', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
+    it("should reject invalid start date update", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        const updated = updateCycle(result, { startDate: 'invalid' })
+        const updated = updateCycle(result, { startDate: "invalid" });
 
-        expect(isCycleError(updated)).toBe(true)
+        expect(isCycleError(updated)).toBe(true);
         if (isCycleError(updated)) {
-          expect(updated.error).toContain('valid ISO date')
+          expect(updated.error).toContain("valid ISO date");
         }
       }
-    })
+    });
 
-    it('should reject invalid end date update', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
+    it("should reject invalid end date update", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        const updated = updateCycle(result, { endDate: 'invalid' })
+        const updated = updateCycle(result, { endDate: "invalid" });
 
-        expect(isCycleError(updated)).toBe(true)
+        expect(isCycleError(updated)).toBe(true);
         if (isCycleError(updated)) {
-          expect(updated.error).toContain('valid ISO date')
+          expect(updated.error).toContain("valid ISO date");
         }
       }
-    })
+    });
 
-    it('should reject end date before start date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
+    it("should reject end date before start date", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        const updated = updateCycle(result, { endDate: '2024-12-31' })
+        const updated = updateCycle(result, { endDate: "2024-12-31" });
 
-        expect(isCycleError(updated)).toBe(true)
+        expect(isCycleError(updated)).toBe(true);
         if (isCycleError(updated)) {
-          expect(updated.error).toBe('End date must be after start date')
+          expect(updated.error).toBe("End date must be after start date");
         }
       }
-    })
+    });
 
-    it('should allow clearing end date', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-03-31' })
-      expect(isCycleError(result)).toBe(false)
+    it("should allow clearing end date", () => {
+      const result = createCycle({
+        name: "Q1 2025",
+        startDate: "2025-01-01",
+        endDate: "2025-03-31",
+      });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        const updated = updateCycle(result, { endDate: null })
+        const updated = updateCycle(result, { endDate: null });
 
-        expect(isCycleError(updated)).toBe(false)
+        expect(isCycleError(updated)).toBe(false);
         if (!isCycleError(updated)) {
-          expect(updated.endDate).toBeNull()
+          expect(updated.endDate).toBeNull();
         }
       }
-    })
-  })
+    });
+  });
 
-  describe('completeCycle', () => {
-    it('should complete a cycle by setting end date to today', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
-
-      if (!isCycleError(result)) {
-        const completed = completeCycle(result)
-        const today = new Date().toISOString().split('T')[0]
-
-        expect(completed.endDate).toBe(today)
-        expect(completed.updatedAt).toBeDefined()
-      }
-    })
-  })
-
-  describe('isDateInCycle', () => {
-    it('should detect date within bounded cycle', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-03-31' })
-      expect(isCycleError(result)).toBe(false)
+  describe("completeCycle", () => {
+    it("should complete a cycle by setting end date to today", () => {
+      const result = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        expect(isDateInCycle(result, '2025-01-01')).toBe(true)
-        expect(isDateInCycle(result, '2025-02-15')).toBe(true)
-        expect(isDateInCycle(result, '2025-03-31')).toBe(true)
-      }
-    })
+        const completed = completeCycle(result);
+        const today = new Date().toISOString().split("T")[0];
 
-    it('should detect date outside bounded cycle', () => {
-      const result = createCycle({ name: 'Q1 2025', startDate: '2025-01-01', endDate: '2025-03-31' })
-      expect(isCycleError(result)).toBe(false)
+        expect(completed.endDate).toBe(today);
+        expect(completed.updatedAt).toBeDefined();
+      }
+    });
+  });
+
+  describe("isDateInCycle", () => {
+    it("should detect date within bounded cycle", () => {
+      const result = createCycle({
+        name: "Q1 2025",
+        startDate: "2025-01-01",
+        endDate: "2025-03-31",
+      });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        expect(isDateInCycle(result, '2024-12-31')).toBe(false)
-        expect(isDateInCycle(result, '2025-04-01')).toBe(false)
+        expect(isDateInCycle(result, "2025-01-01")).toBe(true);
+        expect(isDateInCycle(result, "2025-02-15")).toBe(true);
+        expect(isDateInCycle(result, "2025-03-31")).toBe(true);
       }
-    })
+    });
 
-    it('should detect date within ongoing cycle', () => {
-      const result = createCycle({ name: 'Ongoing', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
+    it("should detect date outside bounded cycle", () => {
+      const result = createCycle({
+        name: "Q1 2025",
+        startDate: "2025-01-01",
+        endDate: "2025-03-31",
+      });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        expect(isDateInCycle(result, '2025-01-01')).toBe(true)
-        expect(isDateInCycle(result, '2025-12-31')).toBe(true)
-        expect(isDateInCycle(result, '2030-01-01')).toBe(true)
+        expect(isDateInCycle(result, "2024-12-31")).toBe(false);
+        expect(isDateInCycle(result, "2025-04-01")).toBe(false);
       }
-    })
+    });
 
-    it('should detect date before ongoing cycle', () => {
-      const result = createCycle({ name: 'Ongoing', startDate: '2025-01-01' })
-      expect(isCycleError(result)).toBe(false)
+    it("should detect date within ongoing cycle", () => {
+      const result = createCycle({ name: "Ongoing", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
 
       if (!isCycleError(result)) {
-        expect(isDateInCycle(result, '2024-12-31')).toBe(false)
+        expect(isDateInCycle(result, "2025-01-01")).toBe(true);
+        expect(isDateInCycle(result, "2025-12-31")).toBe(true);
+        expect(isDateInCycle(result, "2030-01-01")).toBe(true);
       }
-    })
-  })
-})
+    });
+
+    it("should detect date before ongoing cycle", () => {
+      const result = createCycle({ name: "Ongoing", startDate: "2025-01-01" });
+      expect(isCycleError(result)).toBe(false);
+
+      if (!isCycleError(result)) {
+        expect(isDateInCycle(result, "2024-12-31")).toBe(false);
+      }
+    });
+  });
+});
+
+describe("Cycle reflection provenance", () => {
+  const season = (over: Partial<Cycle> = {}): Cycle => ({
+    id: "c",
+    name: "Avalon Spring",
+    startDate: "2026-03-01",
+    endDate: "2026-03-31",
+    intention: null,
+    reflection: null,
+    createdAt: "",
+    updatedAt: "",
+    ...over,
+  });
+
+  describe("isHumanWritten", () => {
+    it("is true only when the person stamped it", () => {
+      expect(isHumanWritten(season({ reflectionSource: "human" }))).toBe(true);
+    });
+
+    it("is false for a machine draft", () => {
+      expect(isHumanWritten(season({ reflectionSource: "machine" }))).toBe(
+        false,
+      );
+    });
+
+    it("is false when provenance is unknown", () => {
+      // The 229 reflections a script wrote before this field existed carry no
+      // stamp. Unknown must read as "not yours" — the failure that matters is
+      // a machine draft passing as your own words, never the reverse.
+      expect(isHumanWritten(season({ reflection: "Something." }))).toBe(false);
+    });
+  });
+
+  describe("acceptsMachineDraft", () => {
+    it("refuses to overwrite what the person wrote", () => {
+      expect(acceptsMachineDraft(season({ reflectionSource: "human" }))).toBe(
+        false,
+      );
+    });
+
+    it("allows a re-run over a previous machine draft", () => {
+      expect(acceptsMachineDraft(season({ reflectionSource: "machine" }))).toBe(
+        true,
+      );
+    });
+
+    it("allows a draft where nothing has been written", () => {
+      expect(acceptsMachineDraft(season())).toBe(true);
+    });
+  });
+
+  describe("writeReflection", () => {
+    it("stamps the person as the author when they write", () => {
+      const next = writeReflection(
+        season(),
+        "The season held Avalon.",
+        "human",
+      );
+
+      expect(next.reflection).toBe("The season held Avalon.");
+      expect(next.reflectionSource).toBe("human");
+    });
+
+    it("stamps a machine draft as a machine draft", () => {
+      const next = writeReflection(season(), "Drafted prose.", "machine");
+
+      expect(next.reflectionSource).toBe("machine");
+    });
+
+    it("clears the stamp along with the reflection", () => {
+      // No reflection, no author.
+      const next = writeReflection(
+        season({ reflection: "Gone.", reflectionSource: "human" }),
+        null,
+        "human",
+      );
+
+      expect(next.reflection).toBeNull();
+      expect(next.reflectionSource).toBeNull();
+    });
+
+    it("touches updatedAt", () => {
+      const next = writeReflection(
+        season({ updatedAt: "" }),
+        "Words.",
+        "human",
+      );
+
+      expect(next.updatedAt).not.toBe("");
+    });
+
+    it("leaves the rest of the season alone", () => {
+      const next = writeReflection(
+        season({ name: "Avalon Spring", intention: "Read the tide." }),
+        "Words.",
+        "human",
+      );
+
+      expect(next.name).toBe("Avalon Spring");
+      expect(next.intention).toBe("Read the tide.");
+      expect(next.startDate).toBe("2026-03-01");
+    });
+  });
+});

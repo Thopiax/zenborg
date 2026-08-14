@@ -1006,7 +1006,7 @@ server.tool(
 
 server.tool(
   'update_cycle',
-  'Partially update a cycle (name, dates, intention, reflection).',
+  'Partially update a cycle (name, dates, intention, reflection). Writing a reflection here stamps it as a machine draft, so harvest never shows it as the human\'s own words.',
   {
     id: z.string(),
     name: z.string().min(1).optional(),
@@ -1034,6 +1034,13 @@ server.tool(
         : {}),
       ...(updates.reflection !== undefined
         ? { reflection: updates.reflection.trim() }
+        : {}),
+      // An agent writing a reflection is a machine writing it, whoever asked
+      // for it. The stamp records who typed the bytes, not who wanted them —
+      // which is what keeps a draft from passing as the person's own words.
+      // Only an edit made by hand in the app stamps "human".
+      ...(updates.reflection !== undefined
+        ? { reflectionSource: 'machine' as const }
         : {}),
       updatedAt: nowIso(),
     };
