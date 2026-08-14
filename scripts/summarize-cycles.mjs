@@ -141,12 +141,17 @@ async function ask(prompt) {
 // budget and that carries no blank-line split is treated as hand-written.
 const REDO = process.argv.includes('--redo');
 const modelWritten = (c) => {
+  if (c.reflectionSource === 'human') return false; // edited in the Observatory
   const r = c.reflection?.trim();
   return !!r && r.includes('\n\n');
 };
 
+// --only <startDate> regenerates exactly one cycle, whatever its state.
+const ONLY = arg('only');
+
 const candidates = Object.values(cycles)
-  .filter((c) => (REDO ? !c.reflection?.trim() || modelWritten(c) : !c.reflection?.trim()))
+  .filter((c) => (ONLY ? c.startDate === ONLY
+    : REDO ? !c.reflection?.trim() || modelWritten(c) : !c.reflection?.trim()))
   .map((c) => ({ c, files: entriesFor(c) }))
   .filter((x) => x.files.length > 0)
   .sort((a, b) => b.c.startDate.localeCompare(a.c.startDate))

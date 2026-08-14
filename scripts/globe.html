@@ -117,6 +117,18 @@
   .curation b { color:#f5d393; font-weight:500; }
   .curation i { color:var(--accent); font-style:normal; }
   @media (max-width: 700px) { .carousel img { height:220px; } }
+  /* Inline editing — zenborg's idiom: edit in place, no modals. */
+  [contenteditable] { outline:none; border-radius:4px; transition:background .15s, box-shadow .15s; }
+  [contenteditable]:hover { background:#ffffff08; box-shadow:0 0 0 6px #ffffff08; }
+  [contenteditable]:focus { background:#ffffff0e; box-shadow:0 0 0 6px #ffffff0e, inset 0 -1px 0 var(--accent); }
+  .saved { color:var(--accent); font-size:11px; margin-left:8px; opacity:0; transition:opacity .3s; }
+  .saved.on { opacity:1; }
+  .moments { margin:14px 0 4px; }
+  .mrow { display:flex; align-items:baseline; gap:9px; padding:3px 0; font-size:13px; }
+  .mrow .dot { width:7px; height:7px; border-radius:50%; flex:none; align-self:center; }
+  .mrow .d { color:var(--ink3); font-size:11px; width:78px; flex:none; }
+  .mrow .n { color:var(--ink); }
+  .mrow .w { color:var(--ink3); font-size:11px; }
 </style>
 </head>
 <body>
@@ -349,15 +361,45 @@ async function showSeasons() {
     <div class="note">${r.count} reflections · newest first · L0 lede, then the tldr · press Escape to close</div>` +
     r.cycles.map(c => `
       <div class="season" data-start="${c.start}">
-        <div class="hdr">${c.start} → ${c.end ?? 'open'} · ${c.name}</div>
-        <div class="l0">${c.l0}</div>
-        ${c.l1 ? `<div class="l1">${c.l1.replace(/\n/g, '<br>')}</div>` : ''}
+        <div class="hdr">${c.start} → ${c.end ?? 'open'} · <span contenteditable data-field="name">${c.name}</span><span class="saved">saved</span></div>
+        <div class="l0" contenteditable data-field="l0">${c.l0}</div>
+        <div class="l1" contenteditable data-field="l1">${(c.l1 || '').replace(/\n/g, '<br>')}</div>
         <div class="strip"></div>
         <div class="raw"></div>
       </div>`).join('');
   for (const el of inner.querySelectorAll('.season')) {
-    el.addEventListener('click', () => toggleRaw(el));
+    el.addEventListener('click', (ev) => {
+      if (ev.target.isContentEditable) return; // editing is not expanding
+      toggleRaw(el);
+    });
+    wireEditing(el);
     loadStrip(el);
+  }
+}
+
+// Edit in place: blur or Enter commits, Escape reverts. Your words stamp the
+// cycle as human-written, which the summarizer will not overwrite.
+function wireEditing(el) {
+  for (const f of el.querySelectorAll('[contenteditable]')) {
+    let before = f.innerText;
+    f.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && f.dataset.field !== 'l1') { ev.preventDefault(); f.blur(); }
+      if (ev.key === 'Escape') { f.innerText = before; f.blur(); }
+      ev.stopPropagation();
+    });
+    f.addEventListener('click', (ev) => ev.stopPropagation());
+    f.addEventListener('blur', async () => {
+      const value = f.innerText.trim();
+      if (value === before.trim()) return;
+      const r = await (await fetch('/api/cycle', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ start: el.dataset.start, field: f.dataset.field, value }),
+      })).json();
+      if (r.error) { f.innerText = before; return; }
+      before = f.innerText;
+      const tag = el.querySelector('.saved');
+      if (tag) { tag.classList.add('on'); setTimeout(() => tag.classList.remove('on'), 1200); }
+    });
   }
 }
 
