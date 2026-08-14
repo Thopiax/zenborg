@@ -23,7 +23,14 @@ import * as path from 'node:path';
 const arg = (n) => { const i = process.argv.indexOf(`--${n}`); return i !== -1 ? process.argv[i + 1] : undefined; };
 const APPLY = process.argv.includes('--apply');
 const VAULT = process.env.KAIROS_HOME ?? path.join(os.homedir(), '.kairos');
-const JOURNAL = arg('journal') ?? path.join(os.homedir(), 'Developer/sandbox/saperene-obsidian-backup/Journal');
+// Era routing is natural: every journal dir contributes the dated entries in
+// a cycle's window — supernote carries recent seasons, saperene the old ones.
+const JOURNALS = arg('journal')
+  ? [arg('journal')]
+  : [
+      path.join(os.homedir(), 'Documents/Supernote/journals'),
+      path.join(os.homedir(), 'Developer/sandbox/saperene-obsidian-backup/Journal'),
+    ].filter((d) => fs.existsSync(d));
 const MODEL = arg('model') ?? 'qwen3.6:35b';
 const LIMIT = Number(arg('limit') ?? Infinity);
 const PER_ENTRY_CAP = 1500, TOTAL_CAP = 12000;
@@ -31,13 +38,20 @@ const PER_ENTRY_CAP = 1500, TOTAL_CAP = 12000;
 const cyclesPath = path.join(VAULT, 'cycles.json');
 const cycles = JSON.parse(fs.readFileSync(cyclesPath, 'utf8'));
 
-// index journal entries by day (filename date prefix)
+// index journal entries by day — filename date in YYYY-MM-DD or YYYYMMDD form
 const byDay = new Map();
-for (const fn of fs.readdirSync(JOURNAL)) {
-  const day = fn.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
-  if (!day || !fn.endsWith('.md')) continue;
-  if (!byDay.has(day)) byDay.set(day, []);
-  byDay.get(day).push(fn);
+for (const dir of JOURNALS) {
+  let count = 0;
+  for (const fn of fs.readdirSync(dir)) {
+    if (!fn.endsWith('.md') && !fn.endsWith('.txt')) continue;
+    const m = fn.match(/^(\d{4})[-_.]?(\d{2})[-_.]?(\d{2})/);
+    if (!m) continue;
+    const day = `${m[1]}-${m[2]}-${m[3]}`;
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(path.join(dir, fn));
+    count += 1;
+  }
+  console.log(`  pond ${path.basename(path.dirname(dir))}/${path.basename(dir)}: ${count} dated entries`);
 }
 
 const entriesFor = (c) => {
@@ -53,14 +67,18 @@ const stripFm = (t) =>
 
 async function summarize(c, files) {
   let corpus = '';
-  for (const fn of files) {
-    const body = stripFm(fs.readFileSync(path.join(JOURNAL, fn), 'utf8')).slice(0, PER_ENTRY_CAP);
+  for (const fp of files) {
+    const body = stripFm(fs.readFileSync(fp, 'utf8')).slice(0, PER_ENTRY_CAP);
     if (!body) continue;
-    corpus += `\n\n## ${fn.replace(/\.md$/, '')}\n${body}`;
+    corpus += `\n\n## ${path.basename(fp).replace(/\.(md|txt)$/, '')}\n${body}`;
     if (corpus.length > TOTAL_CAP) break;
   }
   if (!corpus.trim()) return null;
-  const prompt = `These are my journal entries from a season of my life called "${c.name}" (${c.startDate} → ${c.endDate ?? 'open'}). Write a reflection of 2 to 4 sentences, in the first person and past tense, capturing what this season was about — the themes, the people, the feeling of it. Reply with the reflection only, no preamble.\n${corpus}`;
+  const prompt = `These are my journal entries from a season of my life called "${c.name}" (${c.startDate} → ${c.endDate ?? 'open'}). Write, in the first person and past tense:
+LINE 1: one single sentence — the season in a breath (no dates, no lists).
+Then a blank line.
+Then 2 to 4 sentences: what this season was about — themes, people, the feeling of it.
+Reply with exactly that, no preamble, no labels.\n${corpus}`;
   const res = await fetch('http://localhost:11434/api/generate', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
