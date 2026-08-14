@@ -339,6 +339,65 @@ http
         });
       } catch (e) { return send(500, { error: String(e.message ?? e) }); }
     }
+    if (req.method === 'POST' && req.url === '/api/cycle') {
+      // Edit a cycle in place. A human edit stamps reflectionSource:"human",
+      // which the summarizer's --redo refuses to touch — your words win.
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        try {
+          const { start, field, value } = JSON.parse(body);
+          const allowed = ['name', 'l0', 'l1', 'intention'];
+          if (!allowed.includes(field)) return send(400, { error: `field must be one of ${allowed}` });
+          const cycles = readJson('cycles');
+          const entry = Object.entries(cycles).find(([, c]) => c.startDate === start);
+          if (!entry) return send(400, { error: 'unknown cycle' });
+          const [id, c] = entry;
+          const next = { ...c, updatedAt: new Date().toISOString() };
+          const clean = String(value ?? '').trim();
+          if (field === 'name') {
+            if (!clean) return send(400, { error: 'name cannot be empty' });
+            next.name = clean;
+          } else if (field === 'intention') {
+            next.intention = clean || null;
+          } else {
+            const [oldL0, ...oldRest] = (c.reflection ?? '').split('\n\n');
+            const l0 = field === 'l0' ? clean : (oldL0 ?? '').trim();
+            const l1 = field === 'l1' ? clean : oldRest.join('\n\n').trim();
+            next.reflection = [l0, l1].filter(Boolean).join('\n\n') || null;
+            next.reflectionSource = 'human';
+          }
+          cycles[id] = next;
+          const target = path.join(VAULT, 'cycles.json');
+          const tmp = path.join(VAULT, `.cycles.json.tmp-${process.pid}`);
+          fs.writeFileSync(tmp, `${JSON.stringify(cycles, null, 2)}\n`, 'utf8');
+          fs.renameSync(tmp, target);
+          return send(200, { saved: field, cycle: next.name });
+        } catch (e) { return send(400, { error: String(e.message ?? e) }); }
+      });
+      return;
+    }
+    if (req.method === 'GET' && req.url?.startsWith('/api/moments')) {
+      try {
+        const start = new URL(req.url, 'http://localhost').searchParams.get('start');
+        const cycle = Object.values(readJson('cycles')).find((c) => c.startDate === start);
+        if (!cycle) return send(400, { error: 'unknown cycle' });
+        const end = cycle.endDate ?? cycle.startDate;
+        const areas = readJson('areas');
+        const habits = readJson('habits');
+        const list = Object.values(readJson('moments'))
+          .filter((m) => m.day && m.day >= cycle.startDate && m.day <= end)
+          .sort((a, b) => a.day.localeCompare(b.day) || (a.order ?? 0) - (b.order ?? 0))
+          .map((m) => ({
+            name: m.name, day: m.day, phase: m.phase,
+            area: areas[m.areaId]?.name ?? '?',
+            color: areas[m.areaId]?.color ?? '#93a4f5',
+            emoji: m.emoji ?? areas[m.areaId]?.emoji ?? '',
+            people: (m.personIds ?? []).map((id) => habits[id]?.name).filter(Boolean),
+          }));
+        return send(200, { total: list.length, moments: list });
+      } catch (e) { return send(500, { error: String(e.message ?? e) }); }
+    }
     if (req.method === 'POST' && req.url === '/api/highlight') {
       let body = '';
       req.on('data', (c) => (body += c));
