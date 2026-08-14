@@ -1,5 +1,9 @@
 import type { Area } from "@/domain/entities/Area";
-import { type Cycle, isDateInCycle } from "@/domain/entities/Cycle";
+import {
+  type Cycle,
+  isDateInCycle,
+  isHumanWritten,
+} from "@/domain/entities/Cycle";
 import type { Habit } from "@/domain/entities/Habit";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase, PhaseConfig } from "@/domain/value-objects/Phase";
@@ -49,6 +53,11 @@ export interface HarvestSeason {
   readonly endDate: string | null;
   readonly intention: string | null;
   readonly reflection: Reflection | null;
+  /**
+   * Did the person write this reflection themselves? Unknown provenance reads
+   * as false, so a draft is never rendered as their own words.
+   */
+  readonly reflectionIsHuman: boolean;
   readonly days: readonly HarvestDay[];
   /** How many moments were planted. A count, not a score. */
   readonly momentCount: number;
@@ -155,6 +164,7 @@ export function deriveHarvestSeason({
     endDate: cycle.endDate,
     intention: cycle.intention,
     reflection: parseReflection(cycle.reflection),
+    reflectionIsHuman: isHumanWritten(cycle),
     days,
     momentCount: planted.length,
   };

@@ -1,7 +1,8 @@
 "use client";
 
 import { useValue } from "@legendapp/state/react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { CycleService } from "@/application/services/CycleService";
 import { BandedHeatmap } from "@/components/banded-heatmap/BandedHeatmap";
 import { SeasonReadback } from "@/components/harvest/SeasonReadback";
 import {
@@ -67,6 +68,21 @@ export default function HarvestPage() {
     });
   }, [cycle, momentList, areaList, habits, phaseConfigList]);
 
+  const cycleService = useMemo(() => new CycleService(), []);
+
+  // An edit here is a person writing, so the service stamps it "human" and a
+  // summarizer re-run will leave it alone from then on.
+  const handleEditReflection = useCallback(
+    (reflection: string | null) => {
+      if (!cycle) {
+        return;
+      }
+
+      cycleService.updateCycle(cycle.id, { reflection });
+    },
+    [cycle, cycleService],
+  );
+
   return (
     <div className="h-full bg-background transition-colors flex flex-col overflow-hidden">
       <div className="flex-shrink-0 border-b border-stone-200 px-4 py-3 dark:border-stone-800">
@@ -82,7 +98,10 @@ export default function HarvestPage() {
       </div>
 
       <main className="flex-1 overflow-y-auto">
-        <SeasonReadback season={season} />
+        <SeasonReadback
+          onEditReflection={handleEditReflection}
+          season={season}
+        />
       </main>
     </div>
   );
