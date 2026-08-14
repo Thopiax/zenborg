@@ -65,20 +65,41 @@ const entriesFor = (c) => {
 const stripFm = (t) =>
   t.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/^---\n[\s\S]*?\n---\n?/, '').trim();
 
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Weekday is context every extraction gets: a Tuesday entry and a Saturday
+// entry mean different things, and the rhythm of a season is legible in them.
+const weekdayOf = (day) => WEEKDAYS[new Date(`${day}T12:00:00`).getDay()];
+
 async function summarize(c, files) {
   let corpus = '';
   for (const fp of files) {
     const body = stripFm(fs.readFileSync(fp, 'utf8')).slice(0, PER_ENTRY_CAP);
     if (!body) continue;
-    corpus += `\n\n## ${path.basename(fp).replace(/\.(md|txt)$/, '')}\n${body}`;
+    const stem = path.basename(fp).replace(/\.(md|txt)$/, '');
+    const day = stem.match(/^(\d{4})[-_.]?(\d{2})[-_.]?(\d{2})/);
+    const label = day ? `${stem} (${weekdayOf(`${day[1]}-${day[2]}-${day[3]}`)})` : stem;
+    corpus += `\n\n## ${label}\n${body}`;
     if (corpus.length > TOTAL_CAP) break;
   }
   if (!corpus.trim()) return null;
-  const prompt = `These are my journal entries from a season of my life called "${c.name}" (${c.startDate} → ${c.endDate ?? 'open'}). Write, in the first person and past tense:
-LINE 1: one single sentence — the season in a breath (no dates, no lists).
-Then a blank line.
-Then 2 to 4 sentences: what this season was about — themes, people, the feeling of it.
-Reply with exactly that, no preamble, no labels.\n${corpus}`;
+  // Smart Brevity: the lede carries the one thing worth remembering; the body
+  // says what happened and why it mattered. Prosody rules are constraints the
+  // small local model can actually follow.
+  const prompt = `These are my journal entries from a season of my life called "${c.name}" (${weekdayOf(c.startDate)} ${c.startDate} → ${c.endDate ? `${weekdayOf(c.endDate)} ${c.endDate}` : 'open'}). Each entry is headed by its date and weekday — weekdays carry the rhythm of the season (weekday work, weekend life). Write my reflection on this season, first person, past tense.
+
+FIRST LINE — the lede. ONE sentence, AT MOST 20 WORDS: the single thing I should remember about this season. One thought, one period.
+
+BLANK LINE.
+
+THEN 2 to 4 sentences: what the season actually held — the people, the work, the places — and, in the last sentence, why it mattered.
+
+How to write it:
+- Strong verbs. Active voice. Short words over long ones.
+- Concrete over abstract: name the people, the places, the work.
+- No hedging adverbs (somewhat, fairly, perhaps), no stacked adjectives.
+- Nothing the entries do not support. If a season was thin, say so plainly.
+
+Reply with exactly the lede, a blank line, and the body. No preamble, no labels, no headings.\n${corpus}`;
   const res = await fetch('http://localhost:11434/api/generate', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -89,8 +110,17 @@ Reply with exactly that, no preamble, no labels.\n${corpus}`;
   return out.replace(/<think>[\s\S]*?<\/think>/g, '').trim() || null;
 }
 
+// --redo regenerates model-written reflections (e.g. after a prompt fix).
+// Human-written ones are protected: a reflection whose L0 fits the sentence
+// budget and that carries no blank-line split is treated as hand-written.
+const REDO = process.argv.includes('--redo');
+const modelWritten = (c) => {
+  const r = c.reflection?.trim();
+  return !!r && r.includes('\n\n');
+};
+
 const candidates = Object.values(cycles)
-  .filter((c) => !c.reflection?.trim())
+  .filter((c) => (REDO ? !c.reflection?.trim() || modelWritten(c) : !c.reflection?.trim()))
   .map((c) => ({ c, files: entriesFor(c) }))
   .filter((x) => x.files.length > 0)
   .sort((a, b) => b.c.startDate.localeCompare(a.c.startDate))
