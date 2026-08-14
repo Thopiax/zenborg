@@ -56,6 +56,23 @@ const rows = parseCsv(fs.readFileSync(CSV_PATH, 'utf8')).map(([name, country, da
 }).filter((r) => r.start).sort((a, b) => a.start.localeCompare(b.start));
 
 const cycles = readVault('cycles');
+
+// --purge-before <date>: delete cycles starting before the date, then
+// recreate from the CSV — the rebuild path for denoised backfills. Refuses
+// to touch a cycle carrying a reflection or intention (human or model work).
+const purgeArg = process.argv.indexOf('--purge-before');
+if (purgeArg !== -1) {
+  const cutoff = process.argv[purgeArg + 1];
+  let purged = 0;
+  for (const [id, c] of Object.entries(cycles)) {
+    if (c.startDate < cutoff && !c.reflection?.trim() && !c.intention?.trim()) {
+      delete cycles[id];
+      purged += 1;
+    }
+  }
+  console.log(`  purged ${purged} cycles starting before ${cutoff}`);
+}
+
 const existingStarts = new Set(Object.values(cycles).map((c) => c.startDate));
 const firstRealCycle = Object.values(cycles)
   .map((c) => c.startDate).sort()[0] ?? '9999-12-31';
