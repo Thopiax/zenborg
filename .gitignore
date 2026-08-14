@@ -62,3 +62,4 @@ mcp-server/bun.lock
 
 # Garmin backing: local payloads, real habit map (contains vault UUIDs)
 .local/
+*.local.json
