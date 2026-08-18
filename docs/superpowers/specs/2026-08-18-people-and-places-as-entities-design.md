@@ -61,11 +61,12 @@ store entity metadata. A zenborg tag is a reference, not a record."*
 The kernel rejects the alternative by name: *"a first-class entity collection in each
 instrument makes every vault pay a schema change and every capture heavier."*
 
-**There is no `people.json` and no `places.json`.** This design adds no collection, so
-it costs nothing in `src-tauri/src/vault/fs.rs:50` (`ALLOWED_COLLECTIONS`),
-`mcp-server/vault.ts` (`COLLECTION_NAMES`, `CollectionTypeMap`), or
-`src/domain/registry.ts`. An earlier draft of this design proposed exactly those two
-collections and was wrong.
+**There is no `people.json` and no `places.json`.** An earlier draft of this design
+proposed exactly those two collections and was wrong.
+
+One collection is added, and it is not an entity collection: `hotline.json` holds
+Rafa's contact commitments keyed by entity key, and no metadata about anyone. See D10
+for why it is the exception that proves D1 rather than a breach of it.
 
 ### D2: `Habit.kind` is deleted. Habits are rituals again.
 
@@ -154,32 +155,65 @@ constraint. The bound and the sanctioned workaround both disappear.
 person: relation, closeness, and where you met. They become registry metadata on the
 entity. Zenborg's tag drawer is left holding only genuine tags.
 
-### D9: The outreach queue becomes a question, not a verdict. **Needs Rafa's ruling.**
+### D9: The queue stays. It is the hotline, and it is zenborg's, not the graph's.
 
-This is the one place the design touches a stated invariant, so it is flagged rather
-than assumed.
+**Ruled 2026-08-18.** The queue is the point, not a side effect. Rafa: *"the queue is
+important for me to remember to stay in touch with people who are far... it's an idea of
+a hotline that I used to have in Notion, basically a personal CRM."*
 
-`entities.md` closes with: *"No scoring. The graph answers questions brought to it; it
-never volunteers verdicts about people ('you haven't seen X in N days' is a coupling
-pattern, not a feature). This is a design invariant, not a UI preference."*
+This looks like it contradicts the kernel, which closes with: *"No scoring. The graph
+answers questions brought to it; it never volunteers verdicts about people ('you haven't
+seen X in N days' is a coupling pattern, not a feature). This is a design invariant, not
+a UI preference."*
 
-`list_people_to_reach` (`mcp-server/index.ts:699`) is that sentence, implemented. It
-ranks people by how far past their own rhythm they have gone. Moving person metadata
-into the registry puts the tool on the wrong side of the graph's own invariant.
+It does not, and the distinction is worth stating precisely because it is easy to lose.
+**The invariant governs the graph, not the instrument.** Wake derives what it observes
+across every source, so a verdict it volunteers is a machine's opinion about a
+relationship. Zenborg holds what Rafa declared: a rhythm is a commitment he made, and
+reporting that he is behind his own commitment is a garden telling him a plot is dry. It
+is the same act as `list_wilting_habits`, which has never been controversial.
 
-Two readings, and Rafa picks:
+So: wake never ranks people, and `entities.md` keeps that sentence unchanged. The
+hotline lives in zenborg, reads zenborg's own ink, and is specified in D10.
 
-- **The queue is a question.** `reach out` is now a ritual you plant. When you plant it
-  you ask who has gone quiet, and the graph answers. Nothing ranks anyone unasked. The
-  tool survives as an on-demand answer rather than a standing verdict, and the invariant
-  holds on the distinction between volunteering and answering.
-- **The queue is a verdict and should go.** Rafa named `reach out` as a ritual for
-  "people who I haven't talked to in a while", which is the human doing the noticing.
-  Retire `list_people_to_reach` and per-person rhythm along with it. The plot's rhythm
-  on `reach out` carries the cadence instead.
+### D10: The hotline is a zenborg collection keyed by entity key.
 
-The first is the smaller change and is assumed by the migration below. The second is
-cleaner against the invariant. This design does not decide it.
+Contact cadence needs a home. It cannot go to the registry, because a rhythm is not
+entity metadata: it says nothing about who someone is, only what Rafa intends. It
+cannot go on a habit, because D2 just deleted person-habits. It therefore gets the one
+new collection this design adds.
+
+```
+hotline.json
+  "<entityKey>": { rhythm: Rhythm, startedAt: string, pausedAt?: string }
+```
+
+That is the whole record. No display name, no aliases, no notes, no relation: every one
+of those is registry metadata and D1 forbids zenborg from holding it. `hotline.json`
+stores commitments about references, which is zenborg's own ink under the kernel's
+one-writer rule.
+
+**This is the one place this design pays the collection cost** it avoids everywhere
+else: two lines in `src-tauri/src/vault/fs.rs:50`, entries in `mcp-server/vault.ts`
+(`COLLECTION_NAMES`, `CollectionTypeMap`), `src/domain/registry.ts` and
+`EXPORTABLE_MODELS`, and one store wiring. Worth paying, because it buys the feature
+Rafa most wants and it keeps person metadata out of the vault.
+
+While adding it, close the drift already present: `dayNotes` exists in
+`src/domain/registry.ts` but not in `mcp-server/vault.ts`, so the two lists disagree
+today.
+
+**"People who are far" is a real filter, not a figure of speech.** The hotline ranks by
+overdue ratio against each person's own rhythm, as the current tool does, and gains one
+filter the old one could not express: distance. Where a person is based is a registry
+edge; where Rafa is now is the `placeIds` on his current cycle. A person whose base
+place is not his current place is far. That query needs entity keys on both sides,
+which is exactly what D3, D4 and D5 deliver.
+
+`list_people_to_reach` survives with its ranking intact (overdue ratio, never raw days,
+for the reason the corrigendum records: raw days permanently starves a twice-weekly
+friend behind an annual relative). It reads `hotline.json` instead of person-habits, and
+gains a `far: boolean` filter.
 
 ---
 
@@ -229,22 +263,32 @@ records: the vault is live and was edited three times during the last migration.
    2025-11-09 was an instance of a perennial named Mo) and keeps the true one (he saw
    her). `momentInvolvesHabit` already handles `habitId: null` with `personIds` set, and
    `src/hooks/__tests__/useHabitHealth.test.ts:83` already pins the behaviour.
-4. **Archive the person-habits.** Archive, not delete, so nothing dangles if step 3
+4. **Seed the hotline.** Every person-habit carrying a `rhythm` becomes a `hotline.json`
+   entry keyed by its entity key, with `startedAt` taken from the habit's `createdAt`.
+   Only twelve of the forty-three carry one, so the hotline starts short. That is
+   honest, and matches the corrigendum's note that a roster is not a commitment. The
+   other thirty-one exist in the registry and can be added to the hotline whenever Rafa
+   decides to commit to a cadence.
+5. **Archive the person-habits.** Archive, not delete, so nothing dangles if step 3
    missed a row.
-5. **Convert place tags.** `place-<key>` on a moment becomes `placeIds: [<key>]`. The
+6. **Convert place tags.** `place-<key>` on a moment becomes `placeIds: [<key>]`. The
    short-form duplicates (`sp`, `bcn`, `nyc`, `london`, `paris`, `madrid`) are dropped,
    since each duplicates a `place-` tag already present. Mint the six city entities in
    the registry.
-6. **Drop the inherited lie.** A `place-` tag that arrived on a moment by inheritance
+7. **Drop the inherited lie.** A `place-` tag that arrived on a moment by inheritance
    from a person-habit is not converted. Where a person lives is a registry edge on the
    person, not a fact about the moment. Moments left with no `placeIds` are honest:
    zenborg never knew where they happened.
-7. **Retire `Habit.kind`** and the `person-` tag fallback.
+8. **Retire `Habit.kind`** and the `person-` tag fallback.
 
-The migration runs with the desktop app closed. Zenborg is the sole writer of
-`habits.json` and a running app overwrites from its in-memory store. The existing
-migration script's refusal-to-write check and its `--force` escape hatch are reused as
-written.
+**The migration is written, reviewed and not run.** It rewrites hundreds of live moments
+and forty-three habits, so running it is a separate act requiring Rafa's explicit
+go-ahead with the desktop app closed. Zenborg is the sole writer of `habits.json` and a
+running app overwrites from its in-memory store. Every step above is reversible only
+from a vault backup, so the script takes one before writing.
+
+The existing migration script's refusal-to-write check and its `--force` escape hatch
+are reused as written.
 
 ---
 
@@ -266,9 +310,12 @@ resolve. Until wake mints from `placeUrl`, a pasted link yields a key rendering 
 itself. The kernel's fail-soft rule makes this a degraded state rather than an error,
 and it is the correct order: zenborg's ink first, wake's derivation second.
 
-**C4: Person health leaves zenborg, or does not.** Unresolved until D9 is ruled. Under
-the first reading `PersonService` and `mcp-server/people.ts` stay and read registry
-keys. Under the second both are deleted.
+**C4: Person health stays in zenborg.** Resolved by D9. `PersonService` and
+`mcp-server/people.ts` survive, reading `hotline.json` for the rhythm and moments for
+the last contact. Neither reads a habit any more, which removes the coupling the
+corrigendum complained about: person health was already attitude-free and already
+refused to share code with `HabitHealthService`. It now has a record of its own to read,
+which is what it wanted all along.
 
 **C5: History loses `habitId` on person-moments.** Step 3 nulls it. Anything counting
 moments per habit sees those rows leave. Two narrow filters in
@@ -308,11 +355,14 @@ zenborg's ink first, wake's derivation second.
 stamp it. Nothing else can be built against a draft that still says `kind: "person"`.
 Prose only, no code.
 
-**S2: People (zenborg).** Delete `Habit.kind`. Create the nine rituals. Migrate the
-person-habits to registry metadata, rewrite person-moments to `habitId: null` with
+**S2: People and the hotline (zenborg).** Delete `Habit.kind`. Create the nine rituals.
+Add `hotline.json` (D10) and seed it from the twelve person-habits that carry a rhythm.
+Repoint `PersonService`, `mcp-server/people.ts` and `list_people_to_reach` at it. Migrate
+the person-habits to registry metadata, rewrite person-moments to `habitId: null` with
 keys in `personIds`, archive the habits. Retire the `person-` tag. This slice alone
-fixes today's five-moments-for-two-gatherings, and it does not depend on wake having
-minted anything, because the keys render as themselves under fail-soft.
+fixes today's five-moments-for-two-gatherings and keeps the hotline working throughout,
+and it does not depend on wake having minted anything, because keys render as themselves
+under fail-soft. The `far` filter is the one part that waits for S3.
 
 **S3: Places (zenborg).** Add `placeIds` and `placeUrl`. Convert `place-` tags, drop
 the short-form duplicates, drop the inherited lies. The tag drawer empties here.
@@ -344,8 +394,16 @@ future edit could silently break.
    separators. `"Café Lab, Vila Madalena"` yields `cafe-lab-vila-madalena` on both
    sides.
 4. A `place-` tag inherited onto a moment from a person-habit does not become a
-   `placeId` (migration step 6). This is the London breakfast, and it must stay absent
+   `placeId` (migration step 7). This is the London breakfast, and it must stay absent
    rather than become wrong in a new field.
+5. The hotline ranks by overdue ratio, not raw days: a twice-weekly entry silent for 20
+   days outranks an annual one silent for 400. This is the regression the corrigendum
+   warns about, and it is the whole reason the queue is usable.
+6. A hotline entry whose person has a moment dated in the future is absent from the
+   queue. Arranging dinner three weeks out must stop the nagging, which the current tool
+   already gets right and a rewrite could easily lose.
+
+All fixtures are synthetic. No real person from the vault appears in a test.
 
 Manual check, once: re-plant 2026-08-18 as two moments and confirm the day reads as two
 gatherings, in São Paulo, with five people between them.
