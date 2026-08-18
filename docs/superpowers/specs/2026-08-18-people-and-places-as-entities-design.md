@@ -5,6 +5,9 @@
 **Problem owner:** Rafa
 **Supersedes:** [`docs/decisions/2026-08-07-people-are-a-kind-on-habit-not-a-new-collection.md`](../../decisions/2026-08-07-people-are-a-kind-on-habit-not-a-new-collection.md) (signed and attested, therefore superseded rather than edited) and its corrigendum
 **Finishes:** `kairos/kernel/entities.md` (draft, 2026-08-14, "for review and stamp")
+**Prior art:** Rafa's Notion "people" database, 46 rows, exported 2026-08-18. It is the
+origin of the hotline and the source for D10's entity shape. Real contact data: read for
+schema, never copied into a test fixture or a commit.
 
 ---
 
@@ -61,12 +64,10 @@ store entity metadata. A zenborg tag is a reference, not a record."*
 The kernel rejects the alternative by name: *"a first-class entity collection in each
 instrument makes every vault pay a schema change and every capture heavier."*
 
-**There is no `people.json` and no `places.json`.** An earlier draft of this design
-proposed exactly those two collections and was wrong.
-
-One collection is added, and it is not an entity collection: `hotline.json` holds
-Rafa's contact commitments keyed by entity key, and no metadata about anyone. See D10
-for why it is the exception that proves D1 rather than a breach of it.
+**This design adds no collection to zenborg.** Two earlier drafts proposed one: first
+`people.json` and `places.json`, then a `hotline.json` for contact cadence. Both were
+the same mistake, which is reaching for storage when the contract already says where
+the data lives. Zenborg gains two fields on `Moment` and loses one on `Habit`.
 
 ### D2: `Habit.kind` is deleted. Habits are rituals again.
 
@@ -155,65 +156,85 @@ constraint. The bound and the sanctioned workaround both disappear.
 person: relation, closeness, and where you met. They become registry metadata on the
 entity. Zenborg's tag drawer is left holding only genuine tags.
 
-### D9: The queue stays. It is the hotline, and it is zenborg's, not the graph's.
+### D9: The hotline is a read, not a record.
 
 **Ruled 2026-08-18.** The queue is the point, not a side effect. Rafa: *"the queue is
 important for me to remember to stay in touch with people who are far... it's an idea of
 a hotline that I used to have in Notion, basically a personal CRM."*
 
-This looks like it contradicts the kernel, which closes with: *"No scoring. The graph
-answers questions brought to it; it never volunteers verdicts about people ('you haven't
-seen X in N days' is a coupling pattern, not a feature). This is a design invariant, not
-a UI preference."*
+It stores nothing new. It composes three things that already exist:
 
-It does not, and the distinction is worth stating precisely because it is easy to lose.
-**The invariant governs the graph, not the instrument.** Wake derives what it observes
-across every source, so a verdict it volunteers is a machine's opinion about a
-relationship. Zenborg holds what Rafa declared: a rhythm is a commitment he made, and
-reporting that he is behind his own commitment is a garden telling him a plot is dry. It
-is the same act as `list_wilting_habits`, which has never been controversial.
+| ingredient | lives in | why there |
+|---|---|---|
+| declared cadence | registry, on the person entity | a fact about how Rafa relates to someone, like an alias |
+| last contact | zenborg moments, via `personIds` | it is what he did, which is zenborg's ink |
+| the ranking | computed at read time, stored nowhere | derived data is rebuildable by definition |
 
-So: wake never ranks people, and `entities.md` keeps that sentence unchanged. The
-hotline lives in zenborg, reads zenborg's own ink, and is specified in D10.
+An earlier draft of this design gave cadence its own zenborg collection. That was wrong
+for the reason D1 is right: reaching for storage when the contract already says where
+something lives.
 
-### D10: The hotline is a zenborg collection keyed by entity key.
+**This does not breach the kernel's no-scoring invariant.** Wake *stores* the cadence
+and ranks nobody. Zenborg does the ranking, over its own moments, against a cadence Rafa
+declared himself. A machine's opinion about a friendship would be a verdict; a garden
+saying you are behind your own stated intention is the same act as `list_wilting_habits`,
+which has never been controversial. `entities.md` keeps its sentence verbatim and gains
+a paragraph drawing exactly this line.
 
-Contact cadence needs a home. It cannot go to the registry, because a rhythm is not
-entity metadata: it says nothing about who someone is, only what Rafa intends. It
-cannot go on a habit, because D2 just deleted person-habits. It therefore gets the one
-new collection this design adds.
+**"People who are far" is a real filter.** Where a person is based is registry metadata;
+where Rafa is now is the `placeIds` on his current cycle. A person whose base place is
+not his current place is far. That query needs entity keys on both sides, which is what
+D3, D4 and D5 deliver.
 
-```
-hotline.json
-  "<entityKey>": { rhythm: Rhythm, startedAt: string, pausedAt?: string }
-```
+`list_people_to_reach` keeps its ranking intact (overdue ratio, never raw days, for the
+reason the corrigendum records: raw days permanently starves a twice-weekly friend
+behind an annual relative). It reads cadence from the registry instead of from a habit
+record, and gains a `far` filter.
 
-That is the whole record. No display name, no aliases, no notes, no relation: every one
-of those is registry metadata and D1 forbids zenborg from holding it. `hotline.json`
-stores commitments about references, which is zenborg's own ink under the kernel's
-one-writer rule.
+### D10: The person entity's shape comes from the Notion CRM, minus what rotted.
 
-**This is the one place this design pays the collection cost** it avoids everywhere
-else: two lines in `src-tauri/src/vault/fs.rs:50`, entries in `mcp-server/vault.ts`
-(`COLLECTION_NAMES`, `CollectionTypeMap`), `src/domain/registry.ts` and
-`EXPORTABLE_MODELS`, and one store wiring. Worth paying, because it buys the feature
-Rafa most wants and it keeps person metadata out of the vault.
+The source is Rafa's Notion export, 46 rows and 13 columns. It settles what a person
+entity carries, and more usefully, what it must not.
 
-While adding it, close the drift already present: `dayNotes` exists in
-`src/domain/registry.ts` but not in `mcp-server/vault.ts`, so the two lists disagree
-today.
+**Ports to registry metadata:**
 
-**"People who are far" is a real filter, not a figure of speech.** The hotline ranks by
-overdue ratio against each person's own rhythm, as the current tool does, and gains one
-filter the old one could not express: distance. Where a person is based is a registry
-edge; where Rafa is now is the `placeIds` on his current cycle. A person whose base
-place is not his current place is far. That query needs entity keys on both sides,
-which is exactly what D3, D4 and D5 deliver.
+| Notion column | entity field | values observed |
+|---|---|---|
+| Category | `category` | friend (31), family (7), lover (5), colleague (3) |
+| Frequency | `cadence` | weekly (12), monthly (10), quarterly (15), yearly (8), absent (1) |
+| Status | `status` | active (44), paused (2) |
+| Favorite | `favorite` | 4 true |
+| feedbacks | `notes` | free text, 19 filled |
 
-`list_people_to_reach` survives with its ranking intact (overdue ratio, never raw days,
-for the reason the corrigendum records: raw days permanently starves a twice-weekly
-friend behind an annual relative). It reads `hotline.json` instead of person-habits, and
-gains a `far: boolean` filter.
+**Cadence is four buckets, not a `Rhythm`.** Weekly, monthly, quarterly, yearly. Zenborg's
+`Rhythm { period, count }` is richer than this problem needs, and the Notion data shows
+Rafa never wanted the extra dimension. Four values, ordered, and the overdue ratio is
+days-since divided by the bucket's day count.
+
+**`status: paused` is real** and earns its place: two people were paused. A paused person
+is absent from the queue and is not wilting. This is the difference between "I have let
+this slide" and "I have decided not to right now", and losing it makes the queue nag
+about people Rafa deliberately stepped back from.
+
+**Dropped, because they were empty in all 46 rows:** `Time to Chat`, `Share Moment`,
+`Reasons to chat`. Three columns that seemed like good ideas and were never once filled.
+Do not port them and do not invent equivalents.
+
+**Dropped, because zenborg derives them:** `Last Chat At` and `Next Chat At`. Rafa
+maintained these by hand and filled them 12 and 11 times out of 46. They are exactly what
+`personMoments` and `hasArrangedContact` compute for free from moments and future-dated
+moments. **This is the whole argument for the port.** The two columns that made the Notion
+version rot are the two that stop existing.
+
+`Tags` is dropped too: 21 rows carry the single value `Moments` and nothing else, which
+is a column that never became a taxonomy.
+
+**Category versus area.** `category` is a property of the person; the area on a moment
+comes from its ritual (D2). A coffee with a `family` person still lands in the Friends
+plot if it was planted as the Friends `coffee`. That is the cost Rafa accepted when he
+chose area-scoped rituals, and `category` is what makes it recoverable: the queue can
+filter by category even when the moment's plot says otherwise. `colleague` has no zenborg
+area today and needs none, since the queue filters on the entity, not the plot.
 
 ---
 
@@ -221,14 +242,15 @@ gains a `far: boolean` filter.
 
 ```
 registry (wake, ~/.wake/<pond>/derived/knowledge-graph.json)
-  kairos:person/pai            display "Pai", aliases, relation: parent
-  kairos:person/sasa           display "Sasa", basePlace: new-york
+  kairos:person/pai        display, aliases, category: family,
+                           cadence: weekly, status: active,
+                           favorite, notes, basePlace: london
   kairos:place/sao-paulo
   kairos:place/vila-madalena   parent: sao-paulo
   kairos:place/coffee-lab      parent: vila-madalena, lat, lon, url
 
-zenborg (moments.json, habits.json)
-  Habit  { …, no kind }                        nine rituals, area-scoped
+zenborg (moments.json, habits.json)     no new collection
+  Habit  { …, no kind }                 nine rituals, area-scoped
   Moment { habitId    → instance-of
            areaId     → in
            cycleId    → during
@@ -236,6 +258,12 @@ zenborg (moments.json, habits.json)
            placeIds   → at       entity keys
            placeUrl   → the string you pasted
            refs       → about  }
+
+the hotline                              derived, stored nowhere
+  cadence  ← registry
+  lastSeen ← max(moment.day) over personIds
+  next     ← any future-dated moment  (was "Next Chat At", by hand)
+  rank     ← daysSince / cadenceDays
 ```
 
 This morning, recorded correctly, is one moment:
@@ -263,12 +291,12 @@ records: the vault is live and was edited three times during the last migration.
    2025-11-09 was an instance of a perennial named Mama) and keeps the true one (he saw
    her). `momentInvolvesHabit` already handles `habitId: null` with `personIds` set, and
    `src/hooks/__tests__/useHabitHealth.test.ts:83` already pins the behaviour.
-4. **Seed the hotline.** Every person-habit carrying a `rhythm` becomes a `hotline.json`
-   entry keyed by its entity key, with `startedAt` taken from the habit's `createdAt`.
-   Only twelve of the forty-three carry one, so the hotline starts short. That is
-   honest, and matches the corrigendum's note that a roster is not a commitment. The
-   other thirty-one exist in the registry and can be added to the hotline whenever Rafa
-   decides to commit to a cadence.
+4. **Fold the Notion CRM into the registry export.** The 46 rows carry `category`,
+   `cadence`, `status`, `favorite` and `notes` (D10) that the 43 person-habits do not.
+   Join the two by slugged name and emit one registry export. Where a habit's `rhythm`
+   and the CSV's `Frequency` disagree, the CSV wins: it is the record Rafa actually
+   curated, and only twelve habits carry a rhythm at all. Report every name that appears
+   in one source and not the other rather than guessing at a match.
 5. **Archive the person-habits.** Archive, not delete, so nothing dangles if step 3
    missed a row.
 6. **Convert place tags.** `place-<key>` on a moment becomes `placeIds: [<key>]`. The
@@ -310,12 +338,18 @@ resolve. Until wake mints from `placeUrl`, a pasted link yields a key rendering 
 itself. The kernel's fail-soft rule makes this a degraded state rather than an error,
 and it is the correct order: zenborg's ink first, wake's derivation second.
 
-**C4: Person health stays in zenborg.** Resolved by D9. `PersonService` and
-`mcp-server/people.ts` survive, reading `hotline.json` for the rhythm and moments for
-the last contact. Neither reads a habit any more, which removes the coupling the
-corrigendum complained about: person health was already attitude-free and already
-refused to share code with `HabitHealthService`. It now has a record of its own to read,
-which is what it wanted all along.
+**C4: Person health stays in zenborg, and gains a dependency on the registry.** Resolved
+by D9. `PersonService` and `mcp-server/people.ts` survive, taking cadence as a parameter
+and reading moments for the last contact. Neither reads a habit any more, which removes
+the coupling the corrigendum complained about.
+
+The cost is that the queue now needs the registry to be populated before it ranks
+anyone, where today it reads a self-contained vault. Until wake exposes a key-resolve
+tool (C2), the queue has no cadence to compare against and returns nothing. **That makes
+the registry export in migration step 4 load-bearing rather than incidental**, and it
+means S2 does not deliver a working hotline on its own. This is the one place the
+no-new-storage decision costs something real, and it is worth naming plainly rather than
+discovering during implementation.
 
 **C5: History loses `habitId` on person-moments.** Step 3 nulls it. Anything counting
 moments per habit sees those rows leave. Two narrow filters in
@@ -355,27 +389,32 @@ zenborg's ink first, wake's derivation second.
 stamp it. Nothing else can be built against a draft that still says `kind: "person"`.
 Prose only, no code.
 
-**S2: People and the hotline (zenborg).** Delete `Habit.kind`. Create the nine rituals.
-Add `hotline.json` (D10) and seed it from the twelve person-habits that carry a rhythm.
-Repoint `PersonService`, `mcp-server/people.ts` and `list_people_to_reach` at it. Migrate
-the person-habits to registry metadata, rewrite person-moments to `habitId: null` with
-keys in `personIds`, archive the habits. Retire the `person-` tag. This slice alone
-fixes today's five-moments-for-two-gatherings and keeps the hotline working throughout,
-and it does not depend on wake having minted anything, because keys render as themselves
-under fail-soft. The `far` filter is the one part that waits for S3.
+**S2: The registry (wake).** Person entities with the D10 shape, fed by the Notion CSV
+joined to the 43 person-habits, plus the key-resolve tool zenborg reads cadence through.
+**This moved ahead of the zenborg work**, because C4 shows the queue cannot rank anyone
+until cadence has somewhere to live. The earlier ordering assumed a zenborg-local store
+that no longer exists.
 
-**S3: Places (zenborg).** Add `placeIds` and `placeUrl`. Convert `place-` tags, drop
-the short-form duplicates, drop the inherited lies. The tag drawer empties here.
+**S3: People (zenborg).** Delete `Habit.kind`. Create the nine rituals. Repoint
+`PersonService`, `mcp-server/people.ts` and `list_people_to_reach` at registry cadence.
+Rewrite person-moments to `habitId: null` with keys in `personIds`, archive the habits.
+Retire the `person-` tag. This is the slice that fixes today's
+five-moments-for-two-gatherings.
 
-**S4: Minting (wake).** Parse `placeUrl`, mint place entities with parent chains and
-coordinates, expose the key-resolve tool that C2 needs. Until this ships, `placeIds`
-holds keys with no metadata behind them, which is the degraded-not-broken state C3
-describes.
+**S4: Places (zenborg).** Add `placeIds` and `placeUrl`. Convert `place-` tags, drop the
+short-form duplicates, drop the inherited lies. The tag drawer empties here. The `far`
+filter lands with this slice, since it needs place keys on both sides.
 
-S2 and S3 are independent of each other and both depend on S1. S4 depends on S3. If
-appetite is short, S1 and S2 are the bet worth making: they cure the problem that
-started this, and they leave places exactly as broken as they are today rather than
-half-migrated.
+**S5: Minting (wake).** Parse `placeUrl`, mint place entities with parent chains and
+coordinates. Until this ships, `placeIds` holds keys with no metadata behind them, which
+is the degraded-not-broken state C3 describes.
+
+Order is S1 → S2 → S3 → S4 → S5. S3 and S4 are independent of each other once S2 lands.
+
+**If appetite is short, S1 plus S3 is the bet**, accepting that the queue stays dark
+until S2. It still cures the problem that started this: two gatherings recorded as two
+moments, and a breakfast that stops claiming it happened in London. The hotline is the
+reason to keep going, not the reason to start.
 
 ---
 
@@ -396,12 +435,17 @@ future edit could silently break.
 4. A `place-` tag inherited onto a moment from a person-habit does not become a
    `placeId` (migration step 7). This is the London breakfast, and it must stay absent
    rather than become wrong in a new field.
-5. The hotline ranks by overdue ratio, not raw days: a twice-weekly entry silent for 20
-   days outranks an annual one silent for 400. This is the regression the corrigendum
+5. The queue ranks by overdue ratio, not raw days: a weekly-cadence person silent for 20
+   days outranks a yearly one silent for 400. This is the regression the corrigendum
    warns about, and it is the whole reason the queue is usable.
-6. A hotline entry whose person has a moment dated in the future is absent from the
-   queue. Arranging dinner three weeks out must stop the nagging, which the current tool
-   already gets right and a rewrite could easily lose.
+6. A person with a moment dated in the future is absent from the queue. Arranging dinner
+   three weeks out must stop the nagging, which the current tool already gets right and
+   a rewrite could easily lose.
+7. A person with `status: paused` is absent from the queue and is not wilting. Two of
+   the 46 Notion rows were paused, and conflating "I stepped back deliberately" with
+   "I let this slide" is how the queue becomes something Rafa ignores.
+8. A person with no cadence yields `unstated`, never `wilting`. A roster is not a
+   commitment, and one Notion row has no Frequency at all.
 
 All fixtures are synthetic. No real person from the vault appears in a test.
 
