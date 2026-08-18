@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ActivityEvent } from "../../attention/ActivityEvent";
 import type { Span } from "../../attention/Span";
-import { detectDrift, type DriftInput } from "../DiscrepancyService";
+import { type DriftInput, detectDrift } from "../DiscrepancyService";
 
 const SPAN_START = 1_700_000_000_000;
 const SPAN_END = SPAN_START + 600_000;
@@ -29,7 +29,9 @@ function input(overrides: Partial<DriftInput> = {}): DriftInput {
 
 describe("detectDrift", () => {
   it("returns null when the cell is empty, since nothing was planted", () => {
-    expect(detectDrift(input({ plantedMomentIds: [], plantedAreaIds: [] }))).toBeNull();
+    expect(
+      detectDrift(input({ plantedMomentIds: [], plantedAreaIds: [] })),
+    ).toBeNull();
   });
 
   it("returns null when the span resolves to a planted area", () => {
@@ -38,7 +40,7 @@ describe("detectDrift", () => {
 
   it("returns null when the span resolves to any one of several planted areas", () => {
     const result = detectDrift(
-      input({ plantedAreaIds: ["area-equanimitech", "area-themia"] })
+      input({ plantedAreaIds: ["area-equanimitech", "area-themia"] }),
     );
     expect(result).toBeNull();
   });
@@ -60,7 +62,7 @@ describe("detectDrift", () => {
           event("prompt", SPAN_START + 2, "b"),
           event("tool_dispatched", SPAN_START + 3, "c"),
         ],
-      })
+      }),
     );
     expect(result?.magnitude).toBe(2);
   });
@@ -73,14 +75,14 @@ describe("detectDrift", () => {
           event("prompt", SPAN_END, "b"),
           event("prompt", SPAN_START + 1, "c"),
         ],
-      })
+      }),
     );
     expect(result?.magnitude).toBe(1);
   });
 
   it("yields magnitude 0 rather than null when no human event fired", () => {
     const result = detectDrift(
-      input({ events: [event("tool_dispatched", SPAN_START + 1)] })
+      input({ events: [event("tool_dispatched", SPAN_START + 1)] }),
     );
     expect(result?.magnitude).toBe(0);
   });

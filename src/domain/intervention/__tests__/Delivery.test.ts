@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Discrepancy } from "../../attention/Discrepancy";
 import {
+  type Delivery,
   GRANDFATHERED_EXCEPTIONS,
   validateDelivery,
-  type Delivery,
 } from "../Delivery";
 import type { GateSpec, InterceptSpec } from "../Primitive";
 
@@ -44,7 +44,11 @@ describe("validateDelivery", () => {
       ruleId: "rule-area-drift",
       discrepancy,
       primitives: [
-        { kind: "cooldown", durationSeconds: 900, unlockPath: { type: "wait" } },
+        {
+          kind: "cooldown",
+          durationSeconds: 900,
+          unlockPath: { type: "wait" },
+        },
       ],
     };
     expect(validateDelivery(delivery)).toEqual([]);
@@ -58,14 +62,14 @@ describe("validateDelivery", () => {
       primitives: [intercept],
     };
     expect(validateDelivery(delivery)).toContain(
-      "invariant 6: every delivered primitive must carry a proceed affordance"
+      "invariant 6: every delivered primitive must carry a proceed affordance",
     );
   });
 
   it("rejects a self-armed delivery with no exit, since sovereignty is the exit", () => {
     const delivery: Delivery = { origin: "self", primitives: [intercept] };
     expect(validateDelivery(delivery)).toContain(
-      "invariant 6: every delivered primitive must carry a proceed affordance"
+      "invariant 6: every delivered primitive must carry a proceed affordance",
     );
   });
 
@@ -91,7 +95,7 @@ describe("validateDelivery", () => {
   it("rejects a delivery carrying no primitives", () => {
     const delivery: Delivery = { origin: "self", primitives: [] };
     expect(validateDelivery(delivery)).toContain(
-      "a delivery must carry at least one primitive"
+      "a delivery must carry at least one primitive",
     );
   });
 
@@ -101,7 +105,7 @@ describe("validateDelivery", () => {
       primitives: [intercept, intercept],
     };
     expect(
-      validateDelivery(delivery).filter((p) => p.startsWith("invariant 6"))
+      validateDelivery(delivery).filter((p) => p.startsWith("invariant 6")),
     ).toHaveLength(1);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateRuleSpec, type RuleSpec } from "../RuleSpec";
+import { type RuleSpec, validateRuleSpec } from "../RuleSpec";
 
 const rule: RuleSpec = {
   id: "rule-area-drift",
@@ -31,28 +31,28 @@ describe("validateRuleSpec", () => {
 
   it("rejects a rule with no primitives", () => {
     expect(validateRuleSpec({ ...rule, primitives: [] })).toContain(
-      "a rule must carry at least one primitive"
+      "a rule must carry at least one primitive",
     );
   });
 
   it("rejects a deliveryProbability outside [0, 1]", () => {
     expect(validateRuleSpec({ ...rule, deliveryProbability: 1.5 })).toContain(
-      "deliveryProbability must be between 0 and 1"
+      "deliveryProbability must be between 0 and 1",
     );
     expect(validateRuleSpec({ ...rule, deliveryProbability: -0.1 })).toContain(
-      "deliveryProbability must be between 0 and 1"
+      "deliveryProbability must be between 0 and 1",
     );
   });
 
   it("rejects a non-positive outcome window", () => {
     expect(
-      validateRuleSpec({ ...rule, outcome: { ...rule.outcome, windowMs: 0 } })
+      validateRuleSpec({ ...rule, outcome: { ...rule.outcome, windowMs: 0 } }),
     ).toContain("outcome.windowMs must be positive");
   });
 
   it("rejects an empty outcome claim", () => {
     expect(
-      validateRuleSpec({ ...rule, outcome: { ...rule.outcome, claim: "  " } })
+      validateRuleSpec({ ...rule, outcome: { ...rule.outcome, claim: "  " } }),
     ).toContain("outcome.claim must say what the rule should shift");
   });
 
@@ -61,7 +61,7 @@ describe("validateRuleSpec", () => {
       validateRuleSpec({
         ...rule,
         scope: { surface: "browser", domain: "linkedin.com", matches: [] },
-      })
+      }),
     ).toContain("scope.matches must be non-empty");
   });
 
@@ -74,7 +74,7 @@ describe("validateRuleSpec", () => {
           domain: "linkedin.com",
           matches: ["*://*/*"],
         },
-      })
+      }),
     ).toContain("scope.matches must not be global");
   });
 

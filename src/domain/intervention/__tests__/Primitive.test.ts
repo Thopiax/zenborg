@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  carriesExit,
   type CooldownSpec,
+  carriesExit,
   type GateSpec,
   type InterceptSpec,
   type Primitive,
@@ -70,10 +70,10 @@ describe("carriesExit", () => {
 
   it("is false for observe and actuate", () => {
     expect(
-      carriesExit({ kind: "observe", signal: "s", persistedKey: "k" })
+      carriesExit({ kind: "observe", signal: "s", persistedKey: "k" }),
     ).toBe(false);
     expect(
-      carriesExit({ kind: "actuate", action: { type: "pause_media" } })
+      carriesExit({ kind: "actuate", action: { type: "pause_media" } }),
     ).toBe(false);
   });
 });
