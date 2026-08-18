@@ -30,7 +30,10 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export function personMoments(personKey: string, moments: Moment[]): Moment[] {
   const found: Moment[] = [];
   for (const m of moments) {
-    if (m.habitId === personKey || (m.personIds?.includes(personKey) ?? false)) {
+    if (
+      m.habitId === personKey ||
+      (m.personIds?.includes(personKey) ?? false)
+    ) {
       found.push(m);
     }
   }

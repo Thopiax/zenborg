@@ -5,7 +5,6 @@ import {
   archiveHabit,
   unarchiveHabit,
   isHabitError,
-  type Habit,
 } from "../entities/Habit";
 import { Attitude } from "../value-objects/Attitude";
 import type { Rhythm } from "@/domain/value-objects/Rhythm";
@@ -349,4 +348,3 @@ describe("Habit rhythm field", () => {
     expect(updated.rhythm).toBeUndefined();
   });
 });
-
