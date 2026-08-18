@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isDrift, type Discrepancy } from "../Discrepancy";
+import { type Discrepancy, isDrift } from "../Discrepancy";
 
 const drift: Discrepancy = {
   kind: "drift",

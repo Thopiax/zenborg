@@ -42,5 +42,7 @@ export interface Discrepancy {
  * than merely uninteresting.
  */
 export function isDrift(discrepancy: Discrepancy): boolean {
-  return discrepancy.kind === "drift" && discrepancy.plantedMomentIds.length > 0;
+  return (
+    discrepancy.kind === "drift" && discrepancy.plantedMomentIds.length > 0
+  );
 }
