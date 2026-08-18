@@ -55,7 +55,8 @@ export interface Moment {
    * a dinner with three friends is ONE moment carrying three ids, not three
    * moments (which would also collide with the max-3-per-(day,phase) cap).
    *
-   * Ids reference habit records where `kind === "person"`.
+   * Ids are registry entity keys (e.g. `"ada"`) — the registry owns the
+   * person's metadata; zenborg stores only the reference (spec D1/D3).
    * Optional: absent means nobody. There is deliberately no `null` form.
    */
   personIds?: string[];

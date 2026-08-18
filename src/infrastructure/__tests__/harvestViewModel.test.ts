@@ -74,7 +74,6 @@ const person = (id: string, name: string): Habit => ({
   emoji: null,
   isArchived: false,
   order: 0,
-  kind: "person",
   createdAt: "",
   updatedAt: "",
 });
