@@ -5,7 +5,6 @@ import {
   archiveHabit,
   unarchiveHabit,
   isHabitError,
-  isPerson,
   type Habit,
 } from "../entities/Habit";
 import { Attitude } from "../value-objects/Attitude";
@@ -351,26 +350,3 @@ describe("Habit rhythm field", () => {
   });
 });
 
-describe("isPerson", () => {
-  const base: Habit = {
-    id: "h1",
-    name: "Eli",
-    areaId: "a1",
-    attitude: null,
-    phase: null,
-    tags: [],
-    emoji: null,
-    isArchived: false,
-    order: 0,
-    createdAt: "2026-08-07T00:00:00.000Z",
-    updatedAt: "2026-08-07T00:00:00.000Z",
-  };
-
-  it("is true when kind is person", () => {
-    expect(isPerson({ ...base, kind: "person" })).toBe(true);
-  });
-
-  it("is false when kind is absent — a plain habit", () => {
-    expect(isPerson(base)).toBe(false);
-  });
-});

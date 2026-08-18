@@ -141,7 +141,6 @@ export interface Habit {
   guidance?: string;
   rhythm?: Rhythm;
   schedule?: Schedule;
-  kind?: 'person'; // Absent = habit. Mirrors src/domain/entities/Habit.ts
   createdAt: string;
   updatedAt: string;
 }

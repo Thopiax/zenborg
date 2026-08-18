@@ -375,7 +375,6 @@ server.tool(
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
     aliases: z.array(z.string()).optional(),
-    kind: z.literal('person').optional(),
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
@@ -421,7 +420,6 @@ server.tool(
       isArchived: false,
       order: params.order,
       ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
-      ...(params.kind ? { kind: params.kind } : {}),
       ...(params.description?.trim()
         ? { description: params.description.trim() }
         : {}),
@@ -449,7 +447,6 @@ server.tool(
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
     aliases: z.array(z.string()).nullable().optional(),
-    kind: z.literal('person').nullable().optional(),
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
@@ -504,13 +501,6 @@ server.tool(
         delete next.rhythm;
       } else if (updates.rhythm !== undefined) {
         next.rhythm = updates.rhythm;
-      }
-    }
-    if ('kind' in updates) {
-      if (updates.kind === null) {
-        delete next.kind;
-      } else if (updates.kind !== undefined) {
-        next.kind = updates.kind;
       }
     }
     if ('aliases' in updates) {
