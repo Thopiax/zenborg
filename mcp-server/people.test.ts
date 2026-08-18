@@ -4,14 +4,14 @@ import {
   hasArrangedContact,
   latestContactDate,
   overdueRank,
-  overdueRatio,
   personHealth,
   personMoments,
+  type RegistryPerson,
   selectPeopleToReach,
 } from './people.js';
-import type { Attitude, Habit, Moment, Rhythm } from './vault.js';
+import type { Moment } from './vault.js';
 
-const NOW = new Date('2026-08-07T12:00:00.000Z');
+const NOW = new Date('2026-08-18T12:00:00.000Z');
 
 /** Local-calendar day string — exactly the form `parseVaultDay` reads back. */
 function isoDay(d: Date): string {
@@ -41,27 +41,6 @@ const MIDNIGHT = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
 /** Today, derived from the frozen NOW — never from the wall clock. */
 const TODAY = isoDay(NOW);
 
-const WEEKLY: Rhythm = { period: 'weekly', count: 1 };
-const TWICE_WEEKLY: Rhythm = { period: 'weekly', count: 2 };
-
-function person(over: Partial<Habit> = {}): Habit {
-  return {
-    id: 'p-eli',
-    name: 'Eli',
-    areaId: 'a-friends',
-    attitude: null,
-    phase: null,
-    tags: ['bcn'],
-    emoji: null,
-    isArchived: false,
-    order: 0,
-    kind: 'person',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    ...over,
-  };
-}
-
 function moment(over: Partial<Moment> = {}): Moment {
   return {
     id: 'm1',
@@ -82,93 +61,106 @@ function moment(over: Partial<Moment> = {}): Moment {
   };
 }
 
+/** A registry person, as wake's key-resolve tool will hand them over. */
+function registryPerson(over: Partial<RegistryPerson> = {}): RegistryPerson {
+  return {
+    key: 'ada',
+    cadence: 'weekly',
+    status: 'active',
+    category: 'friend',
+    favorite: false,
+    basePlace: null,
+    ...over,
+  };
+}
+
 describe('personMoments', () => {
   it('matches via personIds and via legacy habitId', () => {
-    const a = moment({ id: 'a', personIds: ['p-eli'] });
-    const b = moment({ id: 'b', habitId: 'p-eli' });
-    const c = moment({ id: 'c', personIds: ['p-fox'] });
-    expect(personMoments('p-eli', [a, b, c]).map((m) => m.id)).toEqual([
+    const a = moment({ id: 'a', personIds: ['ada'] });
+    const b = moment({ id: 'b', habitId: 'ada' });
+    const c = moment({ id: 'c', personIds: ['bea'] });
+    expect(personMoments('ada', [a, b, c]).map((m) => m.id)).toEqual([
       'a',
       'b',
     ]);
   });
 
   it('matches a moment carrying the person among several personIds', () => {
-    const m = moment({ personIds: ['p-eli', 'p-fox'] });
-    expect(personMoments('p-eli', [m])).toEqual([m]);
+    const m = moment({ personIds: ['ada', 'bea'] });
+    expect(personMoments('ada', [m])).toEqual([m]);
   });
 
   it('does not match a moment about someone else', () => {
-    const m = moment({ personIds: ['p-fox'] });
-    expect(personMoments('p-eli', [m])).toEqual([]);
+    const m = moment({ personIds: ['bea'] });
+    expect(personMoments('ada', [m])).toEqual([]);
   });
 
   // The vault is mostly moments that predate `personIds` and were never about
   // a person at all: habitId null, personIds absent. The optional chain is the
   // only thing standing between that shape and a TypeError, and nothing above
-  // reaches it — `habitId === personId` short-circuits, or personIds is there.
+  // reaches it — `habitId === personKey` short-circuits, or personIds is there.
   it('does not match — and does not throw — when a moment has neither habitId nor personIds', () => {
     const m = moment({ habitId: null });
-    expect(() => personMoments('p-eli', [m])).not.toThrow();
-    expect(personMoments('p-eli', [m])).toEqual([]);
+    expect(() => personMoments('ada', [m])).not.toThrow();
+    expect(personMoments('ada', [m])).toEqual([]);
   });
 
   it('matches on personIds alone, with habitId null', () => {
-    const m = moment({ habitId: null, personIds: ['p-eli'] });
-    expect(personMoments('p-eli', [m])).toEqual([m]);
+    const m = moment({ habitId: null, personIds: ['ada'] });
+    expect(personMoments('ada', [m])).toEqual([m]);
   });
 
   it('walks a vault where most moments carry no personIds at all', () => {
     const ms = [
       moment({ id: 'm1', habitId: null }),
       moment({ id: 'm2', habitId: 'h-yoga' }),
-      moment({ id: 'm3', habitId: null, personIds: ['p-eli'] }),
+      moment({ id: 'm3', habitId: null, personIds: ['ada'] }),
       moment({ id: 'm4', habitId: null }),
     ];
-    expect(personMoments('p-eli', ms)).toEqual([ms[2]]);
+    expect(personMoments('ada', ms)).toEqual([ms[2]]);
   });
 });
 
 describe('latestContactDate', () => {
   it('returns the most recent past day', () => {
     const ms = [
-      moment({ id: 'm1', day: '2026-07-01', personIds: ['p-eli'] }),
-      moment({ id: 'm2', day: '2026-08-01', personIds: ['p-eli'] }),
+      moment({ id: 'm1', day: '2026-07-01', personIds: ['ada'] }),
+      moment({ id: 'm2', day: '2026-08-01', personIds: ['ada'] }),
     ];
-    expect(latestContactDate('p-eli', ms, NOW)).toEqual(
+    expect(latestContactDate('ada', ms, NOW)).toEqual(
       new Date('2026-08-01T00:00:00'),
     );
   });
 
   it('ignores future days', () => {
-    const ms = [moment({ day: '2026-09-01', personIds: ['p-eli'] })];
-    expect(latestContactDate('p-eli', ms, NOW)).toBeNull();
+    const ms = [moment({ day: '2026-09-01', personIds: ['ada'] })];
+    expect(latestContactDate('ada', ms, NOW)).toBeNull();
   });
 
   it('ignores unallocated moments with no day', () => {
-    const ms = [moment({ day: null, personIds: ['p-eli'] })];
-    expect(latestContactDate('p-eli', ms, NOW)).toBeNull();
+    const ms = [moment({ day: null, personIds: ['ada'] })];
+    expect(latestContactDate('ada', ms, NOW)).toBeNull();
   });
 
   // A day parses to LOCAL MIDNIGHT, so a moment dated today is already behind
   // `now` and counts as contact. `d > now` is the most semantically loaded
   // line in the module; today is the case that sits right on it.
   it('counts a moment dated today — local midnight is already behind us', () => {
-    const ms = [moment({ day: TODAY, personIds: ['p-eli'] })];
-    expect(latestContactDate('p-eli', ms, NOW)).toEqual(MIDNIGHT);
+    const ms = [moment({ day: TODAY, personIds: ['ada'] })];
+    expect(latestContactDate('ada', ms, NOW)).toEqual(MIDNIGHT);
   });
 
   it('prefers today over an earlier day', () => {
     const ms = [
-      moment({ id: 'm1', day: dayBefore(NOW, 3), personIds: ['p-eli'] }),
-      moment({ id: 'm2', day: TODAY, personIds: ['p-eli'] }),
+      moment({ id: 'm1', day: dayBefore(NOW, 3), personIds: ['ada'] }),
+      moment({ id: 'm2', day: TODAY, personIds: ['ada'] }),
     ];
-    expect(latestContactDate('p-eli', ms, NOW)).toEqual(MIDNIGHT);
+    expect(latestContactDate('ada', ms, NOW)).toEqual(MIDNIGHT);
   });
 
   it('parses the day as local midnight, not UTC', () => {
-    const ms = [moment({ day: '2026-08-01', personIds: ['p-eli'] })];
-    const last = latestContactDate('p-eli', ms, NOW);
+    const ms = [moment({ day: '2026-08-01', personIds: ['ada'] })];
+    const last = latestContactDate('ada', ms, NOW);
     expect(last?.getFullYear()).toBe(2026);
     expect(last?.getMonth()).toBe(7);
     expect(last?.getDate()).toBe(1);
@@ -178,37 +170,37 @@ describe('latestContactDate', () => {
 
 describe('hasArrangedContact', () => {
   it('is true for a future-dated moment', () => {
-    const ms = [moment({ day: '2026-09-01', personIds: ['p-eli'] })];
-    expect(hasArrangedContact('p-eli', ms, NOW)).toBe(true);
+    const ms = [moment({ day: '2026-09-01', personIds: ['ada'] })];
+    expect(hasArrangedContact('ada', ms, NOW)).toBe(true);
   });
 
   it('is false when everything is past', () => {
-    const ms = [moment({ day: '2026-08-01', personIds: ['p-eli'] })];
-    expect(hasArrangedContact('p-eli', ms, NOW)).toBe(false);
+    const ms = [moment({ day: '2026-08-01', personIds: ['ada'] })];
+    expect(hasArrangedContact('ada', ms, NOW)).toBe(false);
   });
 
   it('is false when there are no moments at all', () => {
-    expect(hasArrangedContact('p-eli', [], NOW)).toBe(false);
+    expect(hasArrangedContact('ada', [], NOW)).toBe(false);
   });
 
   it('ignores an unallocated moment with no day', () => {
-    const ms = [moment({ day: null, personIds: ['p-eli'] })];
-    expect(hasArrangedContact('p-eli', ms, NOW)).toBe(false);
+    const ms = [moment({ day: null, personIds: ['ada'] })];
+    expect(hasArrangedContact('ada', ms, NOW)).toBe(false);
   });
 
   // Today is contact, not an arrangement — seeing someone this evening is not
   // a reason for the outreach queue to call you sorted.
   it('is false for a moment dated today', () => {
-    const ms = [moment({ day: TODAY, personIds: ['p-eli'] })];
-    expect(hasArrangedContact('p-eli', ms, NOW)).toBe(false);
+    const ms = [moment({ day: TODAY, personIds: ['ada'] })];
+    expect(hasArrangedContact('ada', ms, NOW)).toBe(false);
   });
 
   it('is true when tomorrow is booked even though today already happened', () => {
     const ms = [
-      moment({ id: 'm1', day: TODAY, personIds: ['p-eli'] }),
-      moment({ id: 'm2', day: dayBefore(NOW, -1), personIds: ['p-eli'] }),
+      moment({ id: 'm1', day: TODAY, personIds: ['ada'] }),
+      moment({ id: 'm2', day: dayBefore(NOW, -1), personIds: ['ada'] }),
     ];
-    expect(hasArrangedContact('p-eli', ms, NOW)).toBe(true);
+    expect(hasArrangedContact('ada', ms, NOW)).toBe(true);
   });
 
   // Right-hand branch alone: no habitId to short-circuit on.
@@ -219,186 +211,143 @@ describe('hasArrangedContact', () => {
         id: 'm2',
         habitId: null,
         day: dayBefore(NOW, -1),
-        personIds: ['p-eli'],
+        personIds: ['ada'],
       }),
     ];
-    expect(hasArrangedContact('p-eli', ms, NOW)).toBe(true);
+    expect(hasArrangedContact('ada', ms, NOW)).toBe(true);
   });
 });
 
 describe('daysSinceLastContact', () => {
   it('counts whole days, null when never', () => {
-    const ms = [moment({ day: '2026-08-01', personIds: ['p-eli'] })];
-    expect(daysSinceLastContact('p-eli', ms, NOW)).toBe(6);
-    expect(daysSinceLastContact('p-eli', [], NOW)).toBeNull();
+    const ms = [moment({ day: dayBefore(NOW, 6), personIds: ['ada'] })];
+    expect(daysSinceLastContact('ada', ms, NOW)).toBe(6);
+    expect(daysSinceLastContact('ada', [], NOW)).toBeNull();
   });
 
   it('is zero for a moment dated today', () => {
-    const ms = [moment({ day: TODAY, personIds: ['p-eli'] })];
-    expect(daysSinceLastContact('p-eli', ms, NOW)).toBe(0);
+    const ms = [moment({ day: TODAY, personIds: ['ada'] })];
+    expect(daysSinceLastContact('ada', ms, NOW)).toBe(0);
   });
 
   it('floors — the count ticks over at local midnight, not at the hour of contact', () => {
-    const ms = [moment({ day: dayBefore(NOW, 1), personIds: ['p-eli'] })];
-    expect(daysSinceLastContact('p-eli', ms, NOW)).toBe(1);
+    const ms = [moment({ day: dayBefore(NOW, 1), personIds: ['ada'] })];
+    expect(daysSinceLastContact('ada', ms, NOW)).toBe(1);
   });
 
   it('derives contact from a personIds-only moment without touching habitId', () => {
     const ms = [
       moment({ id: 'm1', habitId: null }),
-      moment({ id: 'm2', habitId: null, day: TODAY, personIds: ['p-eli'] }),
+      moment({ id: 'm2', habitId: null, day: TODAY, personIds: ['ada'] }),
     ];
-    expect(daysSinceLastContact('p-eli', ms, NOW)).toBe(0);
+    expect(daysSinceLastContact('ada', ms, NOW)).toBe(0);
   });
 });
 
+/**
+ * `personHealth` no longer reads a Habit at all: cadence is a declared fact
+ * that lives in wake's registry and arrives as a parameter (spec D9, C4).
+ * Attitude cannot leak in here any more — it is not even an input.
+ */
 describe('personHealth', () => {
-  it('is unstated without a rhythm', () => {
-    expect(personHealth(person(), [], NOW)).toBe('unstated');
+  it('is unstated without a cadence — a roster is not a commitment', () => {
+    expect(personHealth('ada', null, 'active', [], NOW)).toBe('unstated');
   });
 
-  it('is wilting with a rhythm and no contact', () => {
-    const p = person({ rhythm: { period: 'weekly', count: 1 } });
-    expect(personHealth(p, [], NOW)).toBe('wilting');
+  // Spec verification 7: "I stepped back deliberately" is not "I let this
+  // slide". A paused person never wilts, however long the silence.
+  it('is unstated when paused, regardless of cadence and silence', () => {
+    const silent = [moment({ day: dayBefore(NOW, 400), personIds: ['ada'] })];
+    expect(personHealth('ada', 'weekly', 'paused', silent, NOW)).toBe(
+      'unstated',
+    );
+    expect(personHealth('ada', 'weekly', 'paused', [], NOW)).toBe('unstated');
   });
 
-  it('is blooming inside the threshold', () => {
-    const p = person({ rhythm: { period: 'weekly', count: 1 } });
-    const ms = [moment({ day: '2026-08-05', personIds: ['p-eli'] })];
-    expect(personHealth(p, ms, NOW)).toBe('blooming');
+  it('is wilting when there is a cadence but no contact at all', () => {
+    expect(personHealth('ada', 'weekly', 'active', [], NOW)).toBe('wilting');
   });
 
-  it('is wilting past the threshold and ignores attitude', () => {
-    const p = person({
-      attitude: null,
-      rhythm: { period: 'weekly', count: 1 },
-    });
-    const ms = [moment({ day: '2026-06-01', personIds: ['p-eli'] })];
-    expect(personHealth(p, ms, NOW)).toBe('wilting');
+  it('is blooming inside the cadence bucket', () => {
+    const ms = [moment({ day: dayBefore(NOW, 2), personIds: ['ada'] })];
+    expect(personHealth('ada', 'weekly', 'active', ms, NOW)).toBe('blooming');
+  });
+
+  it('is wilting past the cadence bucket', () => {
+    const ms = [moment({ day: dayBefore(NOW, 40), personIds: ['ada'] })];
+    expect(personHealth('ada', 'weekly', 'active', ms, NOW)).toBe('wilting');
   });
 
   it('counts a moment shared with several people for each of them', () => {
     const ms = [
-      moment({ day: '2026-08-05', personIds: ['p-eli', 'p-fox', 'p-gil'] }),
+      moment({ day: dayBefore(NOW, 2), personIds: ['ada', 'bea', 'cai'] }),
     ];
-    expect(personHealth(person({ rhythm: WEEKLY }), ms, NOW)).toBe('blooming');
-    expect(
-      personHealth(person({ id: 'p-fox', rhythm: WEEKLY }), ms, NOW),
-    ).toBe('blooming');
+    expect(personHealth('ada', 'weekly', 'active', ms, NOW)).toBe('blooming');
+    expect(personHealth('bea', 'weekly', 'active', ms, NOW)).toBe('blooming');
   });
 });
 
 /**
- * The reason this module exists. `health.ts`'s `computeHealth` reads attitude
- * BEFORE rhythm — null short-circuits to "unstated", BEING to "evergreen",
- * BUILDING into a budding/pace branch. If any of that leaked in here, most of
- * the real roster would be judged on a field people do not set. These cases
- * therefore vary attitude and see the health NOT move.
- */
-describe('personHealth — attitude is never consulted', () => {
-  const seen = [moment({ day: dayBefore(NOW, 2), personIds: ['p-eli'] })];
-  const silent = [moment({ day: dayBefore(NOW, 40), personIds: ['p-eli'] })];
-
-  it('judges a BUILDING person on rhythm and silence, where computeHealth would branch', () => {
-    const p = person({ attitude: 'BUILDING', rhythm: WEEKLY });
-    expect(personHealth(p, seen, NOW)).toBe('blooming');
-    expect(personHealth(p, silent, NOW)).toBe('wilting');
-  });
-
-  it('returns the same health for every attitude, including BEING and null', () => {
-    const attitudes: (Attitude | null)[] = [
-      null,
-      'BEGINNING',
-      'RETURNING',
-      'KEEPING',
-      'BUILDING',
-      'PUSHING',
-      'BEING',
-    ];
-    for (const attitude of attitudes) {
-      const p = person({ attitude, rhythm: WEEKLY });
-      expect(personHealth(p, seen, NOW)).toBe('blooming');
-      expect(personHealth(p, silent, NOW)).toBe('wilting');
-    }
-  });
-
-  it('is unstated for a BEING person with no rhythm — not evergreen', () => {
-    const p = person({ attitude: 'BEING' });
-    expect(personHealth(p, seen, NOW)).toBe('unstated');
-  });
-});
-
-/**
- * The threshold is `PERIOD_DAYS[period] / count` compared with `<=`. Every
- * part of that must be pinned: drop `count`, shift by a day, or flip the
+ * The threshold is `cadenceDays(cadence)` compared with `<=`. Every part of
+ * that must be pinned: swap the bucket, shift by a day, or flip the
  * comparison, and one of these has to go red.
  */
 describe('personHealth — silence threshold arithmetic', () => {
   it('blooms when silence equals the threshold exactly (<=, not <)', () => {
     // MIDNIGHT as `now` is the only way to make daysSince land on exactly 7.0 —
     // from a mid-day `now` the fraction is never zero and `<` would still pass.
-    const ms = [
-      moment({ day: dayBefore(MIDNIGHT, 7), personIds: ['p-eli'] }),
-    ];
-    expect(personHealth(person({ rhythm: WEEKLY }), ms, MIDNIGHT)).toBe(
+    const ms = [moment({ day: dayBefore(MIDNIGHT, 7), personIds: ['ada'] })];
+    expect(personHealth('ada', 'weekly', 'active', ms, MIDNIGHT)).toBe(
       'blooming',
     );
   });
 
   it('wilts one day past the threshold', () => {
-    const ms = [
-      moment({ day: dayBefore(MIDNIGHT, 8), personIds: ['p-eli'] }),
-    ];
-    expect(personHealth(person({ rhythm: WEEKLY }), ms, MIDNIGHT)).toBe(
+    const ms = [moment({ day: dayBefore(MIDNIGHT, 8), personIds: ['ada'] })];
+    expect(personHealth('ada', 'weekly', 'active', ms, MIDNIGHT)).toBe(
       'wilting',
     );
   });
 
   it('blooms just inside the threshold and wilts just outside it', () => {
-    const inside = [moment({ day: dayBefore(NOW, 6), personIds: ['p-eli'] })];
-    const outside = [
-      moment({ day: dayBefore(NOW, 7), personIds: ['p-eli'] }),
+    const inside = [moment({ day: dayBefore(NOW, 6), personIds: ['ada'] })];
+    const outside = [moment({ day: dayBefore(NOW, 7), personIds: ['ada'] })];
+    expect(personHealth('ada', 'weekly', 'active', inside, NOW)).toBe(
+      'blooming',
+    );
+    expect(personHealth('ada', 'weekly', 'active', outside, NOW)).toBe(
+      'wilting',
+    );
+  });
+
+  it('stretches the threshold for a longer bucket — monthly tolerates 20 days', () => {
+    const ms = [moment({ day: dayBefore(NOW, 20), personIds: ['ada'] })];
+    expect(personHealth('ada', 'monthly', 'active', ms, NOW)).toBe('blooming');
+    expect(personHealth('ada', 'weekly', 'active', ms, NOW)).toBe('wilting');
+  });
+
+  it('tolerates a quarter of silence quarterly, and a year yearly', () => {
+    const ninety = [moment({ day: dayBefore(NOW, 90), personIds: ['ada'] })];
+    expect(personHealth('ada', 'quarterly', 'active', ninety, NOW)).toBe(
+      'blooming',
+    );
+    expect(personHealth('ada', 'monthly', 'active', ninety, NOW)).toBe(
+      'wilting',
+    );
+    const threeHundred = [
+      moment({ day: dayBefore(NOW, 300), personIds: ['ada'] }),
     ];
-    expect(personHealth(person({ rhythm: WEEKLY }), inside, NOW)).toBe(
+    expect(personHealth('ada', 'yearly', 'active', threeHundred, NOW)).toBe(
       'blooming',
     );
-    expect(personHealth(person({ rhythm: WEEKLY }), outside, NOW)).toBe(
+    expect(personHealth('ada', 'quarterly', 'active', threeHundred, NOW)).toBe(
       'wilting',
     );
-  });
-
-  it('honours rhythm.count — twice weekly halves the threshold to 3.5 days', () => {
-    // Same person, same moment, same period. Only `count` differs, and it flips
-    // the verdict: 5 days of silence is fine weekly, not fine twice weekly.
-    const ms = [moment({ day: dayBefore(NOW, 5), personIds: ['p-eli'] })];
-    expect(personHealth(person({ rhythm: WEEKLY }), ms, NOW)).toBe('blooming');
-    expect(personHealth(person({ rhythm: TWICE_WEEKLY }), ms, NOW)).toBe(
-      'wilting',
-    );
-  });
-
-  it('blooms inside a twice-weekly threshold', () => {
-    const ms = [moment({ day: dayBefore(NOW, 2), personIds: ['p-eli'] })];
-    expect(personHealth(person({ rhythm: TWICE_WEEKLY }), ms, NOW)).toBe(
-      'blooming',
-    );
-  });
-
-  it('stretches the threshold for a longer period — monthly tolerates 20 days', () => {
-    const ms = [moment({ day: dayBefore(NOW, 20), personIds: ['p-eli'] })];
-    expect(
-      personHealth(
-        person({ rhythm: { period: 'monthly', count: 1 } }),
-        ms,
-        NOW,
-      ),
-    ).toBe('blooming');
-    expect(personHealth(person({ rhythm: WEEKLY }), ms, NOW)).toBe('wilting');
   });
 });
 
 describe('overdueRank', () => {
-  it('ranks never-contacted above any elapsed count', () => {
+  it('ranks never-contacted above any ratio', () => {
     expect(overdueRank(null)).toBeGreaterThan(overdueRank(3650));
   });
 
@@ -406,185 +355,172 @@ describe('overdueRank', () => {
     expect(overdueRank(null) - overdueRank(null)).toBe(0);
   });
 
-  it('passes a real day count straight through', () => {
-    expect(overdueRank(12)).toBe(12);
-  });
-});
-
-describe('overdueRatio', () => {
-  it('is 1 exactly at the rhythm threshold', () => {
-    expect(overdueRatio(7, WEEKLY)).toBe(1);
-    expect(overdueRatio(365, { period: 'annually', count: 1 })).toBe(1);
-  });
-
-  it('measures against the person OWN rhythm, not raw days', () => {
-    // The pair from the real vault: Jhonny {annually,1} at 400 days is barely
-    // late; Eli {weekly,2} at 20 days is five and a half times past due.
-    expect(overdueRatio(400, { period: 'annually', count: 1 })).toBe(1.1);
-    expect(overdueRatio(20, TWICE_WEEKLY)).toBe(5.71);
-  });
-
-  it('rounds to 2 decimals', () => {
-    expect(overdueRatio(30, WEEKLY)).toBe(4.29); // 30/7 = 4.2857…
-  });
-
-  it('is null when never contacted, and when there is no rhythm to measure', () => {
-    expect(overdueRatio(null, WEEKLY)).toBeNull();
-    expect(overdueRatio(30, null)).toBeNull();
+  it('passes a real ratio straight through', () => {
+    expect(overdueRank(4.29)).toBe(4.29);
   });
 });
 
 // ── selectPeopleToReach — the outreach queue ────────────────────────────────
 
-/** Keyed by id, insertion order preserved — it is the sort's tie-break. */
-function vault(...people: Habit[]): Record<string, Habit> {
-  const out: Record<string, Habit> = {};
-  for (const p of people) {
-    out[p.id] = p;
-  }
-  return out;
-}
-
-const ANNUALLY: Rhythm = { period: 'annually', count: 1 };
-
 describe('selectPeopleToReach', () => {
-  // Alice and Erin are a deliberately sharp pair: identical -30d contact,
-  // same rhythm, same area. The ONLY difference is Erin's future moment.
-  const carol = person({ id: 'p-carol', name: 'Carol', rhythm: WEEKLY, tags: ['bcn'] });
-  const dave = person({ id: 'p-dave', name: 'Dave', rhythm: WEEKLY, tags: ['bcn'] });
-  const alice = person({ id: 'p-alice', name: 'Alice', rhythm: WEEKLY, tags: ['paris'] });
-  const bob = person({ id: 'p-bob', name: 'Bob', rhythm: WEEKLY, tags: ['paris'] });
-  const erin = person({ id: 'p-erin', name: 'Erin', rhythm: WEEKLY, tags: ['london'] });
-  const frank = person({ id: 'p-frank', name: 'Frank', tags: ['nyc'] }); // no rhythm
-  const gina = person({ id: 'p-gina', name: 'Gina', rhythm: WEEKLY, tags: ['sp'], isArchived: true });
-  const hugo = person({ id: 'p-hugo', name: 'Hugo', rhythm: WEEKLY, tags: ['sp'], areaId: 'a-family' });
-  const yoga: Habit = { ...person({ id: 'h-yoga', name: 'Yoga', rhythm: WEEKLY }), kind: undefined };
+  // ada and fay are a deliberately sharp pair: identical -30d contact, same
+  // cadence, same category. The ONLY difference is fay's future moment.
+  const cai = registryPerson({ key: 'cai', category: 'family' });
+  const dot = registryPerson({ key: 'dot', category: 'family' });
+  const ada = registryPerson({ key: 'ada' });
+  const bea = registryPerson({ key: 'bea' });
+  const fay = registryPerson({ key: 'fay' });
+  const gil = registryPerson({ key: 'gil', cadence: null }); // no cadence
+  const hob = registryPerson({ key: 'hob', status: 'paused' });
+  const ines = registryPerson({ key: 'ines', cadence: 'monthly' });
 
-  const HABITS = vault(carol, dave, alice, bob, erin, frank, gina, hugo, yoga);
+  const PEOPLE = [cai, dot, ada, bea, fay, gil, hob, ines];
   const MOMENTS: Moment[] = [
-    moment({ id: 'm-alice', day: dayBefore(NOW, 30), personIds: ['p-alice'] }),
-    moment({ id: 'm-bob', day: dayBefore(NOW, 2), personIds: ['p-bob'] }),
-    moment({ id: 'm-erin-past', day: dayBefore(NOW, 30), personIds: ['p-erin'] }),
-    moment({ id: 'm-erin-future', day: dayBefore(NOW, -3), personIds: ['p-erin'] }),
-    moment({ id: 'm-gina', day: dayBefore(NOW, 90), personIds: ['p-gina'] }),
-    moment({ id: 'm-hugo', day: dayBefore(NOW, 60), personIds: ['p-hugo'] }),
+    moment({ id: 'm-ada', day: dayBefore(NOW, 30), personIds: ['ada'] }),
+    moment({ id: 'm-bea', day: dayBefore(NOW, 2), personIds: ['bea'] }),
+    moment({ id: 'm-fay-past', day: dayBefore(NOW, 30), personIds: ['fay'] }),
+    moment({ id: 'm-fay-future', day: dayBefore(NOW, -3), personIds: ['fay'] }),
+    moment({ id: 'm-gil', day: dayBefore(NOW, 90), personIds: ['gil'] }),
+    moment({ id: 'm-hob', day: dayBefore(NOW, 90), personIds: ['hob'] }),
+    moment({ id: 'm-ines', day: dayBefore(NOW, 60), personIds: ['ines'] }),
   ];
 
-  const queue = () => selectPeopleToReach(HABITS, MOMENTS, NOW);
-  const names = (rows: ReturnType<typeof queue>) => rows.map((r) => r.name);
+  const queue = () => selectPeopleToReach(PEOPLE, MOMENTS, NOW, {});
+  const keys = (rows: ReturnType<typeof queue>) => rows.map((r) => r.key);
 
-  it('1. includes someone silent past their rhythm, with the elapsed days', () => {
-    const row = queue().find((r) => r.name === 'Alice');
+  it('1. includes someone silent past their cadence, with the elapsed days', () => {
+    const row = queue().find((r) => r.key === 'ada');
     expect(row?.daysSinceLastContact).toBe(30);
     expect(row?.overdueRatio).toBe(4.29);
+    expect(row?.cadence).toBe('weekly');
+    expect(row?.category).toBe('friend');
   });
 
-  it('2. excludes someone still inside their rhythm', () => {
-    expect(names(queue())).not.toContain('Bob');
+  it('2. excludes someone still inside their cadence', () => {
+    expect(keys(queue())).not.toContain('bea');
   });
 
   it('3. puts a never-contacted person first, with a null day count', () => {
     const first = queue()[0];
-    expect(first.name).toBe('Carol');
+    expect(first.key).toBe('cai');
     expect(first.daysSinceLastContact).toBeNull();
     expect(first.overdueRatio).toBeNull();
   });
 
   it('4. keeps two never-contacted people both present and stably ordered', () => {
     const rows = queue();
-    expect(names(rows).slice(0, 2)).toEqual(['Carol', 'Dave']);
+    expect(keys(rows).slice(0, 2)).toEqual(['cai', 'dot']);
     // The NaN hazard: if the comparator returned NaN for the null/null pair the
     // rest of the ordering would be corrupted too. Prove the tail survived.
-    expect(names(rows)).toEqual(['Carol', 'Dave', 'Hugo', 'Alice']);
+    expect(keys(rows)).toEqual(['cai', 'dot', 'ada', 'ines']);
   });
 
   it('5. excludes someone already arranged — a future moment silences the nag', () => {
-    // Erin and Alice have IDENTICAL past contact (-30d) and the same rhythm.
-    expect(names(queue())).toContain('Alice');
-    expect(names(queue())).not.toContain('Erin');
+    // fay and ada have IDENTICAL past contact (-30d) and the same cadence.
+    expect(keys(queue())).toContain('ada');
+    expect(keys(queue())).not.toContain('fay');
     // ...and it really is only the future moment doing the work.
-    const withoutErinsPlan = MOMENTS.filter((m) => m.id !== 'm-erin-future');
-    expect(names(selectPeopleToReach(HABITS, withoutErinsPlan, NOW))).toContain('Erin');
+    const withoutFaysPlan = MOMENTS.filter((m) => m.id !== 'm-fay-future');
+    expect(keys(selectPeopleToReach(PEOPLE, withoutFaysPlan, NOW, {}))).toContain(
+      'fay',
+    );
   });
 
-  it('6. excludes a person with no rhythm — unstated, never wilting', () => {
-    expect(names(queue())).not.toContain('Frank');
+  it('6. excludes a person with no cadence — unstated, never wilting', () => {
+    expect(keys(queue())).not.toContain('gil');
   });
 
-  it('7. excludes an archived person who would otherwise qualify', () => {
-    expect(names(queue())).not.toContain('Gina');
-    const unarchived = vault({ ...gina, isArchived: false });
-    expect(names(selectPeopleToReach(unarchived, MOMENTS, NOW))).toEqual(['Gina']);
+  it('7. excludes a paused person who would otherwise qualify', () => {
+    expect(keys(queue())).not.toContain('hob');
+    const resumed = PEOPLE.map((p) =>
+      p.key === 'hob' ? { ...p, status: 'active' as const } : p,
+    );
+    expect(keys(selectPeopleToReach(resumed, MOMENTS, NOW, {}))).toContain(
+      'hob',
+    );
   });
 
-  it('8. excludes an ordinary wilting habit — the queue is people-only', () => {
-    expect(names(queue())).not.toContain('Yoga');
-  });
-
-  it('9. filters by tag, and by areaId', () => {
-    expect(names(selectPeopleToReach(HABITS, MOMENTS, NOW, { tag: 'bcn' }))).toEqual([
-      'Carol',
-      'Dave',
-    ]);
+  it('8. filters by category', () => {
     expect(
-      names(selectPeopleToReach(HABITS, MOMENTS, NOW, { areaId: 'a-family' })),
-    ).toEqual(['Hugo']);
+      keys(selectPeopleToReach(PEOPLE, MOMENTS, NOW, { category: 'family' })),
+    ).toEqual(['cai', 'dot']);
+    expect(
+      keys(selectPeopleToReach(PEOPLE, MOMENTS, NOW, { category: 'friend' })),
+    ).toEqual(['ada', 'ines']);
   });
 
-  it('9b. survives a hand-edited vault whose person is missing tags entirely', () => {
-    const untagged = vault({ ...carol, tags: undefined as unknown as string[] });
-    expect(() => selectPeopleToReach(untagged, MOMENTS, NOW, { tag: 'bcn' })).not.toThrow();
-    expect(selectPeopleToReach(untagged, MOMENTS, NOW, { tag: 'bcn' })).toEqual([]);
+  it('8b. a null-category person matches no category filter but stays in the open queue', () => {
+    const juno = registryPerson({ key: 'juno', category: null });
+    const people = [...PEOPLE, juno];
+    expect(
+      keys(selectPeopleToReach(people, MOMENTS, NOW, { category: 'friend' })),
+    ).not.toContain('juno');
+    expect(keys(selectPeopleToReach(people, MOMENTS, NOW, {}))).toContain(
+      'juno',
+    );
   });
 
-  it('10. limit truncates to the MOST overdue, not an arbitrary prefix', () => {
-    expect(names(selectPeopleToReach(HABITS, MOMENTS, NOW, { limit: 2 }))).toEqual([
-      'Carol',
-      'Dave',
-    ]);
-    expect(names(selectPeopleToReach(HABITS, MOMENTS, NOW, { limit: 3 }))).toEqual([
-      'Carol',
-      'Dave',
-      'Hugo',
-    ]);
+  it('9. limit truncates to the MOST overdue, not an arbitrary prefix', () => {
+    expect(
+      keys(selectPeopleToReach(PEOPLE, MOMENTS, NOW, { limit: 2 })),
+    ).toEqual(['cai', 'dot']);
+    expect(
+      keys(selectPeopleToReach(PEOPLE, MOMENTS, NOW, { limit: 3 })),
+    ).toEqual(['cai', 'dot', 'ada']);
   });
 
-  it('11. orders the whole set most-overdue-first', () => {
-    expect(queue().map((r) => r.overdueRatio)).toEqual([null, null, 8.57, 4.29]);
+  it('10. orders the whole set most-overdue-first', () => {
+    expect(queue().map((r) => r.overdueRatio)).toEqual([null, null, 4.29, 2]);
   });
 
-  // ── FIX A: ranking is relative to rhythm, not absolute days ──────────────
+  it('11. carries no display name — the registry owns names, fail-soft renders the key', () => {
+    const row = queue()[0];
+    expect(row).not.toHaveProperty('name');
+    expect(row).not.toHaveProperty('areaId');
+  });
 
-  it('A1. ranks a short-rhythm person above a long-rhythm one with FAR more days', () => {
-    const jhonny = person({ id: 'p-jhonny', name: 'Jhonny', rhythm: ANNUALLY });
-    const yanik = person({ id: 'p-eli', name: 'Eli', rhythm: TWICE_WEEKLY });
-    const habits = vault(jhonny, yanik); // Jhonny first, so order is not incidental
+  // Spec C4: until wake exposes a key-resolve tool, the registry list is
+  // empty. That is a normal empty queue, never an error.
+  it('12. returns [] for an empty registry and does not throw', () => {
+    expect(() => selectPeopleToReach([], MOMENTS, NOW, {})).not.toThrow();
+    expect(selectPeopleToReach([], MOMENTS, NOW, {})).toEqual([]);
+    expect(selectPeopleToReach([], [], NOW, {})).toEqual([]);
+  });
+
+  // ── ranking is relative to cadence, not absolute days ────────────────────
+
+  it('A1. ranks a weekly person at 20 days above a yearly one at 400', () => {
+    const yin = registryPerson({ key: 'yin', cadence: 'yearly' });
+    const wes = registryPerson({ key: 'wes', cadence: 'weekly' });
+    const people = [yin, wes]; // yin first, so order is not incidental
     const moments = [
-      moment({ id: 'm-j', day: dayBefore(NOW, 400), personIds: ['p-jhonny'] }),
-      moment({ id: 'm-y', day: dayBefore(NOW, 20), personIds: ['p-eli'] }),
+      moment({ id: 'm-yin', day: dayBefore(NOW, 400), personIds: ['yin'] }),
+      moment({ id: 'm-wes', day: dayBefore(NOW, 20), personIds: ['wes'] }),
     ];
 
-    const rows = selectPeopleToReach(habits, moments, NOW);
-    expect(rows.map((r) => r.name)).toEqual(['Eli', 'Jhonny']);
-    expect(rows.map((r) => r.overdueRatio)).toEqual([5.71, 1.1]);
+    const rows = selectPeopleToReach(people, moments, NOW, {});
+    expect(rows.map((r) => r.key)).toEqual(['wes', 'yin']);
+    expect(rows.map((r) => r.overdueRatio)).toEqual([2.86, 1.1]);
   });
 
   it('A2. and the raw-days key would have inverted exactly that ordering', () => {
-    const jhonny = person({ id: 'p-jhonny', name: 'Jhonny', rhythm: ANNUALLY });
-    const yanik = person({ id: 'p-eli', name: 'Eli', rhythm: TWICE_WEEKLY });
-    const habits = vault(jhonny, yanik);
+    const yin = registryPerson({ key: 'yin', cadence: 'yearly' });
+    const wes = registryPerson({ key: 'wes', cadence: 'weekly' });
+    const people = [yin, wes];
     const moments = [
-      moment({ id: 'm-j', day: dayBefore(NOW, 400), personIds: ['p-jhonny'] }),
-      moment({ id: 'm-y', day: dayBefore(NOW, 20), personIds: ['p-eli'] }),
+      moment({ id: 'm-yin', day: dayBefore(NOW, 400), personIds: ['yin'] }),
+      moment({ id: 'm-wes', day: dayBefore(NOW, 20), personIds: ['wes'] }),
     ];
 
-    const rows = selectPeopleToReach(habits, moments, NOW);
-    // Jhonny has 20x the elapsed days...
+    const rows = selectPeopleToReach(people, moments, NOW, {});
+    // yin has 20x the elapsed days...
     const byDays = [...rows].sort(
-      (a, b) => overdueRank(b.daysSinceLastContact) - overdueRank(a.daysSinceLastContact),
+      (a, b) =>
+        overdueRank(b.daysSinceLastContact) -
+        overdueRank(a.daysSinceLastContact),
     );
-    expect(byDays.map((r) => r.name)).toEqual(['Jhonny', 'Eli']);
-    // ...yet the queue puts him LAST. The two keys disagree, and the ratio wins.
-    expect(rows.map((r) => r.name)).toEqual(['Eli', 'Jhonny']);
+    expect(byDays.map((r) => r.key)).toEqual(['yin', 'wes']);
+    // ...yet the queue puts them LAST. The two keys disagree, and the ratio wins.
+    expect(rows.map((r) => r.key)).toEqual(['wes', 'yin']);
   });
 });
