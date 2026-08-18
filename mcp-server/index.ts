@@ -70,7 +70,7 @@ import {
 import { computeHealth, daysSinceLast, parseVaultDay, resolveRhythm } from './health.js';
 import { buildTagIndex, buildTagProfile } from './tags.js';
 import { buildRelatedHabits } from './graph.js';
-import { selectPeopleToReach } from './people.js';
+import { type RegistryPerson, selectPeopleToReach } from './people.js';
 
 // ────────────────────────────────────────────────────────────────────────
 // Boot
@@ -697,17 +697,22 @@ server.tool(
 
 server.tool(
   'list_people_to_reach',
-  'List people who have gone quiet past their rhythm and have nothing already arranged. Ordered by how far past their OWN rhythm they are (`overdueRatio`, a multiple of their threshold — 5.71 means five and a half times overdue), NOT by raw elapsed days, so a weekly friend at 20 days outranks an annual one at 400. Never-contacted people come first. Filter by areaId or by a place tag such as paris, bcn, sp, london, nyc.',
+  'The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by registry `category` (friend, family, lover, colleague).',
   {
-    areaId: z.string().optional(),
-    tag: z.string().optional(),
+    category: z.string().optional(),
     limit: z.number().int().positive().optional(),
   },
-  async ({ areaId, tag, limit }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, 'habits');
+  async ({ category, limit }): Promise<ToolResult> => {
+    // Registry people come from wake's knowledge graph (spec D1/D9). The
+    // key-resolve tool does not exist yet (spec C2/C4), so the list is empty
+    // and the queue returns [] — by design, never an error.
+    const registryPeople: RegistryPerson[] = [];
     const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
     return ok(
-      selectPeopleToReach(habits, moments, new Date(), { areaId, tag, limit }),
+      selectPeopleToReach(registryPeople, moments, new Date(), {
+        category,
+        limit,
+      }),
     );
   },
 );
