@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { spanDuration, spanOverlaps, type Span } from "../Span";
+import { type Span, spanDuration, spanOverlaps } from "../Span";
 
 const span: Span = {
   areaId: "area-equanimitech",

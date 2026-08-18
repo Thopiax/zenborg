@@ -1,7 +1,7 @@
-import { isHumanActor, type ActivityEvent } from "../attention/ActivityEvent";
+import { type ActivityEvent, isHumanActor } from "../attention/ActivityEvent";
 import type { Discrepancy, Magnitude } from "../attention/Discrepancy";
-import { spanOverlaps, type Span } from "../attention/Span";
 import type { AreaId, MomentId } from "../attention/ids";
+import { type Span, spanOverlaps } from "../attention/Span";
 
 /**
  * Derives discrepancies from what was planted and what was observed.

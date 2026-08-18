@@ -57,7 +57,7 @@ export function validateDelivery(delivery: Delivery): readonly string[] {
 
   if (!grandfathered && delivery.primitives.some((p) => !carriesExit(p))) {
     problems.push(
-      "invariant 6: every delivered primitive must carry a proceed affordance"
+      "invariant 6: every delivered primitive must carry a proceed affordance",
     );
   }
 

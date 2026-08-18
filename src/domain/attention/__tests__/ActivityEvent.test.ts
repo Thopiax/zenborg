@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { actorOf, isHumanActor, type ActivityEvent } from "../ActivityEvent";
+import { type ActivityEvent, actorOf, isHumanActor } from "../ActivityEvent";
 
-function event(partial: Partial<ActivityEvent> & { kind: string }): ActivityEvent {
+function event(
+  partial: Partial<ActivityEvent> & { kind: string },
+): ActivityEvent {
   return {
     id: "e1",
     surface: "agent",
-    kind: partial.kind,
     ts: 1_700_000_000_000,
     sessionId: "s1",
     payload: {},
@@ -31,12 +32,18 @@ describe("actorOf", () => {
   });
 
   it("treats non-agent surfaces as human regardless of kind", () => {
-    expect(actorOf(event({ surface: "desktop", kind: "app_switched" }))).toBe("human");
-    expect(actorOf(event({ surface: "browser", kind: "tab_activated" }))).toBe("human");
+    expect(actorOf(event({ surface: "desktop", kind: "app_switched" }))).toBe(
+      "human",
+    );
+    expect(actorOf(event({ surface: "browser", kind: "tab_activated" }))).toBe(
+      "human",
+    );
   });
 
   it("treats garmin as agent, since it transcribes rather than observes exertion", () => {
-    expect(actorOf(event({ surface: "garmin", kind: "sleep_recorded" }))).toBe("agent");
+    expect(actorOf(event({ surface: "garmin", kind: "sleep_recorded" }))).toBe(
+      "agent",
+    );
   });
 
   it("fails soft on an unknown agent-surface kind by calling it agent", () => {
