@@ -14,7 +14,7 @@
  * parameter and ranks against it — nothing here is stored (spec D1, D9).
  */
 
-export type Cadence = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+export type Cadence = "weekly" | "monthly" | "quarterly" | "yearly";
 
 const CADENCE_DAYS: Record<Cadence, number> = {
   weekly: 7,
