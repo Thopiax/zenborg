@@ -27,13 +27,21 @@ const areaMap: AreaMap = {
   hosts: [],
 };
 
+/** The payload shape keel actually writes: raw hook stdin, file path under tool_input. */
 function ev(
   id: string,
   ts: number,
   path: string,
   kind = "prompt",
 ): ActivityEvent {
-  return { id, surface: "agent", kind, ts, sessionId: "s1", payload: { path } };
+  return {
+    id,
+    surface: "agent",
+    kind,
+    ts,
+    sessionId: "s1",
+    payload: { tool_name: "Edit", tool_input: { file_path: path } },
+  };
 }
 
 function deps(

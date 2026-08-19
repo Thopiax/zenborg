@@ -1,8 +1,8 @@
-import type { ActivityEvent } from "@/domain/attention/ActivityEvent";
-import type { AreaMap } from "@/domain/attention/AreaMap";
-import type { Discrepancy } from "@/domain/attention/Discrepancy";
-import type { AreaId, Instant, MomentId } from "@/domain/attention/ids";
-import type { SpanDerivationConfig } from "@/domain/attention/SpanDerivation";
+import type { ActivityEvent } from "../domain/attention/ActivityEvent";
+import type { AreaMap } from "../domain/attention/AreaMap";
+import type { Discrepancy } from "../domain/attention/Discrepancy";
+import type { AreaId, Instant, MomentId } from "../domain/attention/ids";
+import type { SpanDerivationConfig } from "../domain/attention/SpanDerivation";
 
 /**
  * The application layer's boundary with everything outside it.

@@ -33,24 +33,66 @@ export interface AreaMap {
 /**
  * Where the locator lives in an event payload.
  *
- * These keys are the shape keel's log is expected to carry, and they are the one
- * thing in this slice that could not be checked: the vault is unreadable without
- * a session launched with `KEEL_RAW=1`. Confirm them against a real log line
- * before shadow mode's output is trusted, and widen this list rather than
- * reshaping the resolver if the real keys differ.
+ * keel writes the raw Claude Code hook stdin, capped per field, so the payload
+ * carries `cwd` at the top level and the touched file nested under `tool_input`.
+ * Read off `apps/agent/keel.mjs` and its log fixtures rather than off the vault,
+ * which a normal session cannot read.
+ *
+ * The touched file wins over `cwd`, and that ordering is the whole point: a
+ * session whose cwd is one repo while its edits land in another is exactly the
+ * drift the rule is looking for, and reading `cwd` alone would hide it.
+ *
+ * A Bash `command` is deliberately not parsed for paths. Guessing a path out of
+ * a shell string manufactures false areas, and `cwd` already covers the case.
  */
-const PATH_KEYS = ["path", "cwd"] as const;
+const TOOL_INPUT_KEYS = ["file_path", "notebook_path"] as const;
+const CWD_KEYS = ["cwd"] as const;
 const HOST_KEYS = ["host", "domain"] as const;
+const URL_KEYS = ["url"] as const;
 
 function firstString(
-  payload: Readonly<Record<string, unknown>>,
+  source: Readonly<Record<string, unknown>>,
   keys: readonly string[],
 ): string | undefined {
   for (const key of keys) {
-    const value = payload[key];
+    const value = source[key];
     if (typeof value === "string" && value.length > 0) return value;
   }
   return undefined;
+}
+
+function toolInputOf(
+  payload: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+  const raw = payload.tool_input;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  return raw as Readonly<Record<string, unknown>>;
+}
+
+/** The path this event touched, or the directory it ran in. */
+function pathOf(
+  payload: Readonly<Record<string, unknown>>,
+): string | undefined {
+  return (
+    firstString(toolInputOf(payload), TOOL_INPUT_KEYS) ??
+    firstString(payload, CWD_KEYS)
+  );
+}
+
+/** The host this event touched. A malformed url is no locator, never a throw. */
+function hostOf(
+  payload: Readonly<Record<string, unknown>>,
+): string | undefined {
+  const direct = firstString(payload, HOST_KEYS);
+  if (direct !== undefined) return direct;
+
+  const url = firstString(payload, URL_KEYS);
+  if (url === undefined) return undefined;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return undefined;
+  }
 }
 
 /** True when `path` is `prefix` itself or sits beneath it. Never a mid-segment match. */
@@ -75,7 +117,7 @@ export function resolveArea(
   map: AreaMap,
   event: ActivityEvent,
 ): AreaId | undefined {
-  const path = firstString(event.payload, PATH_KEYS);
+  const path = pathOf(event.payload);
   if (path !== undefined) {
     let best: PathRule | undefined;
     for (const rule of map.paths) {
@@ -87,7 +129,7 @@ export function resolveArea(
     if (best !== undefined) return best.areaId;
   }
 
-  const host = firstString(event.payload, HOST_KEYS);
+  const host = hostOf(event.payload);
   if (host !== undefined) {
     let best: HostRule | undefined;
     for (const rule of map.hosts) {
