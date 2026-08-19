@@ -302,3 +302,81 @@ describe("deriveSpans across plan boundaries", () => {
       expect(span.end).toBeGreaterThanOrEqual(span.start);
   });
 });
+
+describe("deriveSpans, human actors only", () => {
+  /**
+   * Shadow mode over 90 days of the real log: two thirds of every event was the
+   * agent, those two thirds formed 83% of the drift records, and the median
+   * record scored a magnitude of 0. `magnitudeOf` had always filtered to human
+   * kinds; span formation had not. The model was disagreeing with itself, and
+   * the disagreement was the loudest signal in the data.
+   */
+
+  const agentEvent = (id: string, ts: number, area: string) =>
+    ev(id, ts, area, { kind: "tool_dispatched" });
+
+  it("does not open a span on an agent-actor event", () => {
+    expect(
+      deriveSpans([agentEvent("a", T, "area-craft")], resolve, config),
+    ).toEqual([]);
+  });
+
+  it("does not open a span on a joint-actor event", () => {
+    const spans = deriveSpans(
+      [ev("a", T, "area-craft", { kind: "session_start" })],
+      resolve,
+      config,
+    );
+    expect(spans).toEqual([]);
+  });
+
+  it("does not let agent events extend a span", () => {
+    const spans = deriveSpans(
+      [
+        ev("a", T, "area-craft"),
+        agentEvent("b", T + MINUTE, "area-craft"),
+        ev("c", T + 2 * MINUTE, "area-craft"),
+      ],
+      resolve,
+      config,
+    );
+    expect(spans).toHaveLength(1);
+    expect(spans[0].sourceEventIds).toEqual(["a", "c"]);
+  });
+
+  it("does not let an agent event on another area cut a span", () => {
+    const spans = deriveSpans(
+      [
+        ev("a", T, "area-craft"),
+        agentEvent("b", T + MINUTE, "area-admin"),
+        ev("c", T + 2 * MINUTE, "area-craft"),
+      ],
+      resolve,
+      config,
+    );
+    expect(spans).toHaveLength(1);
+    expect(spans[0].areaId).toBe("area-craft");
+  });
+
+  it("does not let agent events bridge a silence longer than the idle gap", () => {
+    const spans = deriveSpans(
+      [
+        ev("a", T, "area-craft"),
+        agentEvent("b", T + 10 * MINUTE, "area-craft"),
+        ev("c", T + 20 * MINUTE, "area-craft"),
+      ],
+      resolve,
+      config,
+    );
+    expect(spans).toHaveLength(2);
+  });
+
+  it("keeps every browser event, since no browser kind is the agent's", () => {
+    const spans = deriveSpans(
+      [ev("a", T, "area-weeds", { surface: "browser", kind: "navigation" })],
+      resolve,
+      config,
+    );
+    expect(spans).toHaveLength(1);
+  });
+});
