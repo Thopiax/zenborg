@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Discrepancy, isDrift } from "../Discrepancy";
+import { type Discrepancy, isAbsence, isDrift } from "../Discrepancy";
 
 const drift: Discrepancy = {
   kind: "drift",
@@ -46,5 +46,32 @@ describe("isDrift", () => {
 
   it("is false for a drift with an empty planting, which cannot exist", () => {
     expect(isDrift({ ...drift, plantedMomentIds: [] })).toBe(false);
+  });
+});
+
+describe("isAbsence", () => {
+  const absence: Discrepancy = {
+    kind: "absence",
+    magnitude: 4,
+    plantedMomentIds: [],
+    observedAreaId: "area-themia",
+    since: 1_700_000_000_000,
+  };
+
+  it("is true for attention observed against an empty cell", () => {
+    expect(isAbsence(absence)).toBe(true);
+  });
+
+  it("is false for a drift", () => {
+    expect(isAbsence(drift)).toBe(false);
+  });
+
+  it("is false for an absence that somehow carries plantings, which is malformed", () => {
+    expect(isAbsence({ ...absence, plantedMomentIds: ["m1"] })).toBe(false);
+  });
+
+  it("is the mirror of isDrift: neither holds for the other's shape", () => {
+    expect(isDrift(absence)).toBe(false);
+    expect(isAbsence(drift)).toBe(false);
   });
 });

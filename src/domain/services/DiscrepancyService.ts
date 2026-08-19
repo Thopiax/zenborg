@@ -63,3 +63,33 @@ export function detectDrift(input: DriftInput): Discrepancy | null {
     since: span.start,
   };
 }
+
+/**
+ * Detect absence: attention observed against a cell that planted nothing.
+ *
+ * `detectDrift` returns null for an empty cell, and that is right for drift:
+ * nothing planted is not a discrepancy against everything. But it is also not
+ * nothing. Working without an intention is the case worth surfacing on its own
+ * terms, and `absence` is the kind the taxonomy already reserved for it.
+ *
+ * The two are mutually exclusive by construction. Drift needs a non-empty
+ * planting to be discrepant with; absence needs an empty one.
+ *
+ * No threshold is applied. A brief unplanted stretch is still an absence, and
+ * its magnitude is recorded raw, because the cut belongs to step 3 and choosing
+ * one here would be guessing at exactly the number shadow mode exists to
+ * measure.
+ */
+export function detectAbsence(input: DriftInput): Discrepancy | null {
+  const { plantedMomentIds, span, events } = input;
+
+  if (plantedMomentIds.length > 0) return null;
+
+  return {
+    kind: "absence",
+    magnitude: magnitudeOf(span, events),
+    plantedMomentIds: [],
+    observedAreaId: span.areaId,
+    since: span.start,
+  };
+}
