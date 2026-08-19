@@ -47,6 +47,16 @@ export interface Planting {
 export interface GardenPort {
   areaMap(): Promise<AreaMap>;
   plantingsAt(instant: Instant): Promise<Planting>;
+
+  /**
+   * Instants in `[from, to)` at which the plan says one stretch ended.
+   *
+   * Phase-band edges, and the start and end of any moment planted with a clock
+   * time. Without these a span straddles a boundary and then gets judged
+   * against whichever cell its first observation happened to fall in, so a
+   * therapy session in the afternoon would be measured against the morning.
+   */
+  boundaries(from: Instant, to: Instant): Promise<readonly Instant[]>;
 }
 
 /**
