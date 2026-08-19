@@ -99,11 +99,29 @@ describe("deriveDiscrepancies", () => {
     });
   });
 
-  it("reports nothing for an unplanted cell, since there is no plan to be discrepant with", async () => {
+  it("reports absence for an unplanted cell, because working with no intention is its own discrepancy", async () => {
     const record = await deriveDiscrepancies(
       deps([ev("a", T, "/w/themia/x.ts")], plantedNothing),
       WINDOW,
     );
+    expect(record.discrepancies).toHaveLength(1);
+    expect(record.discrepancies[0]).toMatchObject({
+      kind: "absence",
+      observedAreaId: "area-themia",
+      plantedMomentIds: [],
+    });
+  });
+
+  it("reports drift rather than absence when the cell did plant something", async () => {
+    const record = await deriveDiscrepancies(
+      deps([ev("a", T, "/w/themia/x.ts")], plantedCraft),
+      WINDOW,
+    );
+    expect(record.discrepancies.map((d) => d.kind)).toEqual(["drift"]);
+  });
+
+  it("reports nothing at all when there is no observed attention to judge", async () => {
+    const record = await deriveDiscrepancies(deps([], plantedNothing), WINDOW);
     expect(record.discrepancies).toEqual([]);
   });
 
