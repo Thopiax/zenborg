@@ -168,7 +168,7 @@ describe("Moment", () => {
             day: "2025-01-15",
             phase: Phase.MORNING,
             order: -1,
-          })
+          }),
         ).toThrow("Order must be non-negative");
       }
     });
@@ -272,7 +272,7 @@ describe("Moment", () => {
         const allocated1 = allocateMoment(moment1, { day, phase, order: 0 });
         const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
         expect(canAllocateToPhase([allocated1, allocated2], day, phase)).toBe(
-          true
+          true,
         );
       }
     });
@@ -294,7 +294,7 @@ describe("Moment", () => {
         const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
         const allocated3 = allocateMoment(moment3, { day, phase, order: 2 });
         expect(
-          canAllocateToPhase([allocated1, allocated2, allocated3], day, phase)
+          canAllocateToPhase([allocated1, allocated2, allocated3], day, phase),
         ).toBe(false);
       }
     });
@@ -320,7 +320,7 @@ describe("Moment", () => {
           order: 0,
         });
         expect(
-          canAllocateToPhase([allocated1, allocated2, allocated3], day, phase)
+          canAllocateToPhase([allocated1, allocated2, allocated3], day, phase),
         ).toBe(true);
       }
     });
@@ -346,7 +346,7 @@ describe("Moment", () => {
           order: 0,
         });
         expect(
-          canAllocateToPhase([allocated1, allocated2, allocated3], day, phase)
+          canAllocateToPhase([allocated1, allocated2, allocated3], day, phase),
         ).toBe(true);
       }
     });
@@ -363,14 +363,19 @@ describe("Moment", () => {
       expect(isParseableRef("example.com")).toBe(false);
       expect(isParseableRef("not a url")).toBe(false);
       expect(validateRefs(["not a url"])).toBe(
-        "Moment ref is not a parseable URL: not a url"
+        "Moment ref is not a parseable URL: not a url",
       );
       expect(validateRefs(undefined)).toBeNull();
     });
 
     it("normalizes: trims, drops empties, de-duplicates, keeps order", () => {
       expect(
-        normalizeRefs([" https://b.example/2 ", "https://a.example/1", "", "https://b.example/2"])
+        normalizeRefs([
+          " https://b.example/2 ",
+          "https://a.example/1",
+          "",
+          "https://b.example/2",
+        ]),
       ).toEqual(["https://b.example/2", "https://a.example/1"]);
     });
 

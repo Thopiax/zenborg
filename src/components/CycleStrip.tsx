@@ -48,7 +48,7 @@ export function CycleStrip({ onCreateCycle, onSelectCycle }: CycleStripProps) {
     })
     .sort(
       (a, b) =>
-        fromISODate(a.startDate).getTime() - fromISODate(b.startDate).getTime()
+        fromISODate(a.startDate).getTime() - fromISODate(b.startDate).getTime(),
     );
 
   const future = cycles
@@ -61,7 +61,7 @@ export function CycleStrip({ onCreateCycle, onSelectCycle }: CycleStripProps) {
     })
     .sort(
       (a, b) =>
-        fromISODate(a.startDate).getTime() - fromISODate(b.startDate).getTime()
+        fromISODate(a.startDate).getTime() - fromISODate(b.startDate).getTime(),
     );
 
   const ordered: Cycle[] = [...past, ...(active ? [active] : []), ...future];
@@ -73,7 +73,7 @@ export function CycleStrip({ onCreateCycle, onSelectCycle }: CycleStripProps) {
         behavior: "instant" as ScrollBehavior,
       });
     }
-  }, [active?.id]);
+  }, []);
 
   const effectiveSelectedId = selectedCycleId ?? active?.id ?? null;
 
@@ -97,7 +97,7 @@ export function CycleStrip({ onCreateCycle, onSelectCycle }: CycleStripProps) {
                 const e = fromISODate(cycle.endDate);
                 e.setHours(0, 0, 0, 0);
                 return e < today;
-              })()
+              })(),
           );
           return (
             <CycleCard
@@ -139,7 +139,7 @@ const CycleCard = forwardRef<HTMLButtonElement, CycleCardProps>(
     const subtitle = formatCycleSubtitle(
       cycle.startDate,
       cycle.endDate,
-      isActive
+      isActive,
     );
     const range = formatCycleDateRange(cycle.startDate, cycle.endDate);
 
@@ -153,11 +153,15 @@ const CycleCard = forwardRef<HTMLButtonElement, CycleCardProps>(
           "flex-shrink-0 w-48 h-[104px] snap-start rounded-lg px-3 py-2 text-left font-mono transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400",
           isActive &&
             "bg-stone-800 dark:bg-stone-100 text-stone-50 dark:text-stone-900 shadow-sm",
-          !isActive && isPast &&
+          !isActive &&
+            isPast &&
             "bg-stone-100 dark:bg-stone-800/40 text-stone-500 dark:text-stone-500 opacity-70",
-          !isActive && !isPast &&
+          !isActive &&
+            !isPast &&
             "bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200",
-          isSelected && !isActive && "ring-2 ring-stone-400 dark:ring-stone-500"
+          isSelected &&
+            !isActive &&
+            "ring-2 ring-stone-400 dark:ring-stone-500",
         )}
       >
         <div className="flex items-start justify-between gap-2">
@@ -174,7 +178,7 @@ const CycleCard = forwardRef<HTMLButtonElement, CycleCardProps>(
           <div
             className={cn(
               "mt-2 text-[11px] leading-tight line-clamp-2",
-              isActive ? "opacity-80" : "opacity-70"
+              isActive ? "opacity-80" : "opacity-70",
             )}
           >
             {cycle.intention}
@@ -186,6 +190,6 @@ const CycleCard = forwardRef<HTMLButtonElement, CycleCardProps>(
         )}
       </button>
     );
-  }
+  },
 );
 CycleCard.displayName = "CycleCard";

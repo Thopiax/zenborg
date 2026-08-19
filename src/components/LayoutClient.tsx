@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { CommandPalette } from "@/components/CommandPalette";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
 import { ModeSelector } from "@/components/ModeSelector";
-import { TodayButton } from "@/components/TodayButton";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
+import { TodayButton } from "@/components/TodayButton";
 import { UpdateNotification } from "@/components/UpdateNotification";
 import {
   Dialog,

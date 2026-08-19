@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { pushToTrmnlDirect, pushToRelay } from "../trmnl-client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrmnlPayload } from "@/domain/services/TrmnlFormatter";
+import { pushToRelay, pushToTrmnlDirect } from "../trmnl-client";
 
 const mockPayload: TrmnlPayload = {
   merge_variables: {
@@ -20,7 +20,7 @@ describe("trmnl-client", () => {
   describe("pushToTrmnlDirect", () => {
     it("returns success on 200 response", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(null, { status: 200 })
+        new Response(null, { status: 200 }),
       );
 
       const result = await pushToTrmnlDirect("test-uuid", mockPayload);
@@ -31,13 +31,13 @@ describe("trmnl-client", () => {
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },
-        })
+        }),
       );
     });
 
     it("returns rateLimited on 429 response", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(null, { status: 429 })
+        new Response(null, { status: 429 }),
       );
 
       const result = await pushToTrmnlDirect("test-uuid", mockPayload);
@@ -48,7 +48,7 @@ describe("trmnl-client", () => {
 
     it("returns error on network failure", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(
-        new Error("Network error")
+        new Error("Network error"),
       );
 
       const result = await pushToTrmnlDirect("test-uuid", mockPayload);
@@ -59,7 +59,7 @@ describe("trmnl-client", () => {
 
     it("returns error on 4xx response", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response("Bad Request", { status: 400 })
+        new Response("Bad Request", { status: 400 }),
       );
 
       const result = await pushToTrmnlDirect("test-uuid", mockPayload);
@@ -79,13 +79,13 @@ describe("trmnl-client", () => {
   describe("pushToRelay", () => {
     it("returns success on 200 response", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(null, { status: 200 })
+        new Response(null, { status: 200 }),
       );
 
       const result = await pushToRelay(
         "https://my-relay.vercel.app/api/push",
         "my-api-key",
-        mockPayload
+        mockPayload,
       );
 
       expect(result.success).toBe(true);
@@ -97,19 +97,19 @@ describe("trmnl-client", () => {
             "Content-Type": "application/json",
             Authorization: "Bearer my-api-key",
           },
-        })
+        }),
       );
     });
 
     it("returns error on network failure", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(
-        new Error("Connection refused")
+        new Error("Connection refused"),
       );
 
       const result = await pushToRelay(
         "https://my-relay.vercel.app/api/push",
         "key",
-        mockPayload
+        mockPayload,
       );
 
       expect(result.success).toBe(false);

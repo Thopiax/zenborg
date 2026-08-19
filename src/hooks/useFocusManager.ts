@@ -2,8 +2,8 @@ import { useSelector } from "@legendapp/state/react";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { moments$ } from "@/infrastructure/state/store";
 import {
-  focusedMomentId$,
   focusedCell$,
+  focusedMomentId$,
 } from "@/infrastructure/state/ui-store";
 
 /**
@@ -27,7 +27,7 @@ export function useFocusManager() {
     if (momentId) {
       setTimeout(() => {
         const element = document.querySelector(
-          `[data-moment-id="${momentId}"]`
+          `[data-moment-id="${momentId}"]`,
         );
         element?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }, 0);

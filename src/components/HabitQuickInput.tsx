@@ -35,7 +35,7 @@ export function HabitQuickInput({
       }
     },
     { enableOnFormTags: true, enabled: !!name.trim() },
-    [name, areaId]
+    [name, areaId],
   );
 
   // Escape to clear and blur
@@ -46,7 +46,7 @@ export function HabitQuickInput({
       inputRef.current?.blur();
     },
     { enableOnFormTags: true },
-    []
+    [],
   );
 
   return (
@@ -66,7 +66,7 @@ export function HabitQuickInput({
           "focus:outline-none",
           "placeholder:text-stone-400 dark:placeholder:text-stone-500",
           "text-stone-900 dark:text-stone-100",
-          "transition-colors"
+          "transition-colors",
         )}
         style={{
           borderColor: name ? areaColor : undefined,

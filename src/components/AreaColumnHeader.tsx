@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
+/** biome-ignore-all lint/a11y/noAutofocus: inline edit opens from a keyboard action, so focus has to follow it */
 "use client";
 
 import { Archive, MoreVertical, Plus } from "lucide-react";
@@ -72,7 +72,7 @@ export function AreaColumnHeader({
     "enter",
     () => handleSaveName(),
     { enableOnFormTags: true, enabled: isEditingName },
-    [editName]
+    [editName],
   );
 
   useHotkeys(
@@ -82,7 +82,7 @@ export function AreaColumnHeader({
       setIsEditingName(false);
     },
     { enableOnFormTags: true, enabled: isEditingName },
-    [area.name]
+    [area.name],
   );
 
   return (
@@ -187,7 +187,6 @@ export function AreaColumnHeader({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
     </div>
   );
 }

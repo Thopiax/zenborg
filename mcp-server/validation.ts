@@ -7,8 +7,6 @@
  * Entity-shape validation lives in zod schemas on the tool layer.
  */
 import {
-  START_TIME_PATTERN,
-  WEEKDAYS,
   type Area,
   type Cycle,
   type CyclePlan,
@@ -18,8 +16,10 @@ import {
   type PhaseConfig,
   type Rhythm,
   type Schedule,
+  START_TIME_PATTERN,
+  WEEKDAYS,
   type Weekday,
-} from './vault.js';
+} from "./vault.js";
 
 // ────────────────────────────────────────────────────────────────────────
 // Name validation (1–3 words) — used by Habit and Moment
@@ -50,12 +50,12 @@ export function validateOneToThreeWords(
 const TAG_VALID = /^[a-z0-9-]{1,20}$/;
 
 function normalizeSingleTag(tag: string): string | null {
-  if (!tag || typeof tag !== 'string') return null;
+  if (!tag || typeof tag !== "string") return null;
   const normalized = tag
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
     .substring(0, 20);
   return TAG_VALID.test(normalized) ? normalized : null;
 }
@@ -88,7 +88,9 @@ export function isParseableRef(ref: string): boolean {
 }
 
 /** First unparseable ref, named. Null when every ref parses. */
-export function validateRefs(refs: readonly string[] | undefined): string | null {
+export function validateRefs(
+  refs: readonly string[] | undefined,
+): string | null {
   for (const ref of refs ?? []) {
     if (!isParseableRef(ref.trim())) {
       return `Moment ref is not a parseable URL: ${ref}`;
@@ -219,7 +221,7 @@ export function normalizeSchedule(input: {
 }): Schedule | { error: string } {
   const weekdays = normalizeWeekdays(input.weekdays);
   if (weekdays.length === 0) {
-    return { error: 'Schedule must have at least one weekday' };
+    return { error: "Schedule must have at least one weekday" };
   }
   if (!isValidStartTime(input.startTime)) {
     return {
@@ -228,15 +230,19 @@ export function normalizeSchedule(input: {
   }
   if (!Number.isInteger(input.durationMin) || input.durationMin <= 0) {
     return {
-      error: 'Schedule durationMin must be a positive whole number of minutes',
+      error: "Schedule durationMin must be a positive whole number of minutes",
     };
   }
-  return { weekdays, startTime: input.startTime, durationMin: input.durationMin };
+  return {
+    weekdays,
+    startTime: input.startTime,
+    durationMin: input.durationMin,
+  };
 }
 
 /** One occurrence per scheduled weekday. */
 export function deriveRhythmFromSchedule(schedule: Schedule): Rhythm {
-  return { period: 'weekly', count: schedule.weekdays.length };
+  return { period: "weekly", count: schedule.weekdays.length };
 }
 
 /**
@@ -248,7 +254,7 @@ export function scheduleRhythmError(
   schedule: Schedule,
   rhythm: Rhythm | undefined,
 ): string | null {
-  if (!rhythm || rhythm.period !== 'weekly') {
+  if (!rhythm || rhythm.period !== "weekly") {
     return null;
   }
   if (rhythm.count !== schedule.weekdays.length) {
@@ -317,7 +323,7 @@ export function validateMomentTiming(
     durationMin !== undefined &&
     (!Number.isInteger(durationMin) || durationMin <= 0)
   ) {
-    return 'Moment durationMin must be a positive whole number of minutes';
+    return "Moment durationMin must be a positive whole number of minutes";
   }
   return null;
 }

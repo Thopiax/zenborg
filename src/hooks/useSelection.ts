@@ -22,10 +22,10 @@ import {
  */
 export function useSelection() {
   const editingMomentId = useSelector(() =>
-    selectionState$.editingMomentId.get()
+    selectionState$.editingMomentId.get(),
   );
   const selectedMomentIds = useSelector(() =>
-    Array.from(selectionState$.selectedMomentIds.get())
+    Array.from(selectionState$.selectedMomentIds.get()),
   );
 
   const startEditing = (momentId: string) => {

@@ -1,14 +1,10 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { HabitService } from "../services/HabitService";
-import {
-  cyclePlans$,
-  habits$,
-  moments$,
-} from "@/infrastructure/state/store";
+import { beforeEach, describe, expect, it } from "vitest";
+import { createCyclePlan } from "@/domain/entities/CyclePlan";
+import { createMoment } from "@/domain/entities/Moment";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import { Phase } from "@/domain/value-objects/Phase";
-import { createMoment } from "@/domain/entities/Moment";
-import { createCyclePlan } from "@/domain/entities/CyclePlan";
+import { cyclePlans$, habits$, moments$ } from "@/infrastructure/state/store";
+import { HabitService } from "../services/HabitService";
 
 describe("HabitService", () => {
   const service = new HabitService();

@@ -23,7 +23,9 @@ export function ThemeColorMeta() {
 
     // Update or create general theme-color meta tag for browsers without media query support
     // and to override when user manually changes theme
-    let generalThemeMeta = document.querySelector('meta[name="theme-color"]:not([media])');
+    let generalThemeMeta = document.querySelector(
+      'meta[name="theme-color"]:not([media])',
+    );
 
     if (!generalThemeMeta) {
       generalThemeMeta = document.createElement("meta");
@@ -34,16 +36,22 @@ export function ThemeColorMeta() {
     generalThemeMeta.setAttribute("content", color);
 
     // Update iOS status bar style for PWA
-    let appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    let appleStatusBar = document.querySelector(
+      'meta[name="apple-mobile-web-app-status-bar-style"]',
+    );
 
     if (!appleStatusBar) {
       appleStatusBar = document.createElement("meta");
-      appleStatusBar.setAttribute("name", "apple-mobile-web-app-status-bar-style");
+      appleStatusBar.setAttribute(
+        "name",
+        "apple-mobile-web-app-status-bar-style",
+      );
       document.head.appendChild(appleStatusBar);
     }
 
     // Use default for light, black-translucent for dark (better contrast)
-    const statusBarStyle = resolvedTheme === "dark" ? "black-translucent" : "default";
+    const statusBarStyle =
+      resolvedTheme === "dark" ? "black-translucent" : "default";
     appleStatusBar.setAttribute("content", statusBarStyle);
   }, [resolvedTheme]);
 

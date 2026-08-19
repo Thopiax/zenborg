@@ -13,8 +13,8 @@ export function ToolIndicator() {
   const tool = pathname.startsWith("/plan")
     ? "PLAN"
     : pathname.startsWith("/harvest")
-    ? "HARVEST"
-    : "CULTIVATE";
+      ? "HARVEST"
+      : "CULTIVATE";
 
   return (
     <div className="text-xs font-mono text-stone-400 select-none">[{tool}]</div>

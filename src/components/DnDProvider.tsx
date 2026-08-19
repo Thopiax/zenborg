@@ -26,6 +26,8 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useValue } from "@legendapp/state/react";
 import { useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
+import type { Area } from "@/domain/entities/Area";
+import type { Habit } from "@/domain/entities/Habit";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
 import {
@@ -36,19 +38,17 @@ import {
 import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, habits$, moments$ } from "@/infrastructure/state/store";
 import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
 import {
   columnWidth,
   getTextColorsForBackground,
   momentCard,
 } from "@/lib/design-tokens";
-import { cn } from "@/lib/utils";
 import {
   calculateNextOrder,
   canDropInCell,
   reorderAfterRemoval,
 } from "@/lib/drag-validation";
+import { cn } from "@/lib/utils";
 import type { DraggableData, DroppableData } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
 
@@ -471,7 +471,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     // fallback to an invisible null-day/null-phase state.
     const spontaneous = momentIds.filter((id) => {
       const m = allMoments[id];
-      return m && m.day && m.phase && m.cyclePlanId === null;
+      return m?.day && m.phase && m.cyclePlanId === null;
     });
     if (spontaneous.length > 0) {
       alert("Cannot unallocate spontaneous moment; delete it instead");
@@ -743,10 +743,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
           avoids the snap-back when deck-card drops materialize a new moment —
           the source draggable disappears, so the default return animation
           looks like the card bounced away from the slot it just filled. */}
-      <DragOverlay
-        modifiers={[snapCenterToCursor]}
-        dropAnimation={null}
-      >
+      <DragOverlay modifiers={[snapCenterToCursor]} dropAnimation={null}>
         {activeMoment && activeArea ? (
           <div
             className={isDuplicateMode ? "cursor-copy" : "cursor-grabbing"}
@@ -798,10 +795,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
             )}
           </div>
         ) : activeDeckHabit && activeDeckArea ? (
-          <div
-            className="cursor-grabbing"
-            style={{ width: columnWidth.md }}
-          >
+          <div className="cursor-grabbing" style={{ width: columnWidth.md }}>
             <DeckCardPreview habit={activeDeckHabit} area={activeDeckArea} />
           </div>
         ) : null}

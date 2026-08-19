@@ -67,7 +67,9 @@ const PlantPage = observer(() => {
       const allCollisions = closestCenter(args);
       const areaOnlyCollisions = allCollisions.filter((collision: any) => {
         const data = collision.data?.droppableContainer?.data?.current;
-        return data?.type === "area" || collision.id.toString().startsWith("area-");
+        return (
+          data?.type === "area" || collision.id.toString().startsWith("area-")
+        );
       });
       if (areaOnlyCollisions.length > 0) {
         return areaOnlyCollisions;
