@@ -22,20 +22,6 @@ export type Delivery =
   | { readonly origin: "self"; readonly primitives: readonly Primitive[] };
 
 /**
- * The one grandfathered violation of invariant 6.
- *
- * Host blocking (the drogue) predates this design and is sequenced for removal.
- * It offers no exit, and it is not expressible as any of the seven primitives:
- * none of them carries a host, URL or network field. So it is grandfathered as
- * an identified rule rather than as a primitive shape.
- *
- * Nothing new may be added here. A second entry is a design reversal, not a fix.
- */
-export const GRANDFATHERED_EXCEPTIONS: readonly RuleId[] = Object.freeze([
-  "rule-host-block",
-]);
-
-/**
  * Invariant 6: every delivered primitive carries a proceed affordance.
  *
  * Since the restricted category is gone, this carries the whole of the
@@ -43,6 +29,10 @@ export const GRANDFATHERED_EXCEPTIONS: readonly RuleId[] = Object.freeze([
  * the thing, it is that every armed thing can be got out of. It binds here, at
  * the foundational layer, because that is the layer the validator works on and
  * anything above it could be desugared around.
+ *
+ * There are no exceptions. Host blocking was the only candidate and it is
+ * expressible as a `cooldown` with resolver enforcement and a standing
+ * duration, which carries an `unlockPath` by type.
  */
 export function validateDelivery(delivery: Delivery): readonly string[] {
   const problems: string[] = [];
@@ -51,11 +41,7 @@ export function validateDelivery(delivery: Delivery): readonly string[] {
     problems.push("a delivery must carry at least one primitive");
   }
 
-  const grandfathered =
-    delivery.origin === "rule" &&
-    GRANDFATHERED_EXCEPTIONS.includes(delivery.ruleId);
-
-  if (!grandfathered && delivery.primitives.some((p) => !carriesExit(p))) {
+  if (delivery.primitives.some((p) => !carriesExit(p))) {
     problems.push(
       "invariant 6: every delivered primitive must carry a proceed affordance",
     );
