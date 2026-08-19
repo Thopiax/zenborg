@@ -21,19 +21,27 @@ function event(
   return {
     id: "e1",
     surface: surface as ActivityEvent["surface"],
-    kind: "prompt",
+    kind: "tool_dispatched",
     ts: 1_700_000_000_000,
     sessionId: "s1",
     payload,
   };
 }
 
+/** The shape keel actually writes: raw Claude Code hook stdin, capped per field. */
+const dispatch = (toolInput: Record<string, unknown>, cwd?: string) =>
+  event({
+    tool_name: "Edit",
+    tool_input: toolInput,
+    ...(cwd === undefined ? {} : { cwd }),
+  });
+
 describe("resolveArea", () => {
-  it("resolves a path to its area", () => {
+  it("resolves the edited file's path to its area", () => {
     expect(
       resolveArea(
         map,
-        event({ path: "/Users/rafa/Developer/themia/src/a.ts" }),
+        dispatch({ file_path: "/Users/rafa/Developer/themia/src/a.ts" }),
       ),
     ).toBe("area-themia");
   });
@@ -42,7 +50,9 @@ describe("resolveArea", () => {
     expect(
       resolveArea(
         map,
-        event({ path: "/Users/rafa/Developer/equanimitech/keel/src/x.ts" }),
+        dispatch({
+          file_path: "/Users/rafa/Developer/equanimitech/keel/src/x.ts",
+        }),
       ),
     ).toBe("area-keel");
   });
@@ -51,26 +61,46 @@ describe("resolveArea", () => {
     expect(
       resolveArea(
         map,
-        event({ path: "/Users/rafa/Developer/equanimitech/zenborg/src/x.ts" }),
+        dispatch({
+          file_path: "/Users/rafa/Developer/equanimitech/zenborg/src/x.ts",
+        }),
       ),
     ).toBe("area-craft");
   });
 
-  it("reads cwd when no path is present", () => {
-    expect(
-      resolveArea(map, event({ cwd: "/Users/rafa/Developer/themia" })),
-    ).toBe("area-themia");
-  });
-
-  it("prefers an explicit path over cwd", () => {
+  it("reads a notebook path too", () => {
     expect(
       resolveArea(
         map,
-        event({
-          path: "/Users/rafa/Developer/themia/x.ts",
-          cwd: "/Users/rafa/Developer/equanimitech",
-        }),
+        dispatch({ notebook_path: "/Users/rafa/Developer/themia/n.ipynb" }),
       ),
+    ).toBe("area-themia");
+  });
+
+  it("falls back to cwd when the tool input names no file", () => {
+    expect(
+      resolveArea(
+        map,
+        dispatch({ command: "ls" }, "/Users/rafa/Developer/themia"),
+      ),
+    ).toBe("area-themia");
+  });
+
+  it("prefers the touched file over cwd, which is what makes cross-area work visible", () => {
+    expect(
+      resolveArea(
+        map,
+        dispatch(
+          { file_path: "/Users/rafa/Developer/themia/x.ts" },
+          "/Users/rafa/Developer/equanimitech",
+        ),
+      ),
+    ).toBe("area-themia");
+  });
+
+  it("reads cwd from an event carrying no tool input at all", () => {
+    expect(
+      resolveArea(map, event({ cwd: "/Users/rafa/Developer/themia" })),
     ).toBe("area-themia");
   });
 
@@ -78,6 +108,15 @@ describe("resolveArea", () => {
     expect(resolveArea(map, event({ host: "chess.com" }, "browser"))).toBe(
       "area-leisure",
     );
+  });
+
+  it("parses a host out of a url", () => {
+    expect(
+      resolveArea(
+        map,
+        event({ url: "https://chess.com/play/online" }, "browser"),
+      ),
+    ).toBe("area-leisure");
   });
 
   it("matches a host suffix, so a subdomain resolves to its parent", () => {
@@ -93,29 +132,41 @@ describe("resolveArea", () => {
   });
 
   it("returns undefined when nothing matches, rather than guessing", () => {
-    expect(resolveArea(map, event({ path: "/tmp/scratch" }))).toBeUndefined();
+    expect(
+      resolveArea(map, dispatch({ file_path: "/tmp/scratch" })),
+    ).toBeUndefined();
   });
 
   it("returns undefined when the payload carries no locator at all", () => {
-    expect(resolveArea(map, event({}))).toBeUndefined();
+    expect(resolveArea(map, event({ tool_name: "Glob" }))).toBeUndefined();
   });
 
   it("does not match a path prefix that is only a string prefix, not a path boundary", () => {
     expect(
       resolveArea(
         map,
-        event({ path: "/Users/rafa/Developer/themia-archive/x" }),
+        dispatch({ file_path: "/Users/rafa/Developer/themia-archive/x" }),
       ),
     ).toBeUndefined();
   });
 
   it("resolves the prefix directory itself", () => {
     expect(
-      resolveArea(map, event({ path: "/Users/rafa/Developer/themia" })),
+      resolveArea(map, dispatch({ file_path: "/Users/rafa/Developer/themia" })),
     ).toBe("area-themia");
   });
 
   it("ignores a non-string locator rather than throwing", () => {
-    expect(resolveArea(map, event({ path: 42 }))).toBeUndefined();
+    expect(resolveArea(map, dispatch({ file_path: 42 }))).toBeUndefined();
+  });
+
+  it("ignores a malformed url rather than throwing", () => {
+    expect(
+      resolveArea(map, event({ url: "not a url" }, "browser")),
+    ).toBeUndefined();
+  });
+
+  it("ignores a non-object tool input rather than throwing", () => {
+    expect(resolveArea(map, event({ tool_input: "oops" }))).toBeUndefined();
   });
 });

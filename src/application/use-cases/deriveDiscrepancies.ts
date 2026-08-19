@@ -1,12 +1,8 @@
-import type {
-  DiscrepancyRecord,
-  ShadowDeps,
-  Window,
-} from "@/application/ports";
-import { resolveArea } from "@/domain/attention/AreaMap";
-import type { Discrepancy } from "@/domain/attention/Discrepancy";
-import { deriveSpans } from "@/domain/attention/SpanDerivation";
-import { detectDrift } from "@/domain/services/DiscrepancyService";
+import { resolveArea } from "../../domain/attention/AreaMap.ts";
+import type { Discrepancy } from "../../domain/attention/Discrepancy";
+import { deriveSpans } from "../../domain/attention/SpanDerivation.ts";
+import { detectDrift } from "../../domain/services/DiscrepancyService.ts";
+import type { DiscrepancyRecord, ShadowDeps, Window } from "../ports";
 
 /**
  * Migration step 2: shadow mode.
