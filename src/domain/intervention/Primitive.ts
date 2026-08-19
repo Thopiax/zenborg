@@ -55,13 +55,46 @@ export interface GateSpec {
  * the structural answer to the Screen Time counter-evidence: the teeth cannot be
  * armed without a way out, whoever armed them.
  */
+/**
+ * Where the lockout is applied.
+ *
+ * `resolver` is the one that reaches a phone, which is the reason host blocking
+ * is kept rather than retired. Nothing else in this system covers a device the
+ * app does not run on.
+ */
+export type CooldownEnforcement =
+  | { readonly at: "browser" }
+  | { readonly at: "resolver"; readonly profile: string }
+  | { readonly at: "device" };
+
+/**
+ * How long the lockout holds.
+ *
+ * `standing` never lapses. It is what the drogue blocklist has always been, and
+ * expressing it here is what let host blocking stop being an exception to
+ * invariant 6.
+ */
+export type CooldownDuration =
+  | { readonly type: "seconds"; readonly seconds: number }
+  | { readonly type: "standing" };
+
 export interface CooldownSpec {
   readonly kind: "cooldown";
-  readonly durationSeconds: number;
+  /** Defaults to `browser` when absent. */
+  readonly enforcement?: CooldownEnforcement;
+  readonly duration: CooldownDuration;
+  /**
+   * Required, and the reason a cooldown satisfies invariant 6 by type.
+   *
+   * `out_of_band` is the honest name for a lift that lives outside the running
+   * system, so it cannot be taken in the moment of wanting. A costly exit is
+   * still an exit, and the cost is what makes the wall hold.
+   */
   readonly unlockPath:
     | { readonly type: "wait" }
     | { readonly type: "unlock_with_intention"; readonly prompt: string }
-    | { readonly type: "unlock_with_delay"; readonly seconds: number };
+    | { readonly type: "unlock_with_delay"; readonly seconds: number }
+    | { readonly type: "out_of_band"; readonly note: string };
 }
 
 export interface ObserveSpec {

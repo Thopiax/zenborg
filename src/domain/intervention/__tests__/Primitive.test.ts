@@ -16,7 +16,7 @@ const gate: GateSpec = {
 
 const cooldown: CooldownSpec = {
   kind: "cooldown",
-  durationSeconds: 900,
+  duration: { type: "seconds", seconds: 900 },
   unlockPath: { type: "wait" },
 };
 

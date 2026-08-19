@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Discrepancy } from "../../attention/Discrepancy";
-import {
-  type Delivery,
-  GRANDFATHERED_EXCEPTIONS,
-  validateDelivery,
-} from "../Delivery";
-import type { GateSpec, InterceptSpec } from "../Primitive";
+import { type Delivery, validateDelivery } from "../Delivery";
+import type { CooldownSpec, GateSpec, InterceptSpec } from "../Primitive";
 
 const gate: GateSpec = {
   kind: "gate",
@@ -46,7 +42,7 @@ describe("validateDelivery", () => {
       primitives: [
         {
           kind: "cooldown",
-          durationSeconds: 900,
+          duration: { type: "seconds", seconds: 900 },
           unlockPath: { type: "wait" },
         },
       ],
@@ -73,23 +69,35 @@ describe("validateDelivery", () => {
     );
   });
 
-  it("permits the grandfathered exception by rule id", () => {
+  it("accepts host blocking, because it is a cooldown and carries its exit", () => {
+    const hostBlock: CooldownSpec = {
+      kind: "cooldown",
+      enforcement: { at: "resolver", profile: "kairos" },
+      duration: { type: "standing" },
+      unlockPath: {
+        type: "out_of_band",
+        note: "edit the profile and wait for propagation",
+      },
+    };
     const delivery: Delivery = {
       origin: "rule",
-      ruleId: GRANDFATHERED_EXCEPTIONS[0],
+      ruleId: "rule-host-block",
       discrepancy,
-      primitives: [intercept],
+      primitives: [hostBlock],
     };
     expect(validateDelivery(delivery)).toEqual([]);
   });
 
-  it("holds exactly one grandfathered exception", () => {
-    expect(GRANDFATHERED_EXCEPTIONS).toHaveLength(1);
-  });
-
-  it("does not extend the exception to a self-armed delivery, which has no rule id", () => {
-    const delivery: Delivery = { origin: "self", primitives: [intercept] };
-    expect(validateDelivery(delivery).length).toBeGreaterThan(0);
+  it("holds invariant 6 with no exception for any rule id", () => {
+    const delivery: Delivery = {
+      origin: "rule",
+      ruleId: "rule-host-block",
+      discrepancy,
+      primitives: [intercept],
+    };
+    expect(validateDelivery(delivery)).toContain(
+      "invariant 6: every delivered primitive must carry a proceed affordance",
+    );
   });
 
   it("rejects a delivery carrying no primitives", () => {
