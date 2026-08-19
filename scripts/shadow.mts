@@ -38,6 +38,11 @@ import type {
 import { runShadowMode } from "../src/application/use-cases/deriveDiscrepancies.ts";
 import type { ActivityEvent } from "../src/domain/attention/ActivityEvent.ts";
 import type { AreaMap } from "../src/domain/attention/AreaMap.ts";
+import {
+  assessBaseline,
+  type DailyCount,
+  DEFAULT_BASELINE_CONFIG,
+} from "../src/domain/attention/Baseline.ts";
 
 const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
@@ -351,6 +356,59 @@ if (unreviewed.length > 0) {
       "\nsuspect until they are reviewed: a wrong prefix invents discrepancies.",
   );
 }
+/**
+ * Whether step 2 can close.
+ *
+ * A day is an observation only when the log carried something that day. A day
+ * with no events at all is not a day that saw zero discrepancies, it is a day
+ * the log did not run, and counting it as a zero would flatten the trend with
+ * silence and end step 2 on an artefact.
+ */
+const observedDays = new Set<string>();
+for (const event of events) {
+  observedDays.add(localDate(event.ts));
+}
+const perDay = new Map<string, number>();
+for (const day of observedDays) {
+  perDay.set(day, 0);
+}
+for (const d of record.discrepancies) {
+  const day = localDate(d.since);
+  if (!perDay.has(day)) continue;
+  perDay.set(day, (perDay.get(day) ?? 0) + 1);
+}
+const series: DailyCount[] = [...perDay].map(([day, count]) => ({
+  day,
+  count,
+}));
+
+const baseline = assessBaseline(series);
+const { floorDays, trendDays } = DEFAULT_BASELINE_CONFIG;
+console.log(
+  `\nbaseline   ${baseline.observedDays} day(s) observed of ${floorDays}, ` +
+    `trend read off the final ${trendDays}`,
+);
+console.log(
+  `           slope ${baseline.slopePerDay.toFixed(2)}/day, ` +
+    `drift ${baseline.driftAcrossWindow.toFixed(1)} against ` +
+    `${baseline.tolerated.toFixed(1)} tolerated`,
+);
+if (baseline.stable) {
+  console.log(
+    "           STABLE. Step 2 can close, and step 3 may cut magnitude.",
+  );
+} else if (baseline.reason === "insufficient_days") {
+  console.log(
+    `           not yet: ${floorDays - baseline.observedDays} more observed day(s) ` +
+      "before the trend question is even asked.",
+  );
+} else {
+  console.log(
+    "           still trending. A series still climbing at the floor is not a\n" +
+      "           baseline, and one that never settles is a finding, not a delay.",
+  );
+}
+
 console.log(
   DRY
     ? "\ndry run: the record was not written."
