@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ActivityEvent } from "../../attention/ActivityEvent";
 import type { Span } from "../../attention/Span";
-import { type DriftInput, detectDrift } from "../DiscrepancyService";
+import {
+  type DriftInput,
+  detectAbsence,
+  detectDrift,
+} from "../DiscrepancyService";
 
 const SPAN_START = 1_700_000_000_000;
 const SPAN_END = SPAN_START + 600_000;
@@ -90,5 +94,70 @@ describe("detectDrift", () => {
   it("fails soft on a planting with no resolvable areas", () => {
     const result = detectDrift(input({ plantedAreaIds: [] }));
     expect(result?.kind).toBe("drift");
+  });
+});
+
+describe("detectAbsence", () => {
+  const unplanted = () => input({ plantedMomentIds: [], plantedAreaIds: [] });
+
+  it("reports absence when attention was observed against an empty cell", () => {
+    const found = detectAbsence(unplanted());
+    expect(found?.kind).toBe("absence");
+  });
+
+  it("returns null when something was planted, because that is drift's question", () => {
+    expect(detectAbsence(input())).toBeNull();
+  });
+
+  it("returns null when something was planted and the span matches it", () => {
+    expect(
+      detectAbsence(input({ plantedAreaIds: ["area-themia"] })),
+    ).toBeNull();
+  });
+
+  it("carries the area attention actually resolved to", () => {
+    expect(detectAbsence(unplanted())?.observedAreaId).toBe("area-themia");
+  });
+
+  it("carries no plantings, because there were none", () => {
+    expect(detectAbsence(unplanted())?.plantedMomentIds).toEqual([]);
+  });
+
+  it("dates the absence from the span's start", () => {
+    expect(detectAbsence(unplanted())?.since).toBe(SPAN_START);
+  });
+
+  it("counts magnitude from human-actor events inside the span, as drift does", () => {
+    const found = detectAbsence(
+      input({
+        plantedMomentIds: [],
+        plantedAreaIds: [],
+        events: [
+          event("prompt", SPAN_START + 1000, "a"),
+          event("prompt", SPAN_START + 2000, "b"),
+          event("tool_dispatched", SPAN_START + 3000, "c"),
+          event("tool_completed", SPAN_START + 4000, "d"),
+        ],
+      }),
+    );
+    expect(found?.magnitude).toBe(2);
+  });
+
+  it("applies no threshold: a brief unplanted stretch is still an absence", () => {
+    const brief: Span = { ...span, end: SPAN_START + 1 };
+    const found = detectAbsence(
+      input({ plantedMomentIds: [], plantedAreaIds: [], span: brief }),
+    );
+    expect(found).not.toBeNull();
+    expect(found?.magnitude).toBe(0);
+  });
+
+  it("is mutually exclusive with drift: at most one fires for any input", () => {
+    for (const candidate of [input(), unplanted()]) {
+      const both = [detectDrift(candidate), detectAbsence(candidate)].filter(
+        (d) => d !== null,
+      );
+      expect(both.length).toBeLessThanOrEqual(1);
+    }
   });
 });

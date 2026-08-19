@@ -313,11 +313,14 @@ console.log(
 console.log(`events     ${events.length}`);
 console.log(`idle gap   ${GAP_MINUTES}m`);
 console.log(`boundaries ${boundariesIn(window.from, window.to).length}`);
-console.log(`drifts     ${record.discrepancies.length}`);
+const drifts = record.discrepancies.filter((d) => d.kind === "drift");
+const absences = record.discrepancies.filter((d) => d.kind === "absence");
+console.log(`drifts     ${drifts.length}   (attention left the planted lane)`);
+console.log(`absences   ${absences.length}   (attention with nothing planted)`);
 console.log(`per day    ${(record.discrepancies.length / DAYS).toFixed(1)}`);
 
 if (byArea.size > 0) {
-  console.log("\nby observed area");
+  console.log("\nby observed area (drift and absence together)");
   const rows = [...byArea.entries()].sort((a, b) => b[1].count - a[1].count);
   for (const [area, s] of rows) {
     console.log(

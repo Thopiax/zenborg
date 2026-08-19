@@ -1,7 +1,10 @@
 import { resolveArea } from "../../domain/attention/AreaMap.ts";
 import type { Discrepancy } from "../../domain/attention/Discrepancy";
 import { deriveSpans } from "../../domain/attention/SpanDerivation.ts";
-import { detectDrift } from "../../domain/services/DiscrepancyService.ts";
+import {
+  detectAbsence,
+  detectDrift,
+} from "../../domain/services/DiscrepancyService.ts";
 import type { DiscrepancyRecord, ShadowDeps, Window } from "../ports";
 
 /**
@@ -33,13 +36,16 @@ export async function deriveDiscrepancies(
   const discrepancies: Discrepancy[] = [];
   for (const span of spans) {
     const planting = await deps.garden.plantingsAt(span.start);
-    const drift = detectDrift({
+    const input = {
       plantedMomentIds: planting.momentIds,
       plantedAreaIds: planting.areaIds,
       span,
       events,
-    });
-    if (drift !== null) discrepancies.push(drift);
+    };
+    // Mutually exclusive by construction: drift needs a planting to be
+    // discrepant with, absence needs the lack of one. At most one fires.
+    const found = detectDrift(input) ?? detectAbsence(input);
+    if (found !== null) discrepancies.push(found);
   }
 
   return {
