@@ -19,16 +19,16 @@ export async function deriveDiscrepancies(
   deps: ShadowDeps,
   window: Window,
 ): Promise<DiscrepancyRecord> {
-  const [events, areaMap] = await Promise.all([
+  const [events, areaMap, boundaries] = await Promise.all([
     deps.log.read(window.from, window.to),
     deps.garden.areaMap(),
+    deps.garden.boundaries(window.from, window.to),
   ]);
 
-  const spans = deriveSpans(
-    events,
-    (event) => resolveArea(areaMap, event),
-    deps.span,
-  );
+  const spans = deriveSpans(events, (event) => resolveArea(areaMap, event), {
+    ...deps.span,
+    boundaries,
+  });
 
   const discrepancies: Discrepancy[] = [];
   for (const span of spans) {
