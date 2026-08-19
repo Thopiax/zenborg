@@ -280,7 +280,7 @@ describe("TrmnlFormatter", () => {
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
       const cycle: Cycle = {
         id: "cycle-1",
-        name: "Barcelona Summer",
+        name: "Dev Summer",
         startDate: "2026-02-01",
         endDate: "2026-03-01",
         intention: null,
@@ -298,7 +298,7 @@ describe("TrmnlFormatter", () => {
         8,
       );
 
-      expect(result.merge_variables.cycle_name).toBe("Barcelona Summer");
+      expect(result.merge_variables.cycle_name).toBe("Dev Summer");
     });
 
     it("uses empty string for cycle name when no cycle is active", () => {
