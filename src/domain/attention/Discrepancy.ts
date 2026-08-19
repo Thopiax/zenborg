@@ -46,3 +46,21 @@ export function isDrift(discrepancy: Discrepancy): boolean {
     discrepancy.kind === "drift" && discrepancy.plantedMomentIds.length > 0
   );
 }
+
+/**
+ * True for a well-formed absence.
+ *
+ * The mirror of `isDrift`, and its condition is the exact inverse: attention was
+ * observed and the cell held nothing to observe it against. Working with no
+ * intention set is not the harmless case the empty cell first looked like, it is
+ * its own discrepancy, and the taxonomy already reserved the word.
+ *
+ * An absence carrying plantings is malformed, not merely uninteresting: if
+ * something was planted, the question is whether attention matched it, and that
+ * question is `drift`.
+ */
+export function isAbsence(discrepancy: Discrepancy): boolean {
+  return (
+    discrepancy.kind === "absence" && discrepancy.plantedMomentIds.length === 0
+  );
+}
