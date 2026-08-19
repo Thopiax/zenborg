@@ -1,4 +1,4 @@
-import type { ActivityEvent } from "./ActivityEvent";
+import { type ActivityEvent, isHumanActor } from "./ActivityEvent.ts";
 import type { AreaId, Duration, Instant } from "./ids";
 import type { Span } from "./Span";
 
@@ -8,6 +8,14 @@ import type { Span } from "./Span";
  * The taxonomy is explicit that "writers never claim bouts": a span is derived,
  * never recorded, so this is where one comes from. Pure, and the resolver is
  * injected so span logic can be tested without an area map.
+ *
+ * Only the person's own events build a span. `magnitudeOf` had always counted
+ * human kinds only, on the grounds that one prompt can emit eighty tool calls,
+ * but span formation used to take every event. Shadow mode over 90 days of the
+ * real log showed what that cost: two thirds of the events were the agent, they
+ * formed 83% of the drift records, and the median record scored a magnitude of
+ * 0. A span is a claim about where the person was, so it is built from what the
+ * person did, and the two halves of the model now agree.
  *
  * A span closes on three things: attention moves to another area, the person
  * stops producing observations for longer than `idleGapMs`, or the plan says
@@ -113,6 +121,11 @@ export function deriveSpans(
   let open: OpenSpan | undefined;
 
   for (const event of ordered) {
+    // The agent's own throughput is not the person's attention, and its
+    // baseline moves whenever the model or harness changes. An agent event
+    // neither opens a span, extends one, nor cuts one.
+    if (!isHumanActor(event)) continue;
+
     const areaId = resolve(event);
     if (areaId === undefined) continue;
 

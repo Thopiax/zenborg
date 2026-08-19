@@ -21,6 +21,12 @@ function event(kind: string, ts: number, id = "x"): ActivityEvent {
   return { id, surface: "agent", kind, ts, sessionId: "s1", payload: {} };
 }
 
+/** A span that names the events which formed it, since magnitude reads provenance. */
+const spanOf = (...sourceEventIds: string[]): Span => ({
+  ...span,
+  sourceEventIds,
+});
+
 function input(overrides: Partial<DriftInput> = {}): DriftInput {
   return {
     plantedMomentIds: ["m1"],
@@ -58,9 +64,10 @@ describe("detectDrift", () => {
     expect(result?.since).toBe(SPAN_START);
   });
 
-  it("counts human-actor events inside the span as magnitude", () => {
+  it("counts the human-actor events that formed the span as magnitude", () => {
     const result = detectDrift(
       input({
+        span: spanOf("a", "b", "c"),
         events: [
           event("prompt", SPAN_START + 1, "a"),
           event("prompt", SPAN_START + 2, "b"),
@@ -71,9 +78,10 @@ describe("detectDrift", () => {
     expect(result?.magnitude).toBe(2);
   });
 
-  it("ignores human events outside the span", () => {
+  it("ignores human events that did not form the span", () => {
     const result = detectDrift(
       input({
+        span: spanOf("c"),
         events: [
           event("prompt", SPAN_START - 1, "a"),
           event("prompt", SPAN_END, "b"),
@@ -86,7 +94,10 @@ describe("detectDrift", () => {
 
   it("yields magnitude 0 rather than null when no human event fired", () => {
     const result = detectDrift(
-      input({ events: [event("tool_dispatched", SPAN_START + 1)] }),
+      input({
+        span: spanOf("x"),
+        events: [event("tool_dispatched", SPAN_START + 1)],
+      }),
     );
     expect(result?.magnitude).toBe(0);
   });
@@ -127,11 +138,12 @@ describe("detectAbsence", () => {
     expect(detectAbsence(unplanted())?.since).toBe(SPAN_START);
   });
 
-  it("counts magnitude from human-actor events inside the span, as drift does", () => {
+  it("counts magnitude from the events that formed the span, as drift does", () => {
     const found = detectAbsence(
       input({
         plantedMomentIds: [],
         plantedAreaIds: [],
+        span: spanOf("a", "b", "c", "d"),
         events: [
           event("prompt", SPAN_START + 1000, "a"),
           event("prompt", SPAN_START + 2000, "b"),
