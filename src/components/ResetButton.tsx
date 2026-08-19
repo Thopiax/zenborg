@@ -10,8 +10,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ConfirmableAction } from "./ConfirmableAction";
 import { resetStore } from "@/infrastructure/state/initialize";
+import { ConfirmableAction } from "./ConfirmableAction";
 
 /**
  * Reset button component with text-based confirmation

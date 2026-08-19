@@ -30,8 +30,7 @@ export function computeVirtualDeckCards(
     const habit = habitById.get(plan.habitId);
     if (!habit || habit.isArchived) continue;
     const allocated = moments.filter(
-      (m) =>
-        m.cyclePlanId === plan.id && m.day !== null && m.phase !== null,
+      (m) => m.cyclePlanId === plan.id && m.day !== null && m.phase !== null,
     ).length;
     const ghosts = Math.max(0, plan.budgetedCount - allocated);
     cards.push({ plan, habit, ghosts });

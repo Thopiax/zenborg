@@ -67,18 +67,17 @@ export function TaggedNameInput({
             onChange={(e) =>
               field.setDisplayValue(
                 e.target.value,
-                e.target.selectionStart || 0
+                e.target.selectionStart || 0,
               )
             }
             onBlur={() => field.extractRemainingTags()}
-            autoFocus={autoFocus}
             autoCapitalize="none"
             placeholder={placeholder}
             className={cn(
               "w-full bg-transparent outline-none",
               "text-stone-900 dark:text-stone-100",
               "placeholder:text-stone-400 dark:placeholder:text-stone-500",
-              className
+              className,
             )}
           />
         }

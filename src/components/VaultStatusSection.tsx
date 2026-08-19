@@ -79,7 +79,9 @@ export const VaultStatusSection = observer(function VaultStatusSection() {
   useEffect(() => {
     if (!isTauri()) return;
     // Fetch vault path once on mount.
-    vaultRootPath().then(setPath).catch(() => setPath(null));
+    vaultRootPath()
+      .then(setPath)
+      .catch(() => setPath(null));
     // Re-render every second for relative-time display.
     const id = window.setInterval(() => setTick((t) => t + 1), 1000);
     return () => window.clearInterval(id);

@@ -59,7 +59,7 @@ export function createMomentWithHistory(moment: Moment) {
  */
 export function updateMomentWithHistory(
   momentId: string,
-  updates: Partial<Moment>
+  updates: Partial<Moment>,
 ) {
   const before = moments$[momentId].peek();
 
@@ -164,7 +164,7 @@ export function allocateMomentWithHistory(
   momentId: string,
   day: string,
   phase: Phase,
-  order: number
+  order: number,
 ) {
   const moment = moments$[momentId].peek();
 
@@ -248,7 +248,7 @@ export function moveMomentWithHistory(
   toDay: string | null,
   toPhase: Phase | null,
   toOrder: number,
-  reorders?: Array<{ momentId: string; fromOrder: number; toOrder: number }>
+  reorders?: Array<{ momentId: string; fromOrder: number; toOrder: number }>,
 ) {
   const moment = moments$[momentId].peek();
 
@@ -301,7 +301,7 @@ export function moveMomentWithHistory(
     fromPhase,
     "to",
     toDay,
-    toPhase
+    toPhase,
   );
 }
 
@@ -312,14 +312,14 @@ export function duplicateMomentWithHistory(
   originalMomentId: string,
   targetDay: string | null,
   targetPhase: Phase | null,
-  targetOrder: number
+  targetOrder: number,
 ): string {
   const originalMoment = moments$[originalMomentId].peek();
 
   if (!originalMoment) {
     console.error(
       "[History] Cannot duplicate moment - not found:",
-      originalMomentId
+      originalMomentId,
     );
     return "";
   }
@@ -401,7 +401,7 @@ export function bulkDuplicateMomentsWithHistory(momentIds: string[]): string[] {
   console.log(
     "[History] Bulk duplicated",
     momentsToDuplicate.length,
-    "moments"
+    "moments",
   );
 
   return newIds;
@@ -413,7 +413,7 @@ export function bulkDuplicateMomentsWithHistory(momentIds: string[]): string[] {
 export function reorderMomentsWithHistory(
   day: string,
   phase: Phase,
-  reorders: Array<{ momentId: string; fromOrder: number; toOrder: number }>
+  reorders: Array<{ momentId: string; fromOrder: number; toOrder: number }>,
 ) {
   // Apply: Update orders in store
   for (const reorder of reorders) {
@@ -469,7 +469,7 @@ export function selectMomentsWithHistory(momentIds: string[]) {
 export function deselectMomentsWithHistory(momentIds: string[]) {
   const previousSelection = selectionState$.selectedMomentIds.peek();
   const newSelection = previousSelection.filter(
-    (id) => !momentIds.includes(id)
+    (id) => !momentIds.includes(id),
   );
 
   // Apply: Update selection in store
@@ -631,7 +631,7 @@ export function applyOperation(operation: HistoryOperation) {
             for (const reorder of operation.reorders) {
               moments$[reorder.momentId].order.set(reorder.toOrder);
               moments$[reorder.momentId].updatedAt.set(
-                new Date().toISOString()
+                new Date().toISOString(),
               );
             }
           }
@@ -654,7 +654,7 @@ export function applyOperation(operation: HistoryOperation) {
       selectionState$.selectedMomentIds.set(operation.momentIds);
       if (operation.momentIds.length > 0) {
         selectionState$.lastSelectedId.set(
-          operation.momentIds[operation.momentIds.length - 1]
+          operation.momentIds[operation.momentIds.length - 1],
         );
       }
       break;
@@ -663,7 +663,7 @@ export function applyOperation(operation: HistoryOperation) {
       {
         const current = selectionState$.selectedMomentIds.peek();
         const newSelection = current.filter(
-          (id) => !operation.momentIds.includes(id)
+          (id) => !operation.momentIds.includes(id),
         );
         selectionState$.selectedMomentIds.set(newSelection);
       }
@@ -677,7 +677,7 @@ export function applyOperation(operation: HistoryOperation) {
       selectionState$.selectedMomentIds.set(operation.momentIds);
       if (operation.momentIds.length > 0) {
         selectionState$.lastSelectedId.set(
-          operation.momentIds[operation.momentIds.length - 1]
+          operation.momentIds[operation.momentIds.length - 1],
         );
       }
       break;
@@ -685,7 +685,7 @@ export function applyOperation(operation: HistoryOperation) {
     default:
       console.warn(
         "[History] Unknown operation type:",
-        (operation as any).type
+        (operation as any).type,
       );
   }
 }
@@ -783,7 +783,7 @@ export function applyInverseOperation(operation: HistoryOperation) {
             for (const reorder of operation.reorders) {
               moments$[reorder.momentId].order.set(reorder.fromOrder);
               moments$[reorder.momentId].updatedAt.set(
-                new Date().toISOString()
+                new Date().toISOString(),
               );
             }
           }
@@ -814,7 +814,7 @@ export function applyInverseOperation(operation: HistoryOperation) {
       selectionState$.selectedMomentIds.set(operation.previousSelection);
       if (operation.previousSelection.length > 0) {
         selectionState$.lastSelectedId.set(
-          operation.previousSelection[operation.previousSelection.length - 1]
+          operation.previousSelection[operation.previousSelection.length - 1],
         );
       }
       break;
@@ -824,7 +824,7 @@ export function applyInverseOperation(operation: HistoryOperation) {
       selectionState$.selectedMomentIds.set(operation.previousSelection);
       if (operation.previousSelection.length > 0) {
         selectionState$.lastSelectedId.set(
-          operation.previousSelection[operation.previousSelection.length - 1]
+          operation.previousSelection[operation.previousSelection.length - 1],
         );
       }
       break;
@@ -834,7 +834,7 @@ export function applyInverseOperation(operation: HistoryOperation) {
       selectionState$.selectedMomentIds.set(operation.previousSelection);
       if (operation.previousSelection.length > 0) {
         selectionState$.lastSelectedId.set(
-          operation.previousSelection[operation.previousSelection.length - 1]
+          operation.previousSelection[operation.previousSelection.length - 1],
         );
       }
       break;
@@ -844,7 +844,7 @@ export function applyInverseOperation(operation: HistoryOperation) {
       selectionState$.selectedMomentIds.set(operation.previousSelection);
       if (operation.previousSelection.length > 0) {
         selectionState$.lastSelectedId.set(
-          operation.previousSelection[operation.previousSelection.length - 1]
+          operation.previousSelection[operation.previousSelection.length - 1],
         );
       }
       break;
@@ -852,7 +852,7 @@ export function applyInverseOperation(operation: HistoryOperation) {
     default:
       console.warn(
         "[History] Unknown operation type for inverse:",
-        (operation as any).type
+        (operation as any).type,
       );
   }
 }

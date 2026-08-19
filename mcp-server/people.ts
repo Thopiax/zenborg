@@ -12,10 +12,10 @@
  *
  * Health is NEVER stored. Recomputed on every read.
  */
-import type { Health } from './health.js';
-import { parseVaultDay } from './health.js';
-import type { Habit, Moment, Rhythm } from './vault.js';
-import { rhythmSilenceThresholdDays } from './vault.js';
+import type { Health } from "./health.js";
+import { parseVaultDay } from "./health.js";
+import type { Habit, Moment, Rhythm } from "./vault.js";
+import { rhythmSilenceThresholdDays } from "./vault.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -121,16 +121,16 @@ export function personHealth(
   now: Date,
 ): Health {
   if (!person.rhythm) {
-    return 'unstated';
+    return "unstated";
   }
   const last = latestContactDate(person.id, moments, now);
   if (last === null) {
-    return 'wilting';
+    return "wilting";
   }
   const daysSince = (now.getTime() - last.getTime()) / MS_PER_DAY;
   return daysSince <= rhythmSilenceThresholdDays(person.rhythm)
-    ? 'blooming'
-    : 'wilting';
+    ? "blooming"
+    : "wilting";
 }
 
 /**
@@ -199,7 +199,7 @@ export function selectPeopleToReach(
   const results: PersonToReach[] = [];
 
   for (const habit of Object.values(habits)) {
-    if (habit.kind !== 'person') {
+    if (habit.kind !== "person") {
       continue;
     }
     if (habit.isArchived) {
@@ -211,7 +211,7 @@ export function selectPeopleToReach(
     if (tag && !(habit.tags ?? []).includes(tag)) {
       continue;
     }
-    if (personHealth(habit, moments, now) !== 'wilting') {
+    if (personHealth(habit, moments, now) !== "wilting") {
       continue;
     }
     // Already reached out and agreed a date — stay quiet.

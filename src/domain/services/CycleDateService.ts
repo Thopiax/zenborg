@@ -1,7 +1,5 @@
 import {
   addDays,
-  addMonths,
-  addWeeks,
   endOfMonth,
   endOfQuarter,
   format,
@@ -10,8 +8,13 @@ import {
   startOfQuarter,
   startOfWeek,
 } from "date-fns";
-import { toISODate, getTodayISO, getTomorrowISO, fromISODate } from "@/lib/dates";
 import type { Cycle } from "@/domain/entities/Cycle";
+import {
+  fromISODate,
+  getTodayISO,
+  getTomorrowISO,
+  toISODate,
+} from "@/lib/dates";
 
 /**
  * Domain Service: Cycle Date Calculations
@@ -35,7 +38,10 @@ export type TemplateDuration = "week" | "2-week" | "month" | "quarter";
  * @param startDate - Start date for the cycle
  * @returns Generated cycle name (e.g., "Week 10", "March 2026", "Q1 2026")
  */
-export function generateCycleName(template: TemplateDuration, startDate: Date): string {
+export function generateCycleName(
+  template: TemplateDuration,
+  startDate: Date,
+): string {
   switch (template) {
     case "week":
       return `Week ${getISOWeek(startDate)}`;
@@ -96,7 +102,7 @@ export function calculateDefaultStartDate(cycles: Cycle[]): string {
 export function calculateTemplateDates(
   template: TemplateDuration,
   cycles: Cycle[],
-  baseDate?: string
+  baseDate?: string,
 ): {
   startDate: string;
   endDate: string;
@@ -122,10 +128,7 @@ export function calculateTemplateDates(
  * @param template - Template duration
  * @returns Aligned date
  */
-function alignToCalendarBoundary(
-  date: Date,
-  template: TemplateDuration
-): Date {
+function alignToCalendarBoundary(date: Date, template: TemplateDuration): Date {
   switch (template) {
     case "week":
     case "2-week":
@@ -154,7 +157,7 @@ function alignToCalendarBoundary(
  */
 function calculateEndDateFromStart(
   startDate: Date,
-  template: TemplateDuration
+  template: TemplateDuration,
 ): Date {
   switch (template) {
     case "week":
@@ -195,7 +198,7 @@ export function doDateRangesOverlap(
   range1Start: string,
   range1End: string | null,
   range2Start: string,
-  range2End: string | null
+  range2End: string | null,
 ): boolean {
   const start1 = fromISODate(range1Start);
   const start2 = fromISODate(range2Start);
@@ -225,7 +228,7 @@ export function doDateRangesOverlap(
 export function findOverlappingCycle(
   cycles: Cycle[],
   startDate: string,
-  endDate: string | null
+  endDate: string | null,
 ): Cycle | null {
   for (const cycle of cycles) {
     if (
@@ -264,7 +267,7 @@ export function getDayBefore(date: string): string {
  */
 export function calculateDefaultEndDate(
   cycle: Cycle,
-  allCycles: Cycle[]
+  allCycles: Cycle[],
 ): string {
   const cycleStart = fromISODate(cycle.startDate);
 
@@ -272,7 +275,7 @@ export function calculateDefaultEndDate(
     .filter((c) => c.id !== cycle.id && fromISODate(c.startDate) > cycleStart)
     .sort(
       (a, b) =>
-        fromISODate(a.startDate).getTime() - fromISODate(b.startDate).getTime()
+        fromISODate(a.startDate).getTime() - fromISODate(b.startDate).getTime(),
     )[0];
 
   const todayISO = getTodayISO();

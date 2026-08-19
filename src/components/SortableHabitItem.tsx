@@ -67,14 +67,17 @@ export function SortableHabitItem({
       </button>
 
       {/* Habit Content - Click to edit */}
-      <button
-        type="button"
-        onClick={onEdit}
-        className="flex-1 text-left"
-      >
-        <div className={cn("flex items-center text-sm font-mono", textColors.primary)}>
+      <button type="button" onClick={onEdit} className="flex-1 text-left">
+        <div
+          className={cn(
+            "flex items-center text-sm font-mono",
+            textColors.primary,
+          )}
+        >
           <span className={cn("mr-2", "text-lg")}>{habit.emoji}</span>
-          <span className={cn("text-lg font-semibold line-clamp-1 flex-shrink-0")}>
+          <span
+            className={cn("text-lg font-semibold line-clamp-1 flex-shrink-0")}
+          >
             {habit.name}
           </span>
         </div>
@@ -84,7 +87,10 @@ export function SortableHabitItem({
             {habit.tags.map((tag) => (
               <span
                 key={tag}
-                className={cn("text-xs font-mono opacity-60", textColors.primary)}
+                className={cn(
+                  "text-xs font-mono opacity-60",
+                  textColors.primary,
+                )}
               >
                 #{tag}
               </span>

@@ -194,36 +194,36 @@ describe("CycleService.endCycle", () => {
   });
 
   it("defaults endDate to today when no next cycle exists", () => {
-    cycles$["c1"].set(makeOngoingCycle("c1", "2026-03-31"));
+    cycles$.c1.set(makeOngoingCycle("c1", "2026-03-31"));
 
     const result = service.endCycle("c1");
 
     expect("error" in result).toBe(false);
-    expect(cycles$["c1"].endDate.get()).toBe("2026-04-19");
+    expect(cycles$.c1.endDate.get()).toBe("2026-04-19");
   });
 
   it("defaults endDate to day before next cycle when next cycle is inside today", () => {
-    cycles$["vipassana"].set(makeOngoingCycle("vipassana", "2026-03-31"));
-    cycles$["paris"].set(makeFiniteCycle("paris", "2026-04-11", "2026-04-16"));
+    cycles$.vipassana.set(makeOngoingCycle("vipassana", "2026-03-31"));
+    cycles$.paris.set(makeFiniteCycle("paris", "2026-04-11", "2026-04-16"));
 
     const result = service.endCycle("vipassana");
 
     expect("error" in result).toBe(false);
-    expect(cycles$["vipassana"].endDate.get()).toBe("2026-04-10");
+    expect(cycles$.vipassana.endDate.get()).toBe("2026-04-10");
   });
 
   it("uses an explicit endDate when provided", () => {
-    cycles$["c1"].set(makeOngoingCycle("c1", "2026-03-31"));
+    cycles$.c1.set(makeOngoingCycle("c1", "2026-03-31"));
 
     const result = service.endCycle("c1", "2026-04-05");
 
     expect("error" in result).toBe(false);
-    expect(cycles$["c1"].endDate.get()).toBe("2026-04-05");
+    expect(cycles$.c1.endDate.get()).toBe("2026-04-05");
   });
 
   it("surfaces a descriptive error when the chosen endDate overlaps", () => {
-    cycles$["vipassana"].set(makeOngoingCycle("vipassana", "2026-03-31"));
-    cycles$["paris"].set(makeFiniteCycle("paris", "2026-04-11", "2026-04-16"));
+    cycles$.vipassana.set(makeOngoingCycle("vipassana", "2026-03-31"));
+    cycles$.paris.set(makeFiniteCycle("paris", "2026-04-11", "2026-04-16"));
 
     const result = service.endCycle("vipassana", "2026-04-19");
 
@@ -235,13 +235,13 @@ describe("CycleService.endCycle", () => {
   });
 
   it("allows ending exactly at the next cycle's start date (touching endpoint)", () => {
-    cycles$["a"].set(makeOngoingCycle("a", "2026-03-31"));
-    cycles$["b"].set(makeFiniteCycle("b", "2026-04-11", "2026-04-16"));
+    cycles$.a.set(makeOngoingCycle("a", "2026-03-31"));
+    cycles$.b.set(makeFiniteCycle("b", "2026-04-11", "2026-04-16"));
 
     const result = service.endCycle("a", "2026-04-11");
 
     expect("error" in result).toBe(false);
-    expect(cycles$["a"].endDate.get()).toBe("2026-04-11");
+    expect(cycles$.a.endDate.get()).toBe("2026-04-11");
   });
 });
 
@@ -449,21 +449,21 @@ describe("CycleService.getCycleReview", () => {
   });
 
   it("returns per-habit actualCount equal to allocated moments", () => {
-    moments$["m1"].set(
+    moments$.m1.set(
       makeMoment("m1", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-05",
       }),
     );
-    moments$["m2"].set(
+    moments$.m2.set(
       makeMoment("m2", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-10",
       }),
     );
-    moments$["m3"].set(
+    moments$.m3.set(
       makeMoment("m3", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
@@ -473,18 +473,18 @@ describe("CycleService.getCycleReview", () => {
 
     const review = service.getCycleReview("cycle-1");
     expect(review).not.toBeNull();
-    expect(review!.habits[0].actualCount).toBe(3);
+    expect(review?.habits[0].actualCount).toBe(3);
   });
 
   it("returns unplannedMoments for moments without cyclePlanId", () => {
-    moments$["m1"].set(
+    moments$.m1.set(
       makeMoment("m1", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-05",
       }),
     );
-    moments$["m2"].set(
+    moments$.m2.set(
       makeMoment("m2", {
         habitId: "habit-1",
         cyclePlanId: null,
@@ -493,19 +493,19 @@ describe("CycleService.getCycleReview", () => {
     );
 
     const review = service.getCycleReview("cycle-1");
-    expect(review!.unplannedMoments).toHaveLength(1);
-    expect(review!.unplannedMoments[0].id).toBe("m2");
+    expect(review?.unplannedMoments).toHaveLength(1);
+    expect(review?.unplannedMoments[0].id).toBe("m2");
   });
 
   it("includes firstAllocation and lastAllocation", () => {
-    moments$["m1"].set(
+    moments$.m1.set(
       makeMoment("m1", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-05",
       }),
     );
-    moments$["m2"].set(
+    moments$.m2.set(
       makeMoment("m2", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
@@ -514,26 +514,26 @@ describe("CycleService.getCycleReview", () => {
     );
 
     const review = service.getCycleReview("cycle-1");
-    expect(review!.habits[0].firstAllocation).toBe("2026-02-05");
-    expect(review!.habits[0].lastAllocation).toBe("2026-02-25");
+    expect(review?.habits[0].firstAllocation).toBe("2026-02-05");
+    expect(review?.habits[0].lastAllocation).toBe("2026-02-25");
   });
 
   it("includes longestGapDays", () => {
-    moments$["m1"].set(
+    moments$.m1.set(
       makeMoment("m1", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-01",
       }),
     );
-    moments$["m2"].set(
+    moments$.m2.set(
       makeMoment("m2", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
         day: "2026-02-05",
       }),
     );
-    moments$["m3"].set(
+    moments$.m3.set(
       makeMoment("m3", {
         habitId: "habit-1",
         cyclePlanId: "plan-1",
@@ -542,7 +542,7 @@ describe("CycleService.getCycleReview", () => {
     );
 
     const review = service.getCycleReview("cycle-1");
-    expect(review!.habits[0].longestGapDays).toBe(15);
+    expect(review?.habits[0].longestGapDays).toBe(15);
   });
 });
 
@@ -949,7 +949,7 @@ describe("CycleService.reconcileLegacyDeckMoments", () => {
 
   it("preserves allocated moments and spontaneous moments", () => {
     const service = new CycleService();
-    moments$["allocated"].set({
+    moments$.allocated.set({
       id: "allocated",
       name: "fiction",
       areaId: "a-1",
@@ -964,7 +964,7 @@ describe("CycleService.reconcileLegacyDeckMoments", () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    moments$["spontaneous"].set({
+    moments$.spontaneous.set({
       id: "spontaneous",
       name: "ad-hoc",
       areaId: "a-1",
@@ -981,8 +981,8 @@ describe("CycleService.reconcileLegacyDeckMoments", () => {
     });
     const result = service.reconcileLegacyDeckMoments();
     expect(result.deleted).toBe(0);
-    expect(moments$["allocated"].get()?.id).toBe("allocated");
-    expect(moments$["spontaneous"].get()?.id).toBe("spontaneous");
+    expect(moments$.allocated.get()?.id).toBe("allocated");
+    expect(moments$.spontaneous.get()?.id).toBe("spontaneous");
   });
 });
 

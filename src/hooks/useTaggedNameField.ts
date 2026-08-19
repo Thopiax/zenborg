@@ -40,7 +40,7 @@ export interface TaggedNameField {
  */
 export function useTaggedNameField(
   initialName = "",
-  initialTags: string[] = []
+  initialTags: string[] = [],
 ): TaggedNameField {
   const state$ = useObservable(() =>
     observable({
@@ -52,7 +52,7 @@ export function useTaggedNameField(
         searchValue: "",
         cursorPosition: 0,
       },
-    })
+    }),
   );
 
   // Reactive values - useValue automatically tracks and re-renders
@@ -65,7 +65,7 @@ export function useTaggedNameField(
   // Helper: Extract current tag being typed (if any)
   const extractCurrentTag = (
     text: string,
-    cursorPos: number
+    cursorPos: number,
   ): string | null => {
     const beforeCursor = text.slice(0, cursorPos);
     const lastHashIndex = beforeCursor.lastIndexOf("#");
@@ -81,7 +81,7 @@ export function useTaggedNameField(
   // Helper: Check if user just completed a tag (space/comma after #tag)
   const checkForCompletedTag = (
     text: string,
-    cursorPos: number
+    cursorPos: number,
   ): string | null => {
     const beforeCursor = text.slice(0, cursorPos);
     const lastChar = beforeCursor[beforeCursor.length - 1];
@@ -95,7 +95,7 @@ export function useTaggedNameField(
   // Helper: Remove #tag from text at cursor position
   const removeTagFromText = (
     text: string,
-    cursorPos: number
+    cursorPos: number,
   ): { cleanedText: string; newCursorPos: number } => {
     const beforeCursor = text.slice(0, cursorPos);
     const afterCursor = text.slice(cursorPos);
