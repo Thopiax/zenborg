@@ -76,6 +76,17 @@ export function validateRuleSpec(rule: RuleSpec): readonly string[] {
     problems.push("outcome.claim must say what the rule should shift");
   }
 
+  const measure = rule.outcome.measure;
+  if (
+    (measure.kind === "next_span_in" || measure.kind === "no_span_matching") &&
+    measure.areaIds.length === 0
+  ) {
+    // Every measure must be answerable from the log. A return measure naming no
+    // area has nothing to look for, so it reports unknown forever, which is the
+    // unevaluable state this layer exists to leave behind.
+    problems.push("outcome.measure names no area, so it can never be settled");
+  }
+
   if (rule.scope.surface === "browser") {
     if (rule.scope.matches.length === 0) {
       problems.push("scope.matches must be non-empty");
