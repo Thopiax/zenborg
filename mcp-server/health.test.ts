@@ -124,17 +124,17 @@ describe("computeHealth — moments attached via personIds", () => {
   });
 
   it("counts personIds moments toward BEGINNING's 5-moment budding gate", () => {
-    const yanik = habit({
-      id: "p-yanik",
-      name: "Yanik",
+    const uma = habit({
+      id: "p-uma",
+      name: "Uma",
       attitude: "BEGINNING",
     });
     const five = [1, 2, 3, 4, 5].map((n) =>
-      moment({ id: `m-${n}`, personIds: ["p-yanik"] }),
+      moment({ id: `m-${n}`, personIds: ["p-uma"] }),
     );
 
-    expect(computeHealth(yanik, null, five.slice(0, 4), NOW)).toBe("seedling");
-    expect(computeHealth(yanik, null, five, NOW)).toBe("budding");
+    expect(computeHealth(uma, null, five.slice(0, 4), NOW)).toBe("seedling");
+    expect(computeHealth(uma, null, five, NOW)).toBe("budding");
   });
 });
 

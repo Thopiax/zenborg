@@ -434,7 +434,7 @@ describe("Moment.personIds", () => {
   };
 
   it("composes several people under one moment", () => {
-    const m: Moment = { ...base, personIds: ["p-yanik", "p-yoel", "p-manu"] };
+    const m: Moment = { ...base, personIds: ["p-uma", "p-cleo", "p-manu"] };
     expect(m.personIds).toHaveLength(3);
   });
 
@@ -448,7 +448,7 @@ describe("Moment.personIds", () => {
 
   it("rejects a non-array personIds at the type level", () => {
     // @ts-expect-error personIds is string[] — a bare string must not assign
-    const bad: Moment = { ...base, personIds: "p-yanik" };
-    expect(bad.personIds).toBe("p-yanik");
+    const bad: Moment = { ...base, personIds: "p-uma" };
+    expect(bad.personIds).toBe("p-uma");
   });
 });

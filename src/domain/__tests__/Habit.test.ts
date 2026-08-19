@@ -236,7 +236,7 @@ describe("Habit", () => {
 describe("Habit aliases", () => {
   it("createHabit stores normalized aliases", () => {
     const result = createHabit({
-      name: "Duchi",
+      name: "Xan",
       areaId: "area-1",
       order: 0,
       aliases: ["Lorenzo", "  Lorenzino ", "lorenzo"],
@@ -248,10 +248,10 @@ describe("Habit aliases", () => {
 
   it("createHabit drops aliases equal to name", () => {
     const result = createHabit({
-      name: "Duchi",
+      name: "Xan",
       areaId: "area-1",
       order: 0,
-      aliases: ["duchi", "Lorenzo"],
+      aliases: ["xan", "Lorenzo"],
     });
     if (isHabitError(result)) throw new Error(result.error);
     expect(result.aliases).toEqual(["Lorenzo"]);
@@ -259,10 +259,10 @@ describe("Habit aliases", () => {
 
   it("createHabit omits aliases key when list is empty or all dropped", () => {
     const result = createHabit({
-      name: "Duchi",
+      name: "Xan",
       areaId: "area-1",
       order: 0,
-      aliases: ["", "  ", "duchi"],
+      aliases: ["", "  ", "xan"],
     });
     if (isHabitError(result)) throw new Error(result.error);
     expect(result.aliases).toBeUndefined();
@@ -270,7 +270,7 @@ describe("Habit aliases", () => {
 
   it("updateHabit can set and clear aliases", () => {
     const created = createHabit({
-      name: "Duchi",
+      name: "Xan",
       areaId: "area-1",
       order: 0,
     });
@@ -287,7 +287,7 @@ describe("Habit aliases", () => {
 
   it("updateHabit renormalizes aliases against a new name", () => {
     const created = createHabit({
-      name: "Duchi",
+      name: "Xan",
       areaId: "area-1",
       order: 0,
       aliases: ["Lorenzo"],
@@ -354,7 +354,7 @@ describe("Habit rhythm field", () => {
 describe("isPerson", () => {
   const base: Habit = {
     id: "h1",
-    name: "Yanik",
+    name: "Uma",
     areaId: "a1",
     attitude: null,
     phase: null,

@@ -46,8 +46,8 @@ const TWICE_WEEKLY: Rhythm = { period: "weekly", count: 2 };
 
 function person(over: Partial<Habit> = {}): Habit {
   return {
-    id: "p-yanik",
-    name: "Yanik",
+    id: "p-uma",
+    name: "Uma",
     areaId: "a-friends",
     attitude: null,
     phase: null,
@@ -84,23 +84,23 @@ function moment(over: Partial<Moment> = {}): Moment {
 
 describe("personMoments", () => {
   it("matches via personIds and via legacy habitId", () => {
-    const a = moment({ id: "a", personIds: ["p-yanik"] });
-    const b = moment({ id: "b", habitId: "p-yanik" });
-    const c = moment({ id: "c", personIds: ["p-yoel"] });
-    expect(personMoments("p-yanik", [a, b, c]).map((m) => m.id)).toEqual([
+    const a = moment({ id: "a", personIds: ["p-uma"] });
+    const b = moment({ id: "b", habitId: "p-uma" });
+    const c = moment({ id: "c", personIds: ["p-cleo"] });
+    expect(personMoments("p-uma", [a, b, c]).map((m) => m.id)).toEqual([
       "a",
       "b",
     ]);
   });
 
   it("matches a moment carrying the person among several personIds", () => {
-    const m = moment({ personIds: ["p-yanik", "p-yoel"] });
-    expect(personMoments("p-yanik", [m])).toEqual([m]);
+    const m = moment({ personIds: ["p-uma", "p-cleo"] });
+    expect(personMoments("p-uma", [m])).toEqual([m]);
   });
 
   it("does not match a moment about someone else", () => {
-    const m = moment({ personIds: ["p-yoel"] });
-    expect(personMoments("p-yanik", [m])).toEqual([]);
+    const m = moment({ personIds: ["p-cleo"] });
+    expect(personMoments("p-uma", [m])).toEqual([]);
   });
 
   // The vault is mostly moments that predate `personIds` and were never about
@@ -109,66 +109,66 @@ describe("personMoments", () => {
   // reaches it — `habitId === personId` short-circuits, or personIds is there.
   it("does not match — and does not throw — when a moment has neither habitId nor personIds", () => {
     const m = moment({ habitId: null });
-    expect(() => personMoments("p-yanik", [m])).not.toThrow();
-    expect(personMoments("p-yanik", [m])).toEqual([]);
+    expect(() => personMoments("p-uma", [m])).not.toThrow();
+    expect(personMoments("p-uma", [m])).toEqual([]);
   });
 
   it("matches on personIds alone, with habitId null", () => {
-    const m = moment({ habitId: null, personIds: ["p-yanik"] });
-    expect(personMoments("p-yanik", [m])).toEqual([m]);
+    const m = moment({ habitId: null, personIds: ["p-uma"] });
+    expect(personMoments("p-uma", [m])).toEqual([m]);
   });
 
   it("walks a vault where most moments carry no personIds at all", () => {
     const ms = [
       moment({ id: "m1", habitId: null }),
       moment({ id: "m2", habitId: "h-yoga" }),
-      moment({ id: "m3", habitId: null, personIds: ["p-yanik"] }),
+      moment({ id: "m3", habitId: null, personIds: ["p-uma"] }),
       moment({ id: "m4", habitId: null }),
     ];
-    expect(personMoments("p-yanik", ms)).toEqual([ms[2]]);
+    expect(personMoments("p-uma", ms)).toEqual([ms[2]]);
   });
 });
 
 describe("latestContactDate", () => {
   it("returns the most recent past day", () => {
     const ms = [
-      moment({ id: "m1", day: "2026-07-01", personIds: ["p-yanik"] }),
-      moment({ id: "m2", day: "2026-08-01", personIds: ["p-yanik"] }),
+      moment({ id: "m1", day: "2026-07-01", personIds: ["p-uma"] }),
+      moment({ id: "m2", day: "2026-08-01", personIds: ["p-uma"] }),
     ];
-    expect(latestContactDate("p-yanik", ms, NOW)).toEqual(
+    expect(latestContactDate("p-uma", ms, NOW)).toEqual(
       new Date("2026-08-01T00:00:00"),
     );
   });
 
   it("ignores future days", () => {
-    const ms = [moment({ day: "2026-09-01", personIds: ["p-yanik"] })];
-    expect(latestContactDate("p-yanik", ms, NOW)).toBeNull();
+    const ms = [moment({ day: "2026-09-01", personIds: ["p-uma"] })];
+    expect(latestContactDate("p-uma", ms, NOW)).toBeNull();
   });
 
   it("ignores unallocated moments with no day", () => {
-    const ms = [moment({ day: null, personIds: ["p-yanik"] })];
-    expect(latestContactDate("p-yanik", ms, NOW)).toBeNull();
+    const ms = [moment({ day: null, personIds: ["p-uma"] })];
+    expect(latestContactDate("p-uma", ms, NOW)).toBeNull();
   });
 
   // A day parses to LOCAL MIDNIGHT, so a moment dated today is already behind
   // `now` and counts as contact. `d > now` is the most semantically loaded
   // line in the module; today is the case that sits right on it.
   it("counts a moment dated today — local midnight is already behind us", () => {
-    const ms = [moment({ day: TODAY, personIds: ["p-yanik"] })];
-    expect(latestContactDate("p-yanik", ms, NOW)).toEqual(MIDNIGHT);
+    const ms = [moment({ day: TODAY, personIds: ["p-uma"] })];
+    expect(latestContactDate("p-uma", ms, NOW)).toEqual(MIDNIGHT);
   });
 
   it("prefers today over an earlier day", () => {
     const ms = [
-      moment({ id: "m1", day: dayBefore(NOW, 3), personIds: ["p-yanik"] }),
-      moment({ id: "m2", day: TODAY, personIds: ["p-yanik"] }),
+      moment({ id: "m1", day: dayBefore(NOW, 3), personIds: ["p-uma"] }),
+      moment({ id: "m2", day: TODAY, personIds: ["p-uma"] }),
     ];
-    expect(latestContactDate("p-yanik", ms, NOW)).toEqual(MIDNIGHT);
+    expect(latestContactDate("p-uma", ms, NOW)).toEqual(MIDNIGHT);
   });
 
   it("parses the day as local midnight, not UTC", () => {
-    const ms = [moment({ day: "2026-08-01", personIds: ["p-yanik"] })];
-    const last = latestContactDate("p-yanik", ms, NOW);
+    const ms = [moment({ day: "2026-08-01", personIds: ["p-uma"] })];
+    const last = latestContactDate("p-uma", ms, NOW);
     expect(last?.getFullYear()).toBe(2026);
     expect(last?.getMonth()).toBe(7);
     expect(last?.getDate()).toBe(1);
@@ -178,37 +178,37 @@ describe("latestContactDate", () => {
 
 describe("hasArrangedContact", () => {
   it("is true for a future-dated moment", () => {
-    const ms = [moment({ day: "2026-09-01", personIds: ["p-yanik"] })];
-    expect(hasArrangedContact("p-yanik", ms, NOW)).toBe(true);
+    const ms = [moment({ day: "2026-09-01", personIds: ["p-uma"] })];
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(true);
   });
 
   it("is false when everything is past", () => {
-    const ms = [moment({ day: "2026-08-01", personIds: ["p-yanik"] })];
-    expect(hasArrangedContact("p-yanik", ms, NOW)).toBe(false);
+    const ms = [moment({ day: "2026-08-01", personIds: ["p-uma"] })];
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(false);
   });
 
   it("is false when there are no moments at all", () => {
-    expect(hasArrangedContact("p-yanik", [], NOW)).toBe(false);
+    expect(hasArrangedContact("p-uma", [], NOW)).toBe(false);
   });
 
   it("ignores an unallocated moment with no day", () => {
-    const ms = [moment({ day: null, personIds: ["p-yanik"] })];
-    expect(hasArrangedContact("p-yanik", ms, NOW)).toBe(false);
+    const ms = [moment({ day: null, personIds: ["p-uma"] })];
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(false);
   });
 
   // Today is contact, not an arrangement — seeing someone this evening is not
   // a reason for the outreach queue to call you sorted.
   it("is false for a moment dated today", () => {
-    const ms = [moment({ day: TODAY, personIds: ["p-yanik"] })];
-    expect(hasArrangedContact("p-yanik", ms, NOW)).toBe(false);
+    const ms = [moment({ day: TODAY, personIds: ["p-uma"] })];
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(false);
   });
 
   it("is true when tomorrow is booked even though today already happened", () => {
     const ms = [
-      moment({ id: "m1", day: TODAY, personIds: ["p-yanik"] }),
-      moment({ id: "m2", day: dayBefore(NOW, -1), personIds: ["p-yanik"] }),
+      moment({ id: "m1", day: TODAY, personIds: ["p-uma"] }),
+      moment({ id: "m2", day: dayBefore(NOW, -1), personIds: ["p-uma"] }),
     ];
-    expect(hasArrangedContact("p-yanik", ms, NOW)).toBe(true);
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(true);
   });
 
   // Right-hand branch alone: no habitId to short-circuit on.
@@ -219,36 +219,36 @@ describe("hasArrangedContact", () => {
         id: "m2",
         habitId: null,
         day: dayBefore(NOW, -1),
-        personIds: ["p-yanik"],
+        personIds: ["p-uma"],
       }),
     ];
-    expect(hasArrangedContact("p-yanik", ms, NOW)).toBe(true);
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(true);
   });
 });
 
 describe("daysSinceLastContact", () => {
   it("counts whole days, null when never", () => {
-    const ms = [moment({ day: "2026-08-01", personIds: ["p-yanik"] })];
-    expect(daysSinceLastContact("p-yanik", ms, NOW)).toBe(6);
-    expect(daysSinceLastContact("p-yanik", [], NOW)).toBeNull();
+    const ms = [moment({ day: "2026-08-01", personIds: ["p-uma"] })];
+    expect(daysSinceLastContact("p-uma", ms, NOW)).toBe(6);
+    expect(daysSinceLastContact("p-uma", [], NOW)).toBeNull();
   });
 
   it("is zero for a moment dated today", () => {
-    const ms = [moment({ day: TODAY, personIds: ["p-yanik"] })];
-    expect(daysSinceLastContact("p-yanik", ms, NOW)).toBe(0);
+    const ms = [moment({ day: TODAY, personIds: ["p-uma"] })];
+    expect(daysSinceLastContact("p-uma", ms, NOW)).toBe(0);
   });
 
   it("floors — the count ticks over at local midnight, not at the hour of contact", () => {
-    const ms = [moment({ day: dayBefore(NOW, 1), personIds: ["p-yanik"] })];
-    expect(daysSinceLastContact("p-yanik", ms, NOW)).toBe(1);
+    const ms = [moment({ day: dayBefore(NOW, 1), personIds: ["p-uma"] })];
+    expect(daysSinceLastContact("p-uma", ms, NOW)).toBe(1);
   });
 
   it("derives contact from a personIds-only moment without touching habitId", () => {
     const ms = [
       moment({ id: "m1", habitId: null }),
-      moment({ id: "m2", habitId: null, day: TODAY, personIds: ["p-yanik"] }),
+      moment({ id: "m2", habitId: null, day: TODAY, personIds: ["p-uma"] }),
     ];
-    expect(daysSinceLastContact("p-yanik", ms, NOW)).toBe(0);
+    expect(daysSinceLastContact("p-uma", ms, NOW)).toBe(0);
   });
 });
 
@@ -264,7 +264,7 @@ describe("personHealth", () => {
 
   it("is blooming inside the threshold", () => {
     const p = person({ rhythm: { period: "weekly", count: 1 } });
-    const ms = [moment({ day: "2026-08-05", personIds: ["p-yanik"] })];
+    const ms = [moment({ day: "2026-08-05", personIds: ["p-uma"] })];
     expect(personHealth(p, ms, NOW)).toBe("blooming");
   });
 
@@ -273,17 +273,17 @@ describe("personHealth", () => {
       attitude: null,
       rhythm: { period: "weekly", count: 1 },
     });
-    const ms = [moment({ day: "2026-06-01", personIds: ["p-yanik"] })];
+    const ms = [moment({ day: "2026-06-01", personIds: ["p-uma"] })];
     expect(personHealth(p, ms, NOW)).toBe("wilting");
   });
 
   it("counts a moment shared with several people for each of them", () => {
     const ms = [
-      moment({ day: "2026-08-05", personIds: ["p-yanik", "p-yoel", "p-manu"] }),
+      moment({ day: "2026-08-05", personIds: ["p-uma", "p-cleo", "p-manu"] }),
     ];
     expect(personHealth(person({ rhythm: WEEKLY }), ms, NOW)).toBe("blooming");
     expect(
-      personHealth(person({ id: "p-yoel", rhythm: WEEKLY }), ms, NOW),
+      personHealth(person({ id: "p-cleo", rhythm: WEEKLY }), ms, NOW),
     ).toBe("blooming");
   });
 });
@@ -296,8 +296,8 @@ describe("personHealth", () => {
  * therefore vary attitude and see the health NOT move.
  */
 describe("personHealth — attitude is never consulted", () => {
-  const seen = [moment({ day: dayBefore(NOW, 2), personIds: ["p-yanik"] })];
-  const silent = [moment({ day: dayBefore(NOW, 40), personIds: ["p-yanik"] })];
+  const seen = [moment({ day: dayBefore(NOW, 2), personIds: ["p-uma"] })];
+  const silent = [moment({ day: dayBefore(NOW, 40), personIds: ["p-uma"] })];
 
   it("judges a BUILDING person on rhythm and silence, where computeHealth would branch", () => {
     const p = person({ attitude: "BUILDING", rhythm: WEEKLY });
@@ -337,28 +337,22 @@ describe("personHealth — silence threshold arithmetic", () => {
   it("blooms when silence equals the threshold exactly (<=, not <)", () => {
     // MIDNIGHT as `now` is the only way to make daysSince land on exactly 7.0 —
     // from a mid-day `now` the fraction is never zero and `<` would still pass.
-    const ms = [
-      moment({ day: dayBefore(MIDNIGHT, 7), personIds: ["p-yanik"] }),
-    ];
+    const ms = [moment({ day: dayBefore(MIDNIGHT, 7), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: WEEKLY }), ms, MIDNIGHT)).toBe(
       "blooming",
     );
   });
 
   it("wilts one day past the threshold", () => {
-    const ms = [
-      moment({ day: dayBefore(MIDNIGHT, 8), personIds: ["p-yanik"] }),
-    ];
+    const ms = [moment({ day: dayBefore(MIDNIGHT, 8), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: WEEKLY }), ms, MIDNIGHT)).toBe(
       "wilting",
     );
   });
 
   it("blooms just inside the threshold and wilts just outside it", () => {
-    const inside = [moment({ day: dayBefore(NOW, 6), personIds: ["p-yanik"] })];
-    const outside = [
-      moment({ day: dayBefore(NOW, 7), personIds: ["p-yanik"] }),
-    ];
+    const inside = [moment({ day: dayBefore(NOW, 6), personIds: ["p-uma"] })];
+    const outside = [moment({ day: dayBefore(NOW, 7), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: WEEKLY }), inside, NOW)).toBe(
       "blooming",
     );
@@ -370,7 +364,7 @@ describe("personHealth — silence threshold arithmetic", () => {
   it("honours rhythm.count — twice weekly halves the threshold to 3.5 days", () => {
     // Same person, same moment, same period. Only `count` differs, and it flips
     // the verdict: 5 days of silence is fine weekly, not fine twice weekly.
-    const ms = [moment({ day: dayBefore(NOW, 5), personIds: ["p-yanik"] })];
+    const ms = [moment({ day: dayBefore(NOW, 5), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: WEEKLY }), ms, NOW)).toBe("blooming");
     expect(personHealth(person({ rhythm: TWICE_WEEKLY }), ms, NOW)).toBe(
       "wilting",
@@ -378,14 +372,14 @@ describe("personHealth — silence threshold arithmetic", () => {
   });
 
   it("blooms inside a twice-weekly threshold", () => {
-    const ms = [moment({ day: dayBefore(NOW, 2), personIds: ["p-yanik"] })];
+    const ms = [moment({ day: dayBefore(NOW, 2), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: TWICE_WEEKLY }), ms, NOW)).toBe(
       "blooming",
     );
   });
 
   it("stretches the threshold for a longer period — monthly tolerates 20 days", () => {
-    const ms = [moment({ day: dayBefore(NOW, 20), personIds: ["p-yanik"] })];
+    const ms = [moment({ day: dayBefore(NOW, 20), personIds: ["p-uma"] })];
     expect(
       personHealth(
         person({ rhythm: { period: "monthly", count: 1 } }),
@@ -419,7 +413,7 @@ describe("overdueRatio", () => {
 
   it("measures against the person OWN rhythm, not raw days", () => {
     // The pair from the real vault: Jhonny {annually,1} at 400 days is barely
-    // late; Yanik {weekly,2} at 20 days is five and a half times past due.
+    // late; Uma {weekly,2} at 20 days is five and a half times past due.
     expect(overdueRatio(400, { period: "annually", count: 1 })).toBe(1.1);
     expect(overdueRatio(20, TWICE_WEEKLY)).toBe(5.71);
   });
@@ -617,33 +611,33 @@ describe("selectPeopleToReach", () => {
 
   it("A1. ranks a short-rhythm person above a long-rhythm one with FAR more days", () => {
     const jhonny = person({ id: "p-jhonny", name: "Jhonny", rhythm: ANNUALLY });
-    const yanik = person({
-      id: "p-yanik",
-      name: "Yanik",
+    const uma = person({
+      id: "p-uma",
+      name: "Uma",
       rhythm: TWICE_WEEKLY,
     });
-    const habits = vault(jhonny, yanik); // Jhonny first, so order is not incidental
+    const habits = vault(jhonny, uma); // Jhonny first, so order is not incidental
     const moments = [
       moment({ id: "m-j", day: dayBefore(NOW, 400), personIds: ["p-jhonny"] }),
-      moment({ id: "m-y", day: dayBefore(NOW, 20), personIds: ["p-yanik"] }),
+      moment({ id: "m-y", day: dayBefore(NOW, 20), personIds: ["p-uma"] }),
     ];
 
     const rows = selectPeopleToReach(habits, moments, NOW);
-    expect(rows.map((r) => r.name)).toEqual(["Yanik", "Jhonny"]);
+    expect(rows.map((r) => r.name)).toEqual(["Uma", "Jhonny"]);
     expect(rows.map((r) => r.overdueRatio)).toEqual([5.71, 1.1]);
   });
 
   it("A2. and the raw-days key would have inverted exactly that ordering", () => {
     const jhonny = person({ id: "p-jhonny", name: "Jhonny", rhythm: ANNUALLY });
-    const yanik = person({
-      id: "p-yanik",
-      name: "Yanik",
+    const uma = person({
+      id: "p-uma",
+      name: "Uma",
       rhythm: TWICE_WEEKLY,
     });
-    const habits = vault(jhonny, yanik);
+    const habits = vault(jhonny, uma);
     const moments = [
       moment({ id: "m-j", day: dayBefore(NOW, 400), personIds: ["p-jhonny"] }),
-      moment({ id: "m-y", day: dayBefore(NOW, 20), personIds: ["p-yanik"] }),
+      moment({ id: "m-y", day: dayBefore(NOW, 20), personIds: ["p-uma"] }),
     ];
 
     const rows = selectPeopleToReach(habits, moments, NOW);
@@ -653,8 +647,8 @@ describe("selectPeopleToReach", () => {
         overdueRank(b.daysSinceLastContact) -
         overdueRank(a.daysSinceLastContact),
     );
-    expect(byDays.map((r) => r.name)).toEqual(["Jhonny", "Yanik"]);
+    expect(byDays.map((r) => r.name)).toEqual(["Jhonny", "Uma"]);
     // ...yet the queue puts him LAST. The two keys disagree, and the ratio wins.
-    expect(rows.map((r) => r.name)).toEqual(["Yanik", "Jhonny"]);
+    expect(rows.map((r) => r.name)).toEqual(["Uma", "Jhonny"]);
   });
 });

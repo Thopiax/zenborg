@@ -416,18 +416,18 @@ describe("HabitHealthService — moments attached via personIds", () => {
   });
 
   it("counts personIds moments toward BEGINNING's 5-moment budding gate", () => {
-    const yanik = baseHabit({
-      id: "p-yanik",
-      name: "Yanik",
+    const uma = baseHabit({
+      id: "p-uma",
+      name: "Uma",
       attitude: Attitude.BEGINNING,
     });
     const five = [1, 2, 3, 4, 5].map((n) =>
-      unplanted(TWO_DAYS_AGO, { id: `m-${n}`, personIds: ["p-yanik"] }),
+      unplanted(TWO_DAYS_AGO, { id: `m-${n}`, personIds: ["p-uma"] }),
     );
 
-    expect(service.computeHealth(yanik, null, five.slice(0, 4), NOW)).toBe(
+    expect(service.computeHealth(uma, null, five.slice(0, 4), NOW)).toBe(
       "seedling",
     );
-    expect(service.computeHealth(yanik, null, five, NOW)).toBe("budding");
+    expect(service.computeHealth(uma, null, five, NOW)).toBe("budding");
   });
 });
