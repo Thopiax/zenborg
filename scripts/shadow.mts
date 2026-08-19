@@ -36,7 +36,10 @@ import type {
   ShadowDeps,
 } from "../src/application/ports.ts";
 import { runShadowMode } from "../src/application/use-cases/deriveDiscrepancies.ts";
-import type { ActivityEvent } from "../src/domain/attention/ActivityEvent.ts";
+import {
+  type ActivityEvent,
+  isHumanActor,
+} from "../src/domain/attention/ActivityEvent.ts";
 import type { AreaMap } from "../src/domain/attention/AreaMap.ts";
 import {
   assessBaseline,
@@ -276,7 +279,9 @@ function boundariesIn(from: number, to: number): readonly number[] {
 const now = Date.now();
 const window = { from: now - DAYS * DAY, to: now };
 
-const log: ActivityLogPort = { read: async (from, to) => readLog(from, to) };
+const log: ActivityLogPort = {
+  read: async (from, to) => readLog(from, to),
+};
 const garden: GardenPort = {
   areaMap: async () => areaMap,
   plantingsAt: async (instant) => plantingsAt(instant),
@@ -301,7 +306,12 @@ const deps: ShadowDeps = {
 
 const record = await runShadowMode(deps, window);
 
-const events = readLog(window.from, window.to);
+/**
+ * `deriveSpans` builds spans from the person's events only, so the report counts
+ * the same set. A day the agent worked alone is not a day the person was seen.
+ */
+const rawEvents = readLog(window.from, window.to);
+const events = rawEvents.filter(isHumanActor);
 const byArea = new Map<string, { count: number; magnitude: number }>();
 for (const d of record.discrepancies) {
   const key = d.observedAreaId ?? "(unresolved)";
@@ -315,7 +325,7 @@ for (const d of record.discrepancies) {
 console.log(
   `window     ${localDate(window.from)} to ${localDate(window.to)} (${DAYS}d)`,
 );
-console.log(`events     ${events.length}`);
+console.log(`events     ${events.length} human of ${rawEvents.length}`);
 console.log(`idle gap   ${GAP_MINUTES}m`);
 console.log(`boundaries ${boundariesIn(window.from, window.to).length}`);
 const drifts = record.discrepancies.filter((d) => d.kind === "drift");
@@ -368,20 +378,27 @@ const observedDays = new Set<string>();
 for (const event of events) {
   observedDays.add(localDate(event.ts));
 }
-const perDay = new Map<string, number>();
-for (const day of observedDays) {
-  perDay.set(day, 0);
+/**
+ * The daily series for one kind, or for all of them.
+ *
+ * Every observed day starts at zero, so a day the log ran and saw nothing is a
+ * real zero rather than a hole. Days the log did not run are never added.
+ */
+function seriesOf(kind?: string): DailyCount[] {
+  const perDay = new Map<string, number>();
+  for (const day of observedDays) {
+    perDay.set(day, 0);
+  }
+  for (const d of record.discrepancies) {
+    if (kind !== undefined && d.kind !== kind) continue;
+    const day = localDate(d.since);
+    if (!perDay.has(day)) continue;
+    perDay.set(day, (perDay.get(day) ?? 0) + 1);
+  }
+  return [...perDay].map(([day, count]) => ({ day, count }));
 }
-for (const d of record.discrepancies) {
-  const day = localDate(d.since);
-  if (!perDay.has(day)) continue;
-  perDay.set(day, (perDay.get(day) ?? 0) + 1);
-}
-const series: DailyCount[] = [...perDay].map(([day, count]) => ({
-  day,
-  count,
-}));
 
+const series = seriesOf();
 const baseline = assessBaseline(series);
 const { floorDays, trendDays } = DEFAULT_BASELINE_CONFIG;
 console.log(
@@ -406,6 +423,33 @@ if (baseline.stable) {
   console.log(
     "           still trending. A series still climbing at the floor is not a\n" +
       "           baseline, and one that never settles is a finding, not a delay.",
+  );
+}
+
+/**
+ * The same question asked of each kind on its own.
+ *
+ * Drift and absence are different claims and there is no reason their series
+ * should move together. A combined trend says something is climbing; it does not
+ * say which, and the answer changes what the trend means. Absence climbing is a
+ * finding about how much of the week goes unplanned. Drift climbing is a finding
+ * about the plan being left. Only the second is what the drift rule is for.
+ */
+console.log("\nsplit      the same trend question, per kind");
+for (const kind of ["drift", "absence"] as const) {
+  const kindSeries = seriesOf(kind);
+  const verdict = assessBaseline(kindSeries);
+  const total = kindSeries.reduce((sum, d) => sum + d.count, 0);
+  const state = verdict.stable
+    ? "STABLE"
+    : verdict.reason === "insufficient_days"
+      ? "not enough days"
+      : "still trending";
+  console.log(
+    `  ${kind.padEnd(9)}${String(total).padStart(5)} total, ` +
+      `slope ${verdict.slopePerDay.toFixed(2)}/day, ` +
+      `drift ${verdict.driftAcrossWindow.toFixed(1)} against ` +
+      `${verdict.tolerated.toFixed(1)} tolerated  (${state})`,
   );
 }
 

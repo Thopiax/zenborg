@@ -4,7 +4,7 @@ import {
 } from "../attention/ActivityEvent.ts";
 import type { Discrepancy, Magnitude } from "../attention/Discrepancy";
 import type { AreaId, MomentId } from "../attention/ids";
-import { type Span, spanOverlaps } from "../attention/Span.ts";
+import type { Span } from "../attention/Span.ts";
 
 /**
  * Derives discrepancies from what was planted and what was observed.
@@ -26,17 +26,26 @@ export interface DriftInput {
 }
 
 /**
- * Count the human-actor events falling inside the span.
+ * Count the human-actor events that formed the span.
  *
  * Human kinds only. One human prompt can emit eighty tool calls, so agent-actor
  * counts are machine throughput rather than human exertion, and their baseline
  * moves whenever the model or harness changes.
+ *
+ * Membership is read off `sourceEventIds` rather than off the clock. Testing
+ * overlap instead used to work only by accident: a span is half-open, so a span
+ * built from one undurated event spans `[T, T)` and contains nothing, not even
+ * the event that made it. Agent events used to pad the end and hide that. With
+ * span formation filtered to human actors the padding is gone, and a lone
+ * prompt would have scored 0. The span already records exactly what built it,
+ * so the provenance anchor answers the question the clock cannot.
  */
 function magnitudeOf(span: Span, events: readonly ActivityEvent[]): Magnitude {
+  const formed = new Set(span.sourceEventIds);
   let count = 0;
   for (const event of events) {
     if (!isHumanActor(event)) continue;
-    if (!spanOverlaps(span, event.ts, event.ts + 1)) continue;
+    if (!formed.has(event.id)) continue;
     count += 1;
   }
   return count;
