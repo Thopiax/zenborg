@@ -1,4 +1,4 @@
-import type { Area, Habit, Moment } from './vault.js';
+import type { Area, Habit, Moment } from "./vault.js";
 
 /**
  * Tag aggregation — the derived people/place/theme index.
@@ -26,7 +26,12 @@ export interface TagProfile {
   habits: { name: string; count: number }[];
   areas: { name: string; count: number }[];
   coTags: { tag: string; count: number }[];
-  recentMoments: { name: string; day: string | null; phase: string | null; area: string }[];
+  recentMoments: {
+    name: string;
+    day: string | null;
+    phase: string | null;
+    area: string;
+  }[];
   recentMomentsTruncated: boolean;
 }
 
@@ -52,11 +57,24 @@ export function buildTagIndex(
   areas: Area[],
   prefix?: string,
 ): TagIndexEntry[] {
-  const entries = new Map<string, TagIndexEntry & { range: { firstDay: string | null; lastDay: string | null } }>();
+  const entries = new Map<
+    string,
+    TagIndexEntry & {
+      range: { firstDay: string | null; lastDay: string | null };
+    }
+  >();
   const entry = (tag: string) => {
     let e = entries.get(tag);
     if (!e) {
-      e = { tag, moments: 0, habits: 0, areas: 0, firstDay: null, lastDay: null, range: { firstDay: null, lastDay: null } };
+      e = {
+        tag,
+        moments: 0,
+        habits: 0,
+        areas: 0,
+        firstDay: null,
+        lastDay: null,
+        range: { firstDay: null, lastDay: null },
+      };
       entries.set(tag, e);
     }
     return e;
@@ -78,7 +96,11 @@ export function buildTagIndex(
 
   return Array.from(entries.values())
     .filter((e) => (prefix ? e.tag.startsWith(prefix) : true))
-    .map(({ range, ...e }) => ({ ...e, firstDay: range.firstDay, lastDay: range.lastDay }))
+    .map(({ range, ...e }) => ({
+      ...e,
+      firstDay: range.firstDay,
+      lastDay: range.lastDay,
+    }))
     .sort(
       (a, b) =>
         b.moments + b.habits + b.areas - (a.moments + a.habits + a.areas) ||
@@ -96,7 +118,10 @@ export function buildTagProfile(
   const habitById = new Map(habits.map((h) => [h.id, h]));
   const areaById = new Map(areas.map((a) => [a.id, a]));
 
-  const range = { firstDay: null as string | null, lastDay: null as string | null };
+  const range = {
+    firstDay: null as string | null,
+    lastDay: null as string | null,
+  };
   const byHabit = new Map<string, number>();
   const byArea = new Map<string, number>();
   const coTags = new Map<string, number>();
@@ -104,10 +129,10 @@ export function buildTagProfile(
   for (const m of tagged) {
     foldDayRange(range, m.day);
     if (m.habitId !== null) {
-      const name = habitById.get(m.habitId)?.name ?? '(archived habit)';
+      const name = habitById.get(m.habitId)?.name ?? "(archived habit)";
       byHabit.set(name, (byHabit.get(name) ?? 0) + 1);
     }
-    const areaName = areaById.get(m.areaId)?.name ?? '(unknown area)';
+    const areaName = areaById.get(m.areaId)?.name ?? "(unknown area)";
     byArea.set(areaName, (byArea.get(areaName) ?? 0) + 1);
     for (const t of momentTags(m)) {
       if (t === tag) continue;
@@ -120,7 +145,9 @@ export function buildTagProfile(
   }
 
   const descending = <K>(m: Map<K, number>) =>
-    Array.from(m.entries()).sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])));
+    Array.from(m.entries()).sort(
+      (a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])),
+    );
 
   const recent = tagged
     .filter((m) => m.day !== null)
@@ -138,7 +165,7 @@ export function buildTagProfile(
       name: m.name,
       day: m.day,
       phase: m.phase,
-      area: areaById.get(m.areaId)?.name ?? '(unknown area)',
+      area: areaById.get(m.areaId)?.name ?? "(unknown area)",
     })),
     recentMomentsTruncated: recent.length > RECENT_MOMENTS_CAP,
   };

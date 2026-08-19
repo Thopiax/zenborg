@@ -4,10 +4,7 @@ import type {
   HistoryOperation,
   HistoryState,
 } from "@/domain/entities/HistoryEntry";
-import {
-  createHistoryEntry,
-  getInverseOperation,
-} from "@/domain/entities/HistoryEntry";
+import { createHistoryEntry } from "@/domain/entities/HistoryEntry";
 
 /**
  * History State Observable
@@ -81,7 +78,7 @@ export function endBatch(description?: string) {
  */
 export function recordOperation(
   operation: HistoryOperation,
-  description?: string
+  description?: string,
 ) {
   const isBatching = history$.isBatching.peek();
 
@@ -93,7 +90,7 @@ export function recordOperation(
       "[History] Added operation to batch:",
       operation.type,
       "| Batch size:",
-      batch.length + 1
+      batch.length + 1,
     );
   } else {
     // Create immediate history entry
@@ -125,7 +122,7 @@ function pushToHistory(entry: HistoryEntry) {
   history$.future.set([]);
 
   console.log(
-    `[History] Pushed entry: "${entry.description}" | Past: ${newPast.length}, Future: 0`
+    `[History] Pushed entry: "${entry.description}" | Past: ${newPast.length}, Future: 0`,
   );
 }
 
@@ -235,7 +232,7 @@ export function getHistoryStats() {
  */
 export async function withBatch<T>(
   fn: () => T | Promise<T>,
-  description?: string
+  description?: string,
 ): Promise<T> {
   startBatch();
   try {

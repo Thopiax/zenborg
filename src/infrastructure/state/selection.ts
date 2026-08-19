@@ -6,7 +6,6 @@ import {
   clearSelectionWithHistory,
   selectMomentsWithHistory,
 } from "./history-middleware";
-import { moments$ } from "./store";
 
 /**
  * Selection State - Manages moment selection for editing and bulk operations
@@ -35,7 +34,7 @@ const initialSelectionState: SelectionState = {
  * Global selection state observable
  */
 export const selectionState$ = observable<SelectionState>(
-  initialSelectionState
+  initialSelectionState,
 );
 
 /**
@@ -66,7 +65,7 @@ export function toggleSelection(momentId: string) {
     "[toggleSelection] Toggle moment:",
     momentId,
     "current selection:",
-    current
+    current,
   );
 
   if (index >= 0) {
@@ -74,7 +73,7 @@ export function toggleSelection(momentId: string) {
     const newSelection = current.filter((id) => id !== momentId);
     console.log(
       "[toggleSelection] Removing from selection, new:",
-      newSelection
+      newSelection,
     );
     selectionState$.selectedMomentIds.set(newSelection);
   } else {
@@ -207,7 +206,7 @@ export function deleteSelected() {
   clearSelectionWithHistory();
 
   endBatch(
-    `Deleted ${selectedIds.length} moment${selectedIds.length > 1 ? "s" : ""}`
+    `Deleted ${selectedIds.length} moment${selectedIds.length > 1 ? "s" : ""}`,
   );
 
   console.log("[deleteSelected] Deletion complete, selection cleared");
@@ -238,7 +237,7 @@ export function duplicateSelected() {
   selectMomentsWithHistory(newIds);
 
   endBatch(
-    `Duplicated ${selectedIds.length} moment${selectedIds.length > 1 ? "s" : ""}`
+    `Duplicated ${selectedIds.length} moment${selectedIds.length > 1 ? "s" : ""}`,
   );
 
   console.log("[duplicateSelected] Duplication complete, new moments selected");

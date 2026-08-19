@@ -1,15 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { Rhythm } from "@/domain/value-objects/Rhythm";
 import {
-  createHabit,
-  updateHabit,
   archiveHabit,
-  unarchiveHabit,
+  createHabit,
+  type Habit,
   isHabitError,
   isPerson,
-  type Habit,
+  unarchiveHabit,
+  updateHabit,
 } from "../entities/Habit";
 import { Attitude } from "../value-objects/Attitude";
-import type { Rhythm } from "@/domain/value-objects/Rhythm";
 
 describe("Habit", () => {
   describe("createHabit", () => {

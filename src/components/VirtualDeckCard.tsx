@@ -110,6 +110,7 @@ export function VirtualDeckCard({
             "text-xs font-mono opacity-60 shrink-0",
             textColors.primary,
           )}
+          role="img"
           aria-label={`${daysSinceLast} days since last allocation`}
         >
           ·{daysSinceLast}d

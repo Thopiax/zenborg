@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
+/** biome-ignore-all lint/a11y/noAutofocus: inline edit opens from a keyboard action, so focus has to follow it */
 "use client";
 
 import { useSelector } from "@legendapp/state/react";
@@ -89,7 +89,7 @@ export function AreaSelector({
 
     const maxOrder = areasList.reduce(
       (max, area) => Math.max(max, area.order),
-      -1
+      -1,
     );
 
     const emoji = suggestEmojiForAreaName(trimmedName) || "🔵";
@@ -125,7 +125,7 @@ export function AreaSelector({
   // Filter areas based on search
   const filteredAreas = searchValue
     ? areasList.filter((area) =>
-        area.name.toLowerCase().includes(searchValue.toLowerCase())
+        area.name.toLowerCase().includes(searchValue.toLowerCase()),
       )
     : areasList;
 

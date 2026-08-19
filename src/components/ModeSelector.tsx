@@ -32,9 +32,8 @@ export function ModeSelector() {
     <nav
       className={cn(
         "inline-flex items-center gap-0.5",
-        "rounded-lg bg-stone-100 dark:bg-stone-800 p-0.5"
+        "rounded-lg bg-stone-100 dark:bg-stone-800 p-0.5",
       )}
-      role="tablist"
       aria-label="Navigation"
     >
       {modes.map((mode) => {
@@ -50,7 +49,7 @@ export function ModeSelector() {
               "px-3.5 py-1 rounded-md text-sm font-medium transition-all duration-150",
               isActive
                 ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm"
-                : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300"
+                : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300",
             )}
           >
             {mode.name}

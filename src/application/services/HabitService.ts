@@ -7,10 +7,7 @@ import {
   unarchiveHabit,
   updateHabit,
 } from "@/domain/entities/Habit";
-import {
-  cyclePlans$,
-  habits$,
-} from "@/infrastructure/state/store";
+import { cyclePlans$, habits$ } from "@/infrastructure/state/store";
 
 /**
  * Application Service for Habit Management
@@ -55,7 +52,7 @@ export class HabitService {
     habitId: string,
     updates: Partial<
       Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">
-    >
+    >,
   ): HabitResult {
     const existing = habits$[habitId].get();
 

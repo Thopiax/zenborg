@@ -85,7 +85,9 @@ export function isParseableRef(ref: string): boolean {
  *
  * @returns an error message, or null when every ref parses
  */
-export function validateRefs(refs: readonly string[] | undefined): string | null {
+export function validateRefs(
+  refs: readonly string[] | undefined,
+): string | null {
   for (const ref of refs ?? []) {
     if (!isParseableRef(ref.trim())) {
       return `Moment ref is not a parseable URL: ${ref}`;
@@ -187,7 +189,7 @@ export function countMomentsInPhase(
   moments: readonly Moment[],
   day: string,
   phase: Phase,
-  excludeMomentId?: string
+  excludeMomentId?: string,
 ): number {
   let count = 0;
   for (const m of moments) {
@@ -208,7 +210,7 @@ export function hasDayViewCapacity(
   moments: readonly Moment[],
   day: string,
   phase: Phase,
-  excludeMomentId?: string
+  excludeMomentId?: string,
 ): boolean {
   return (
     countMomentsInPhase(moments, day, phase, excludeMomentId) <
@@ -224,7 +226,7 @@ export function hasDayViewCapacity(
 export function canAllocateToPhase(
   moments: Moment[],
   day: string,
-  phase: Phase
+  phase: Phase,
 ): boolean {
   return hasDayViewCapacity(moments, day, phase);
 }
@@ -253,7 +255,7 @@ export interface CreateMomentProps {
  */
 function validateTiming(
   startTime: string | undefined,
-  durationMin: number | undefined
+  durationMin: number | undefined,
 ): string | null {
   if (startTime !== undefined && !isValidStartTime(startTime)) {
     return `Moment startTime must be HH:MM (24h), got: ${startTime}`;
@@ -353,7 +355,7 @@ export interface AllocateMomentProps {
  */
 export function allocateMoment(
   moment: Moment,
-  props: AllocateMomentProps
+  props: AllocateMomentProps,
 ): Moment {
   const { day, phase, order } = props;
 
@@ -402,7 +404,7 @@ export interface UpdateMomentNameProps {
  */
 export function updateMomentName(
   moment: Moment,
-  props: UpdateMomentNameProps
+  props: UpdateMomentNameProps,
 ): MomentResult {
   const { name } = props;
   const validation = validateMomentName(name);
@@ -434,7 +436,7 @@ export interface UpdateMomentAreaProps {
  */
 export function updateMomentArea(
   moment: Moment,
-  props: UpdateMomentAreaProps
+  props: UpdateMomentAreaProps,
 ): MomentResult {
   const { areaId } = props;
 
@@ -466,7 +468,7 @@ export interface UpdateMomentPhaseGroupingProps {
  */
 export function updateMomentPhaseGrouping(
   moment: Moment,
-  props: UpdateMomentPhaseGroupingProps
+  props: UpdateMomentPhaseGroupingProps,
 ): MomentResult {
   const { phase } = props;
 
@@ -498,13 +500,13 @@ export interface UpdateMomentTimingProps {
  */
 export function updateMomentTiming(
   moment: Moment,
-  props: UpdateMomentTimingProps
+  props: UpdateMomentTimingProps,
 ): MomentResult {
   const { startTime, durationMin } = props;
 
   const timingError = validateTiming(
     startTime === null ? undefined : startTime,
-    durationMin === null ? undefined : durationMin
+    durationMin === null ? undefined : durationMin,
   );
   if (timingError) {
     return { error: timingError };
@@ -531,7 +533,7 @@ export function updateMomentTiming(
  * Type guard to check if result is an error
  */
 export function isMomentError(
-  result: MomentResult
+  result: MomentResult,
 ): result is { error: string } {
   return "error" in result;
 }

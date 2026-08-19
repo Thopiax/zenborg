@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import type { Habit } from "@/domain/entities/Habit";
 import type { Area } from "@/domain/entities/Area";
+import type { Habit } from "@/domain/entities/Habit";
 
 // Make React globally available (needed for JSX in components without React import)
 globalThis.React = React;
@@ -19,9 +20,9 @@ vi.mock("@/infrastructure/state/store", () => ({
   areas$: {},
 }));
 
+import { use$ } from "@legendapp/state/react";
 // Import after mocks
 import { HabitAutocompleteInline } from "../HabitAutocompleteInline";
-import { use$ } from "@legendapp/state/react";
 
 const mockUse$ = use$ as unknown as ReturnType<typeof vi.fn>;
 

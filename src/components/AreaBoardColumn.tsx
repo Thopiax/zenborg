@@ -82,12 +82,17 @@ export function AreaBoardColumn({
       className={cn(
         "flex flex-col snap-start rounded-lg",
         columnWidth.scrollableClassName,
-        isOver && "ring-2 ring-stone-400 dark:ring-stone-500 bg-stone-50 dark:bg-stone-800/50",
+        isOver &&
+          "ring-2 ring-stone-400 dark:ring-stone-500 bg-stone-50 dark:bg-stone-800/50",
         hasWilting && "opacity-95",
       )}
     >
       {/* Draggable Header (drag handle for area reorder) */}
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing"
+      >
         <AreaColumnHeader
           area={area}
           habitCount={habits.length}
@@ -98,10 +103,7 @@ export function AreaBoardColumn({
       </div>
 
       {/* Colored Divider */}
-      <div
-        className="h-[3px] mx-4"
-        style={{ backgroundColor: area.color }}
-      />
+      <div className="h-[3px] mx-4" style={{ backgroundColor: area.color }} />
 
       {/* Tags + Attitude sub-toolbar */}
       <AreaColumnSubtoolbar area={area} onUpdateArea={onUpdateArea} />

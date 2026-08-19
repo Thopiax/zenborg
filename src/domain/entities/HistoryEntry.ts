@@ -197,7 +197,7 @@ export interface HistoryState {
  */
 export function createHistoryEntry(
   operations: HistoryOperation | HistoryOperation[],
-  description?: string
+  description?: string,
 ): HistoryEntry {
   const ops = Array.isArray(operations) ? operations : [operations];
 
@@ -267,7 +267,7 @@ function generateDescription(operations: HistoryOperation[]): string {
  * Returns null if the operation cannot be undone
  */
 export function getInverseOperation(
-  operation: HistoryOperation
+  operation: HistoryOperation,
 ): HistoryOperation | null {
   switch (operation.type) {
     case "CREATE_MOMENT":

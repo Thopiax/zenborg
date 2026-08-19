@@ -76,10 +76,13 @@ export async function initializeStore(): Promise<void> {
   // Create 4 default phase configurations
   if (!hasPhaseConfigs) {
     const defaultPhases = getDefaultPhaseConfigs();
-    const phasesRecord = defaultPhases.reduce((acc, phase) => {
-      acc[phase.id] = phase;
-      return acc;
-    }, {} as Record<string, (typeof defaultPhases)[0]>);
+    const phasesRecord = defaultPhases.reduce(
+      (acc, phase) => {
+        acc[phase.id] = phase;
+        return acc;
+      },
+      {} as Record<string, (typeof defaultPhases)[0]>,
+    );
 
     phaseConfigs$.set(phasesRecord);
     console.log("[Zenborg] Created 4 default phase configurations");
@@ -97,7 +100,7 @@ export async function initializeStore(): Promise<void> {
     if ("error" in firstCycle) {
       console.error(
         "[Zenborg] Failed to create first cycle:",
-        firstCycle.error
+        firstCycle.error,
       );
       return;
     }
@@ -120,7 +123,10 @@ export async function initializeStore(): Promise<void> {
 function migrateCycleIntentionReflection(): void {
   const all = cycles$.get();
   for (const id of Object.keys(all)) {
-    const cycle = all[id] as { intention?: string | null; reflection?: string | null };
+    const cycle = all[id] as {
+      intention?: string | null;
+      reflection?: string | null;
+    };
     if (cycle.intention === undefined) {
       cycles$[id].intention.set(null);
     }

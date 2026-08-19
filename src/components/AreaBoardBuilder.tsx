@@ -1,6 +1,9 @@
 "use client";
 
-import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  horizontalListSortingStrategy,
+  SortableContext,
+} from "@dnd-kit/sortable";
 import { observer, use$ } from "@legendapp/state/react";
 import { AreaService } from "@/application/services/AreaService";
 import { HabitService } from "@/application/services/HabitService";
@@ -8,7 +11,10 @@ import { AreaBoardColumn } from "@/components/AreaBoardColumn";
 import { EmptyAreaColumn } from "@/components/EmptyAreaColumn";
 import { HabitFormDialog } from "@/components/HabitFormDialog";
 import type { Area, UpdateAreaProps } from "@/domain/entities/Area";
-import type { CreateHabitProps, UpdateHabitProps } from "@/domain/entities/Habit";
+import type {
+  CreateHabitProps,
+  UpdateHabitProps,
+} from "@/domain/entities/Habit";
 import {
   activeAreas$,
   activeHabits$,

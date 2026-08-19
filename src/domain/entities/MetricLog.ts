@@ -28,7 +28,7 @@ export function createMetricLog(
   momentId: string,
   date: string,
   value: number,
-  notes?: string
+  notes?: string,
 ): MetricLog {
   const now = new Date().toISOString();
 
@@ -50,7 +50,10 @@ export type MetricLogResult = MetricLog | { error: string };
 /**
  * Validates metric value
  */
-export function validateMetricValue(value: number): { valid: boolean; error?: string } {
+export function validateMetricValue(value: number): {
+  valid: boolean;
+  error?: string;
+} {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return {
       valid: false,
@@ -71,6 +74,8 @@ export function validateMetricValue(value: number): { valid: boolean; error?: st
 /**
  * Type guard to check if result is an error
  */
-export function isMetricLogError(result: MetricLogResult): result is { error: string } {
+export function isMetricLogError(
+  result: MetricLogResult,
+): result is { error: string } {
   return "error" in result;
 }

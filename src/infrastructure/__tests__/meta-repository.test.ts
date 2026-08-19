@@ -2,10 +2,10 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  clearMetaCache,
   defaultMeta,
   readMeta,
   writeMeta,
-  clearMetaCache,
 } from "../vault/meta-repository";
 
 describe("meta-repository", () => {

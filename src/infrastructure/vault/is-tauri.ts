@@ -9,7 +9,5 @@ export function isTauri(): boolean {
     return false;
   }
   // Tauri 2.x exposes a global marker on the window object.
-  return (
-    "__TAURI_INTERNALS__" in window || "__TAURI_METADATA__" in window
-  );
+  return "__TAURI_INTERNALS__" in window || "__TAURI_METADATA__" in window;
 }

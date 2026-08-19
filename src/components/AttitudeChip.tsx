@@ -1,7 +1,7 @@
 "use client";
 
-import { ATTITUDE_METADATA } from "@/domain/value-objects/Attitude";
 import type { Attitude } from "@/domain/value-objects/Attitude";
+import { ATTITUDE_METADATA } from "@/domain/value-objects/Attitude";
 import { cn } from "@/lib/utils";
 
 interface AttitudeChipProps {
@@ -18,7 +18,11 @@ interface AttitudeChipProps {
  * - Click opens AttitudeSelector
  * - Visual treatment: bordered, subtle background
  */
-export function AttitudeChip({ attitude, onClick, className }: AttitudeChipProps) {
+export function AttitudeChip({
+  attitude,
+  onClick,
+  className,
+}: AttitudeChipProps) {
   const metadata = attitude
     ? ATTITUDE_METADATA[attitude]
     : {
@@ -38,7 +42,7 @@ export function AttitudeChip({ attitude, onClick, className }: AttitudeChipProps
         "hover:bg-stone-50 dark:hover:bg-stone-900",
         "text-xs font-mono transition-colors",
         metadata.className,
-        className
+        className,
       )}
       title={`Attitude: ${metadata.label}`}
     >

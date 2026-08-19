@@ -22,7 +22,7 @@ export function useGlobalSelection(allMomentIds: string[]) {
       }
     },
     { enableOnFormTags: false },
-    [allMomentIds, editingMomentId]
+    [allMomentIds, editingMomentId],
   );
 
   // Escape to clear selection
@@ -36,6 +36,6 @@ export function useGlobalSelection(allMomentIds: string[]) {
       }
     },
     { enableOnFormTags: false },
-    [hasAnySelected, editingMomentId]
+    [hasAnySelected, editingMomentId],
   );
 }

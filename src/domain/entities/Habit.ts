@@ -59,7 +59,7 @@ export interface Habit {
  */
 export function normalizeAliases(
   aliases: string[] | undefined,
-  name: string
+  name: string,
 ): string[] {
   if (!aliases) return [];
   const lowerName = name.trim().toLowerCase();
@@ -119,7 +119,7 @@ function reconcileSchedule(
   schedule: Schedule,
   rhythm: Rhythm | undefined,
   phase: Phase | null | undefined,
-  phaseConfigs: readonly PhaseConfig[] | undefined
+  phaseConfigs: readonly PhaseConfig[] | undefined,
 ): { rhythm: Rhythm; phase: Phase | null } | { error: string } {
   const rhythmError = scheduleRhythmError(schedule, rhythm);
   if (rhythmError) {
@@ -225,7 +225,10 @@ export function createHabit(props: CreateHabitProps): HabitResult {
   const normalizedAliases = normalizeAliases(aliases, name);
 
   const trimmedDescription = description?.trim();
-  if (trimmedDescription && trimmedDescription.length > HABIT_DESCRIPTION_MAX_CHARS) {
+  if (
+    trimmedDescription &&
+    trimmedDescription.length > HABIT_DESCRIPTION_MAX_CHARS
+  ) {
     return {
       error: `Habit description cannot exceed ${HABIT_DESCRIPTION_MAX_CHARS} characters`,
     };
@@ -274,8 +277,10 @@ export function createHabit(props: CreateHabitProps): HabitResult {
  */
 export function updateHabit(
   habit: Habit,
-  updates: Partial<Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">>,
-  phaseConfigs?: readonly PhaseConfig[]
+  updates: Partial<
+    Omit<Habit, "id" | "isArchived" | "createdAt" | "updatedAt">
+  >,
+  phaseConfigs?: readonly PhaseConfig[],
 ): HabitResult {
   if (updates.name !== undefined) {
     const validation = validateHabitName(updates.name);
@@ -346,7 +351,7 @@ export function updateHabit(
       built,
       merged.rhythm,
       merged.phase,
-      phaseConfigs
+      phaseConfigs,
     );
     if ("error" in reconciled) {
       return { error: reconciled.error };

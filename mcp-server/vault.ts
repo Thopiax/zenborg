@@ -19,27 +19,27 @@
  * matches the Tauri adapter's semantics so concurrent readers never see a
  * half-written file.
  */
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
-import { z } from 'zod';
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { z } from "zod";
 
 // ────────────────────────────────────────────────────────────────────────
 // Types — mirror src/domain (standalone; no cross-workspace imports)
 // ────────────────────────────────────────────────────────────────────────
 
 export const ATTITUDES = [
-  'BEGINNING',
-  'RETURNING',
-  'KEEPING',
-  'BUILDING',
-  'PUSHING',
-  'BEING',
+  "BEGINNING",
+  "RETURNING",
+  "KEEPING",
+  "BUILDING",
+  "PUSHING",
+  "BEING",
 ] as const;
 export const AttitudeSchema = z.enum(ATTITUDES);
 export type Attitude = z.infer<typeof AttitudeSchema>;
 
-export const PHASES = ['MORNING', 'AFTERNOON', 'EVENING', 'NIGHT'] as const;
+export const PHASES = ["MORNING", "AFTERNOON", "EVENING", "NIGHT"] as const;
 export const PhaseSchema = z.enum(PHASES);
 export type Phase = z.infer<typeof PhaseSchema>;
 
@@ -51,11 +51,11 @@ export const CustomMetricSchema = z.object({
 export type CustomMetric = z.infer<typeof CustomMetricSchema>;
 
 export const RHYTHM_PERIODS = [
-  'weekly',
-  'biweekly',
-  'monthly',
-  'quarterly',
-  'annually',
+  "weekly",
+  "biweekly",
+  "monthly",
+  "quarterly",
+  "annually",
 ] as const;
 export const RhythmPeriodSchema = z.enum(RHYTHM_PERIODS);
 export type RhythmPeriod = z.infer<typeof RhythmPeriodSchema>;
@@ -72,13 +72,13 @@ export type Rhythm = z.infer<typeof RhythmSchema>;
  * Mirrors `src/domain/value-objects/Schedule.ts`.
  */
 export const WEEKDAYS = [
-  'MON',
-  'TUE',
-  'WED',
-  'THU',
-  'FRI',
-  'SAT',
-  'SUN',
+  "MON",
+  "TUE",
+  "WED",
+  "THU",
+  "FRI",
+  "SAT",
+  "SUN",
 ] as const;
 export const WeekdaySchema = z.enum(WEEKDAYS);
 export type Weekday = z.infer<typeof WeekdaySchema>;
@@ -87,7 +87,7 @@ export type Weekday = z.infer<typeof WeekdaySchema>;
 export const START_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 export const StartTimeSchema = z
   .string()
-  .regex(START_TIME_PATTERN, 'startTime must be HH:MM (24h)');
+  .regex(START_TIME_PATTERN, "startTime must be HH:MM (24h)");
 
 export const ScheduleSchema = z.object({
   weekdays: z.array(WeekdaySchema).min(1),
@@ -141,7 +141,7 @@ export interface Habit {
   guidance?: string;
   rhythm?: Rhythm;
   schedule?: Schedule;
-  kind?: 'person'; // Absent = habit. Mirrors src/domain/entities/Habit.ts
+  kind?: "person"; // Absent = habit. Mirrors src/domain/entities/Habit.ts
   createdAt: string;
   updatedAt: string;
 }
@@ -153,7 +153,7 @@ export interface Habit {
  *
  * Absent means unknown, and every reader must treat unknown as NOT human.
  */
-export type ReflectionSource = 'human' | 'machine';
+export type ReflectionSource = "human" | "machine";
 
 export interface Cycle {
   id: string;
@@ -230,13 +230,13 @@ export interface MetricLog {
 // ────────────────────────────────────────────────────────────────────────
 
 export const COLLECTION_NAMES = [
-  'moments',
-  'areas',
-  'habits',
-  'cycles',
-  'cyclePlans',
-  'phaseConfigs',
-  'metricLogs',
+  "moments",
+  "areas",
+  "habits",
+  "cycles",
+  "cyclePlans",
+  "phaseConfigs",
+  "metricLogs",
 ] as const;
 export type CollectionName = (typeof COLLECTION_NAMES)[number];
 
@@ -254,14 +254,14 @@ export interface CollectionTypeMap {
 // Vault path resolution
 // ────────────────────────────────────────────────────────────────────────
 
-export const KAIROS_HOME_ENV = 'KAIROS_HOME';
-export const VAULT_DIR_ENV = 'ZENBORG_VAULT_DIR';
-export const DEFAULT_VAULT_FOLDER = '.kairos';
-export const DEV_VAULT_FOLDER = '.kairos-dev';
+export const KAIROS_HOME_ENV = "KAIROS_HOME";
+export const VAULT_DIR_ENV = "ZENBORG_VAULT_DIR";
+export const DEFAULT_VAULT_FOLDER = ".kairos";
+export const DEV_VAULT_FOLDER = ".kairos-dev";
 
 export interface ResolvedVault {
   root: string;
-  source: 'cli' | 'env' | 'default';
+  source: "cli" | "env" | "default";
 }
 
 /**
@@ -270,22 +270,24 @@ export interface ResolvedVault {
  *
  * Keep in lockstep with `vault_root()` in `src-tauri/src/vault/fs.rs`.
  */
-export function resolveVault(argv: readonly string[] = process.argv): ResolvedVault {
-  const vaultArg = argv.find((_, i, a) => a[i - 1] === '--vault');
+export function resolveVault(
+  argv: readonly string[] = process.argv,
+): ResolvedVault {
+  const vaultArg = argv.find((_, i, a) => a[i - 1] === "--vault");
   if (vaultArg) {
-    return { root: path.resolve(vaultArg), source: 'cli' };
+    return { root: path.resolve(vaultArg), source: "cli" };
   }
 
   for (const envVar of [KAIROS_HOME_ENV, VAULT_DIR_ENV]) {
     const envPath = process.env[envVar];
     if (envPath && envPath.trim().length > 0) {
-      return { root: path.resolve(envPath), source: 'env' };
+      return { root: path.resolve(envPath), source: "env" };
     }
   }
 
   return {
     root: path.join(os.homedir(), DEFAULT_VAULT_FOLDER),
-    source: 'default',
+    source: "default",
   };
 }
 
@@ -311,7 +313,10 @@ export function logVaultBanner(resolved: ResolvedVault): void {
 /**
  * Absolute path to a collection's JSON file.
  */
-export function collectionPath(root: string, collection: CollectionName): string {
+export function collectionPath(
+  root: string,
+  collection: CollectionName,
+): string {
   return path.join(root, `${collection}.json`);
 }
 
@@ -331,7 +336,7 @@ export function readCollection<K extends CollectionName>(
   if (!fs.existsSync(file)) {
     return {};
   }
-  const raw = fs.readFileSync(file, 'utf8');
+  const raw = fs.readFileSync(file, "utf8");
   if (!raw.trim()) {
     return {};
   }
@@ -358,7 +363,7 @@ export function writeCollection<K extends CollectionName>(
   }
   const file = collectionPath(root, collection);
   const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2), 'utf8');
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2), "utf8");
   fs.renameSync(tmp, file);
 }
 
@@ -380,7 +385,7 @@ export function writeCollection<K extends CollectionName>(
  * current waking-day, so a stale pointer costs nothing — see keel's
  * `docs/superpowers/specs/2026-08-07-active-moment-intention-design.md`.
  */
-export const ACTIVE_MOMENT_FILE = 'activeMoment.json';
+export const ACTIVE_MOMENT_FILE = "activeMoment.json";
 
 export const ActiveMomentPointerSchema = z.object({
   momentId: z.string().min(1),
@@ -403,7 +408,7 @@ export function readActiveMoment(
   const file = activeMomentPath(root);
   if (!fs.existsSync(file)) return null;
   try {
-    const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as unknown;
+    const raw = JSON.parse(fs.readFileSync(file, "utf8")) as unknown;
     const parsed = ActiveMomentPointerSchema.safeParse(raw);
     if (!parsed.success) return null;
     return { ...(raw as Record<string, unknown>), ...parsed.data };
@@ -413,7 +418,11 @@ export function readActiveMoment(
 }
 
 /** Point the intention at a moment. Atomic, and preserves unknown fields. */
-export function writeActiveMoment(root: string, momentId: string, at: string): ActiveMomentPointer {
+export function writeActiveMoment(
+  root: string,
+  momentId: string,
+  at: string,
+): ActiveMomentPointer {
   if (!fs.existsSync(root)) {
     fs.mkdirSync(root, { recursive: true });
   }
@@ -421,7 +430,7 @@ export function writeActiveMoment(root: string, momentId: string, at: string): A
   const next = { ...existing, momentId, at };
   const file = activeMomentPath(root);
   const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
-  fs.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
+  fs.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}\n`, "utf8");
   fs.renameSync(tmp, file);
   return { momentId, at };
 }
