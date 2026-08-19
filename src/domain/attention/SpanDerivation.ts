@@ -1,5 +1,5 @@
 import type { ActivityEvent } from "./ActivityEvent";
-import type { AreaId, Duration } from "./ids";
+import type { AreaId, Duration, Instant } from "./ids";
 import type { Span } from "./Span";
 
 /**
@@ -9,8 +9,13 @@ import type { Span } from "./Span";
  * never recorded, so this is where one comes from. Pure, and the resolver is
  * injected so span logic can be tested without an area map.
  *
- * A span closes on either of two things: attention moves to another area, or the
- * person stops producing observations for longer than `idleGapMs`.
+ * A span closes on three things: attention moves to another area, the person
+ * stops producing observations for longer than `idleGapMs`, or the plan says
+ * one stretch ended and another began.
+ *
+ * That third one is not decoration. A therapy session in the afternoon ends the
+ * morning's work whether or not the log went quiet across it, and a threshold
+ * measured in minutes of silence cannot know that. Only the plan does.
  */
 
 export interface SpanDerivationConfig {
@@ -23,6 +28,18 @@ export interface SpanDerivationConfig {
    * number here is a guess and should be treated as one.
    */
   readonly idleGapMs: Duration;
+
+  /**
+   * Instants at which a span must close, whatever the log looks like.
+   *
+   * These come from the garden: phase-band edges, and the start and end of any
+   * moment planted with a clock time. The plan already knows the day has parts,
+   * and deriving attention without reading it produces spans that straddle a
+   * boundary and then get judged against whichever cell happened to be first.
+   *
+   * A boundary never creates a span and never extends one. It only cuts.
+   */
+  readonly boundaries?: readonly Instant[];
 }
 
 export type AreaResolver = (event: ActivityEvent) => AreaId | undefined;
@@ -40,13 +57,33 @@ function reachOf(event: ActivityEvent): number {
   return event.ts + (event.durationMs ?? 0);
 }
 
-function seal(open: OpenSpan): Span {
+function seal(open: OpenSpan, cutAt?: Instant): Span {
+  const end = cutAt === undefined ? open.end : Math.min(open.end, cutAt);
   return {
     areaId: open.areaId,
     start: open.start,
-    end: Math.max(open.start, open.end),
+    end: Math.max(open.start, end),
     sourceEventIds: open.sourceEventIds,
   };
+}
+
+/**
+ * The first planned boundary strictly inside `(after, upTo]`, if any.
+ *
+ * Strictly after the span's start, so a boundary landing on the very instant a
+ * span opened does not close it before it has held anything.
+ */
+function nextBoundary(
+  boundaries: readonly Instant[],
+  after: Instant,
+  upTo: Instant,
+): Instant | undefined {
+  let best: Instant | undefined;
+  for (const boundary of boundaries) {
+    if (boundary <= after || boundary > upTo) continue;
+    if (best === undefined || boundary < best) best = boundary;
+  }
+  return best;
 }
 
 /**
@@ -60,6 +97,10 @@ function seal(open: OpenSpan): Span {
  * The idle gap is measured between consecutive timestamps, not from a measured
  * end. A long measured interval means the person was occupied for it, not that
  * they were silent through it.
+ *
+ * A planned boundary cuts before either of those is consulted, and the closed
+ * span ends at the boundary rather than at its last observation, so no span
+ * claims time on the far side of something the plan says ended it.
  */
 export function deriveSpans(
   events: readonly ActivityEvent[],
@@ -67,6 +108,7 @@ export function deriveSpans(
   config: SpanDerivationConfig,
 ): readonly Span[] {
   const ordered = [...events].sort((a, b) => a.ts - b.ts);
+  const boundaries = config.boundaries ?? [];
   const spans: Span[] = [];
   let open: OpenSpan | undefined;
 
@@ -74,13 +116,18 @@ export function deriveSpans(
     const areaId = resolve(event);
     if (areaId === undefined) continue;
 
-    const broken =
-      open !== undefined &&
-      (open.areaId !== areaId || event.ts - open.lastTs > config.idleGapMs);
-
-    if (open !== undefined && broken) {
-      spans.push(seal(open));
-      open = undefined;
+    if (open !== undefined) {
+      const cut = nextBoundary(boundaries, open.start, event.ts);
+      if (cut !== undefined) {
+        spans.push(seal(open, cut));
+        open = undefined;
+      } else if (
+        open.areaId !== areaId ||
+        event.ts - open.lastTs > config.idleGapMs
+      ) {
+        spans.push(seal(open));
+        open = undefined;
+      }
     }
 
     if (open === undefined) {

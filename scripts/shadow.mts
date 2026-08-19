@@ -184,6 +184,9 @@ interface VaultMoment {
   readonly areaId: string;
   readonly day: string | null;
   readonly phase: string | null;
+  /** "HH:MM", 24h. Absent on ambient moments. */
+  readonly startTime?: string;
+  readonly durationMin?: number;
 }
 interface VaultPhaseConfig {
   readonly phase: string;
@@ -225,6 +228,46 @@ function plantingsAt(instant: number): Planting {
   };
 }
 
+/**
+ * Where the plan says one stretch ended and another began.
+ *
+ * Phase-band edges for every day in the window, plus the start and end of any
+ * moment planted with a clock time. A therapy session in the afternoon ends the
+ * morning's work whether or not the log went quiet across it, and nothing in
+ * the log can know that. The plan can.
+ */
+function boundariesIn(from: number, to: number): readonly number[] {
+  const out = new Set<number>();
+
+  const atHour = (dayStart: Date, hour: number) => {
+    const d = new Date(dayStart);
+    d.setHours(hour, 0, 0, 0);
+    return d.getTime();
+  };
+
+  for (let ts = from; ts <= to + DAY; ts += DAY) {
+    const dayStart = new Date(ts);
+    for (const config of phaseConfigs) {
+      out.add(atHour(dayStart, config.startHour % 24));
+      out.add(atHour(dayStart, config.endHour % 24));
+    }
+  }
+
+  for (const moment of moments) {
+    if (moment.day === null || moment.startTime === undefined) continue;
+    const [h, m] = moment.startTime.split(":").map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) continue;
+    const [y, mo, d] = moment.day.split("-").map(Number);
+    const start = new Date(y, mo - 1, d, h, m, 0, 0).getTime();
+    out.add(start);
+    if (moment.durationMin !== undefined && moment.durationMin > 0) {
+      out.add(start + moment.durationMin * MINUTE);
+    }
+  }
+
+  return [...out].filter((b) => b >= from && b < to).sort((a, b) => a - b);
+}
+
 const now = Date.now();
 const window = { from: now - DAYS * DAY, to: now };
 
@@ -232,6 +275,7 @@ const log: ActivityLogPort = { read: async (from, to) => readLog(from, to) };
 const garden: GardenPort = {
   areaMap: async () => areaMap,
   plantingsAt: async (instant) => plantingsAt(instant),
+  boundaries: async (from, to) => boundariesIn(from, to),
 };
 const store: DiscrepancyStorePort = {
   write: async (record: DiscrepancyRecord) => {
@@ -268,6 +312,7 @@ console.log(
 );
 console.log(`events     ${events.length}`);
 console.log(`idle gap   ${GAP_MINUTES}m`);
+console.log(`boundaries ${boundariesIn(window.from, window.to).length}`);
 console.log(`drifts     ${record.discrepancies.length}`);
 console.log(`per day    ${(record.discrepancies.length / DAYS).toFixed(1)}`);
 
