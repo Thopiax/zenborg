@@ -47,8 +47,8 @@ const TWICE_WEEKLY: Rhythm = { period: "weekly", count: 2 };
 
 function person(over: Partial<Habit> = {}): Habit {
   return {
-    id: "p-eli",
-    name: "Eli",
+    id: "p-uma",
+    name: "Uma",
     areaId: "a-friends",
     attitude: null,
     phase: null,
@@ -83,18 +83,18 @@ function moment(over: Partial<Moment> = {}): Moment {
 
 describe("personMoments", () => {
   it("matches a moment that carries the person in personIds", () => {
-    const m = moment({ personIds: ["p-eli", "p-fox"] });
-    expect(personMoments("p-eli", [m])).toEqual([m]);
+    const m = moment({ personIds: ["p-uma", "p-cleo"] });
+    expect(personMoments("p-uma", [m])).toEqual([m]);
   });
 
   it("matches a legacy moment that references the person via habitId", () => {
-    const m = moment({ habitId: "p-eli" });
-    expect(personMoments("p-eli", [m])).toEqual([m]);
+    const m = moment({ habitId: "p-uma" });
+    expect(personMoments("p-uma", [m])).toEqual([m]);
   });
 
   it("does not match a moment about someone else", () => {
-    const m = moment({ personIds: ["p-fox"] });
-    expect(personMoments("p-eli", [m])).toEqual([]);
+    const m = moment({ personIds: ["p-cleo"] });
+    expect(personMoments("p-uma", [m])).toEqual([]);
   });
 
   // The vault is mostly moments that predate `personIds` and were never about
@@ -103,117 +103,117 @@ describe("personMoments", () => {
   // reaches it — `habitId === personId` short-circuits, or personIds is there.
   it("does not match — and does not throw — when a moment has neither habitId nor personIds", () => {
     const m = moment({ habitId: null });
-    expect(() => personMoments("p-eli", [m])).not.toThrow();
-    expect(personMoments("p-eli", [m])).toEqual([]);
+    expect(() => personMoments("p-uma", [m])).not.toThrow();
+    expect(personMoments("p-uma", [m])).toEqual([]);
   });
 
   it("matches on personIds alone, with habitId null", () => {
-    const m = moment({ habitId: null, personIds: ["p-eli"] });
-    expect(personMoments("p-eli", [m])).toEqual([m]);
+    const m = moment({ habitId: null, personIds: ["p-uma"] });
+    expect(personMoments("p-uma", [m])).toEqual([m]);
   });
 
   it("walks a vault where most moments carry no personIds at all", () => {
     const ms = [
       moment({ id: "m1", habitId: null }),
       moment({ id: "m2", habitId: "h-yoga" }),
-      moment({ id: "m3", habitId: null, personIds: ["p-eli"] }),
+      moment({ id: "m3", habitId: null, personIds: ["p-uma"] }),
       moment({ id: "m4", habitId: null }),
     ];
-    expect(personMoments("p-eli", ms)).toEqual([ms[2]]);
+    expect(personMoments("p-uma", ms)).toEqual([ms[2]]);
   });
 
   it("derives contact from a personIds-only moment without touching habitId", () => {
     const ms = [
       moment({ id: "m1", habitId: null }),
-      moment({ id: "m2", habitId: null, day: TODAY, personIds: ["p-eli"] }),
+      moment({ id: "m2", habitId: null, day: TODAY, personIds: ["p-uma"] }),
     ];
-    expect(daysSinceLastContact("p-eli", ms, NOW)).toBe(0);
+    expect(daysSinceLastContact("p-uma", ms, NOW)).toBe(0);
   });
 });
 
 describe("latestContactDate", () => {
   it("returns the most recent past day", () => {
     const ms = [
-      moment({ id: "m1", day: "2026-07-01", personIds: ["p-eli"] }),
-      moment({ id: "m2", day: "2026-08-01", personIds: ["p-eli"] }),
+      moment({ id: "m1", day: "2026-07-01", personIds: ["p-uma"] }),
+      moment({ id: "m2", day: "2026-08-01", personIds: ["p-uma"] }),
     ];
-    expect(latestContactDate("p-eli", ms, NOW)).toEqual(
+    expect(latestContactDate("p-uma", ms, NOW)).toEqual(
       new Date("2026-08-01T00:00:00"),
     );
   });
 
   it("ignores future days — an arranged dinner is not contact yet", () => {
-    const ms = [moment({ day: "2026-09-01", personIds: ["p-eli"] })];
-    expect(latestContactDate("p-eli", ms, NOW)).toBeNull();
+    const ms = [moment({ day: "2026-09-01", personIds: ["p-uma"] })];
+    expect(latestContactDate("p-uma", ms, NOW)).toBeNull();
   });
 
   it("ignores unallocated moments with no day", () => {
-    const ms = [moment({ day: null, personIds: ["p-eli"] })];
-    expect(latestContactDate("p-eli", ms, NOW)).toBeNull();
+    const ms = [moment({ day: null, personIds: ["p-uma"] })];
+    expect(latestContactDate("p-uma", ms, NOW)).toBeNull();
   });
 
   // A day parses to LOCAL MIDNIGHT, so a moment dated today is already behind
   // `now` and counts as contact. `d > now` is the most semantically loaded
   // line in the module; today is the case that sits right on it.
   it("counts a moment dated today — local midnight is already behind us", () => {
-    const ms = [moment({ day: TODAY, personIds: ["p-eli"] })];
-    expect(latestContactDate("p-eli", ms, NOW)).toEqual(MIDNIGHT);
+    const ms = [moment({ day: TODAY, personIds: ["p-uma"] })];
+    expect(latestContactDate("p-uma", ms, NOW)).toEqual(MIDNIGHT);
   });
 
   it("prefers today over an earlier day", () => {
     const ms = [
-      moment({ id: "m1", day: dayBefore(NOW, 3), personIds: ["p-eli"] }),
-      moment({ id: "m2", day: TODAY, personIds: ["p-eli"] }),
+      moment({ id: "m1", day: dayBefore(NOW, 3), personIds: ["p-uma"] }),
+      moment({ id: "m2", day: TODAY, personIds: ["p-uma"] }),
     ];
-    expect(latestContactDate("p-eli", ms, NOW)).toEqual(MIDNIGHT);
+    expect(latestContactDate("p-uma", ms, NOW)).toEqual(MIDNIGHT);
   });
 });
 
 describe("hasArrangedContact", () => {
   it("is true when a moment is dated in the future", () => {
-    const ms = [moment({ day: "2026-09-01", personIds: ["p-eli"] })];
-    expect(hasArrangedContact("p-eli", ms, NOW)).toBe(true);
+    const ms = [moment({ day: "2026-09-01", personIds: ["p-uma"] })];
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(true);
   });
 
   it("is false when every moment is in the past", () => {
-    const ms = [moment({ day: "2026-08-01", personIds: ["p-eli"] })];
-    expect(hasArrangedContact("p-eli", ms, NOW)).toBe(false);
+    const ms = [moment({ day: "2026-08-01", personIds: ["p-uma"] })];
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(false);
   });
 
   // Today is contact, not an arrangement — seeing someone this evening is not
   // a reason for the outreach queue to call you sorted.
   it("is false for a moment dated today", () => {
-    const ms = [moment({ day: TODAY, personIds: ["p-eli"] })];
-    expect(hasArrangedContact("p-eli", ms, NOW)).toBe(false);
+    const ms = [moment({ day: TODAY, personIds: ["p-uma"] })];
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(false);
   });
 
   it("is true when tomorrow is booked even though today already happened", () => {
     const ms = [
-      moment({ id: "m1", day: TODAY, personIds: ["p-eli"] }),
-      moment({ id: "m2", day: dayBefore(NOW, -1), personIds: ["p-eli"] }),
+      moment({ id: "m1", day: TODAY, personIds: ["p-uma"] }),
+      moment({ id: "m2", day: dayBefore(NOW, -1), personIds: ["p-uma"] }),
     ];
-    expect(hasArrangedContact("p-eli", ms, NOW)).toBe(true);
+    expect(hasArrangedContact("p-uma", ms, NOW)).toBe(true);
   });
 });
 
 describe("daysSinceLastContact", () => {
   it("counts whole days back to the last past moment", () => {
-    const ms = [moment({ day: "2026-08-01", personIds: ["p-eli"] })];
-    expect(daysSinceLastContact("p-eli", ms, NOW)).toBe(6);
+    const ms = [moment({ day: "2026-08-01", personIds: ["p-uma"] })];
+    expect(daysSinceLastContact("p-uma", ms, NOW)).toBe(6);
   });
 
   it("is null when there has never been contact", () => {
-    expect(daysSinceLastContact("p-eli", [], NOW)).toBeNull();
+    expect(daysSinceLastContact("p-uma", [], NOW)).toBeNull();
   });
 
   it("is zero for a moment dated today", () => {
-    const ms = [moment({ day: TODAY, personIds: ["p-eli"] })];
-    expect(daysSinceLastContact("p-eli", ms, NOW)).toBe(0);
+    const ms = [moment({ day: TODAY, personIds: ["p-uma"] })];
+    expect(daysSinceLastContact("p-uma", ms, NOW)).toBe(0);
   });
 
   it("floors — the count ticks over at local midnight, not at the hour of contact", () => {
-    const ms = [moment({ day: dayBefore(NOW, 1), personIds: ["p-eli"] })];
-    expect(daysSinceLastContact("p-eli", ms, NOW)).toBe(1);
+    const ms = [moment({ day: dayBefore(NOW, 1), personIds: ["p-uma"] })];
+    expect(daysSinceLastContact("p-uma", ms, NOW)).toBe(1);
   });
 });
 
@@ -229,13 +229,13 @@ describe("personHealth", () => {
 
   it("is blooming inside the silence threshold", () => {
     const p = person({ rhythm: { period: "weekly", count: 1 } });
-    const ms = [moment({ day: "2026-08-05", personIds: ["p-eli"] })];
+    const ms = [moment({ day: "2026-08-05", personIds: ["p-uma"] })];
     expect(personHealth(p, ms, NOW)).toBe("blooming");
   });
 
   it("is wilting past the silence threshold", () => {
     const p = person({ rhythm: { period: "weekly", count: 1 } });
-    const ms = [moment({ day: "2026-06-01", personIds: ["p-eli"] })];
+    const ms = [moment({ day: "2026-06-01", personIds: ["p-uma"] })];
     expect(personHealth(p, ms, NOW)).toBe("wilting");
   });
 
@@ -244,19 +244,19 @@ describe("personHealth", () => {
       attitude: null,
       rhythm: { period: "weekly", count: 1 },
     });
-    const ms = [moment({ day: "2026-06-01", personIds: ["p-eli"] })];
+    const ms = [moment({ day: "2026-06-01", personIds: ["p-uma"] })];
     expect(personHealth(p, ms, NOW)).toBe("wilting");
   });
 
   it("counts a moment shared with several people for each of them", () => {
     const p = person({ rhythm: { period: "weekly", count: 1 } });
     const ms = [
-      moment({ day: "2026-08-05", personIds: ["p-eli", "p-fox", "p-gil"] }),
+      moment({ day: "2026-08-05", personIds: ["p-uma", "p-cleo", "p-gil"] }),
     ];
     expect(personHealth(p, ms, NOW)).toBe("blooming");
     expect(
       personHealth(
-        person({ id: "p-fox", rhythm: { period: "weekly", count: 1 } }),
+        person({ id: "p-cleo", rhythm: { period: "weekly", count: 1 } }),
         ms,
         NOW,
       ),
@@ -272,8 +272,8 @@ describe("personHealth", () => {
  * These cases must therefore vary attitude and see the health NOT move.
  */
 describe("personHealth — attitude is never consulted", () => {
-  const seen = [moment({ day: dayBefore(NOW, 2), personIds: ["p-eli"] })];
-  const silent = [moment({ day: dayBefore(NOW, 40), personIds: ["p-eli"] })];
+  const seen = [moment({ day: dayBefore(NOW, 2), personIds: ["p-uma"] })];
+  const silent = [moment({ day: dayBefore(NOW, 40), personIds: ["p-uma"] })];
 
   it("judges a BUILDING person on rhythm and silence, where computeHealth would branch", () => {
     const p = person({ attitude: Attitude.BUILDING, rhythm: WEEKLY });
@@ -324,28 +324,22 @@ describe("personHealth — silence threshold arithmetic", () => {
   it("blooms when silence equals the threshold exactly (<=, not <)", () => {
     // MIDNIGHT as `now` is the only way to make daysSince land on exactly 7.0 —
     // from a mid-day `now` the fraction is never zero and `<` would still pass.
-    const ms = [
-      moment({ day: dayBefore(MIDNIGHT, 7), personIds: ["p-eli"] }),
-    ];
+    const ms = [moment({ day: dayBefore(MIDNIGHT, 7), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: WEEKLY }), ms, MIDNIGHT)).toBe(
       "blooming",
     );
   });
 
   it("wilts one day past the threshold", () => {
-    const ms = [
-      moment({ day: dayBefore(MIDNIGHT, 8), personIds: ["p-eli"] }),
-    ];
+    const ms = [moment({ day: dayBefore(MIDNIGHT, 8), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: WEEKLY }), ms, MIDNIGHT)).toBe(
       "wilting",
     );
   });
 
   it("blooms just inside the threshold and wilts just outside it", () => {
-    const inside = [moment({ day: dayBefore(NOW, 6), personIds: ["p-eli"] })];
-    const outside = [
-      moment({ day: dayBefore(NOW, 7), personIds: ["p-eli"] }),
-    ];
+    const inside = [moment({ day: dayBefore(NOW, 6), personIds: ["p-uma"] })];
+    const outside = [moment({ day: dayBefore(NOW, 7), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: WEEKLY }), inside, NOW)).toBe(
       "blooming",
     );
@@ -357,7 +351,7 @@ describe("personHealth — silence threshold arithmetic", () => {
   it("honours rhythm.count — twice weekly halves the threshold to 3.5 days", () => {
     // Same person, same moment, same period. Only `count` differs, and it flips
     // the verdict: 5 days of silence is fine weekly, not fine twice weekly.
-    const ms = [moment({ day: dayBefore(NOW, 5), personIds: ["p-eli"] })];
+    const ms = [moment({ day: dayBefore(NOW, 5), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: WEEKLY }), ms, NOW)).toBe("blooming");
     expect(personHealth(person({ rhythm: TWICE_WEEKLY }), ms, NOW)).toBe(
       "wilting",
@@ -365,14 +359,14 @@ describe("personHealth — silence threshold arithmetic", () => {
   });
 
   it("blooms inside a twice-weekly threshold", () => {
-    const ms = [moment({ day: dayBefore(NOW, 2), personIds: ["p-eli"] })];
+    const ms = [moment({ day: dayBefore(NOW, 2), personIds: ["p-uma"] })];
     expect(personHealth(person({ rhythm: TWICE_WEEKLY }), ms, NOW)).toBe(
       "blooming",
     );
   });
 
   it("stretches the threshold for a longer period — monthly tolerates 20 days", () => {
-    const ms = [moment({ day: dayBefore(NOW, 20), personIds: ["p-eli"] })];
+    const ms = [moment({ day: dayBefore(NOW, 20), personIds: ["p-uma"] })];
     expect(
       personHealth(
         person({ rhythm: { period: "monthly", count: 1 } }),
