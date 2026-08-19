@@ -126,7 +126,7 @@ export function isHourInPhase(hour: number, config: PhaseConfig): boolean {
  */
 export function getCurrentPhase(
   hour: number,
-  phaseConfigs: PhaseConfig[]
+  phaseConfigs: PhaseConfig[],
 ): Phase | null {
   if (hour < 0 || hour > 23) {
     throw new Error("Hour must be between 0 and 23");
@@ -156,7 +156,7 @@ export function getCurrentPhase(
  */
 export function getPhaseConfig(
   phase: Phase,
-  phaseConfigs: PhaseConfig[]
+  phaseConfigs: PhaseConfig[],
 ): PhaseConfig | undefined {
   return phaseConfigs.find((config) => config.phase === phase);
 }

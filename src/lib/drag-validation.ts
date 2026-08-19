@@ -4,12 +4,9 @@
  * Business logic for validating drag operations against Zenborg's constraints.
  */
 
-import {
-  DAY_VIEW_PHASE_CAPACITY,
-  type Moment,
-} from '@/domain/entities/Moment';
-import type { Phase } from '@/domain/value-objects/Phase';
-import type { DragValidationResult } from '@/types/dnd';
+import { DAY_VIEW_PHASE_CAPACITY, type Moment } from "@/domain/entities/Moment";
+import type { Phase } from "@/domain/value-objects/Phase";
+import type { DragValidationResult } from "@/types/dnd";
 
 /**
  * Check if a moment can be dropped into a specific timeline cell.
@@ -28,14 +25,14 @@ export function canDropInCell(
   targetDay: string,
   targetPhase: Phase,
   allMoments: Record<string, Moment>,
-  draggingMomentId: string
+  draggingMomentId: string,
 ): DragValidationResult {
   // Count moments currently in target cell (excluding the one being dragged)
   const momentsInCell = Object.values(allMoments).filter(
     (m) =>
       m.day === targetDay &&
       m.phase === targetPhase &&
-      m.id !== draggingMomentId
+      m.id !== draggingMomentId,
   );
 
   if (momentsInCell.length >= DAY_VIEW_PHASE_CAPACITY) {
@@ -61,14 +58,14 @@ export function calculateNextOrder(
   targetDay: string,
   targetPhase: Phase,
   allMoments: Record<string, Moment>,
-  draggingMomentId: string
+  draggingMomentId: string,
 ): number {
   const momentsInCell = Object.values(allMoments)
     .filter(
       (m) =>
         m.day === targetDay &&
         m.phase === targetPhase &&
-        m.id !== draggingMomentId
+        m.id !== draggingMomentId,
     )
     .sort((a, b) => a.order - b.order);
 
@@ -98,14 +95,14 @@ export function reorderAfterRemoval(
   targetDay: string,
   targetPhase: Phase,
   allMoments: Record<string, Moment>,
-  removedMomentId: string
+  removedMomentId: string,
 ): Array<{ momentId: string; newOrder: number }> {
   const momentsInCell = Object.values(allMoments)
     .filter(
       (m) =>
         m.day === targetDay &&
         m.phase === targetPhase &&
-        m.id !== removedMomentId
+        m.id !== removedMomentId,
     )
     .sort((a, b) => a.order - b.order);
 
@@ -129,7 +126,7 @@ export function isSameLocation(
   momentId: string,
   targetDay: string | null,
   targetPhase: Phase | null,
-  allMoments: Record<string, Moment>
+  allMoments: Record<string, Moment>,
 ): boolean {
   const moment = allMoments[momentId];
   if (!moment) return false;

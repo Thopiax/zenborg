@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { AttitudeService } from "../AttitudeService";
-import { Attitude } from "@/domain/value-objects/Attitude";
-import type { Moment } from "@/domain/entities/Moment";
-import type { Habit } from "@/domain/entities/Habit";
+import { describe, expect, it } from "vitest";
 import type { Area } from "@/domain/entities/Area";
+import type { Habit } from "@/domain/entities/Habit";
+import type { Moment } from "@/domain/entities/Moment";
+import { Attitude } from "@/domain/value-objects/Attitude";
+import { AttitudeService } from "../AttitudeService";
 
 describe("AttitudeService", () => {
   const service = new AttitudeService();
@@ -11,7 +11,7 @@ describe("AttitudeService", () => {
   const createMoment = (
     id: string,
     areaId: string,
-    habitId: string | null = null
+    habitId: string | null = null,
   ): Moment => ({
     id,
     name: `Moment ${id}`,
@@ -28,7 +28,11 @@ describe("AttitudeService", () => {
     updatedAt: new Date().toISOString(),
   });
 
-  const createHabit = (id: string, areaId: string, attitude: Attitude | null): Habit => ({
+  const createHabit = (
+    id: string,
+    areaId: string,
+    attitude: Attitude | null,
+  ): Habit => ({
     id,
     name: `Habit ${id}`,
     areaId,

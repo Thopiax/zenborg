@@ -12,10 +12,7 @@ import { useMemo } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
-import {
-  DAY_VIEW_PHASE_CAPACITY,
-  type Moment,
-} from "@/domain/entities/Moment";
+import { DAY_VIEW_PHASE_CAPACITY, type Moment } from "@/domain/entities/Moment";
 import { getCurrentPhase } from "@/domain/value-objects/Phase";
 import {
   activeCycle$,

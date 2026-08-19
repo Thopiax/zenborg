@@ -27,9 +27,7 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
-    "externalBin": [
-      "binaries/zenborg-mcp"
-    ],
+    "externalBin": ["binaries/zenborg-mcp"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

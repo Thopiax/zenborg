@@ -2,20 +2,14 @@
  * Grouping utilities for organizing moments in the drawing board
  */
 
-import {
-  format,
-  isThisMonth,
-  isThisWeek,
-  isToday,
-  isYesterday,
-} from "date-fns";
+import { isThisMonth, isThisWeek, isToday, isYesterday } from "date-fns";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
 import type { Moment } from "@/domain/entities/Moment";
+import { attitudeService } from "@/domain/services/AttitudeService";
 import { ATTITUDE_METADATA, Attitude } from "@/domain/value-objects/Attitude";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
 import { PHASE_ICONS } from "@/domain/value-objects/phaseStyles";
-import { attitudeService } from "@/domain/services/AttitudeService";
 
 /**
  * Sort moments by order (primary) and createdAt (secondary)
@@ -55,7 +49,7 @@ export interface MomentGroup {
 export function groupByArea(
   moments: Moment[],
   _habits?: Record<string, Habit>,
-  areas?: Record<string, Area>
+  areas?: Record<string, Area>,
 ): MomentGroup[] {
   if (!areas) {
     return [];
@@ -73,7 +67,7 @@ export function groupByArea(
         emoji: area.emoji,
         moments: [],
       },
-    ])
+    ]),
   );
 
   // Fill in moments for each area
@@ -178,7 +172,7 @@ export function groupByCreated(moments: Moment[]): MomentGroup[] {
 export function groupByAttitude(
   moments: Moment[],
   habits?: Record<string, Habit>,
-  areas?: Record<string, Area>
+  areas?: Record<string, Area>,
 ): MomentGroup[] {
   const groups: Record<string, Moment[]> = {
     beginning: [],
@@ -299,7 +293,7 @@ export function groupByTag(moments: Moment[]): MomentGroup[] {
   // Create groups for each tag
   const groups: MomentGroup[] = sortedTags.map((tag) => {
     const taggedMoments = moments.filter((moment) =>
-      moment.tags?.includes(tag)
+      moment.tags?.includes(tag),
     );
 
     return {
@@ -340,7 +334,7 @@ const PHASE_COLORS: Record<Phase, string> = {
  */
 export function groupByPhase(
   moments: Moment[],
-  phaseConfigs: PhaseConfig[]
+  phaseConfigs: PhaseConfig[],
 ): MomentGroup[] {
   // Get visible phases sorted by order
   const visiblePhases = phaseConfigs
@@ -407,12 +401,12 @@ export function groupByPhase(
  * grouping separately by calling groupByPhase directly.
  */
 export function getGroupingFunction(
-  groupBy: "none" | "area" | "created" | "attitude" | "tag"
+  groupBy: "none" | "area" | "created" | "attitude" | "tag",
 ):
   | ((
       moments: Moment[],
       habits?: Record<string, Habit>,
-      areas?: Record<string, Area>
+      areas?: Record<string, Area>,
     ) => MomentGroup[])
   | null {
   switch (groupBy) {
@@ -424,7 +418,6 @@ export function getGroupingFunction(
       return groupByAttitude;
     case "tag":
       return (moments: Moment[]) => groupByTag(moments);
-    case "none":
     default:
       return null;
   }

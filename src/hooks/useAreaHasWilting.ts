@@ -29,7 +29,7 @@ export function useAreaHasWilting(areaId: string): boolean {
 
     const plan = activeCycleId
       ? (allPlans.find(
-          (p) => p.cycleId === activeCycleId && p.habitId === habit.id
+          (p) => p.cycleId === activeCycleId && p.habitId === habit.id,
         ) ?? null)
       : null;
 
@@ -37,7 +37,7 @@ export function useAreaHasWilting(areaId: string): boolean {
       habit,
       plan,
       allMoments,
-      now
+      now,
     );
     if (health === "wilting") return true;
   }

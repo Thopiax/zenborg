@@ -39,7 +39,7 @@ function DialogOverlay({
       data-slot="dialog-overlay"
       className={cn(
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-stone-900/40 dark:bg-stone-950/60",
-        className
+        className,
       )}
       {...props}
     />
@@ -67,7 +67,7 @@ const DialogContent = React.forwardRef<
           "md:max-w-lg md:max-h-[90dvh] md:rounded-lg md:top-[50%] md:left-[50%] md:translate-x-[-50%] md:translate-y-[-50%]",
           // Mobile portrait: keep some padding but allow more height
           // "max-md:portrait:p-6 max-md:portrait:rounded-lg",
-          className
+          className,
         )}
         {...props}
       >
@@ -93,7 +93,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="dialog-header"
       className={cn(
         "flex flex-col gap-2 text-center sm:text-left px-6 py-4 border-b border-stone-200 dark:border-stone-700",
-        className
+        className,
       )}
       {...props}
     />
@@ -106,7 +106,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="dialog-footer"
       className={cn(
         "bg-stone-100/50 dark:bg-stone-800/50 border-t border-stone-200 dark:border-stone-700 flex-row items-center justify-between px-6 py-4 backdrop-blur-sm",
-        className
+        className,
       )}
       {...props}
     />
@@ -122,7 +122,7 @@ function DialogTitle({
       data-slot="dialog-title"
       className={cn(
         "text-sm leading-none font-medium text-stone-600 dark:text-stone-400",
-        className
+        className,
       )}
       {...props}
     />

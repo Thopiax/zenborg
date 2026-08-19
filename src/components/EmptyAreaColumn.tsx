@@ -1,19 +1,28 @@
-/** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
+/** biome-ignore-all lint/a11y/noAutofocus: inline edit opens from a keyboard action, so focus has to follow it */
 "use client";
 
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { columnWidth } from "@/lib/design-tokens";
 import {
   extractLeadingEmoji,
   suggestEmojiForAreaName,
 } from "@/lib/emoji-utils";
-import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
 const RANDOM_COLORS = [
-  "#10b981", "#3b82f6", "#f97316", "#eab308", "#6b7280",
-  "#8b5cf6", "#ec4899", "#ef4444", "#06b6d4", "#059669",
-  "#f59e0b", "#6366f1",
+  "#10b981",
+  "#3b82f6",
+  "#f97316",
+  "#eab308",
+  "#6b7280",
+  "#8b5cf6",
+  "#ec4899",
+  "#ef4444",
+  "#06b6d4",
+  "#059669",
+  "#f59e0b",
+  "#6366f1",
 ];
 
 function pickRandomColor(): string {
@@ -102,10 +111,7 @@ export function EmptyAreaColumn({ onCreateArea }: EmptyAreaColumnProps) {
         </div>
 
         {/* Colored Divider */}
-        <div
-          className="h-[3px] mx-4"
-          style={{ backgroundColor: color }}
-        />
+        <div className="h-[3px] mx-4" style={{ backgroundColor: color }} />
       </div>
     );
   }

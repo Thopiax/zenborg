@@ -138,7 +138,7 @@ export function parseCommand(input: string): CommandResult {
  * Type guard to check if result is an error
  */
 export function isCommandError(
-  result: CommandResult
+  result: CommandResult,
 ): result is { error: string } {
   return "error" in result;
 }

@@ -107,7 +107,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       command.action();
       handleClose();
     },
-    [handleClose]
+    [handleClose],
   );
 
   const handleSelectEntity = useCallback((entity: SearchableEntity) => {
@@ -124,7 +124,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       action.action();
       handleClose();
     },
-    [handleClose]
+    [handleClose],
   );
 
   const handleBackToRoot = useCallback(() => {
@@ -145,7 +145,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         handleBackToRoot();
       }
     },
-    [search, paletteState.page, handleBackToRoot]
+    [search, paletteState.page, handleBackToRoot],
   );
 
   const hasEntityResults =
@@ -216,9 +216,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       </CommandGroup>
                     )}
 
-                    {searchResult.commands.length > 0 && (
-                      <CommandSeparator />
-                    )}
+                    {searchResult.commands.length > 0 && <CommandSeparator />}
                   </>
                 )}
 
@@ -234,6 +232,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           ) : (
             <>
               {/* Entity actions page */}
+              {/* biome-ignore lint/a11y/noStaticElementInteractions: the wrapper only
+                  delegates keys to the CommandInput below, which is the interactive element */}
               <div onKeyDown={handleKeyDown}>
                 <CommandInput
                   ref={inputRef}
@@ -324,8 +324,7 @@ function EntityItem({
   entity: SearchableEntity;
   onSelect: () => void;
 }) {
-  const moment =
-    entity.type === "moment" ? (entity.entity as Moment) : null;
+  const moment = entity.type === "moment" ? (entity.entity as Moment) : null;
   const isAllocated = moment?.day !== null && moment?.day !== undefined;
 
   return (
@@ -336,7 +335,8 @@ function EntityItem({
     >
       {/* Entity emoji */}
       <span className="text-sm flex-shrink-0">
-        {entity.emoji || (entity.type === "area" ? (entity.entity as Area).emoji : "")}
+        {entity.emoji ||
+          (entity.type === "area" ? (entity.entity as Area).emoji : "")}
       </span>
 
       {/* Entity name */}
@@ -390,34 +390,36 @@ function CommandsSection({
         acc[cmd.category].push(cmd);
         return acc;
       },
-      {} as Record<string, CommandType[]>
+      {} as Record<string, CommandType[]>,
     );
   }, [commands]);
 
   return (
     <>
-      {Object.entries(grouped).map(([category, cmds]: [string, CommandType[]]) => (
-        <CommandGroup key={category} heading={category}>
-          {cmds.map((cmd) => (
-            <CommandItem
-              key={cmd.id}
-              value={cmd.id}
-              onSelect={() => onSelect(cmd)}
-              className="flex items-center justify-between px-3 py-2 cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                {cmd.icon && <span>{cmd.icon}</span>}
-                <span className="text-sm font-medium">{cmd.label}</span>
-              </div>
-              {cmd.shortcut && (
-                <kbd className="ml-auto text-xs px-2 py-1 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-mono">
-                  {cmd.shortcut}
-                </kbd>
-              )}
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      ))}
+      {Object.entries(grouped).map(
+        ([category, cmds]: [string, CommandType[]]) => (
+          <CommandGroup key={category} heading={category}>
+            {cmds.map((cmd) => (
+              <CommandItem
+                key={cmd.id}
+                value={cmd.id}
+                onSelect={() => onSelect(cmd)}
+                className="flex items-center justify-between px-3 py-2 cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  {cmd.icon && <span>{cmd.icon}</span>}
+                  <span className="text-sm font-medium">{cmd.label}</span>
+                </div>
+                {cmd.shortcut && (
+                  <kbd className="ml-auto text-xs px-2 py-1 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-mono">
+                    {cmd.shortcut}
+                  </kbd>
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ),
+      )}
     </>
   );
 }

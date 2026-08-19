@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
+/** biome-ignore-all lint/a11y/useButtonType: these are inside a form and submit is the intended default */
 "use client";
 
 import { use$, useSelector } from "@legendapp/state/react";
@@ -126,7 +126,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   // Tagged name field
   const taggedField = useTaggedNameField(name, tags);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seeds form state when the dialog opens; re-running on every dep change would discard edits
   useEffect(() => {
     if (!open) return;
 
@@ -135,7 +135,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   }, [open, editingMomentId]);
 
   // Sync typed text FROM tagged field back to form store (for emoji auto-suggestion)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     if (!open) return;
     momentFormState$.name.set(taggedField.displayValue);
@@ -268,8 +267,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     (e) => {
       e.preventDefault();
       const focusable = getFocusableElements();
-      const currentIndex = focusable.findIndex(
-        (el) => el === document.activeElement,
+      const currentIndex = focusable.indexOf(
+        document.activeElement as HTMLElement,
       );
       const nextIndex = (currentIndex + 1) % focusable.length;
       focusable[nextIndex]?.focus();
@@ -283,8 +282,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     (e) => {
       e.preventDefault();
       const focusable = getFocusableElements();
-      const currentIndex = focusable.findIndex(
-        (el) => el === document.activeElement,
+      const currentIndex = focusable.indexOf(
+        document.activeElement as HTMLElement,
       );
       const prevIndex =
         currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1;
@@ -299,8 +298,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     (e) => {
       e.preventDefault();
       const focusable = getFocusableElements();
-      const currentIndex = focusable.findIndex(
-        (el) => el === document.activeElement,
+      const currentIndex = focusable.indexOf(
+        document.activeElement as HTMLElement,
       );
       const nextIndex = (currentIndex + 1) % focusable.length;
       focusable[nextIndex]?.focus();
@@ -314,8 +313,8 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     (e) => {
       e.preventDefault();
       const focusable = getFocusableElements();
-      const currentIndex = focusable.findIndex(
-        (el) => el === document.activeElement,
+      const currentIndex = focusable.indexOf(
+        document.activeElement as HTMLElement,
       );
       const prevIndex =
         currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1;

@@ -1,12 +1,9 @@
-import { describe, it, expect } from "vitest";
-import {
-  formatTodayForTrmnl,
-  type TrmnlPayload,
-} from "../TrmnlFormatter";
-import type { Moment } from "@/domain/entities/Moment";
+import { describe, expect, it } from "vitest";
 import type { Area } from "@/domain/entities/Area";
 import type { Cycle } from "@/domain/entities/Cycle";
+import type { Moment } from "@/domain/entities/Moment";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
+import { formatTodayForTrmnl } from "../TrmnlFormatter";
 
 // ============================================================================
 // Test Helpers
@@ -16,7 +13,7 @@ function createMoment(
   id: string,
   name: string,
   areaId: string,
-  overrides: Partial<Moment> = {}
+  overrides: Partial<Moment> = {},
 ): Moment {
   return {
     id,
@@ -40,7 +37,7 @@ function createArea(
   id: string,
   name: string,
   emoji: string,
-  overrides: Partial<Area> = {}
+  overrides: Partial<Area> = {},
 ): Area {
   return {
     id,
@@ -60,9 +57,12 @@ function createArea(
 
 function createPhaseConfig(
   phase: Phase,
-  overrides: Partial<PhaseConfig> = {}
+  overrides: Partial<PhaseConfig> = {},
 ): PhaseConfig {
-  const defaults: Record<Phase, Omit<PhaseConfig, "id" | "createdAt" | "updatedAt">> = {
+  const defaults: Record<
+    Phase,
+    Omit<PhaseConfig, "id" | "createdAt" | "updatedAt">
+  > = {
     [Phase.MORNING]: {
       phase: Phase.MORNING,
       label: "Morning",
@@ -157,13 +157,20 @@ describe("TrmnlFormatter", () => {
       ]);
 
       // currentHour=14 → Afternoon phase
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 14);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        14,
+      );
 
       expect(result.merge_variables.phase).not.toBeNull();
-      expect(result.merge_variables.phase!.label).toBe("Afternoon");
-      expect(result.merge_variables.phase!.moments).toHaveLength(2);
-      expect(result.merge_variables.phase!.moments[0].name).toBe("Deep Work");
-      expect(result.merge_variables.phase!.moments[1].name).toBe("Team Sync");
+      expect(result.merge_variables.phase?.label).toBe("Afternoon");
+      expect(result.merge_variables.phase?.moments).toHaveLength(2);
+      expect(result.merge_variables.phase?.moments[0].name).toBe("Deep Work");
+      expect(result.merge_variables.phase?.moments[1].name).toBe("Team Sync");
     });
 
     it("returns null phase when no phase matches current hour", () => {
@@ -176,7 +183,14 @@ describe("TrmnlFormatter", () => {
         // Night is not visible by default, so hour 3 has no matching phase
       ]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 3);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        3,
+      );
 
       expect(result.merge_variables.phase).toBeNull();
     });
@@ -189,11 +203,18 @@ describe("TrmnlFormatter", () => {
         createPhaseConfig(Phase.AFTERNOON),
       ]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
 
       expect(result.merge_variables.phase).not.toBeNull();
-      expect(result.merge_variables.phase!.label).toBe("Morning");
-      expect(result.merge_variables.phase!.moments).toHaveLength(0);
+      expect(result.merge_variables.phase?.label).toBe("Morning");
+      expect(result.merge_variables.phase?.moments).toHaveLength(0);
     });
 
     it("falls back to empty area_name for missing area references", () => {
@@ -207,9 +228,16 @@ describe("TrmnlFormatter", () => {
       ]);
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
 
-      expect(result.merge_variables.phase!.moments[0].area_name).toBe("");
+      expect(result.merge_variables.phase?.moments[0].area_name).toBe("");
     });
 
     it("sorts moments within the current phase by order", () => {
@@ -233,9 +261,16 @@ describe("TrmnlFormatter", () => {
       ]);
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
 
-      const names = result.merge_variables.phase!.moments.map((m) => m.name);
+      const names = result.merge_variables.phase?.moments.map((m) => m.name);
       expect(names).toEqual(["First", "Middle", "Second"]);
     });
 
@@ -254,7 +289,14 @@ describe("TrmnlFormatter", () => {
         updatedAt: "2026-02-01T00:00:00.000Z",
       };
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, cycle, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        cycle,
+        TODAY,
+        8,
+      );
 
       expect(result.merge_variables.cycle_name).toBe("Barcelona Summer");
     });
@@ -264,7 +306,14 @@ describe("TrmnlFormatter", () => {
       const moments: Record<string, Moment> = {};
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
 
       expect(result.merge_variables.cycle_name).toBe("");
     });
@@ -274,7 +323,14 @@ describe("TrmnlFormatter", () => {
       const moments: Record<string, Moment> = {};
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, "2026-02-22", 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        "2026-02-22",
+        8,
+      );
 
       // Sunday, Feb 22
       expect(result.merge_variables.date_label).toBe("Sunday, Feb 22");
@@ -306,11 +362,20 @@ describe("TrmnlFormatter", () => {
       ]);
 
       // currentHour=8 → Morning
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
 
-      expect(result.merge_variables.phase!.label).toBe("Morning");
-      expect(result.merge_variables.phase!.moments).toHaveLength(1);
-      expect(result.merge_variables.phase!.moments[0].name).toBe("Morning Thing");
+      expect(result.merge_variables.phase?.label).toBe("Morning");
+      expect(result.merge_variables.phase?.moments).toHaveLength(1);
+      expect(result.merge_variables.phase?.moments[0].name).toBe(
+        "Morning Thing",
+      );
     });
 
     it("produces a payload under 2KB for maximum density", () => {
@@ -341,8 +406,17 @@ describe("TrmnlFormatter", () => {
 
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
-      const payloadSize = new TextEncoder().encode(JSON.stringify(result)).length;
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
+      const payloadSize = new TextEncoder().encode(
+        JSON.stringify(result),
+      ).length;
 
       expect(payloadSize).toBeLessThan(2048);
     });
@@ -358,9 +432,18 @@ describe("TrmnlFormatter", () => {
       ]);
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
 
-      expect(result.merge_variables.phase!.moments[0].area_name).toBe("Wellness");
+      expect(result.merge_variables.phase?.moments[0].area_name).toBe(
+        "Wellness",
+      );
     });
 
     it("includes updated_at timestamp", () => {
@@ -368,12 +451,19 @@ describe("TrmnlFormatter", () => {
       const moments: Record<string, Moment> = {};
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
 
       expect(result.merge_variables.updated_at).toBeDefined();
       // Should be a valid ISO string
       expect(new Date(result.merge_variables.updated_at).toISOString()).toBe(
-        result.merge_variables.updated_at
+        result.merge_variables.updated_at,
       );
     });
 
@@ -393,10 +483,17 @@ describe("TrmnlFormatter", () => {
       ]);
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
 
-      expect(result.merge_variables.phase!.moments).toHaveLength(1);
-      expect(result.merge_variables.phase!.moments[0].name).toBe("Valid");
+      expect(result.merge_variables.phase?.moments).toHaveLength(1);
+      expect(result.merge_variables.phase?.moments[0].name).toBe("Valid");
     });
 
     it("does not include moments from other days in current phase", () => {
@@ -415,10 +512,17 @@ describe("TrmnlFormatter", () => {
       ]);
       const phaseConfigs = toRecord([createPhaseConfig(Phase.MORNING)]);
 
-      const result = formatTodayForTrmnl(moments, areas, phaseConfigs, null, TODAY, 8);
+      const result = formatTodayForTrmnl(
+        moments,
+        areas,
+        phaseConfigs,
+        null,
+        TODAY,
+        8,
+      );
 
-      expect(result.merge_variables.phase!.moments).toHaveLength(1);
-      expect(result.merge_variables.phase!.moments[0].name).toBe("Today");
+      expect(result.merge_variables.phase?.moments).toHaveLength(1);
+      expect(result.merge_variables.phase?.moments[0].name).toBe("Today");
     });
   });
 });

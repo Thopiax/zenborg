@@ -36,7 +36,7 @@ export default function CultivatePage() {
     createMore?: boolean,
     emoji?: string | null,
     tags?: string[],
-    customMetric?: CustomMetric
+    customMetric?: CustomMetric,
   ) => {
     // The hook handlers will check the mode from the store
     const mode = momentFormState$.mode.peek();
@@ -48,7 +48,7 @@ export default function CultivatePage() {
         createMore,
         emoji,
         tags,
-        customMetric
+        customMetric,
       );
     } else {
       handleSaveEdit(name, areaId, phase, emoji, tags, customMetric);
@@ -67,7 +67,7 @@ export default function CultivatePage() {
     const target = e.target as HTMLElement;
     const isClickOnMoment = target.closest("button[data-moment-id]");
     const isClickOnInteractive = target.closest(
-      "button, a, input, select, textarea"
+      "button, a, input, select, textarea",
     );
 
     if (!isClickOnMoment && !isClickOnInteractive && hasAnySelected) {
@@ -91,7 +91,7 @@ export default function CultivatePage() {
           <div
             className={cn(
               "flex-1 overflow-hidden",
-              "flex flex-col justify-center"
+              "flex flex-col justify-center",
             )}
             style={{
               paddingLeft: "env(safe-area-inset-left)",
@@ -111,7 +111,6 @@ export default function CultivatePage() {
           onSave={handleMomentFormSave}
           onDelete={handleDeleteEdit}
         />
-
       </div>
     </DnDProvider>
   );

@@ -7,8 +7,8 @@ import {
   trmnlSyncStatus$,
 } from "@/infrastructure/state/integration-store";
 import {
-  areas$,
   activeCycle$,
+  areas$,
   moments$,
   momentsByDayAndPhase$,
   phaseConfigs$,

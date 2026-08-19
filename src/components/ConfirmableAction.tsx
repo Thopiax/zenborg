@@ -94,7 +94,7 @@ export function ConfirmableAction({
         onClick={handleInitiate}
         className={cn(
           "px-4 py-2 rounded-lg font-mono text-sm transition-colors",
-          styles.button
+          styles.button,
         )}
       >
         {buttonLabel}
@@ -123,7 +123,6 @@ export function ConfirmableAction({
           onChange={(e) => setInputValue(e.target.value)}
           className="px-3 py-2 border border-stone-300 dark:border-stone-600 rounded bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
           placeholder={confirmText}
-          autoFocus
           onKeyDown={(e) => {
             if (e.key === "Enter" && isConfirmEnabled) {
               handleConfirm();
@@ -140,7 +139,7 @@ export function ConfirmableAction({
           disabled={!isConfirmEnabled}
           className={cn(
             "px-4 py-2 rounded-lg font-mono text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-            styles.confirmButton
+            styles.confirmButton,
           )}
         >
           Confirm

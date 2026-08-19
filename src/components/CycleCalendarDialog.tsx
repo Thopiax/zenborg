@@ -2,7 +2,6 @@
 
 import { useValue } from "@legendapp/state/react";
 import { addMonths, format, startOfMonth } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import {
@@ -32,11 +31,16 @@ const SCROLL_THRESHOLD_PX = 400;
  * visible and prevented. Name prompts inline on release; intention is
  * deferred to a later planning session.
  */
-export function CycleCalendarDialog({ open, onClose }: CycleCalendarDialogProps) {
+export function CycleCalendarDialog({
+  open,
+  onClose,
+}: CycleCalendarDialogProps) {
   const cycleService = useMemo(() => new CycleService(), []);
   const allCyclesMap = useValue(() => cycles$.get());
 
-  const [anchorMonth, setAnchorMonth] = useState(() => startOfMonth(new Date()));
+  const [anchorMonth, setAnchorMonth] = useState(() =>
+    startOfMonth(new Date()),
+  );
   const [monthsBack, setMonthsBack] = useState(MONTHS_BEFORE);
   const [monthsAhead, setMonthsAhead] = useState(MONTHS_AFTER);
 
@@ -46,10 +50,10 @@ export function CycleCalendarDialog({ open, onClose }: CycleCalendarDialogProps)
   const [isDragging, setIsDragging] = useState(false);
 
   // Name prompt on release
-  const [promptRange, setPromptRange] = useState<
-    | { startDate: string; endDate: string }
-    | null
-  >(null);
+  const [promptRange, setPromptRange] = useState<{
+    startDate: string;
+    endDate: string;
+  } | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +111,10 @@ export function CycleCalendarDialog({ open, onClose }: CycleCalendarDialogProps)
     if (el.scrollTop < SCROLL_THRESHOLD_PX) {
       setMonthsBack((n) => n + 3);
     }
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_THRESHOLD_PX) {
+    if (
+      el.scrollHeight - el.scrollTop - el.clientHeight <
+      SCROLL_THRESHOLD_PX
+    ) {
       setMonthsAhead((n) => n + 3);
     }
   };
@@ -202,7 +209,10 @@ export function CycleCalendarDialog({ open, onClose }: CycleCalendarDialogProps)
             Plan a cycle — drag across days to paint a range
           </DialogTitle>
           {formError && (
-            <p className="mt-2 text-xs font-mono text-red-600 dark:text-red-400" role="alert">
+            <p
+              className="mt-2 text-xs font-mono text-red-600 dark:text-red-400"
+              role="alert"
+            >
               {formError}
             </p>
           )}
@@ -224,7 +234,9 @@ export function CycleCalendarDialog({ open, onClose }: CycleCalendarDialogProps)
               selectedRange={selectedRange}
               onPointerDownDay={handlePointerDownOnDay}
               onPointerEnterDay={handlePointerEnterDay}
-              todayRef={monthContainsDate(monthDate, todayISO) ? todayRef : undefined}
+              todayRef={
+                monthContainsDate(monthDate, todayISO) ? todayRef : undefined
+              }
             />
           ))}
         </div>
@@ -233,7 +245,10 @@ export function CycleCalendarDialog({ open, onClose }: CycleCalendarDialogProps)
           <div className="border-t border-stone-200 dark:border-stone-700 px-6 py-4 flex flex-col gap-3 bg-stone-50 dark:bg-stone-900">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-mono text-stone-600 dark:text-stone-400">
-                {formatCycleDateRange(promptRange.startDate, promptRange.endDate)}
+                {formatCycleDateRange(
+                  promptRange.startDate,
+                  promptRange.endDate,
+                )}
               </p>
               <button
                 type="button"
@@ -371,6 +386,7 @@ function MonthGrid({
       <div className="grid grid-cols-7 gap-px bg-stone-200 dark:bg-stone-700 rounded-md overflow-hidden text-xs font-mono">
         {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
           <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: weekday initials repeat, so position is the identity
             key={`${d}-${i}`}
             className="bg-stone-50 dark:bg-stone-900 text-stone-500 dark:text-stone-400 py-1 text-center"
           >
@@ -381,6 +397,7 @@ function MonthGrid({
           if (!cell.iso || !cell.date) {
             return (
               <div
+                // biome-ignore lint/suspicious/noArrayIndexKey: leading blanks in a calendar grid have no identity but position
                 key={`blank-${i}`}
                 className="bg-stone-50 dark:bg-stone-900/50 h-14"
               />

@@ -224,9 +224,7 @@ const mockStore = (state: MockStoreState) => {
     state.isEditMode ?? false,
     state.selectedCycleId ?? null,
     state.cyclesMap ??
-      (state.activeCycle
-        ? { [state.activeCycle.id]: state.activeCycle }
-        : {}),
+      (state.activeCycle ? { [state.activeCycle.id]: state.activeCycle } : {}),
     state.plansMap ?? {},
     state.habitsMap ?? {},
     state.areasMap ?? {},

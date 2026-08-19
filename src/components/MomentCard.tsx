@@ -19,7 +19,6 @@ interface MomentCardProps {
   contextMomentIds?: string[];
 }
 
-
 /**
  * MomentCard - Display card for a moment
  *
@@ -95,7 +94,7 @@ export function MomentCard({
   const textColors = getTextColorsForBackground(area.color);
 
   // Get phase config for displaying emoji
-  const phaseConfig = moment.phase
+  const _phaseConfig = moment.phase
     ? Object.values(allPhaseConfigs).find((pc) => pc.phase === moment.phase)
     : null;
 
@@ -119,7 +118,7 @@ export function MomentCard({
           ? "ring-2 ring-offset-2"
           : "ring-0 hover:ring-2 hover:ring-offset-2",
         // Subtle lift on hover for depth
-        "hover:-translate-y-0.5"
+        "hover:-translate-y-0.5",
       )}
       style={{
         backgroundColor: area.color,
@@ -145,7 +144,7 @@ export function MomentCard({
             className={cn(
               "mr-2 text-lg",
               textColors.primary,
-              healthEmojiClass(health)
+              healthEmojiClass(health),
             )}
           >
             {moment.emoji}
@@ -155,7 +154,7 @@ export function MomentCard({
         <p
           className={cn(
             "text-lg font-semibold font-mono line-clamp-1 flex-shrink-0",
-            textColors.primary
+            textColors.primary,
           )}
         >
           {moment.name}
@@ -167,7 +166,7 @@ export function MomentCard({
                 key={tag}
                 className={cn(
                   "text-xs font-mono opacity-60",
-                  textColors.primary
+                  textColors.primary,
                 )}
               >
                 #{tag}
