@@ -183,3 +183,122 @@ describe("deriveSpans", () => {
       expect(span.end).toBeGreaterThanOrEqual(span.start);
   });
 });
+
+describe("deriveSpans across plan boundaries", () => {
+  const withBoundaries = (boundaries: readonly number[]) => ({
+    ...config,
+    boundaries,
+  });
+
+  it("closes a span at a planned boundary even when the person never went quiet", () => {
+    const spans = deriveSpans(
+      [ev("a", T, "area-craft"), ev("b", T + 2 * MINUTE, "area-craft")],
+      resolve,
+      withBoundaries([T + MINUTE]),
+    );
+    expect(spans).toHaveLength(2);
+    expect(spans.map((s) => s.sourceEventIds)).toEqual([["a"], ["b"]]);
+  });
+
+  it("does not stretch the closed span forward to reach the boundary", () => {
+    const spans = deriveSpans(
+      [ev("a", T, "area-craft"), ev("b", T + 2 * MINUTE, "area-craft")],
+      resolve,
+      withBoundaries([T + MINUTE]),
+    );
+    // A boundary only ever pulls an end back. Claiming time up to the boundary
+    // would invent attention nobody observed, which is invariant 3's rule.
+    expect(spans[0].end).toBe(T);
+  });
+
+  it("does not let a measured duration reach past a boundary", () => {
+    const spans = deriveSpans(
+      [
+        ev("a", T, "area-craft", { durationMs: 10 * MINUTE }),
+        ev("b", T + 12 * MINUTE, "area-craft"),
+      ],
+      resolve,
+      withBoundaries([T + MINUTE]),
+    );
+    expect(spans[0].end).toBe(T + MINUTE);
+  });
+
+  it("starts the next span at its first observation, not at the boundary", () => {
+    const spans = deriveSpans(
+      [ev("a", T, "area-craft"), ev("b", T + 2 * MINUTE, "area-craft")],
+      resolve,
+      withBoundaries([T + MINUTE]),
+    );
+    expect(spans[1].start).toBe(T + 2 * MINUTE);
+  });
+
+  it("closes at the first boundary crossed when several fall in one silence", () => {
+    const spans = deriveSpans(
+      [
+        ev("a", T, "area-craft", { durationMs: 10 * MINUTE }),
+        ev("b", T + 5 * MINUTE, "area-craft"),
+      ],
+      resolve,
+      withBoundaries([T + MINUTE, T + 3 * MINUTE]),
+    );
+    expect(spans).toHaveLength(2);
+    expect(spans[0].end).toBe(T + MINUTE);
+  });
+
+  it("treats a boundary landing exactly on an event as starting that event's span", () => {
+    const spans = deriveSpans(
+      [ev("a", T, "area-craft"), ev("b", T + MINUTE, "area-craft")],
+      resolve,
+      withBoundaries([T + MINUTE]),
+    );
+    expect(spans).toHaveLength(2);
+    expect(spans[1].start).toBe(T + MINUTE);
+  });
+
+  it("ignores a boundary before anything was observed", () => {
+    const spans = deriveSpans(
+      [ev("a", T, "area-craft"), ev("b", T + MINUTE, "area-craft")],
+      resolve,
+      withBoundaries([T - 5 * MINUTE]),
+    );
+    expect(spans).toHaveLength(1);
+  });
+
+  it("ignores a boundary after the last observation, and never extends a span to reach it", () => {
+    const spans = deriveSpans(
+      [ev("a", T, "area-craft"), ev("b", T + MINUTE, "area-craft")],
+      resolve,
+      withBoundaries([T + 30 * MINUTE]),
+    );
+    expect(spans).toHaveLength(1);
+    expect(spans[0].end).toBe(T + MINUTE);
+  });
+
+  it("produces nothing from boundaries alone", () => {
+    expect(deriveSpans([], resolve, withBoundaries([T, T + MINUTE]))).toEqual(
+      [],
+    );
+  });
+
+  it("orders boundaries defensively rather than trusting the caller", () => {
+    const spans = deriveSpans(
+      [
+        ev("a", T, "area-craft", { durationMs: 10 * MINUTE }),
+        ev("b", T + 5 * MINUTE, "area-craft"),
+      ],
+      resolve,
+      withBoundaries([T + 3 * MINUTE, T + MINUTE]),
+    );
+    expect(spans[0].end).toBe(T + MINUTE);
+  });
+
+  it("never produces a span whose end precedes its start, even on a boundary", () => {
+    const spans = deriveSpans(
+      [ev("a", T, "area-craft"), ev("b", T + 2 * MINUTE, "area-craft")],
+      resolve,
+      withBoundaries([T]),
+    );
+    for (const span of spans)
+      expect(span.end).toBeGreaterThanOrEqual(span.start);
+  });
+});

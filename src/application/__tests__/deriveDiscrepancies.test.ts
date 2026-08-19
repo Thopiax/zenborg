@@ -48,11 +48,13 @@ function deps(
   events: readonly ActivityEvent[],
   planting: Planting,
   store?: DiscrepancyStorePort,
+  boundaries: readonly number[] = [],
 ): ShadowDeps {
   const log: ActivityLogPort = { read: vi.fn(async () => events) };
   const garden: GardenPort = {
     areaMap: vi.fn(async () => areaMap),
     plantingsAt: vi.fn(async (_: Instant) => planting),
+    boundaries: vi.fn(async () => boundaries),
   };
   return {
     log,
@@ -172,6 +174,41 @@ describe("runShadowMode", () => {
   it("changes nothing else: the garden is only ever read", async () => {
     const d = deps([ev("a", T, "/w/themia/x.ts")], plantedCraft);
     await runShadowMode(d, WINDOW);
-    expect(Object.keys(d.garden)).toEqual(["areaMap", "plantingsAt"]);
+    expect(Object.keys(d.garden)).toEqual([
+      "areaMap",
+      "plantingsAt",
+      "boundaries",
+    ]);
+  });
+});
+
+describe("deriveDiscrepancies across plan boundaries", () => {
+  it("asks the garden for the window's boundaries", async () => {
+    const d = deps([], plantedCraft);
+    await deriveDiscrepancies(d, WINDOW);
+    expect(d.garden.boundaries).toHaveBeenCalledWith(WINDOW.from, WINDOW.to);
+  });
+
+  it("splits one stretch of work into two when the plan says a moment ended it", async () => {
+    const d = deps(
+      [ev("a", T, "/w/themia/x.ts"), ev("b", T + 2 * MINUTE, "/w/themia/y.ts")],
+      plantedCraft,
+      undefined,
+      [T + MINUTE],
+    );
+    const record = await deriveDiscrepancies(d, WINDOW);
+    expect(record.discrepancies).toHaveLength(2);
+  });
+
+  it("judges each piece against the cell it actually fell in", async () => {
+    const d = deps(
+      [ev("a", T, "/w/themia/x.ts"), ev("b", T + 2 * MINUTE, "/w/themia/y.ts")],
+      plantedCraft,
+      undefined,
+      [T + MINUTE],
+    );
+    await deriveDiscrepancies(d, WINDOW);
+    expect(d.garden.plantingsAt).toHaveBeenCalledWith(T);
+    expect(d.garden.plantingsAt).toHaveBeenCalledWith(T + 2 * MINUTE);
   });
 });
