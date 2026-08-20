@@ -49,6 +49,23 @@ import type { RuleSpec } from "../RuleSpec";
  * The count resets when the fence comes down, not on a clock — a clock lets the
  * tally launder itself by waiting, which is the one thing a commitment must not
  * reward.
+ *
+ * ── What the rungs are and are not calibrated to ────────────────────────
+ *
+ * Escalation grades **commitment fit**, never **cognitive cost**. The evidence
+ * check in `docs/2026-08-20-evidence-check-on-graded-drift-...` found the
+ * cognitive reading to be false in the inverse direction: Gillie & Broadbent's
+ * interruption-similarity effect says a departure *close* to the primary task
+ * interferes more, not less, so a cost-graded ladder would charge hardest for the
+ * nearest drift. It does not, and should not be read as claiming otherwise. What
+ * a harsher rung answers is a commitment recited and then left again — BCT 1.9,
+ * mechanism of action `values`.
+ *
+ * Open, and known: the dwells fire mid-action, which contradicts design principle
+ * 1 of the same evidence base ("intervene at boundaries, not mid-task") and its
+ * binding map ("higher friction rungs engage at the next switch/idle/commit").
+ * Gating on drift is breakpoint-aligned because a drift *is* a switch; the dwell
+ * attached to it is not. See the evidence note for the three ways out.
  */
 
 export const TEN_SECONDS = 10;
