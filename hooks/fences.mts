@@ -50,9 +50,9 @@ import { join } from "node:path";
 import type {
   GateSpec,
   Primitive,
-} from "../../src/domain/intervention/Primitive.ts";
-import type { RuleSpec } from "../../src/domain/intervention/RuleSpec.ts";
-import { rungFor } from "../../src/domain/intervention/rules/sessionFence.ts";
+} from "../src/domain/intervention/Primitive.ts";
+import type { RuleSpec } from "../src/domain/intervention/RuleSpec.ts";
+import { rungFor } from "../src/domain/intervention/rules/sessionFence.ts";
 
 const VAULT = process.env.KAIROS_HOME || join(homedir(), ".kairos");
 const FENCES = join(VAULT, "fences.json");
