@@ -9,5 +9,16 @@
         }
       ]
     }
+  ],
+  "UserPromptSubmit": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON ${CLAUDE_PLUGIN_ROOT}/hooks/breathe.mts",
+          "timeout": 10
+        }
+      ]
+    }
   ]
 }
