@@ -12,6 +12,13 @@ import * as crypto from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import type { FenceDeps } from "../src/application/ports.ts";
+import {
+  clearFences,
+  declareFence,
+  fenceReport,
+} from "../src/application/use-cases/fences.ts";
+import { crossingTally, expandHome, fenceStore } from "./fences.js";
 import { buildRelatedHabits } from "./graph.js";
 import {
   computeHealth,
@@ -2077,6 +2084,113 @@ server.tool(
     const related = buildRelatedHabits(habitId, habits, moments, areas);
     if (!related) return err(`Habit not found: ${habitId}`);
     return ok(related);
+  },
+);
+
+// ────────────────────────────────────────────────────────────────────────
+// Fences (fences.json) — declared rules only
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * The handlers below are thin adapters: construction, validation and the
+ * validate-before-write discipline live in `src/application/use-cases/
+ * fences.ts` and, below that, `src/domain/intervention/`. What this layer
+ * owns is environment: vault I/O (`./fences.ts`), `~` expansion, and reading
+ * the garden through the collections it already has open.
+ *
+ * Per the stamped 2026-08-20 decision, only *declared* rules enter `fences` —
+ * every fence written here is built from the caller's arguments, and no code
+ * path in this server reads `discrepancy.json`.
+ */
+const fenceDeps: FenceDeps = {
+  store: fenceStore(VAULT_ROOT),
+  tally: crossingTally(VAULT_ROOT),
+  garden: {
+    async areas() {
+      return Object.values(readCollection(VAULT_ROOT, "areas"))
+        .filter((a) => !a.isArchived)
+        .map((a) => ({ id: a.id, name: a.name }));
+    },
+    async activeCycleId() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayMs = today.getTime();
+      // Latest-starting active cycle wins, matching how overlapping seasons
+      // resolve everywhere else dates are the arbiter.
+      const active = Object.values(readCollection(VAULT_ROOT, "cycles"))
+        .filter((c) => isCycleActive(c, todayMs))
+        .sort((a, b) => b.startDate.localeCompare(a.startDate));
+      return active[0]?.id ?? null;
+    },
+  },
+  newRuleId: () => crypto.randomUUID(),
+};
+
+server.tool(
+  "set_fence",
+  'Declare a session fence: "only this stream, and friction on anything else". Builds a declared rule (never derived — fences come from what you say here, nothing else) and writes it to the fences collection, which zenborg alone writes. Every rung of the escalation ladder carries an exit; a fence can ask, never deny. Areas may be passed by name ("Themia") or id; paths are absolute prefixes INSIDE the fence (~ expands).',
+  {
+    label: z
+      .string()
+      .min(1)
+      .describe(
+        'What the stream is called — shown back at every crossing, e.g. "Themia data"',
+      ),
+    paths: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Absolute path prefixes the fence encloses"),
+    areas: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe(
+        "Areas the fence encloses — names or ids. Attention is expected to return to one of them.",
+      ),
+    description: z
+      .string()
+      .optional()
+      .describe("Optional: the declaration in the principal's own words"),
+  },
+  async ({ label, paths, areas, description }): Promise<ToolResult> => {
+    const result = await declareFence(fenceDeps, {
+      label,
+      paths: paths.map(expandHome),
+      areas,
+      description,
+    });
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({ declared: result.declared, standing: result.standing });
+  },
+);
+
+server.tool(
+  "clear_fence",
+  "Take a fence down, by id — or all of them at once. Pass exactly one of `id` or `all`. The crossing tally is plugin-owned and left alone; a cleared fence's id is never reused, so its count can never gate anything again.",
+  {
+    id: z.string().optional().describe("The fence's rule id"),
+    all: z.boolean().optional().describe("Take every standing fence down"),
+  },
+  async ({ id, all }): Promise<ToolResult> => {
+    if ((id === undefined) === (all === undefined)) {
+      return err("pass exactly one of `id` or `all`");
+    }
+    const result = await clearFences(
+      fenceDeps,
+      all ? { all: true } : { id: id as string },
+    );
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({
+      cleared: result.cleared.map((f) => ({ id: f.id, label: f.name })),
+    });
+  },
+);
+
+server.tool(
+  "get_fence",
+  "Report what is currently fenced: each standing fence with its crossing tally (from the plugin's fences-state.json, zero when never crossed) and the rung the NEXT crossing would land on.",
+  {},
+  async (): Promise<ToolResult> => {
+    return ok(await fenceReport(fenceDeps));
   },
 );
 
