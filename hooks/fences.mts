@@ -47,6 +47,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { shouldDeliver } from "../src/domain/intervention/Delivery.ts";
 import type {
   GateSpec,
   Primitive,
@@ -118,17 +119,21 @@ function loadFences(): RuleSpec[] {
   }
 }
 
-function crossings(id: string): number {
+/** This fence's tally: gates the person actually saw, and decision points the
+ * randomiser declined. One read, because two would let the pair disagree. */
+function tally(id: string): { crossings: number; declined: number } {
   try {
-    return (
-      Number(JSON.parse(readFileSync(STATE, "utf8"))?.[id]?.crossings) || 0
-    );
+    const rec = JSON.parse(readFileSync(STATE, "utf8"))?.[id];
+    return {
+      crossings: Number(rec?.crossings) || 0,
+      declined: Number(rec?.declined) || 0,
+    };
   } catch {
-    return 0;
+    return { crossings: 0, declined: 0 };
   }
 }
 
-function recordCrossing(id: string, next: number): void {
+function recordCrossing(id: string, next: number, nextDeclined: number): void {
   try {
     if (!existsSync(STATE_DIR)) mkdirSync(STATE_DIR, { recursive: true });
     let all: Record<string, unknown> = {};
@@ -137,7 +142,7 @@ function recordCrossing(id: string, next: number): void {
     } catch {
       /* first crossing */
     }
-    all[id] = { crossings: next, at: Date.now() };
+    all[id] = { crossings: next, declined: nextDeclined, at: Date.now() };
     // Temp file then rename — several sessions cross fences at once, and a
     // reader must never catch a half-written tally.
     const tmp = `${STATE}.${process.pid}.tmp`;
@@ -209,7 +214,22 @@ const main = async (): Promise<void> => {
   // Crossed. The first fence answers — a second one would be a second prompt
   // for a single act, which teaches nothing the first did not.
   const fence = fences[0];
-  const taken = crossings(fence.id);
+  const { crossings: taken, declined: passed } = tally(fence.id);
+
+  // The randomised decision point. A rule shipped below probability 1 must do
+  // nothing at some eligible crossings, or its proximal outcome has nothing to be
+  // read against — this is what replaced the step 2 baseline as the control on
+  // derived rules. `deliveryProbability` is the rule's own field, so a rule that
+  // wants to interrupt every time simply says 1, as a session fence does.
+  if (!shouldDeliver(Number(fence.deliveryProbability), Math.random())) {
+    // The decline is recorded and the crossing tally is NOT advanced. Escalation
+    // answers what the person was actually shown; charging them a harsher rung
+    // for an interruption that never happened would make the ladder a function of
+    // a coin they never saw.
+    recordCrossing(fence.id, taken, passed + 1);
+    allow();
+  }
+
   const rung = rungFor(fence, taken);
   if (!rung || (rung.kind !== "gate" && rung.kind !== "cooldown")) allow();
 
@@ -218,7 +238,7 @@ const main = async (): Promise<void> => {
     // Real time, sat through. A message about waiting is not a wait.
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
   }
-  recordCrossing(fence.id, taken + 1);
+  recordCrossing(fence.id, taken + 1, passed);
 
   process.stdout.write(
     JSON.stringify({
