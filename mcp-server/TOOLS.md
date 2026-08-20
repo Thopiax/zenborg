@@ -35,6 +35,7 @@ before the agent commits).
 - `list_people_to_reach`
 - `get_cycle_planning_proposals`
 - `get_cycle_review`
+- `get_fence`
 
 ### Write-side (commit only with explicit user consent)
 
@@ -47,6 +48,7 @@ before the agent commits).
 - `budget_habit_to_cycle`, `increment_habit_budget`, `decrement_habit_budget`, `remove_habit_from_deck`
 - `update_phase_config`
 - `set_active_moment`, `clear_active_moment`
+- `set_fence`, `clear_fence`
 
 ### Attitude-driven planning
 
@@ -151,6 +153,29 @@ The one moment that is *what I'm doing now*. A singleton pointer — `{ momentId
 | `set_active_moment` | `momentIdOrName` | An id, or a name matched against today's board. Refuses a moment not allocated to today (keel would ignore it), and refuses an ambiguous name, listing the candidate ids. |
 | `get_active_moment` | — | Resolved to its moment and area. `{ active: null }` when nothing is set. Reports `stale: true` when the moment was deleted or has rolled off today. |
 | `clear_active_moment` | — | Releases the intention. Removing the pointer IS the empty state. |
+
+### Fences (`fences.json`) — declared rules (added 2026-08-20)
+
+A fence is the first *declared* intervention rule: "only this stream this
+afternoon, and friction on anything else." The record shape is the domain's
+`RuleSpec` (built by `sessionFenceRule`), keyed by rule id at the vault root.
+Per the substrate contract **zenborg is the only writer** of `fences` — these
+tools are that writer; the Claude plugin (`plugin/hooks/fences.mts`) and later
+the browser extension read.
+
+The stamped decision `kairos/docs/decisions/2026-08-20-open-fences-to-declared-
+rules-before-step-5.md` permits **declared** rules only: every fence written
+here is constructed from the caller's arguments, and nothing in this server
+reads `discrepancy.json`. Construction + validation live in
+`src/domain/intervention/`; orchestration (name→id resolution, `serves`
+pointing at the running season, validate-before-write) in
+`src/application/use-cases/fences.ts`; the tool handlers are thin adapters.
+
+| Tool | Inputs | Notes |
+|---|---|---|
+| `set_fence` | `label, paths, areas, description?` | Declare a fence. `paths` are absolute prefixes *inside* the fence (`~` expands); `areas` are area **names or ids** the fence encloses. `serves` resolves to the active cycle + first enclosed area — refused when no season is running. Validated with `validateRuleSpec` before the write; every rung carries an exit by type (a fence can ask, never deny). |
+| `clear_fence` | `id` \| `all` | Take a fence down (exactly one of the two). The crossing tally (`plugin/fences-state.json`) is **plugin-owned and never written here** — rule ids are never reused, so a cleared fence's count is inert by construction. |
+| `get_fence` | — | Every standing fence with its crossing tally (zero when the plugin has recorded none) and the rung the *next* crossing lands on, read off the rule's own ladder via `rungFor`. |
 
 ### Tags — derived index (added 2026-08-14)
 

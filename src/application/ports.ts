@@ -1,8 +1,15 @@
 import type { ActivityEvent } from "../domain/attention/ActivityEvent";
 import type { AreaMap } from "../domain/attention/AreaMap";
 import type { Discrepancy } from "../domain/attention/Discrepancy";
-import type { AreaId, Instant, MomentId } from "../domain/attention/ids";
+import type {
+  AreaId,
+  CycleId,
+  Instant,
+  MomentId,
+  RuleId,
+} from "../domain/attention/ids";
 import type { SpanDerivationConfig } from "../domain/attention/SpanDerivation";
+import type { RuleSpec } from "../domain/intervention/RuleSpec";
 
 /**
  * The application layer's boundary with everything outside it.
@@ -88,4 +95,65 @@ export interface ShadowDeps {
   readonly store: DiscrepancyStorePort;
   readonly clock: ClockPort;
   readonly span: SpanDerivationConfig;
+}
+
+/**
+ * Read/write access to the `fences` collection — the rules currently in force.
+ *
+ * Per the substrate contract, `fences` has exactly one writer: zenborg. This
+ * port is that writer's seam, and it is the *only* place the application layer
+ * touches the collection, which is what keeps "one writer" a property of the
+ * architecture rather than a promise every tool handler has to re-keep.
+ *
+ * `read` returns the whole collection because a fence declaration is a
+ * read-modify-write over a handful of records, not a query over a corpus.
+ */
+export interface FenceStorePort {
+  read(): Promise<Record<RuleId, RuleSpec>>;
+  write(all: Record<RuleId, RuleSpec>): Promise<void>;
+}
+
+/**
+ * One fence's crossing count, as the plugin's PreToolUse hook records it.
+ * `at` is when the last crossing happened, epoch ms.
+ */
+export interface CrossingRecord {
+  readonly crossings: number;
+  readonly at: Instant;
+}
+
+/**
+ * Read access to the plugin's crossing tally (`plugin/fences-state.json`).
+ *
+ * Read-only on purpose: that file is plugin-owned runtime state, and writing
+ * it here would make zenborg a second writer of someone else's file — the
+ * exact disagreement the substrate's one-writer rule exists to prevent. The
+ * tally "resets when the fence comes down" structurally, not by deletion: a
+ * cleared fence's id is never reused, so its entry goes inert on its own.
+ */
+export interface CrossingTallyPort {
+  read(): Promise<Readonly<Record<RuleId, CrossingRecord>>>;
+}
+
+/** What declaring a fence needs to know about the garden: which areas exist
+ * (to resolve the names the principal speaks in) and which season is running
+ * (a rule's `serves` points at the season's intention, so a fence cannot be
+ * declared into no season at all). */
+export interface FenceGardenPort {
+  /** Active (non-archived) areas, id + name only. */
+  areas(): Promise<readonly AreaRef[]>;
+  /** The cycle containing today, or null when no season is running. */
+  activeCycleId(): Promise<CycleId | null>;
+}
+
+export interface AreaRef {
+  readonly id: AreaId;
+  readonly name: string;
+}
+
+export interface FenceDeps {
+  readonly store: FenceStorePort;
+  readonly tally: CrossingTallyPort;
+  readonly garden: FenceGardenPort;
+  readonly newRuleId: () => RuleId;
 }
