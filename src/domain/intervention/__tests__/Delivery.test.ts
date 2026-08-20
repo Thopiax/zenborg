@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Discrepancy } from "../../attention/Discrepancy";
-import { type Delivery, validateDelivery } from "../Delivery";
+import { type Delivery, shouldDeliver, validateDelivery } from "../Delivery";
 import type { CooldownSpec, GateSpec, InterceptSpec } from "../Primitive";
 
 const gate: GateSpec = {
@@ -115,5 +115,33 @@ describe("validateDelivery", () => {
     expect(
       validateDelivery(delivery).filter((p) => p.startsWith("invariant 6")),
     ).toHaveLength(1);
+  });
+});
+
+describe("shouldDeliver", () => {
+  it("delivers always at 1 and never at 0", () => {
+    for (const draw of [0, 0.25, 0.5, 0.99]) {
+      expect(shouldDeliver(1, draw)).toBe(true);
+      expect(shouldDeliver(0, draw)).toBe(false);
+    }
+  });
+
+  it("splits the decision points at UNDER_TEST", () => {
+    // The comparison condition: roughly half the eligible points do nothing.
+    expect(shouldDeliver(0.5, 0.0)).toBe(true);
+    expect(shouldDeliver(0.5, 0.49)).toBe(true);
+    expect(shouldDeliver(0.5, 0.5)).toBe(false);
+    expect(shouldDeliver(0.5, 0.99)).toBe(false);
+  });
+
+  it("fails safe, never open — a broken rule stops interrupting you", () => {
+    // A malformed probability must not become "always deliver".
+    expect(shouldDeliver(Number.NaN, 0)).toBe(false);
+    expect(shouldDeliver(undefined as unknown as number, 0)).toBe(false);
+    // Nor may a malformed draw.
+    expect(shouldDeliver(1, Number.NaN)).toBe(false);
+    // Out-of-range probabilities clamp rather than throw.
+    expect(shouldDeliver(5, 0.9)).toBe(true);
+    expect(shouldDeliver(-5, 0)).toBe(false);
   });
 });
