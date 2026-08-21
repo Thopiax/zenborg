@@ -66,3 +66,9 @@ mcp-server/bun.lock
 .claude/*.local.md
 *.local.csv
 highlights.local.json
+
+# playwright test runs
+/test-results/
+/playwright-report/
+/blob-report/
+/e2e/**/*-snapshots/
