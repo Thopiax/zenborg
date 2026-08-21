@@ -1,5 +1,5 @@
 import { observable } from "@legendapp/state";
-import { endBatch, startBatch } from "./history";
+import { endBatch, startBatch } from "./history.ts";
 import {
   bulkDeleteMomentsWithHistory,
   bulkDuplicateMomentsWithHistory,

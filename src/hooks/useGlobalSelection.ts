@@ -1,5 +1,5 @@
 import { useHotkeys } from "react-hotkeys-hook";
-import { useSelection } from "./useSelection";
+import { useSelection } from "./useSelection.ts";
 
 /**
  * Global keyboard shortcuts for selection

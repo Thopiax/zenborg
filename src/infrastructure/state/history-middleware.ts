@@ -28,9 +28,9 @@ import type {
 } from "@/domain/entities/HistoryEntry";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
-import { recordOperation } from "./history";
-import { selectionState$ } from "./selection";
-import { moments$ } from "./store";
+import { recordOperation } from "./history.ts";
+import { selectionState$ } from "./selection.ts";
+import { moments$ } from "./store.ts";
 
 // ============================================================================
 // Moment CRUD Operations

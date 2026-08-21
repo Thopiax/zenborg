@@ -1,8 +1,8 @@
 import { createCycle, isDateInCycle } from "@/domain/entities/Cycle";
 import { getDefaultPhaseConfigs } from "@/domain/value-objects/Phase";
-import { seedVaultFromCacheIfNeeded } from "../vault/synced-vault";
-import { configurePersistence } from "./persistence";
-import { selectionState$ } from "./selection";
+import { seedVaultFromCacheIfNeeded } from "../vault/synced-vault.ts";
+import { configurePersistence } from "./persistence.ts";
+import { selectionState$ } from "./selection.ts";
 import {
   activeCycleId$,
   areas$,
