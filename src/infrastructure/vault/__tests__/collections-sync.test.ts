@@ -30,18 +30,20 @@ describe("vault collections — Rust/TS parity", () => {
   it("ALLOWED_COLLECTIONS in fs.rs matches EXPORTABLE_MODELS + known singletons", () => {
     const rustSource = readFileSync(
       join(process.cwd(), "src-tauri/src/vault/fs.rs"),
-      "utf-8"
+      "utf-8",
     );
 
     const match = rustSource.match(
-      /ALLOWED_COLLECTIONS:\s*&\[&str\]\s*=\s*&\[([\s\S]*?)\];/
+      /ALLOWED_COLLECTIONS:\s*&\[&str\]\s*=\s*&\[([\s\S]*?)\];/,
     );
     expect(match, "Could not find ALLOWED_COLLECTIONS in fs.rs").toBeTruthy();
 
-    const rustNames = [...(match![1].matchAll(/"([^"]+)"/g))].map((m) => m[1]);
+    const rustNames = [...(match?.[1] ?? "").matchAll(/"([^"]+)"/g)].map(
+      (m) => m[1],
+    );
 
     expect(rustNames.sort()).toEqual(
-      [...EXPORTABLE_MODELS, ...NON_COLLECTION_VAULT_FILES].sort()
+      [...EXPORTABLE_MODELS, ...NON_COLLECTION_VAULT_FILES].sort(),
     );
   });
 
@@ -49,7 +51,7 @@ describe("vault collections — Rust/TS parity", () => {
     for (const file of NON_COLLECTION_VAULT_FILES) {
       expect(
         [...EXPORTABLE_MODELS] as string[],
-        `${file} is a singleton pointer, not a Record<uuid, Entity> — it must not join EXPORTABLE_MODELS`
+        `${file} is a singleton pointer, not a Record<uuid, Entity> — it must not join EXPORTABLE_MODELS`,
       ).not.toContain(file);
     }
   });

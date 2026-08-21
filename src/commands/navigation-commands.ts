@@ -1,5 +1,5 @@
-import { Command } from "./types";
 import { addDays } from "date-fns";
+import type { Command } from "./types";
 
 // Note: For focus navigation, we'll need to extract helpers from useFocusManager
 // For now, we'll create simple versions that can be enhanced later
@@ -13,7 +13,7 @@ export const navigationCommands: Command[] = [
     action: () => {
       // TODO: Call focus manager's focusPrevious
       console.log("Navigate up");
-    }
+    },
   },
   {
     id: "nav.down",
@@ -23,7 +23,7 @@ export const navigationCommands: Command[] = [
     action: () => {
       // TODO: Call focus manager's focusNext
       console.log("Navigate down");
-    }
+    },
   },
   {
     id: "nav.up.alt",
@@ -33,7 +33,7 @@ export const navigationCommands: Command[] = [
     action: () => {
       // Same as arrow up
       console.log("Navigate up");
-    }
+    },
   },
   {
     id: "nav.down.alt",
@@ -43,7 +43,7 @@ export const navigationCommands: Command[] = [
     action: () => {
       // Same as arrow down
       console.log("Navigate down");
-    }
+    },
   },
   {
     id: "nav.left",
@@ -52,7 +52,7 @@ export const navigationCommands: Command[] = [
     category: "Navigation",
     action: () => {
       console.log("Navigate left");
-    }
+    },
   },
   {
     id: "nav.right",
@@ -61,7 +61,7 @@ export const navigationCommands: Command[] = [
     category: "Navigation",
     action: () => {
       console.log("Navigate right");
-    }
+    },
   },
   {
     id: "nav.next",
@@ -71,7 +71,7 @@ export const navigationCommands: Command[] = [
     keywords: ["forward"],
     action: () => {
       console.log("Focus next");
-    }
+    },
   },
   {
     id: "nav.previous",
@@ -81,7 +81,7 @@ export const navigationCommands: Command[] = [
     keywords: ["back"],
     action: () => {
       console.log("Focus previous");
-    }
+    },
   },
   {
     id: "nav.today",
@@ -91,10 +91,10 @@ export const navigationCommands: Command[] = [
     keywords: ["current", "now"],
     action: () => {
       // Scroll to today's date in timeline
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       const todayElement = document.querySelector(`[data-day="${today}"]`);
-      todayElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+      todayElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+    },
   },
   {
     id: "nav.tomorrow",
@@ -104,9 +104,11 @@ export const navigationCommands: Command[] = [
     keywords: ["next", "will"],
     action: () => {
       // Scroll to tomorrow's date in timeline
-      const tomorrow = addDays(new Date(), 1).toISOString().split('T')[0];
-      const tomorrowElement = document.querySelector(`[data-day="${tomorrow}"]`);
-      tomorrowElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+      const tomorrow = addDays(new Date(), 1).toISOString().split("T")[0];
+      const tomorrowElement = document.querySelector(
+        `[data-day="${tomorrow}"]`,
+      );
+      tomorrowElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+    },
   },
 ];

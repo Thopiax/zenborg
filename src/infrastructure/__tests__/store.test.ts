@@ -1,460 +1,490 @@
 // @vitest-environment happy-dom
 
-import { describe, it, expect, beforeEach } from 'vitest'
-import 'fake-indexeddb/auto'
-import { createMoment } from '@/domain/entities/Moment'
-import { createArea } from '@/domain/entities/Area'
-import { createCycle } from '@/domain/entities/Cycle'
-import { Phase } from '@/domain/value-objects/Phase'
-import { createHabit } from '@/domain/entities/Habit'
-import { defaultMeta } from '@/domain/entities/Meta'
+import { beforeEach, describe, expect, it } from "vitest";
+import "fake-indexeddb/auto";
+import { createArea } from "@/domain/entities/Area";
+import { createCycle } from "@/domain/entities/Cycle";
+import { createHabit } from "@/domain/entities/Habit";
+import { defaultMeta } from "@/domain/entities/Meta";
+import { createMoment } from "@/domain/entities/Moment";
+import { Phase } from "@/domain/value-objects/Phase";
 import {
   clearMetaCache,
   readMeta,
   writeMeta,
-} from '@/infrastructure/vault/meta-repository'
+} from "@/infrastructure/vault/meta-repository";
 import {
-  moments$,
-  areas$,
-  activeCycleId$,
-  cycles$,
-  habits$,
-  phaseConfigs$,
-  unallocatedMoments$,
-  allocatedMoments$,
   activeCycle$,
-  visiblePhases$,
+  activeCycleId$,
+  allocatedMoments$,
+  areas$,
+  cycles$,
+  deckMomentsByAreaAndHabit$,
+  habits$,
+  moments$,
   momentsByDay$,
   momentsByDayAndPhase$,
-  deckMomentsByAreaAndHabit$,
+  phaseConfigs$,
   runBootReconciler,
-} from '../state/store'
+  unallocatedMoments$,
+} from "../state/store";
 
-describe('Store', () => {
+describe("Store", () => {
   beforeEach(() => {
     // Clear store before each test
-    moments$.set({})
-    areas$.set({})
-    cycles$.set({})
-    activeCycleId$.set(null)
-    habits$.set({})
-    phaseConfigs$.set({})
-  })
+    moments$.set({});
+    areas$.set({});
+    cycles$.set({});
+    activeCycleId$.set(null);
+    habits$.set({});
+    phaseConfigs$.set({});
+  });
 
-  describe('Core Observables', () => {
-    it('should create moments observable as empty object', () => {
-      expect(moments$.get()).toEqual({})
-    })
+  describe("Core Observables", () => {
+    it("should create moments observable as empty object", () => {
+      expect(moments$.get()).toEqual({});
+    });
 
-    it('should create areas observable as empty object', () => {
-      expect(areas$.get()).toEqual({})
-    })
+    it("should create areas observable as empty object", () => {
+      expect(areas$.get()).toEqual({});
+    });
 
-    it('should create cycles observable as empty object', () => {
-      expect(cycles$.get()).toEqual({})
-    })
+    it("should create cycles observable as empty object", () => {
+      expect(cycles$.get()).toEqual({});
+    });
 
-    it('should create phaseConfigs observable as empty object', () => {
-      expect(phaseConfigs$.get()).toEqual({})
-    })
-  })
+    it("should create phaseConfigs observable as empty object", () => {
+      expect(phaseConfigs$.get()).toEqual({});
+    });
+  });
 
-  describe('Moment Operations', () => {
-    it('should add a moment to the store', () => {
+  describe("Moment Operations", () => {
+    it("should add a moment to the store", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
-      if ('error' in moment) throw new Error(moment.error)
+      const moment = createMoment({ name: "Morning Run", areaId: area.id });
+      if ("error" in moment) throw new Error(moment.error);
 
-      moments$[moment.id].set(moment)
+      moments$[moment.id].set(moment);
 
-      expect(moments$[moment.id].get()).toEqual(moment)
-    })
+      expect(moments$[moment.id].get()).toEqual(moment);
+    });
 
-    it('should update a moment name', () => {
+    it("should update a moment name", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
-      if ('error' in moment) throw new Error(moment.error)
+      const moment = createMoment({ name: "Morning Run", areaId: area.id });
+      if ("error" in moment) throw new Error(moment.error);
 
-      moments$[moment.id].set(moment)
+      moments$[moment.id].set(moment);
 
       // Update the name using fine-grained reactivity
-      moments$[moment.id].name.set('Evening Walk')
+      moments$[moment.id].name.set("Evening Walk");
 
-      expect(moments$[moment.id].name.get()).toBe('Evening Walk')
-    })
+      expect(moments$[moment.id].name.get()).toBe("Evening Walk");
+    });
 
-    it('should delete a moment from the store', () => {
+    it("should delete a moment from the store", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
-      if ('error' in moment) throw new Error(moment.error)
+      const moment = createMoment({ name: "Morning Run", areaId: area.id });
+      if ("error" in moment) throw new Error(moment.error);
 
-      moments$[moment.id].set(moment)
+      moments$[moment.id].set(moment);
 
       // Delete using Legend State's delete()
-      moments$[moment.id].delete()
+      moments$[moment.id].delete();
 
-      expect(moments$[moment.id].get()).toBeUndefined()
-      expect(Object.keys(moments$.get())).toHaveLength(0)
-    })
+      expect(moments$[moment.id].get()).toBeUndefined();
+      expect(Object.keys(moments$.get())).toHaveLength(0);
+    });
 
-    it('should access moment by ID directly', () => {
+    it("should access moment by ID directly", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
-      if ('error' in moment) throw new Error(moment.error)
+      const moment = createMoment({ name: "Morning Run", areaId: area.id });
+      if ("error" in moment) throw new Error(moment.error);
 
-      const momentId = moment.id
+      const momentId = moment.id;
 
-      moments$[momentId].set(moment)
+      moments$[momentId].set(moment);
 
       // Direct access by ID
-      const retrieved = moments$[momentId].get()
-      expect(retrieved).toEqual(moment)
-    })
-  })
+      const retrieved = moments$[momentId].get();
+      expect(retrieved).toEqual(moment);
+    });
+  });
 
-  describe('Computed Observables - Unallocated Moments', () => {
-    it('should return empty array when no moments exist', () => {
-      expect(unallocatedMoments$.get()).toEqual([])
-    })
+  describe("Computed Observables - Unallocated Moments", () => {
+    it("should return empty array when no moments exist", () => {
+      expect(unallocatedMoments$.get()).toEqual([]);
+    });
 
-    it('should return all moments when none are allocated', () => {
+    it("should return all moments when none are allocated", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
-      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
-      if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
+      const moment1 = createMoment({ name: "Morning Run", areaId: area.id });
+      const moment2 = createMoment({ name: "Deep Work", areaId: area.id });
+      if ("error" in moment1 || "error" in moment2)
+        throw new Error("Moment creation failed");
 
-      moments$[moment1.id].set(moment1)
-      moments$[moment2.id].set(moment2)
+      moments$[moment1.id].set(moment1);
+      moments$[moment2.id].set(moment2);
 
-      const unallocated = unallocatedMoments$.get()
-      expect(unallocated).toHaveLength(2)
-    })
+      const unallocated = unallocatedMoments$.get();
+      expect(unallocated).toHaveLength(2);
+    });
 
-    it('should exclude allocated moments', () => {
+    it("should exclude allocated moments", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
-      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
-      if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
+      const moment1 = createMoment({ name: "Morning Run", areaId: area.id });
+      const moment2 = createMoment({ name: "Deep Work", areaId: area.id });
+      if ("error" in moment1 || "error" in moment2)
+        throw new Error("Moment creation failed");
 
-      moments$[moment1.id].set(moment1)
-      moments$[moment2.id].set(moment2)
+      moments$[moment1.id].set(moment1);
+      moments$[moment2.id].set(moment2);
 
       // Allocate moment1
-      moments$[moment1.id].day.set('2025-01-15')
-      moments$[moment1.id].phase.set(Phase.MORNING)
+      moments$[moment1.id].day.set("2025-01-15");
+      moments$[moment1.id].phase.set(Phase.MORNING);
 
-      const unallocated = unallocatedMoments$.get()
-      expect(unallocated).toHaveLength(1)
-      expect(unallocated[0].id).toBe(moment2.id)
-    })
-  })
+      const unallocated = unallocatedMoments$.get();
+      expect(unallocated).toHaveLength(1);
+      expect(unallocated[0].id).toBe(moment2.id);
+    });
+  });
 
-  describe('Computed Observables - Allocated Moments', () => {
-    it('should return empty array when no moments are allocated', () => {
+  describe("Computed Observables - Allocated Moments", () => {
+    it("should return empty array when no moments are allocated", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment = createMoment({ name: 'Morning Run', areaId: area.id })
-      if ('error' in moment) throw new Error(moment.error)
+      const moment = createMoment({ name: "Morning Run", areaId: area.id });
+      if ("error" in moment) throw new Error(moment.error);
 
-      moments$[moment.id].set(moment)
+      moments$[moment.id].set(moment);
 
-      expect(allocatedMoments$.get()).toEqual([])
-    })
+      expect(allocatedMoments$.get()).toEqual([]);
+    });
 
-    it('should return only allocated moments', () => {
+    it("should return only allocated moments", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
-      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
-      if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
+      const moment1 = createMoment({ name: "Morning Run", areaId: area.id });
+      const moment2 = createMoment({ name: "Deep Work", areaId: area.id });
+      if ("error" in moment1 || "error" in moment2)
+        throw new Error("Moment creation failed");
 
-      moments$[moment1.id].set(moment1)
-      moments$[moment2.id].set(moment2)
+      moments$[moment1.id].set(moment1);
+      moments$[moment2.id].set(moment2);
 
       // Allocate moment1
-      moments$[moment1.id].day.set('2025-01-15')
-      moments$[moment1.id].phase.set(Phase.MORNING)
+      moments$[moment1.id].day.set("2025-01-15");
+      moments$[moment1.id].phase.set(Phase.MORNING);
 
-      const allocated = allocatedMoments$.get()
-      expect(allocated).toHaveLength(1)
-      expect(allocated[0].id).toBe(moment1.id)
-    })
-  })
+      const allocated = allocatedMoments$.get();
+      expect(allocated).toHaveLength(1);
+      expect(allocated[0].id).toBe(moment1.id);
+    });
+  });
 
-  describe('Computed Observables - Active Cycle', () => {
-    it('should return null or undefined when no cycles exist', () => {
-      const active = activeCycle$.get()
+  describe("Computed Observables - Active Cycle", () => {
+    it("should return null or undefined when no cycles exist", () => {
+      const active = activeCycle$.get();
       // Computed observable may return undefined before evaluation
-      expect(active == null).toBe(true)
-    })
+      expect(active == null).toBe(true);
+    });
 
-    it('should return the active cycle', () => {
-      const cycle1 = createCycle({ name: 'Q1 2025', startDate: '2025-01-01' })
-      const cycle2 = createCycle({ name: 'Q2 2025', startDate: '2025-04-01' })
-      if ('error' in cycle1 || 'error' in cycle2) throw new Error('Cycle creation failed')
+    it("should return the active cycle", () => {
+      const cycle1 = createCycle({ name: "Q1 2025", startDate: "2025-01-01" });
+      const cycle2 = createCycle({ name: "Q2 2025", startDate: "2025-04-01" });
+      if ("error" in cycle1 || "error" in cycle2)
+        throw new Error("Cycle creation failed");
 
-      cycles$[cycle1.id].set(cycle1)
-      cycles$[cycle2.id].set(cycle2)
-      activeCycleId$.set(cycle2.id)
+      cycles$[cycle1.id].set(cycle1);
+      cycles$[cycle2.id].set(cycle2);
+      activeCycleId$.set(cycle2.id);
 
-      const active = activeCycle$.get()
-      expect(active).toBeDefined()
-      expect(active?.id).toBe(cycle2.id)
-      expect(active?.name).toBe('Q2 2025')
-    })
+      const active = activeCycle$.get();
+      expect(active).toBeDefined();
+      expect(active?.id).toBe(cycle2.id);
+      expect(active?.name).toBe("Q2 2025");
+    });
 
-    it('should return null when no cycle contains today and none is pinned', () => {
+    it("should return null when no cycle contains today and none is pinned", () => {
       // Past cycle only — does not contain today, derivation skips it.
       const cycle = createCycle({
-        name: 'Old cycle',
-        startDate: '2020-01-01',
-        endDate: '2020-12-31',
-      })
-      if ('error' in cycle) throw new Error(cycle.error)
+        name: "Old cycle",
+        startDate: "2020-01-01",
+        endDate: "2020-12-31",
+      });
+      if ("error" in cycle) throw new Error(cycle.error);
 
-      cycles$[cycle.id].set(cycle)
+      cycles$[cycle.id].set(cycle);
       // activeCycleId$ is already null from beforeEach
 
-      const active = activeCycle$.get()
-      expect(active == null).toBe(true)
-    })
-  })
+      const active = activeCycle$.get();
+      expect(active == null).toBe(true);
+    });
+  });
 
-  describe('Computed Observables - Moments by Day', () => {
-    it('should group allocated moments by day', () => {
+  describe("Computed Observables - Moments by Day", () => {
+    it("should group allocated moments by day", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
-      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
-      const moment3 = createMoment({ name: 'Evening Walk', areaId: area.id })
-      if ('error' in moment1 || 'error' in moment2 || 'error' in moment3) {
-        throw new Error('Moment creation failed')
+      const moment1 = createMoment({ name: "Morning Run", areaId: area.id });
+      const moment2 = createMoment({ name: "Deep Work", areaId: area.id });
+      const moment3 = createMoment({ name: "Evening Walk", areaId: area.id });
+      if ("error" in moment1 || "error" in moment2 || "error" in moment3) {
+        throw new Error("Moment creation failed");
       }
 
-      moments$[moment1.id].set(moment1)
-      moments$[moment2.id].set(moment2)
-      moments$[moment3.id].set(moment3)
+      moments$[moment1.id].set(moment1);
+      moments$[moment2.id].set(moment2);
+      moments$[moment3.id].set(moment3);
 
       // Allocate to different days
-      moments$[moment1.id].day.set('2025-01-15')
-      moments$[moment1.id].phase.set(Phase.MORNING)
+      moments$[moment1.id].day.set("2025-01-15");
+      moments$[moment1.id].phase.set(Phase.MORNING);
 
-      moments$[moment2.id].day.set('2025-01-15')
-      moments$[moment2.id].phase.set(Phase.AFTERNOON)
+      moments$[moment2.id].day.set("2025-01-15");
+      moments$[moment2.id].phase.set(Phase.AFTERNOON);
 
-      moments$[moment3.id].day.set('2025-01-16')
-      moments$[moment3.id].phase.set(Phase.EVENING)
+      moments$[moment3.id].day.set("2025-01-16");
+      moments$[moment3.id].phase.set(Phase.EVENING);
 
-      const byDay = momentsByDay$.get()
+      const byDay = momentsByDay$.get();
 
-      expect(Object.keys(byDay)).toHaveLength(2)
-      expect(byDay['2025-01-15']).toHaveLength(2)
-      expect(byDay['2025-01-16']).toHaveLength(1)
-    })
-  })
+      expect(Object.keys(byDay)).toHaveLength(2);
+      expect(byDay["2025-01-15"]).toHaveLength(2);
+      expect(byDay["2025-01-16"]).toHaveLength(1);
+    });
+  });
 
-  describe('deckMomentsByAreaAndHabit$ ordering', () => {
-    it('should order habits within area by habit.order', () => {
+  describe("deckMomentsByAreaAndHabit$ ordering", () => {
+    it("should order habits within area by habit.order", () => {
       // Create area
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
-      areas$[area.id].set(area)
+      });
+      if ("error" in area) throw new Error(area.error);
+      areas$[area.id].set(area);
 
       // Create cycle and set it as active
-      const cycle = createCycle({ name: 'Test Cycle', startDate: '2025-01-01', endDate: null })
-      if ('error' in cycle) throw new Error(cycle.error)
-      cycles$[cycle.id].set(cycle)
-      activeCycleId$.set(cycle.id)
+      const cycle = createCycle({
+        name: "Test Cycle",
+        startDate: "2025-01-01",
+        endDate: null,
+      });
+      if ("error" in cycle) throw new Error(cycle.error);
+      cycles$[cycle.id].set(cycle);
+      activeCycleId$.set(cycle.id);
 
       // Create two habits with different orders
-      const habitA = createHabit({ name: 'Habit A', areaId: area.id, order: 2 })
-      const habitB = createHabit({ name: 'Habit B', areaId: area.id, order: 0 })
-      if ('error' in habitA || 'error' in habitB) throw new Error('Habit creation failed')
-      habits$[habitA.id].set(habitA)
-      habits$[habitB.id].set(habitB)
+      const habitA = createHabit({
+        name: "Habit A",
+        areaId: area.id,
+        order: 2,
+      });
+      const habitB = createHabit({
+        name: "Habit B",
+        areaId: area.id,
+        order: 0,
+      });
+      if ("error" in habitA || "error" in habitB)
+        throw new Error("Habit creation failed");
+      habits$[habitA.id].set(habitA);
+      habits$[habitB.id].set(habitB);
 
       // Create deck moments (unallocated, with cyclePlanId set)
-      const m1 = createMoment({ name: 'Moment A', areaId: area.id, habitId: habitA.id, cycleId: cycle.id, cyclePlanId: 'plan-a' })
-      const m2 = createMoment({ name: 'Moment B', areaId: area.id, habitId: habitB.id, cycleId: cycle.id, cyclePlanId: 'plan-b' })
-      if ('error' in m1 || 'error' in m2) throw new Error('Moment creation failed')
-      moments$[m1.id].set(m1)
-      moments$[m2.id].set(m2)
+      const m1 = createMoment({
+        name: "Moment A",
+        areaId: area.id,
+        habitId: habitA.id,
+        cycleId: cycle.id,
+        cyclePlanId: "plan-a",
+      });
+      const m2 = createMoment({
+        name: "Moment B",
+        areaId: area.id,
+        habitId: habitB.id,
+        cycleId: cycle.id,
+        cyclePlanId: "plan-b",
+      });
+      if ("error" in m1 || "error" in m2)
+        throw new Error("Moment creation failed");
+      moments$[m1.id].set(m1);
+      moments$[m2.id].set(m2);
 
-      const result = deckMomentsByAreaAndHabit$.get()
-      const habitIds = Object.keys(result[area.id] || {})
+      const result = deckMomentsByAreaAndHabit$.get();
+      const habitIds = Object.keys(result[area.id] || {});
 
       // habit-b (order 0) should come before habit-a (order 2)
-      expect(habitIds[0]).toBe(habitB.id)
-      expect(habitIds[1]).toBe(habitA.id)
-    })
-  })
+      expect(habitIds[0]).toBe(habitB.id);
+      expect(habitIds[1]).toBe(habitA.id);
+    });
+  });
 
-  describe('Computed Observables - Moments by Day and Phase', () => {
-    it('should group allocated moments by day and phase', () => {
+  describe("Computed Observables - Moments by Day and Phase", () => {
+    it("should group allocated moments by day and phase", () => {
       const area = createArea({
-        name: 'Wellness',
-        color: '#10b981',
-        emoji: '🟢',
+        name: "Wellness",
+        color: "#10b981",
+        emoji: "🟢",
         order: 0,
-      })
-      if ('error' in area) throw new Error(area.error)
+      });
+      if ("error" in area) throw new Error(area.error);
 
-      areas$[area.id].set(area)
+      areas$[area.id].set(area);
 
-      const moment1 = createMoment({ name: 'Morning Run', areaId: area.id })
-      const moment2 = createMoment({ name: 'Deep Work', areaId: area.id })
-      if ('error' in moment1 || 'error' in moment2) throw new Error('Moment creation failed')
+      const moment1 = createMoment({ name: "Morning Run", areaId: area.id });
+      const moment2 = createMoment({ name: "Deep Work", areaId: area.id });
+      if ("error" in moment1 || "error" in moment2)
+        throw new Error("Moment creation failed");
 
-      moments$[moment1.id].set(moment1)
-      moments$[moment2.id].set(moment2)
+      moments$[moment1.id].set(moment1);
+      moments$[moment2.id].set(moment2);
 
       // Allocate to same day, different phases
-      moments$[moment1.id].day.set('2025-01-15')
-      moments$[moment1.id].phase.set(Phase.MORNING)
+      moments$[moment1.id].day.set("2025-01-15");
+      moments$[moment1.id].phase.set(Phase.MORNING);
 
-      moments$[moment2.id].day.set('2025-01-15')
-      moments$[moment2.id].phase.set(Phase.AFTERNOON)
+      moments$[moment2.id].day.set("2025-01-15");
+      moments$[moment2.id].phase.set(Phase.AFTERNOON);
 
-      const byDayAndPhase = momentsByDayAndPhase$.get()
+      const byDayAndPhase = momentsByDayAndPhase$.get();
 
-      expect(byDayAndPhase['2025-01-15'][Phase.MORNING]).toHaveLength(1)
-      expect(byDayAndPhase['2025-01-15'][Phase.AFTERNOON]).toHaveLength(1)
-      expect(byDayAndPhase['2025-01-15'][Phase.MORNING][0].id).toBe(moment1.id)
-    })
-  })
+      expect(byDayAndPhase["2025-01-15"][Phase.MORNING]).toHaveLength(1);
+      expect(byDayAndPhase["2025-01-15"][Phase.AFTERNOON]).toHaveLength(1);
+      expect(byDayAndPhase["2025-01-15"][Phase.MORNING][0].id).toBe(moment1.id);
+    });
+  });
 
-  describe('boot reconciler', () => {
+  describe("boot reconciler", () => {
     beforeEach(() => {
-      moments$.set({})
-      localStorage.clear()
-      clearMetaCache()
-    })
+      moments$.set({});
+      localStorage.clear();
+      clearMetaCache();
+    });
 
-    it('deletes legacy deck moments + sets migration flag on first boot', async () => {
-      moments$['legacy'].set({
-        id: 'legacy',
-        name: 'fiction',
-        areaId: 'a-1',
-        habitId: 'h-1',
-        cycleId: 'c-1',
-        cyclePlanId: 'plan-1',
+    it("deletes legacy deck moments + sets migration flag on first boot", async () => {
+      moments$.legacy.set({
+        id: "legacy",
+        name: "fiction",
+        areaId: "a-1",
+        habitId: "h-1",
+        cycleId: "c-1",
+        cyclePlanId: "plan-1",
         day: null,
         phase: null,
         order: 0,
         tags: [],
         emoji: null,
-        createdAt: '',
-        updatedAt: '',
-      })
-      await runBootReconciler()
-      expect(moments$['legacy'].get()).toBeUndefined()
-      expect(readMeta().migrations.derivedDeck).toBe(true)
-    })
+        createdAt: "",
+        updatedAt: "",
+      });
+      await runBootReconciler();
+      expect(moments$.legacy.get()).toBeUndefined();
+      expect(readMeta().migrations.derivedDeck).toBe(true);
+    });
 
-    it('is a no-op on subsequent boots', async () => {
-      const meta = defaultMeta()
-      meta.migrations.derivedDeck = true
-      writeMeta(meta)
-      moments$['sneaky-legacy'].set({
-        id: 'sneaky-legacy',
-        name: 'fiction',
-        areaId: 'a-1',
-        habitId: 'h-1',
-        cycleId: 'c-1',
-        cyclePlanId: 'plan-1',
+    it("is a no-op on subsequent boots", async () => {
+      const meta = defaultMeta();
+      meta.migrations.derivedDeck = true;
+      writeMeta(meta);
+      moments$["sneaky-legacy"].set({
+        id: "sneaky-legacy",
+        name: "fiction",
+        areaId: "a-1",
+        habitId: "h-1",
+        cycleId: "c-1",
+        cyclePlanId: "plan-1",
         day: null,
         phase: null,
         order: 0,
         tags: [],
         emoji: null,
-        createdAt: '',
-        updatedAt: '',
-      })
-      await runBootReconciler()
-      expect(moments$['sneaky-legacy'].get()?.id).toBe('sneaky-legacy')
-    })
-  })
-})
+        createdAt: "",
+        updatedAt: "",
+      });
+      await runBootReconciler();
+      expect(moments$["sneaky-legacy"].get()?.id).toBe("sneaky-legacy");
+    });
+  });
+});

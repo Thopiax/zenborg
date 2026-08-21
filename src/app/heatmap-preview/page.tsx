@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { BandedHeatmap } from "@/components/banded-heatmap/BandedHeatmap";
 import {
   specimenAreas,
   specimenCycles,
@@ -9,6 +8,7 @@ import {
   specimenPhaseConfigs,
   specimenToday,
 } from "@/components/banded-heatmap/__fixtures__/specimen";
+import { BandedHeatmap } from "@/components/banded-heatmap/BandedHeatmap";
 
 export default function HeatmapPreviewPage() {
   const [selected, setSelected] = useState<string | null>(null);
@@ -27,7 +27,8 @@ export default function HeatmapPreviewPage() {
         />
 
         <p className="font-mono text-xs text-stone-500">
-          selected: {selected ?? "—"} · drag to pan · arrows to move · home/esc → today
+          selected: {selected ?? "—"} · drag to pan · arrows to move · home/esc
+          → today
         </p>
       </div>
     </main>

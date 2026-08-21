@@ -1,14 +1,9 @@
-import { Command } from "./types";
-import {
-  undo as undoFn,
-  redo as redoFn,
-  canUndo as canUndoFn,
-  canRedo as canRedoFn,
-} from "@/infrastructure/state/history";
+import { redo as redoFn, undo as undoFn } from "@/infrastructure/state/history";
 import {
   applyInverseOperation,
   applyOperation,
 } from "@/infrastructure/state/history-middleware";
+import type { Command } from "./types";
 
 export const historyCommands: Command[] = [
   {
@@ -25,7 +20,7 @@ export const historyCommands: Command[] = [
         }
         console.log(`[History] Undone: "${entry.description}"`);
       }
-    }
+    },
   },
   {
     id: "history.redo",
@@ -41,7 +36,7 @@ export const historyCommands: Command[] = [
         }
         console.log(`[History] Redone: "${entry.description}"`);
       }
-    }
+    },
   },
   {
     id: "history.redo.alt",
@@ -58,6 +53,6 @@ export const historyCommands: Command[] = [
         }
         console.log(`[History] Redone: "${entry.description}"`);
       }
-    }
-  }
+    },
+  },
 ];

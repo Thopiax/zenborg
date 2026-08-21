@@ -108,8 +108,7 @@ export function CycleDeckColumn({
             }
             onRemove={
               isEditMode && card.plan.budgetedCount <= 1
-                ? () =>
-                    cycleService.removeHabitFromDeck(cycleId, card.habit.id)
+                ? () => cycleService.removeHabitFromDeck(cycleId, card.habit.id)
                 : undefined
             }
           />

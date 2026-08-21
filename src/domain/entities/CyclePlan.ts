@@ -42,9 +42,7 @@ export interface CreateCyclePlanProps {
  * @param props - Cycle plan creation parameters
  * @returns New cycle plan or error if validation fails
  */
-export function createCyclePlan(
-  props: CreateCyclePlanProps
-): CyclePlanResult {
+export function createCyclePlan(props: CreateCyclePlanProps): CyclePlanResult {
   const { cycleId, habitId, budgetedCount, rhythmOverride } = props;
 
   if (!cycleId || !cycleId.trim()) {
@@ -92,7 +90,7 @@ export interface UpdateCyclePlanBudgetProps {
  */
 export function updateCyclePlanBudget(
   plan: CyclePlan,
-  props: UpdateCyclePlanBudgetProps
+  props: UpdateCyclePlanBudgetProps,
 ): CyclePlanResult {
   const { budgetedCount } = props;
 
@@ -115,7 +113,7 @@ export function updateCyclePlanBudget(
  * Type guard to check if result is an error
  */
 export function isCyclePlanError(
-  result: CyclePlanResult
+  result: CyclePlanResult,
 ): result is { error: string } {
   return "error" in result;
 }

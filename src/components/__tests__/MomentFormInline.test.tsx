@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import type { Habit } from "@/domain/entities/Habit";
 import type { Area } from "@/domain/entities/Area";
+import type { Habit } from "@/domain/entities/Habit";
 
 // Make React globally available (needed for JSX in components without React import)
 globalThis.React = React;
@@ -27,7 +28,7 @@ vi.mock("@/infrastructure/state/store", () => ({
         order: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
+      },
     })),
   },
   lastUsedAreaId$: {
@@ -46,19 +47,24 @@ vi.mock("../HabitAutocompleteInline", () => ({
       {open && (
         <>
           <div data-testid="search-value">{searchValue}</div>
-          <button onClick={() => onSelectHabit({ id: "habit-1", name: "Running" })}>
+          <button
+            type="button"
+            onClick={() => onSelectHabit({ id: "habit-1", name: "Running" })}
+          >
             Select Running
           </button>
-          <button onClick={onClose}>Close</button>
+          <button type="button" onClick={onClose}>
+            Close
+          </button>
         </>
       )}
     </div>
   ),
 }));
 
+import { use$ } from "@legendapp/state/react";
 // Import after mocks
 import { MomentFormInline } from "../MomentFormInline";
-import { use$ } from "@legendapp/state/react";
 
 const mockUse$ = use$ as unknown as ReturnType<typeof vi.fn>;
 
@@ -77,7 +83,7 @@ const testArea: Area = {
   updatedAt: new Date().toISOString(),
 };
 
-const testHabit: Habit = {
+const _testHabit: Habit = {
   id: "habit-1",
   name: "Running",
   areaId: "area-1",
@@ -104,13 +110,14 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-
           day="2025-01-01"
           phase="morning"
-        />
+        />,
       );
 
-      expect(screen.getByPlaceholderText(/type moment name/i)).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/type moment name/i),
+      ).toBeInTheDocument();
     });
 
     it("should not render when closed", () => {
@@ -119,13 +126,14 @@ describe("MomentFormInline", () => {
           open={false}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-
           day="2025-01-01"
           phase="morning"
-        />
+        />,
       );
 
-      expect(screen.queryByPlaceholderText(/type moment name/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText(/type moment name/i),
+      ).not.toBeInTheDocument();
     });
 
     it("should auto-focus input when opened", () => {
@@ -134,10 +142,9 @@ describe("MomentFormInline", () => {
           open={false}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-
           day="2025-01-01"
           phase="morning"
-        />
+        />,
       );
 
       rerender(
@@ -145,10 +152,9 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-
           day="2025-01-01"
           phase="morning"
-        />
+        />,
       );
 
       expect(screen.getByPlaceholderText(/type moment name/i)).toHaveFocus();
@@ -162,10 +168,9 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-
           day="2025-01-01"
           phase="morning"
-        />
+        />,
       );
 
       const input = screen.getByPlaceholderText(/type moment name/i);
@@ -181,10 +186,9 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-
           day="2025-01-01"
           phase="morning"
-        />
+        />,
       );
 
       const input = screen.getByPlaceholderText(/type moment name/i);
@@ -206,10 +210,9 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={onSpawnHabit}
-
           day="2025-01-01"
           phase="morning"
-        />
+        />,
       );
 
       const input = screen.getByPlaceholderText(/type moment name/i);
@@ -221,7 +224,7 @@ describe("MomentFormInline", () => {
       expect(onSpawnHabit).toHaveBeenCalledWith(
         { id: "habit-1", name: "Running" },
         "2025-01-01",
-        "morning"
+        "morning",
       );
     });
 
@@ -231,13 +234,14 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={vi.fn()}
           onSpawnHabit={vi.fn()}
-
           day="2025-01-01"
           phase="morning"
-        />
+        />,
       );
 
-      const input = screen.getByPlaceholderText(/type moment name/i) as HTMLInputElement;
+      const input = screen.getByPlaceholderText(
+        /type moment name/i,
+      ) as HTMLInputElement;
       fireEvent.change(input, { target: { value: "run" } });
 
       const selectButton = screen.getByText("Select Running");
@@ -256,10 +260,9 @@ describe("MomentFormInline", () => {
           open={true}
           onClose={onClose}
           onSpawnHabit={vi.fn()}
-
           day="2025-01-01"
           phase="morning"
-        />
+        />,
       );
 
       const input = screen.getByPlaceholderText(/type moment name/i);

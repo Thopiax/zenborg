@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
+/** biome-ignore-all lint/a11y/noAutofocus: inline edit opens from a keyboard action, so focus has to follow it */
 "use client";
 
 import { Archive, MoreVertical, Plus } from "lucide-react";
@@ -64,7 +64,7 @@ export function PlanAreaCard({
   const [isEditingName, setIsEditingName] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
-  const nameInputRef = useRef<HTMLInputElement>(null);
+  const _nameInputRef = useRef<HTMLInputElement>(null);
 
   // Tagged name field for area name editing
   const taggedField = useTaggedNameField(area.name, area.tags || []);
@@ -89,7 +89,8 @@ export function PlanAreaCard({
 
   const handleSaveName = () => {
     // Extract any remaining tags and get fresh values (not stale React state)
-    const { name: cleanName, tags: finalTags } = taggedField.extractRemainingTags();
+    const { name: cleanName, tags: finalTags } =
+      taggedField.extractRemainingTags();
 
     // Save if name OR tags changed (previously only saved on name change, losing tag edits)
     const nameChanged = cleanName && cleanName !== area.name;
@@ -117,7 +118,11 @@ export function PlanAreaCard({
       enableOnFormTags: true,
       enabled: isEditingName && !taggedField.isAutocompleteOpen,
     },
-    [taggedField.displayValue, taggedField.tags, taggedField.isAutocompleteOpen]
+    [
+      taggedField.displayValue,
+      taggedField.tags,
+      taggedField.isAutocompleteOpen,
+    ],
   );
 
   // Escape to cancel name editing
@@ -128,7 +133,7 @@ export function PlanAreaCard({
       setIsEditingName(false);
     },
     { enableOnFormTags: true, enabled: isEditingName },
-    [area.name, taggedField]
+    [area.name, taggedField],
   );
 
   const handleEmojiSelect = (selectedEmoji: string) => {
@@ -259,7 +264,9 @@ export function PlanAreaCard({
                   <TagBadges
                     tags={area.tags}
                     onRemoveTag={(tag) => {
-                      const updatedTags = (area.tags || []).filter((t) => t !== tag);
+                      const updatedTags = (area.tags || []).filter(
+                        (t) => t !== tag,
+                      );
                       onUpdateArea(area.id, { tags: updatedTags });
                     }}
                   />
@@ -308,7 +315,7 @@ export function PlanAreaCard({
             "hover:shadow-sm",
             "text-stone-700 dark:text-stone-300",
             "transition-all duration-150",
-            "group/button"
+            "group/button",
           )}
           style={{
             borderColor: `${area.color}40`, // 25% opacity

@@ -8,7 +8,7 @@ import {
   unarchiveArea,
   updateArea,
 } from "@/domain/entities/Area";
-import { areas$, habits$, moments$ } from "@/infrastructure/state/store";
+import { areas$, moments$ } from "@/infrastructure/state/store";
 
 /**
  * Application Service for Area Management
@@ -54,7 +54,7 @@ export class AreaService {
     areaId: string,
     updates: Partial<
       Pick<Area, "name" | "color" | "emoji" | "order" | "attitude" | "tags">
-    >
+    >,
   ): AreaResult {
     const existing = areas$[areaId].get();
 

@@ -49,7 +49,7 @@ export function PhaseSelector({
       Object.values(allPhaseConfigs)
         .filter((pc) => pc.isVisible)
         .sort((a, b) => a.order - b.order),
-    [allPhaseConfigs]
+    [allPhaseConfigs],
   );
 
   // Map phases to their letter shortcuts: M, A, E (Morning, Afternoon, Evening)

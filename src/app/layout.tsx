@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
-import { StoreInitializer } from "./StoreInitializer";
 import { LayoutClient } from "@/components/LayoutClient";
 import { ThemeColorMeta } from "@/components/ThemeColorMeta";
+import { StoreInitializer } from "./StoreInitializer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -30,10 +30,30 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png", media: "(prefers-color-scheme: light)" },
-      { url: "/icon-192-dark.png", sizes: "192x192", type: "image/png", media: "(prefers-color-scheme: dark)" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png", media: "(prefers-color-scheme: light)" },
-      { url: "/icon-512-dark.png", sizes: "512x512", type: "image/png", media: "(prefers-color-scheme: dark)" },
+      {
+        url: "/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/icon-192-dark.png",
+        sizes: "192x192",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
+        url: "/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/icon-512-dark.png",
+        sizes: "512x512",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
     ],
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
@@ -65,6 +85,7 @@ export default function RootLayout({
         {/* Blocking script to immediately apply theme before any rendering */}
         {/* Critical for iOS PWA to detect system theme on first-gen devices */}
         <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: a first-paint theme script must be inline, and its content is a literal with no user input
           dangerouslySetInnerHTML={{
             __html: `
               (function() {

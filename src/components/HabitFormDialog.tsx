@@ -32,11 +32,9 @@ import type {
   UpdateHabitProps,
 } from "@/domain/entities/Habit";
 import {
-  type Attitude,
   getAttitudeIcon,
   getAttitudeLabel,
 } from "@/domain/value-objects/Attitude";
-import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import { areas$, phaseConfigs$ } from "@/infrastructure/state/store";
@@ -111,7 +109,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   const taggedField = useTaggedNameField(name, tags);
 
   // Sync form state TO tagged field when dialog opens or editing habit changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seeds form state when the dialog opens; re-running on every dep change would discard edits
   useEffect(() => {
     if (!open) return;
 
@@ -120,7 +118,6 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   }, [open, editingHabitId]);
 
   // Sync typed text FROM tagged field back to form store (for emoji auto-suggestion)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     if (!open) return;
     habitFormState$.name.set(taggedField.displayValue);
@@ -185,7 +182,8 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   // Handlers
   const handleSave = () => {
     // Extract any remaining #tags and get fresh values (not stale React state)
-    const { name: cleanName, tags: finalTags } = taggedField.extractRemainingTags();
+    const { name: cleanName, tags: finalTags } =
+      taggedField.extractRemainingTags();
 
     if (!cleanName) {
       setValidationError("Habit name cannot be empty");
@@ -247,7 +245,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       e.preventDefault();
       handleSave();
     },
-    { enableOnFormTags: true, enabled: formHotkeysEnabled && open }
+    { enableOnFormTags: true, enabled: formHotkeysEnabled && open },
   );
 
   useHotkeys(
@@ -256,7 +254,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       e.preventDefault();
       setAreaSelectorOpen(true);
     },
-    { enabled: formHotkeysEnabled && open }
+    { enabled: formHotkeysEnabled && open },
   );
 
   return (
@@ -650,6 +648,7 @@ function AliasesSelector({
         <div className="flex flex-wrap gap-1.5 items-center border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1.5 focus-within:border-stone-400 dark:focus-within:border-stone-500">
           {value.map((alias, index) => (
             <span
+              // biome-ignore lint/suspicious/noArrayIndexKey: aliases may repeat while being edited, so position disambiguates
               key={`${alias}-${index}`}
               className="flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-xs font-mono text-stone-700 dark:text-stone-300"
             >
@@ -667,7 +666,6 @@ function AliasesSelector({
           <input
             type="text"
             value={draft}
-            autoFocus
             autoCapitalize="none"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {

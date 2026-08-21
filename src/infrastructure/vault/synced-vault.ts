@@ -20,7 +20,7 @@ import {
   subscribeToCollection,
   writeCollection,
 } from "./adapter";
-import { isTauri } from "./is-tauri";
+import { isTauri } from "./is-tauri.ts";
 
 /**
  * IndexedDB plugin config — shared across collections.

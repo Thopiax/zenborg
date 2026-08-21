@@ -66,7 +66,6 @@ export function PlanHabitItem({
           onChange={(e) => setName(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          autoFocus
           className="flex-1 px-2 py-1 text-sm font-mono bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-600 rounded focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
         />
       </div>
@@ -81,7 +80,7 @@ export function PlanHabitItem({
         "group w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md",
         "text-sm font-mono text-stone-900 dark:text-stone-100",
         "hover:bg-stone-100 dark:hover:bg-stone-800",
-        "transition-colors"
+        "transition-colors",
       )}
     >
       <div className="flex items-center gap-2">
@@ -96,10 +95,7 @@ export function PlanHabitItem({
               </span>
             )}
             {habit.phase && (
-              <PhaseIcon
-                phase={habit.phase}
-                className="w-3 h-3"
-              />
+              <PhaseIcon phase={habit.phase} className="w-3 h-3" />
             )}
           </span>
         )}

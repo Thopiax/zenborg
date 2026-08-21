@@ -1,14 +1,14 @@
-import type { Habit, CyclePlan, Moment, Rhythm } from './vault.js';
-import { PERIOD_DAYS, rhythmSilenceThresholdDays } from './vault.js';
+import type { CyclePlan, Habit, Moment, Rhythm } from "./vault.js";
+import { PERIOD_DAYS, rhythmSilenceThresholdDays } from "./vault.js";
 
 export type Health =
-  | 'seedling'
-  | 'budding'
-  | 'blooming'
-  | 'wilting'
-  | 'dormant'
-  | 'evergreen'
-  | 'unstated';
+  | "seedling"
+  | "budding"
+  | "blooming"
+  | "wilting"
+  | "dormant"
+  | "evergreen"
+  | "unstated";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const BUDDING_PERIOD_COUNT = 3;
@@ -41,8 +41,8 @@ export function computeHealth(
   moments: Moment[],
   now: Date,
 ): Health {
-  if (habit.attitude === null) return 'unstated';
-  if (habit.attitude === 'BEING') return 'evergreen';
+  if (habit.attitude === null) return "unstated";
+  if (habit.attitude === "BEING") return "evergreen";
 
   const rhythm = resolveRhythm(habit, plan);
   // A moment belongs to this habit when it was planted against it OR when it
@@ -56,37 +56,37 @@ export function computeHealth(
     (m) => m.habitId === habit.id || (m.personIds?.includes(habit.id) ?? false),
   );
 
-  if (habit.attitude === 'BEGINNING') {
-    return habitMoments.length >= 5 ? 'budding' : 'seedling';
+  if (habit.attitude === "BEGINNING") {
+    return habitMoments.length >= 5 ? "budding" : "seedling";
   }
 
-  if (habit.attitude === 'RETURNING') {
-    if (!rhythm) return 'unstated';
+  if (habit.attitude === "RETURNING") {
+    if (!rhythm) return "unstated";
     const threshold =
       rhythmSilenceThresholdDays(rhythm) * RETURNING_THRESHOLD_MULTIPLIER;
     const last = latestAllocationDate(habitMoments);
-    if (last === null) return 'wilting';
+    if (last === null) return "wilting";
     const daysSince = (now.getTime() - last.getTime()) / MS_PER_DAY;
-    return daysSince <= threshold ? 'blooming' : 'wilting';
+    return daysSince <= threshold ? "blooming" : "wilting";
   }
 
-  if (habit.attitude === 'KEEPING') {
-    if (!rhythm) return 'unstated';
+  if (habit.attitude === "KEEPING") {
+    if (!rhythm) return "unstated";
     const threshold = rhythmSilenceThresholdDays(rhythm);
     const last = latestAllocationDate(habitMoments);
-    if (last === null) return 'wilting';
+    if (last === null) return "wilting";
     const daysSince = (now.getTime() - last.getTime()) / MS_PER_DAY;
-    return daysSince <= threshold ? 'blooming' : 'wilting';
+    return daysSince <= threshold ? "blooming" : "wilting";
   }
 
-  if (habit.attitude === 'BUILDING' || habit.attitude === 'PUSHING') {
-    if (!rhythm) return 'unstated';
+  if (habit.attitude === "BUILDING" || habit.attitude === "PUSHING") {
+    if (!rhythm) return "unstated";
     const periodDays = PERIOD_DAYS[rhythm.period];
     const buddingWindow = periodDays * BUDDING_PERIOD_COUNT;
     const habitUpdated = new Date(habit.updatedAt);
     const daysSinceUpdate =
       (now.getTime() - habitUpdated.getTime()) / MS_PER_DAY;
-    if (daysSinceUpdate < buddingWindow) return 'budding';
+    if (daysSinceUpdate < buddingWindow) return "budding";
 
     const periodStart = new Date(now.getTime() - periodDays * MS_PER_DAY);
     const countInPeriod = habitMoments.filter((m) => {
@@ -96,10 +96,10 @@ export function computeHealth(
     const daysElapsed = Math.min(periodDays, daysSinceUpdate);
     const expected = rhythm.count * (daysElapsed / periodDays);
     const tolerance = Math.max(1, Math.floor(rhythm.count * 0.2));
-    return countInPeriod + tolerance >= expected ? 'blooming' : 'wilting';
+    return countInPeriod + tolerance >= expected ? "blooming" : "wilting";
   }
 
-  return 'unstated';
+  return "unstated";
 }
 
 function latestAllocationDate(moments: Moment[]): Date | null {
