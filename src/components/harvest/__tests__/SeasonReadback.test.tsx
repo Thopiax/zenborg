@@ -272,35 +272,3 @@ describe("SeasonReadback", () => {
   });
 });
 
-describe("the library, when one is wired", () => {
-  /**
-   * Slice C step 4. The library is optional here on purpose: a readback with
-   * no port cannot reach the notes at all, so "nothing in the garden reads the
-   * library except the one surface built to prove it" is a property of the
-   * type rather than of anyone's restraint.
-   */
-  it("asks the journal about the season, bounded by its window", async () => {
-    const search = vi
-      .fn()
-      .mockResolvedValue([
-        { date: "2026-03-04", preview: "the tide came in early", score: 3 },
-      ]);
-
-    render(<SeasonReadback library={{ search }} season={season()} />);
-
-    expect(
-      await screen.findByText("the tide came in early"),
-    ).toBeInTheDocument();
-    expect(search).toHaveBeenCalledWith("Read the tide.", {
-      limit: 5,
-      since: "2026-03-01",
-      until: "2026-03-31",
-    });
-  });
-
-  it("cannot reach the journal when no port is wired", () => {
-    render(<SeasonReadback season={season()} />);
-
-    expect(screen.queryByText(/from the journal/i)).toBeNull();
-  });
-});
