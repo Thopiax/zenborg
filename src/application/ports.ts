@@ -38,6 +38,58 @@ export interface ActivityLogPort {
   read(from: Instant, to: Instant): Promise<readonly ActivityEvent[]>;
 }
 
+/**
+ * One thing the library found: when it was written, what it says, how well it
+ * matched.
+ */
+type NoteHit = {
+  /**
+   * Local ISO date. The library's id for an entry, and a concept the garden
+   * already has, which is why it crosses without translation.
+   */
+  readonly date: string;
+  /** Opaque prose. The garden renders it, never parses it. */
+  readonly preview: string;
+  readonly score: number;
+};
+
+/**
+ * Read access to the library — penceive's notes, now a crate in this process.
+ *
+ * Slice C's whole payoff. Harvest reads back what a season held, and until now
+ * the season's own account of itself was in a journal the app had no way to
+ * ask. This is the way to ask.
+ *
+ * **The seam carries dates and text. Nothing else crosses.** A date is a
+ * concept both contexts already have and neither owns; text is opaque to the
+ * garden. So the traffic that actually needs to cross needs no translation at
+ * all, and therefore needs no context map, no shared kernel, and no
+ * anticorruption layer. Ownership was never what made this boundary hard.
+ * Translation was, and this boundary does not translate.
+ *
+ * **One method is the point, not a placeholder.** Every method added here is a
+ * concept crossing the boundary, and each one needs the same argument made
+ * again. A method that cannot be described as dates and text belongs in a
+ * design of its own.
+ *
+ * Read-only, and not because writing is unimplemented: the library owns its
+ * ponds, and the garden is a reader of them.
+ */
+export interface LibraryPort {
+  search(
+    query: string,
+    opts?: {
+      readonly limit?: number;
+      /** Inclusive ISO date lower bound — a season's first day. */
+      readonly since?: string;
+      /** Inclusive ISO date upper bound — a season's last day. */
+      readonly until?: string;
+    },
+  ): Promise<readonly NoteHit[]>;
+}
+
+export type { NoteHit };
+
 /** What a (day, phase) cell held. A set, because a cell plants a lane. */
 export interface Planting {
   readonly momentIds: readonly MomentId[];
