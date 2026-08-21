@@ -56,7 +56,7 @@ const EVERY_MS = Number(process.env.ZENBORG_GAP_EVERY_MS) || 30 * 60_000;
 
 /**
  * Where the principal is, spelled as the garden's `place-<city>` tags spell it:
- * `sao-paulo`, `barcelona`. The whole tag is accepted too.
+ * `harbor-city`, `river-city`. The whole tag is accepted too.
  *
  * The domain takes the place as an argument and refuses to look it up, the same
  * way `host-block-seed.mts` keeps one person's plot ids out of the rules. This
@@ -107,7 +107,7 @@ function substitutionRule(): RuleSpec | null {
  * carries `breathwork` tagged `gap` / `gap-2m`; anything else the principal
  * tags joins it for free, and nothing here has an opinion about which.
  *
- * Except where: a practice tagged `place-sao-paulo` needs a pull-up bar that is
+ * Except where: a practice tagged `place-harbor-city` needs a climbing rope that is
  * on another continent half the year, so `PLACE` is passed through and the
  * roster answers with what is actually within reach.
  */

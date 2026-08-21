@@ -49,8 +49,8 @@ export const GAP_TAG = "gap";
  * take; nothing here guesses. */
 const SIZE_TAG = /^gap-(\d+)(s|m)$/;
 
-/** The prefix a habit carries to bind a practice to a place: `place-sao-paulo`,
- * `place-barcelona`. The garden's own namespace, the same one `person-<name>`
+/** The prefix a habit carries to bind a practice to a place: `place-harbor-city`,
+ * `place-river-city`. The garden's own namespace, the same one `person-<name>`
  * uses, so a practice becomes placed by being tagged and the vault's shape
  * learns nothing new. */
 export const PLACE_PREFIX = "place-";
@@ -91,8 +91,8 @@ function sizeOf(tags: readonly string[]): Duration | undefined {
 }
 
 /** A place as the garden spells it: trimmed, lowercased, prefix removed.
- * Tolerant of a caller that hands over the whole tag, because `place-sao-paulo`
- * and `sao-paulo` name the same city, and the alternative is every placed
+ * Tolerant of a caller that hands over the whole tag, because `place-harbor-city`
+ * and `harbor-city` name the same city, and the alternative is every placed
  * practice disappearing with nothing raised. */
 function placeName(value: string): Place {
   const v = value.trim().toLowerCase();
@@ -135,9 +135,9 @@ function placesOf(tags: readonly string[]): readonly Place[] {
  * them; the edge holds that, the way `host-block-seed.mts` holds his plot ids
  * instead of pushing them into the rules.
  *
- * A practice tagged for a place is offered only there. `dead hang` needs a
- * pull-up bar, the bar is in Sao Paulo, and the roster's own test is that the
- * object is within reach or it never happens. An offer he cannot act on is worse
+ * A practice tagged for a place is offered only there. `rope climb` needs a
+ * climbing rope, the rope is in Harbor City, and the roster's own test is that
+ * the object is within reach or it never happens. An offer he cannot act on is worse
  * than no offer, because it teaches him the roster is not worth reading.
  *
  * A practice tagged for no place is offered everywhere. That is all of the
