@@ -195,7 +195,7 @@ package: `pnpm start` (tsx), `pnpm build` (tsc), `pnpm build:compile` (bun binar
 `pnpm test:e2e` runs Playwright against the **web** build (IndexedDB, no vault, so it never touches
 a real garden). It boots `pnpm dev` itself and seeds a synthetic garden through the app's own
 Settings import path, so the fixture goes through real validation. Browsers install once with
-`npx playwright install chromium`. It is deliberately outside the pre-commit hook — it covers what
+`npx playwright install chromium`. It is deliberately outside the pre-commit hook: it covers what
 unit tests cannot see, which is what a card does with the space it has.
 
 ## Design

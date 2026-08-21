@@ -22,7 +22,7 @@ function fixtureForToday(): string {
 }
 
 /**
- * Seeds a synthetic garden through the app's own import path — the same route
+ * Seeds a synthetic garden through the app's own import path, the same route
  * a person takes through Settings, so the test exercises real validation
  * rather than a hand-written IndexedDB payload.
  *
