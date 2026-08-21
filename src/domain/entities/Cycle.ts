@@ -12,6 +12,20 @@ export interface Cycle {
   intention: string | null; // Why this chapter — set at creation, editable later
   reflection: string | null; // Populated in harvest when the cycle closes
   reflectionSource?: ReflectionSource | null; // Who wrote it. Absent = unknown
+  /**
+   * Where this season is lived, as registry entity keys.
+   *
+   * A cycle is a stretch of time *somewhere*. Half a year in one city, half
+   * in another, is two seasons, and the season is the smallest container
+   * that already knows which. Reading place off the cycle is what lets the
+   * roster stop offering a practice whose object is in another country, and
+   * what lets the outreach queue say who is far.
+   *
+   * A list, not one key, for the same reason a moment carries a list: a
+   * season spent between two cities names both. Absent means unstated, and
+   * nothing is filtered out by a constraint that cannot be checked.
+   */
+  placeIds?: string[];
   createdAt: string;
   updatedAt: string;
 }

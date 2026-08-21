@@ -96,7 +96,9 @@ describe("practicesForGap", () => {
   });
 
   it("skips archived practices", () => {
-    expect(practicesForGap(habits).map((p) => p.habitId)).not.toContain("h-old");
+    expect(practicesForGap(habits).map((p) => p.habitId)).not.toContain(
+      "h-old",
+    );
   });
 
   it("can be bounded to what fits the gap it has", () => {
@@ -181,5 +183,90 @@ describe("practicesForGap, where the principal is", () => {
 
   it("still bounds a placed practice by the gap it has", () => {
     expect(practicesForGap(roster, 10_000, "harbor-city")).toEqual([]);
+  });
+});
+
+/**
+ * The `place-` tag was always `kairos:place/<key>` written smaller, because
+ * `Habit` had no field to hold a reference. It has one now. The tag path stays
+ * readable until the migration moves the data, so the roster never goes quiet
+ * mid-migration.
+ */
+describe("practicesForGap, reading placeIds", () => {
+  it("reads the field", () => {
+    const roster = [
+      {
+        id: "h-hang",
+        name: "dead hang",
+        tags: ["gap", "gap-30s"],
+        placeIds: ["atlantis"],
+      },
+    ];
+    expect(practicesForGap(roster, undefined, "atlantis")).toHaveLength(1);
+    expect(practicesForGap(roster, undefined, "avalon")).toEqual([]);
+  });
+
+  it("still reads a place- tag, for a habit the migration has not reached", () => {
+    const roster = [
+      {
+        id: "h-hang",
+        name: "dead hang",
+        tags: ["gap", "gap-30s", "place-atlantis"],
+      },
+    ];
+    expect(practicesForGap(roster, undefined, "atlantis")).toHaveLength(1);
+    expect(practicesForGap(roster, undefined, "avalon")).toEqual([]);
+  });
+
+  it("lets the field win over a stale tag, so a half-migrated habit is not bound twice", () => {
+    const roster = [
+      {
+        id: "h-hang",
+        name: "dead hang",
+        tags: ["gap", "gap-30s", "place-avalon"],
+        placeIds: ["atlantis"],
+      },
+    ];
+    expect(practicesForGap(roster, undefined, "atlantis")).toHaveLength(1);
+    expect(practicesForGap(roster, undefined, "avalon")).toEqual([]);
+  });
+
+  it("treats an empty field as no field, falling back to the tag", () => {
+    // Absent and empty must not mean different things here either.
+    const roster = [
+      {
+        id: "h-hang",
+        name: "dead hang",
+        tags: ["gap", "gap-30s", "place-atlantis"],
+        placeIds: [],
+      },
+    ];
+    expect(practicesForGap(roster, undefined, "atlantis")).toHaveLength(1);
+  });
+
+  it("offers a field-bound practice in both of its places", () => {
+    const roster = [
+      {
+        id: "h-walk",
+        name: "walk out",
+        tags: ["gap", "gap-1m"],
+        placeIds: ["atlantis", "avalon"],
+      },
+    ];
+    expect(practicesForGap(roster, undefined, "atlantis")).toHaveLength(1);
+    expect(practicesForGap(roster, undefined, "avalon")).toHaveLength(1);
+    expect(practicesForGap(roster, undefined, "arcadia")).toEqual([]);
+  });
+
+  it("offers a field-bound practice when the place is unknown", () => {
+    const roster = [
+      {
+        id: "h-hang",
+        name: "dead hang",
+        tags: ["gap", "gap-30s"],
+        placeIds: ["atlantis"],
+      },
+    ];
+    expect(practicesForGap(roster, undefined, undefined)).toHaveLength(1);
   });
 });

@@ -49,10 +49,15 @@ export const GAP_TAG = "gap";
  * take; nothing here guesses. */
 const SIZE_TAG = /^gap-(\d+)(s|m)$/;
 
-/** The prefix a habit carries to bind a practice to a place: `place-harbor-city`,
- * `place-river-city`. The garden's own namespace, the same one `person-<name>`
- * uses, so a practice becomes placed by being tagged and the vault's shape
- * learns nothing new. */
+/** The prefix a habit used to carry to bind a practice to a place.
+ *
+ * Superseded by `Habit.placeIds`. The tag was never really a tag: the kernel's
+ * flatten rule makes `place-atlantis` and `kairos:place/atlantis` the same
+ * reference, written smaller only because `Habit` had no field to hold one. It
+ * has one now, and `placesOf` reads the tag only as a fallback until the
+ * migration moves the data — so the roster does not go quiet mid-migration.
+ *
+ * Still exported because an edge may hold either spelling of "here". */
 export const PLACE_PREFIX = "place-";
 
 /** Where the principal is. A plain alias, like the ids: the vocabulary is worth
@@ -69,6 +74,8 @@ export interface PracticeCandidate {
   readonly name: string;
   readonly tags?: readonly string[] | null;
   readonly isArchived?: boolean;
+  /** Where its object actually is, as entity keys. Supersedes `place-` tags. */
+  readonly placeIds?: readonly string[] | null;
 }
 
 export interface GapPractice {
@@ -108,7 +115,19 @@ function placeName(value: string): Place {
  * places do not contradict: a practice that works in both cities says so by
  * carrying both tags, and taking only the first would exile it from one of them.
  */
-function placesOf(tags: readonly string[]): readonly Place[] {
+function placesOf(
+  placeIds: readonly string[] | null | undefined,
+  tags: readonly string[],
+): readonly Place[] {
+  // The field wins whole, never merged with the tags. A habit the migration
+  // has half-touched would otherwise stay bound to a place it was moved off,
+  // and an offer in the wrong city is the failure this rule exists to prevent.
+  // Empty is treated as absent, the same as everywhere else places are stored.
+  const declared = (placeIds ?? [])
+    .map((p) => placeName(String(p)))
+    .filter((p) => p.length > 0);
+  if (declared.length > 0) return declared;
+
   const out: Place[] = [];
   for (const t of tags) {
     const tag = t.trim().toLowerCase();
@@ -162,7 +181,7 @@ export function practicesForGap(
     if (h?.isArchived) continue;
     const tags = (h?.tags ?? []).map((t) => String(t).trim().toLowerCase());
     if (!tags.includes(GAP_TAG)) continue;
-    const places = placesOf(tags);
+    const places = placesOf(h?.placeIds, tags);
     if (here !== undefined && places.length > 0 && !places.includes(here))
       continue;
     const fitsMs = sizeOf(tags);

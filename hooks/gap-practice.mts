@@ -49,6 +49,7 @@ const FENCES = join(VAULT, "fences.json");
 const STATE_DIR = join(VAULT, "plugin");
 const STATE = join(STATE_DIR, "gap-practice-state.json");
 const HABITS = join(VAULT, "habits.json");
+const CYCLES = join(VAULT, "cycles.json");
 
 /** How rarely the offer may repeat. Periphery-first: the gap is nearly half the
  * session, so an offer per turn would be a metronome rather than a cue. */
@@ -60,12 +61,46 @@ const EVERY_MS = Number(process.env.ZENBORG_GAP_EVERY_MS) || 30 * 60_000;
  *
  * The domain takes the place as an argument and refuses to look it up, the same
  * way `host-block-seed.mts` keeps one person's plot ids out of the rules. This
- * is the edge that answers, and it answers from the environment because the
- * environment is all a request/response hook has. Unset means unknown, and
- * unknown offers everything, so a shell that never sets it behaves exactly as it
- * did before place existed.
+ * is the edge that answers.
+ *
+ * It answers from the running cycle first. A season is a stretch of time
+ * *somewhere*, so the garden already knows where he is and nothing has to be
+ * told twice — the same source `list_people_to_reach` reads to decide who is
+ * far. `ZENBORG_PLACE` still wins when set, for a trip inside a season that the
+ * cycle does not describe.
+ *
+ * Unknown offers everything, so a vault with no placed season and a shell that
+ * never sets the variable behave exactly as they did before place existed.
  */
-const PLACE = process.env.ZENBORG_PLACE?.trim() || undefined;
+function currentPlace(): string | undefined {
+  const override = process.env.ZENBORG_PLACE?.trim();
+  if (override) return override;
+  try {
+    const raw = JSON.parse(readFileSync(CYCLES, "utf8"));
+    const cycles = Array.isArray(raw) ? raw : Object.values(raw ?? {});
+    const today = new Date().toISOString().slice(0, 10);
+    const active = cycles
+      .filter(
+        (c: Record<string, unknown>) =>
+          typeof c?.startDate === "string" &&
+          c.startDate <= today &&
+          (c.endDate == null ||
+            (typeof c.endDate === "string" && c.endDate >= today)),
+      )
+      // Latest-starting active cycle wins, as everywhere else dates arbitrate.
+      .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
+        String(b.startDate).localeCompare(String(a.startDate)),
+      );
+    const places = active[0]?.placeIds;
+    return Array.isArray(places) && places.length > 0
+      ? String(places[0])
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const PLACE = currentPlace();
 
 const silent = (): never => process.exit(0);
 
@@ -107,9 +142,9 @@ function substitutionRule(): RuleSpec | null {
  * carries `breathwork` tagged `gap` / `gap-2m`; anything else the principal
  * tags joins it for free, and nothing here has an opinion about which.
  *
- * Except where: a practice tagged `place-harbor-city` needs a climbing rope that is
- * on another continent half the year, so `PLACE` is passed through and the
- * roster answers with what is actually within reach.
+ * Except where: a practice bound to a place needs equipment that is on another
+ * continent half the year, so `PLACE` is passed through and the roster answers
+ * with what is actually within reach.
  */
 function offered(): GapPractice | null {
   try {

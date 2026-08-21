@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Area } from "@/domain/entities/Area";
 import type { Cycle } from "@/domain/entities/Cycle";
-import type { Habit } from "@/domain/entities/Habit";
 import type { Moment } from "@/domain/entities/Moment";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
 import {
@@ -64,21 +63,6 @@ const moment = (
   ...extra,
 });
 
-const person = (id: string, name: string): Habit => ({
-  id,
-  name,
-  areaId: "friends",
-  attitude: null,
-  phase: null,
-  tags: [],
-  emoji: null,
-  isArchived: false,
-  order: 0,
-  kind: "person",
-  createdAt: "",
-  updatedAt: "",
-});
-
 const phaseConfig = (phase: Phase, order: number): PhaseConfig => ({
   id: `pc-${phase}`,
   phase,
@@ -99,17 +83,11 @@ const PHASES: PhaseConfig[] = [
   phaseConfig(Phase.NIGHT, 3),
 ];
 
-const derive = (
-  c: Cycle,
-  moments: Moment[],
-  areas: Area[] = [area("a")],
-  habits: Habit[] = [],
-) =>
+const derive = (c: Cycle, moments: Moment[], areas: Area[] = [area("a")]) =>
   deriveHarvestSeason({
     cycle: c,
     moments,
     areas,
-    habits,
     phaseConfigs: PHASES,
   });
 
@@ -224,19 +202,36 @@ describe("deriveHarvestSeason — what a moment carries", () => {
     });
   });
 
-  it("resolves the people present, dropping ids that no longer exist", () => {
+  // personIds carry registry entity keys (spec D3). Zenborg cannot resolve
+  // them — the registry owns display names — so per the kernel's fail-soft
+  // rule the key itself is rendered, never dropped. "ada" on screen beats a
+  // silently vanished person.
+  it("renders the entity keys as-is — fail-soft, nothing resolves them here", () => {
     const season = derive(
       cycle("c", "2026-03-01", "2026-03-31"),
       [
         moment("dinner", "2026-03-01", Phase.EVENING, "a", {
-          personIds: ["p1", "p2", "gone"],
+          personIds: ["ada", "bea"],
         }),
       ],
       [area("a")],
-      [person("p1", "Ada"), person("p2", "Bea")],
     );
 
-    expect(season.days[0].moments[0].people).toEqual(["Ada", "Bea"]);
+    expect(season.days[0].moments[0].people).toEqual(["ada", "bea"]);
+  });
+
+  it("keeps every key even when no habit record matches any of them", () => {
+    const season = derive(
+      cycle("c", "2026-03-01", "2026-03-31"),
+      [
+        moment("dinner", "2026-03-01", Phase.EVENING, "a", {
+          personIds: ["ada", "bea", "cai"],
+        }),
+      ],
+      [area("a")],
+    );
+
+    expect(season.days[0].moments[0].people).toEqual(["ada", "bea", "cai"]);
   });
 
   it("carries no people when the moment names none", () => {
