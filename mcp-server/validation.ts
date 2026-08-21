@@ -99,6 +99,33 @@ export function validateRefs(
   return null;
 }
 
+/**
+ * Derives an entity key from a human label.
+ *
+ * lowercase → strip diacritics → non-alphanumeric to dash → collapse dash runs
+ * → trim dashes. The rule lives in the kernel contract because zenborg and
+ * wake must agree on it without coordinating. Mirrors
+ * src/domain/entities/Moment.ts, which this workspace cannot import.
+ */
+export function slugify(label: string): string {
+  return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/** The pasted place link, named when it does not parse. Null when absent. */
+export function validatePlaceUrl(url: string | undefined): string | null {
+  if (url === undefined) return null;
+  if (!isParseableRef(url.trim())) {
+    return `Moment placeUrl is not a parseable URL: ${url}`;
+  }
+  return null;
+}
+
 /** Trims, drops empties, de-duplicates; preserves first-occurrence order. */
 export function normalizeRefs(refs: readonly string[] | undefined): string[] {
   const seen = new Set<string>();

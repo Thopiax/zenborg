@@ -197,6 +197,14 @@ export interface Moment {
    */
   refs?: readonly string[];
   personIds?: string[]; // People present. Mirrors src/domain/entities/Moment.ts
+  /**
+   * Where this moment happened, as registry entity keys at whatever grain
+   * it knows. Absent means unknown, which is honest; a wrong place is not.
+   * Mirrors src/domain/entities/Moment.ts.
+   */
+  placeIds?: string[];
+  /** The pasted map link, kept verbatim as minting evidence for wake. */
+  placeUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
