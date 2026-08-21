@@ -121,14 +121,15 @@ describe("practicesForGap", () => {
 });
 
 describe("practicesForGap, where the principal is", () => {
-  // The real roster shape. `dead hang` needs a pull-up bar and the bar is in Sao
-  // Paulo; the year is split with Barcelona. `breathwork` needs nothing and is
-  // most of the roster: every practice but two carries no place at all.
+  // A synthetic roster, deliberately: fixtures never carry a real person's
+  // places or practices. `rope climb` needs a climbing rope, and the rope is in
+  // Harbor City, while the year is split with River City. `breathwork` needs
+  // nothing and is most of the roster: every practice but two carries no place.
   const roster = [
     {
       id: "h-hang",
-      name: "dead hang",
-      tags: ["gap", "gap-30s", "place-sao-paulo"],
+      name: "rope climb",
+      tags: ["gap", "gap-30s", "place-harbor-city"],
     },
     { id: "h-breathwork", name: "breathwork", tags: ["gap", "gap-30s"] },
   ];
@@ -138,23 +139,23 @@ describe("practicesForGap, where the principal is", () => {
       .map((p) => p.name)
       .sort();
 
-  it("keeps a Sao Paulo practice out of Barcelona", () => {
-    // The bar is on another continent. An offer he cannot take teaches him the
+  it("keeps a Harbor City practice out of River City", () => {
+    // The rope is on another continent. An offer he cannot take teaches him the
     // roster is not worth reading, which costs more than the offer was worth.
-    expect(namesAt("barcelona")).toEqual(["breathwork"]);
+    expect(namesAt("river-city")).toEqual(["breathwork"]);
   });
 
   it("offers it where the equipment is", () => {
-    expect(namesAt("sao-paulo")).toEqual(["breathwork", "dead hang"]);
+    expect(namesAt("harbor-city")).toEqual(["breathwork", "rope climb"]);
   });
 
   it("offers an unplaced practice in both cities", () => {
-    expect(namesAt("barcelona")).toContain("breathwork");
-    expect(namesAt("sao-paulo")).toContain("breathwork");
+    expect(namesAt("river-city")).toContain("breathwork");
+    expect(namesAt("harbor-city")).toContain("breathwork");
   });
 
   it("offers everything when the place is unknown", () => {
-    expect(namesAt()).toEqual(["breathwork", "dead hang"]);
+    expect(namesAt()).toEqual(["breathwork", "rope climb"]);
   });
 
   it("offers a practice tagged for both places in each of them", () => {
@@ -162,23 +163,23 @@ describe("practicesForGap, where the principal is", () => {
       {
         id: "h-walk",
         name: "walk out",
-        tags: ["gap", "gap-1m", "place-sao-paulo", "place-barcelona"],
+        tags: ["gap", "gap-1m", "place-harbor-city", "place-river-city"],
       },
     ];
-    expect(practicesForGap(both, undefined, "barcelona")).toHaveLength(1);
-    expect(practicesForGap(both, undefined, "sao-paulo")).toHaveLength(1);
+    expect(practicesForGap(both, undefined, "river-city")).toHaveLength(1);
+    expect(practicesForGap(both, undefined, "harbor-city")).toHaveLength(1);
     expect(practicesForGap(both, undefined, "lisbon")).toEqual([]);
   });
 
   it("reads the place however the edge spells it", () => {
-    // Tags are typed by hand, and an edge holding `place-sao-paulo` rather than
-    // `sao-paulo` names the same city. Either way in, or every placed practice
+    // Tags are typed by hand, and an edge holding `place-harbor-city` rather than
+    // `harbor-city` names the same city. Either way in, or every placed practice
     // vanishes with nothing raised.
-    expect(namesAt("Sao-Paulo")).toContain("dead hang");
-    expect(namesAt(`${PLACE_PREFIX}sao-paulo`)).toContain("dead hang");
+    expect(namesAt("Harbor-City")).toContain("rope climb");
+    expect(namesAt(`${PLACE_PREFIX}harbor-city`)).toContain("rope climb");
   });
 
   it("still bounds a placed practice by the gap it has", () => {
-    expect(practicesForGap(roster, 10_000, "sao-paulo")).toEqual([]);
+    expect(practicesForGap(roster, 10_000, "harbor-city")).toEqual([]);
   });
 });
