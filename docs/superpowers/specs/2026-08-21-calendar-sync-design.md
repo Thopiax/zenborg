@@ -242,7 +242,9 @@ externalRef?: {
 Plus pure functions, unit-tested with no I/O:
 
 - `snapToGrid(startTime, durationMin)`: 15 minute rounding.
-- `phaseForStartTime(startTime, configs)`: derives `Phase`, handling the night wrap.
+- `phaseForStartTime(startTime, configs)`: **already exists** at
+  `src/domain/value-objects/Schedule.ts:151`, night wrap included and under test. D6
+  reuses it rather than writing a second one. Nothing to build here.
 - `momentHash(moment)`: the stable hash D4 compares against.
 - `reconcile(moment, event)`: returns the action to take. This is the heart of the
   design and is a **pure function over two snapshots**, so every rule in the table below
