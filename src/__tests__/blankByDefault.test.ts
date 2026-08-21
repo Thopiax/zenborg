@@ -49,7 +49,6 @@ describe("a fresh install ships no hosts", () => {
       hostBlock.hostBlockSeedRules({
         serves,
         returnsTo: ["area-craft"],
-        resolverProfile: "kairos",
         unlockNote: "out of band",
         hosts: [],
       }),
