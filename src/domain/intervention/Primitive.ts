@@ -24,14 +24,67 @@ export interface TransformSpec {
 }
 
 /**
+ * When a gate fires.
+ *
+ * Two shapes, and the difference between them is whether there is an event to
+ * hang on.
+ *
+ * `entry` is the decision point the rule's evaluation already produced — the
+ * cross-area tool call, the crossing out of a fence, the gap opening, the
+ * navigation into a scoped host. Something happened, the rule saw it, and the
+ * gate stands in front of it. Every gate written before this type existed was an
+ * `entry` gate; the case was implicit, and an absence is a worse way to say a
+ * thing than a name.
+ *
+ * `dwell` is the case the absence could not express. It fires every
+ * `everyMinutes` of *accumulated attended dwell* inside the rule's scope — a
+ * recurring stopping cue, which is precisely what an engagement-optimised
+ * surface removes on purpose. Not a wall-clock timer: a backgrounded tab and an
+ * idle person do not accumulate, so it interrupts attending rather than merely
+ * existing.
+ *
+ * The site you are already inside has no entry event left to gate. That is the
+ * whole finding of `keel/docs/pain/2026-08-19-linkedin-reloads-the-feed-because-
+ * it-is-on-the-wrong-primiti.md`: the alternative reached for was a standing
+ * access-block, and a running SPA reads a blocked request as a transient network
+ * failure and knocks again, forever. Overconsumption has no event to hang on;
+ * the whole problem is that nothing happens.
+ *
+ * ── Why `entry` and not keel's `navigation` ─────────────────────────────
+ *
+ * keel's `GateTrigger` (`packages/domain/src/rules.ts`) names four: `navigation`,
+ * `element_click`, `session_end`, `dwell`. It was authored for in-page shields,
+ * where the only surface is a browser. `RuleScope` here was lifted off
+ * browser-only so one rule vocabulary could drive the tray, the plugin and the
+ * extension, and the trigger has to be lifted with it or the lift is undone at
+ * the primitive. A `PreToolUse` crossing is not a navigation, and the three
+ * session-surface rules in `rules/` would each have had to declare one falsely.
+ * `entry` is the same shape of thing said at the surface-neutral altitude.
+ *
+ * `element_click` and `session_end` are deliberately absent rather than
+ * overlooked. Nothing here arms them, keel wires neither, and vocabulary no
+ * consumer agrees on is the optional escape hatch this field exists not to be.
+ * They are one variant away the day a rule needs one.
+ */
+export type GateTrigger =
+  | { readonly type: "entry" }
+  | { readonly type: "dwell"; readonly everyMinutes: number };
+
+/**
  * Interrupt an action with a surface the user must engage with to proceed.
  *
  * `proceedAffordance` is required, not optional. A gate without an exit does not
  * typecheck, which is what makes invariant 6 a property of the type rather than a
  * promise a validator has to keep.
+ *
+ * `trigger` is required for the same reason and by the same discipline: a field
+ * every consumer must agree on is not a field some rules may omit. Its absence
+ * used to mean `entry` by convention, and a convention is a thing a reader has
+ * to already know.
  */
 export interface GateSpec {
   readonly kind: "gate";
+  readonly trigger: GateTrigger;
   readonly frictionType:
     | { readonly type: "confirmation" }
     | { readonly type: "intention"; readonly prompt: string }

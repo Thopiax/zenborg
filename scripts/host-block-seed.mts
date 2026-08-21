@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * host-block-seed: the composition edge for the standing walls.
+ * host-block-seed: the composition edge for the shields.
+ *
+ * The walls, and the one cue that is not a wall. Both families live here because
+ * both need the same three things the domain refuses to hold — a season, the
+ * plots attention should come back to, and the resolver profile — and splitting
+ * the file would have split one person's ids across two.
  *
  * `hostBlockSeedRules` in the domain names no plot and no season, because the
  * plots below are one person's garden and the domain is not the place for one
@@ -18,6 +23,9 @@
  *   node scripts/host-block-seed.mts --cycle <id> --profile <resolver-profile>
  *   node scripts/host-block-seed.mts --cycle <id> --host lichess.org --host chess.com
  *
+ * `--host` narrows the walls only. The dwell gate is one named site with a
+ * written diagnosis rather than an entry on a list, so it is always emitted.
+ *
  * To install, one file per rule:
  *   node scripts/host-block-seed.mts --cycle <id> \
  *     | jq -c '.[]' \
@@ -25,16 +33,23 @@
  *         printf '%s' "$r" | jq . > "$KAIROS_HOME/keel/rules/$(printf '%s' "$r" | jq -r .id).json"
  *       done
  *
- * What installing does *not* do: it does not block anything. These rules declare
- * `enforcement.at: "resolver"`, and keel's browser blocklist deliberately skips
- * resolver-enforced cooldowns (`apps/agent/store.mjs`, `loadBlockDomains`)
- * because the DNS profile carries them, not the extension. The file is the
- * declaration; the wall is the resolver, and pointing the resolver at these
- * hosts is a hand edit outside this repo.
+ * What installing does *not* do for the walls: it does not block anything. Those
+ * rules declare `enforcement.at: "resolver"`, and keel's browser blocklist
+ * deliberately skips resolver-enforced cooldowns (`apps/agent/store.mjs`,
+ * `loadBlockDomains`) because the DNS profile carries them, not the extension.
+ * The file is the declaration; the wall is the resolver, and pointing the
+ * resolver at these hosts is a hand edit outside this repo.
+ *
+ * The gate is the other way round: `loadDwellGates` reads it straight out of
+ * `$KAIROS_HOME/keel/rules/` and the extension arms it, so installing that file
+ * is the whole of arming it. Order still matters, and it is the pain doc's:
+ * whatever standing block covers `linkedin.com` comes off first, because a gate
+ * added beside a live block leaves the reload loop exactly where it was.
  */
 
 import { validateDelivery } from "../src/domain/intervention/Delivery.ts";
 import { validateRuleSpec } from "../src/domain/intervention/RuleSpec.ts";
+import { linkedinDwellGate } from "../src/domain/intervention/rules/dwellGate.ts";
 import { hostBlockSeedRules } from "../src/domain/intervention/rules/hostBlock.ts";
 
 /**
@@ -92,13 +107,31 @@ function main(): void {
   }
 
   const hosts = args("--host");
-  const rules = hostBlockSeedRules({
-    serves: { cycleId, areaId: SERVES_AREA },
-    returnsTo: [...RETURNS_TO],
-    resolverProfile: arg("--profile") ?? DEFAULT_PROFILE,
-    unlockNote: arg("--unlock") ?? DEFAULT_UNLOCK,
-    ...(hosts.length > 0 ? { hosts } : {}),
-  });
+  const serves = { cycleId, areaId: SERVES_AREA };
+
+  const rules = [
+    ...hostBlockSeedRules({
+      serves,
+      returnsTo: [...RETURNS_TO],
+      resolverProfile: arg("--profile") ?? DEFAULT_PROFILE,
+      unlockNote: arg("--unlock") ?? DEFAULT_UNLOCK,
+      ...(hosts.length > 0 ? { hosts } : {}),
+    }),
+    /**
+     * LinkedIn, on the primitive that fits it.
+     *
+     * It is not in `DROGUE_SEED_HOSTS` and must not go back: a standing wall on
+     * a site you are already inside is a wall the running SPA keeps knocking on
+     * (`keel/docs/pain/2026-08-19-linkedin-reloads-the-feed-...`). It gets the
+     * shape that measurably curbed YouTube instead — a stopping cue every twenty
+     * minutes of attended dwell, nothing touched at the network layer.
+     *
+     * Same `returnsTo`, and deliberately so: the proximal claim is about where
+     * the next ten minutes land, and that does not change with which shield
+     * interrupted them. That is what makes a wall and a cue comparable at all.
+     */
+    linkedinDwellGate({ serves, returnsTo: [...RETURNS_TO] }),
+  ];
 
   const problems: string[] = [];
   for (const rule of rules) {

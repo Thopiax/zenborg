@@ -65,6 +65,15 @@ describe("sessionFenceRule", () => {
     }
   });
 
+  it("fires every gate rung on entry — the crossing, which is the event", () => {
+    // A fence has an event to hang on: the call that leaves it. Nothing here
+    // accumulates, so nothing here dwells.
+    for (const rung of fence.primitives) {
+      if (rung.kind !== "gate") continue;
+      expect(rung.trigger).toEqual({ type: "entry" });
+    }
+  });
+
   it("escalates in order: a click, then a wait, then a wait AND a reason", () => {
     const [first, second, third] = fence.primitives;
     expect((first as GateSpec).frictionType).toEqual({ type: "confirmation" });
