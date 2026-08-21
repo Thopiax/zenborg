@@ -12,7 +12,7 @@ import {
 } from "@/domain/value-objects/Phase";
 import { readMeta, writeMeta } from "@/infrastructure/vault/meta-repository";
 import { getCurrentHour } from "@/lib/dates";
-import { cycleDeckSelectedCycleId$ } from "./ui-store";
+import { cycleDeckSelectedCycleId$ } from "./ui-store.ts";
 
 /**
  * Core application state stored as observables
