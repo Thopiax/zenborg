@@ -15,7 +15,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON ${CLAUDE_PLUGIN_ROOT}/hooks/breathe.mts",
+          "command": "node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON ${CLAUDE_PLUGIN_ROOT}/hooks/gap-practice.mts",
           "timeout": 10
         }
       ]

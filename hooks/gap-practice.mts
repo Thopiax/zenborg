@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * breathe — the substitution, offered where the gap opens.
+ * gap-practice — the substitution, offered where the gap opens.
  *
  * The agent takes the work and a hole appears. `keel`'s own logs put 45.6% of
  * active session time in that hole, with the drift excess concentrated at 15–60
@@ -38,17 +38,21 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { GateSpec } from "../src/domain/intervention/Primitive.ts";
 import type { RuleSpec } from "../src/domain/intervention/RuleSpec.ts";
+import {
+  type GapPractice,
+  practicesForGap,
+} from "../src/domain/intervention/rules/gapPractice.ts";
 
 const VAULT = process.env.KAIROS_HOME || join(homedir(), ".kairos");
 const FENCES = join(VAULT, "fences.json");
 const STATE_DIR = join(VAULT, "plugin");
-const STATE = join(STATE_DIR, "breathe-state.json");
+const STATE = join(STATE_DIR, "gap-practice-state.json");
+const HABITS = join(VAULT, "habits.json");
 
 /** How rarely the offer may repeat. Periphery-first: the gap is nearly half the
  * session, so an offer per turn would be a metronome rather than a cue. */
-const EVERY_MS = Number(process.env.ZENBORG_BREATHE_EVERY_MS) || 30 * 60_000;
+const EVERY_MS = Number(process.env.ZENBORG_GAP_EVERY_MS) || 30 * 60_000;
 
 const silent = (): never => process.exit(0);
 
@@ -70,23 +74,31 @@ function readStdin(): Promise<Record<string, unknown> | null> {
   });
 }
 
-/** The standing substitution rule carrying a breath, if there is one. */
-function breathRule(): { rule: RuleSpec; cycles: number } | null {
+/** The standing substitution rule, if there is one. It names no practice. */
+function substitutionRule(): RuleSpec | null {
   try {
     const raw = JSON.parse(readFileSync(FENCES, "utf8"));
     const records: RuleSpec[] = Array.isArray(raw)
       ? raw
       : Object.values(raw ?? {});
-    for (const rule of records) {
-      if (rule?.mechanism !== "substitution") continue;
-      for (const p of rule.primitives ?? []) {
-        if (p?.kind !== "gate") continue;
-        const f = (p as GateSpec).frictionType;
-        if (f?.type === "breath")
-          return { rule, cycles: Number(f.cycles) || 3 };
-      }
-    }
+    return records.find((r) => r?.mechanism === "substitution") ?? null;
+  } catch {
     return null;
+  }
+}
+
+/**
+ * What the garden offers for a gap, smallest first.
+ *
+ * Read from `habits.json` rather than named by the rule. `Mindfulness` already
+ * carries `breathwork` tagged `gap` / `gap-2m`; anything else the principal
+ * tags joins it for free, and nothing here has an opinion about which.
+ */
+function offered(): GapPractice | null {
+  try {
+    const raw = JSON.parse(readFileSync(HABITS, "utf8"));
+    const habits = Array.isArray(raw) ? raw : Object.values(raw ?? {});
+    return practicesForGap(habits as never)[0] ?? null;
   } catch {
     return null;
   }
@@ -113,20 +125,26 @@ function recordOffer(at: number): void {
 
 const main = async (): Promise<void> => {
   await readStdin();
-  const found = breathRule();
-  if (!found) silent();
+  if (!substitutionRule()) silent();
+
+  // No practice tagged for a gap means the garden has nothing to offer, and
+  // inventing one is the mistake this rewrite exists to undo.
+  const practice = offered();
+  if (!practice) silent();
 
   const now = Date.now();
   if (now - lastOfferedAt() < EVERY_MS) silent();
   recordOffer(now);
 
-  const { cycles } = found;
-  // Addressed to the principal, not to the agent — but it rides the agent's
-  // channel, so it says plainly that nothing is being asked of the agent.
+  const size = practice.fitsMs
+    ? ` (${practice.fitsMs >= 60_000 ? `${Math.round(practice.fitsMs / 60_000)}m` : `${Math.round(practice.fitsMs / 1000)}s`})`
+    : "";
+  // Addressed to the principal, riding the agent's channel — so it says plainly
+  // that nothing is being asked of the agent.
   process.stdout.write(
-    `<zenborg: ${cycles} slow breaths while this runs — the wait is the agent's, ` +
-      "not a hole to fill. Nothing here is for you, Claude: do not mention it, " +
-      "do not act on it, continue as asked.>",
+    `<zenborg: ${practice.name}${size} fits this wait — the gap is the agent's, ` +
+      "not a hole to fill. Skip freely. Nothing here is for you, Claude: do not " +
+      "mention it, do not act on it, continue as asked.>",
   );
   process.exit(0);
 };
