@@ -84,65 +84,39 @@ export function hostBlockRule(input: HostBlockInput): RuleSpec {
 }
 
 /**
- * The hosts that take a standing wall.
+ * What takes a standing wall, and what does not.
  *
- * keel ships no watchlist entries by design; the drogue's seed blocklist is its
- * one explicitly consented exception, and this carries that exception forward
- * rather than inventing a second one. Productizing for anyone else means moving
- * this to config: it is one person's list, not a default.
+ * No list lives here, and that is the point. keel ships no watchlist entries by
+ * design, and the seed blocklist was the one explicitly consented exception:
+ * one person's compulsions as a string literal in a library. It moved to the
+ * composition edge on 2026-08-21, where the rest of his ids already were
+ * (`scripts/host-block-seed.hosts.json`, the same arrangement
+ * `things-area-map.seed.json` uses). A peer's list is a peer's own file.
  *
- * ── What is on it, and why each one ─────────────────────────────────────
+ * What generalises is not the hosts but the three tests for whether a host
+ * belongs on any list at all, and those stay here:
  *
- * `youtube.com`: the original, unchanged.
+ * **A subdomain of a host already named is not an entry.** `hostBlockRule`
+ * emits `*://*.${host}/*` alongside the bare host, and keel's DNR projection
+ * matches `requestDomains` against subdomains too. A second name for a route
+ * already closed is a second place to forget.
  *
- * `chess.com`: the original, unchanged.
+ * **A pure redirector is not an entry.** Every path through one terminates at a
+ * request to a host that is either already refused, in which case the redirector
+ * closes no route and only moves where the refusal appears, or not refused, in
+ * which case naming the redirector is naming the wrong host.
  *
- * `lichess.org`: added. The one genuine hole in the old list: chess was named
- * as a thing to curb and the second place it happens was matched by nothing.
- * `lichess.org` is a different registrable domain, so no `chess.com` pattern
- * reaches it, and it is a full site rather than a doorway to one. Closing it
- * closes a route that was open.
- *
- * ── What was considered and left off ────────────────────────────────────
- *
- * `m.youtube.com`, `www.linkedin.com` and every other subdomain: already
- * covered. `hostBlockRule` emits `*://*.${host}/*` alongside the bare host, and
- * keel's DNR projection matches `requestDomains` against subdomains too. Naming
- * a subdomain would be a second name for a route already closed, and a second
- * name is a second place to forget.
- *
- * `youtu.be`: a pure redirector. Every path through it ends in a request to
- * `youtube.com`, which is already refused, so adding it closes no route; it only
- * moves where the refusal appears. It does not help on the phone either: a
- * `youtu.be` link there hands off to the YouTube app, which never asks for
- * either host. Left off deliberately rather than overlooked.
- *
- * `lnkd.in`: the same shape for LinkedIn, and moot besides: see below.
- *
- * ── Why LinkedIn is not here ────────────────────────────────────────────
- *
- * It was, and it was the wrong primitive. `keel/docs/pain/2026-08-19-linkedin-
- * reloads-the-feed-because-it-is-on-the-wrong-primiti.md` records what a
- * standing access-block does to a site you are already inside: the feed is an
- * SPA that is still running when the block lands, its data requests fail one at
- * a time, and its client reads each failure as a transient network error and
- * re-mounts. The shell keeps rendering because `licdn.com` is a different
- * registrable domain. The result is a page that reloads forever rather than one
- * that cleanly refuses.
- *
- * That is not a wall. A wall a site can keep knocking on is the least reliable
- * shape available, which is why removing it *is* the shield getting better
- * rather than the shield being dropped. LinkedIn belongs on the `gate` that
- * measurably curbed YouTube: friction with an exit, nothing touched at the
- * network layer. The gate rule itself lives in the runtime rules, which are
- * private tier; the order in the pain doc holds, and lifting the block comes
- * first.
+ * **A site you are already inside is not a wall's problem.** A standing
+ * access-block on a running SPA is a reload loop, not a refusal: its data
+ * requests fail one at a time, its client reads each failure as a transient
+ * network error and re-mounts, and the shell keeps rendering because the asset
+ * domain is a different registrable domain
+ * (`keel/docs/pain/2026-08-19-linkedin-reloads-the-feed-because-it-is-on-the-
+ * wrong-primiti.md`). A wall answers *should I be able to reach this at all*
+ * and holds because the key is out of the room. When the reach is legitimate
+ * and only the stretch is not, the question is *have I been here longer than I
+ * meant to be*, and that is `dwellGate`.
  */
-export const DROGUE_SEED_HOSTS: readonly string[] = Object.freeze([
-  "youtube.com",
-  "chess.com",
-  "lichess.org",
-]);
 
 /**
  * A rule id derived from the host it blocks.
@@ -188,8 +162,15 @@ export interface HostBlockSeedInput {
   readonly returnsTo: readonly AreaId[];
   readonly resolverProfile: string;
   readonly unlockNote: string;
-  /** Defaults to `DROGUE_SEED_HOSTS`. Anyone else's seed is their own list. */
-  readonly hosts?: readonly string[];
+  /**
+   * The hosts to wall, in the order they should be emitted.
+   *
+   * Required, and with no default behind it. A default here would be one
+   * person's list shipped as everyone's; the caller names the hosts because the
+   * caller is the only one who knows whose they are. An empty list builds no
+   * rules, which is the honest answer to a seed with nothing in it.
+   */
+  readonly hosts: readonly string[];
   readonly windowMs?: Duration;
 }
 
@@ -198,7 +179,7 @@ export function hostBlockSeedRules(
 ): readonly RuleSpec[] {
   const rules: RuleSpec[] = [];
 
-  for (const host of input.hosts ?? DROGUE_SEED_HOSTS) {
+  for (const host of input.hosts) {
     rules.push(
       hostBlockRule({
         id: seedRuleId(host),
