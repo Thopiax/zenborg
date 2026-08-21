@@ -2,12 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type Delivery, validateDelivery } from "../../Delivery";
 import type { CooldownSpec } from "../../Primitive";
 import { validateRuleSpec } from "../../RuleSpec";
-import {
-  DROGUE_SEED_HOSTS,
-  hostBlockRule,
-  hostBlockSeedRules,
-  seedRuleId,
-} from "../hostBlock";
+import { hostBlockRule, hostBlockSeedRules, seedRuleId } from "../hostBlock";
 
 const serves = { cycleId: "c-1", areaId: "area-craft" };
 
@@ -135,61 +130,6 @@ describe("an unanswerable measure", () => {
   });
 });
 
-describe("DROGUE_SEED_HOSTS", () => {
-  it("blocks YouTube and both chess sites, and nothing else", () => {
-    expect(DROGUE_SEED_HOSTS).toEqual([
-      "youtube.com",
-      "chess.com",
-      "lichess.org",
-    ]);
-  });
-
-  it("covers lichess, which the chess.com entry never reached", () => {
-    // The one real hole in the old list: a registrably different site, serving
-    // the same reach, matched by nothing.
-    expect(DROGUE_SEED_HOSTS).toContain("lichess.org");
-  });
-
-  it("does not name a subdomain the match pattern already covers", () => {
-    // `*://*.youtube.com/*` matches `m.youtube.com`, so naming it is a second
-    // name for a route already closed.
-    expect(DROGUE_SEED_HOSTS).not.toContain("m.youtube.com");
-    expect(DROGUE_SEED_HOSTS).not.toContain("www.youtube.com");
-  });
-
-  it("does not name a pure redirector, which closes no route of its own", () => {
-    // Every path through `youtu.be` terminates at a `youtube.com` request, and
-    // `lnkd.in` the same for LinkedIn. Adding them moves where the refusal
-    // appears; it does not add a refusal.
-    expect(DROGUE_SEED_HOSTS).not.toContain("youtu.be");
-    expect(DROGUE_SEED_HOSTS).not.toContain("lnkd.in");
-  });
-
-  it("no longer blocks LinkedIn, which belongs on a gate", () => {
-    // keel/docs/pain/2026-08-19-linkedin-reloads-the-feed-because-it-is-on-the-
-    // wrong-primiti.md: an access-block on a running SPA is a reload loop, not
-    // a wall.
-    expect(DROGUE_SEED_HOSTS).not.toContain("linkedin.com");
-  });
-
-  it("builds one valid rule per host, with distinct ids", () => {
-    const rules = DROGUE_SEED_HOSTS.map((host, i) =>
-      hostBlockRule({
-        id: `rule-block-${i}`,
-        host,
-        name: host,
-        description: host,
-        serves,
-        returnsTo: ["area-craft"],
-        resolverProfile: "kairos",
-        unlockNote: "out of band",
-      }),
-    );
-    for (const r of rules) expect(validateRuleSpec(r)).toEqual([]);
-    expect(new Set(rules.map((r) => r.id)).size).toBe(DROGUE_SEED_HOSTS.length);
-  });
-});
-
 describe("seedRuleId", () => {
   it("derives a stable id from the host, so reinstalling replaces rather than duplicates", () => {
     expect(seedRuleId("youtube.com")).toBe("host-block-youtube-com");
@@ -200,9 +140,13 @@ describe("seedRuleId", () => {
 
 describe("hostBlockSeedRules", () => {
   const returnsTo = ["area-themia", "area-craft", "area-mindfulness"];
+  // Deliberately nobody's hosts. The factory has no list of its own to fall
+  // back to, so a fixture here can be as invented as it likes.
+  const hosts = ["one.example", "two.example", "three.example"];
   const seed = {
     serves,
     returnsTo,
+    hosts,
     resolverProfile: "kairos",
     unlockNote: "edit the resolver profile and wait for propagation",
   };
@@ -210,7 +154,7 @@ describe("hostBlockSeedRules", () => {
   it("builds one rule per seed host, in the seed's order", () => {
     const rules = hostBlockSeedRules(seed);
     expect(rules.map((r) => r.scope)).toEqual(
-      DROGUE_SEED_HOSTS.map((host) => ({
+      hosts.map((host) => ({
         surface: "browser",
         domain: host,
         matches: [`*://${host}/*`, `*://*.${host}/*`],
@@ -220,7 +164,7 @@ describe("hostBlockSeedRules", () => {
 
   it("ids every rule from its host, so the set is distinct and re-derivable", () => {
     const rules = hostBlockSeedRules(seed);
-    expect(rules.map((r) => r.id)).toEqual(DROGUE_SEED_HOSTS.map(seedRuleId));
+    expect(rules.map((r) => r.id)).toEqual(hosts.map(seedRuleId));
     expect(new Set(rules.map((r) => r.id)).size).toBe(rules.length);
   });
 
@@ -257,14 +201,18 @@ describe("hostBlockSeedRules", () => {
     }
   });
 
-  it("takes an explicit host list, which is how anyone else's seed is built", () => {
-    const rules = hostBlockSeedRules({ ...seed, hosts: ["example.com"] });
+  it("takes an explicit host list, which is the only way a seed is built", () => {
+    const rules = hostBlockSeedRules({ ...seed, hosts: ["sole.example"] });
     expect(rules).toHaveLength(1);
     expect(rules[0].scope).toEqual({
       surface: "browser",
-      domain: "example.com",
-      matches: ["*://example.com/*", "*://*.example.com/*"],
+      domain: "sole.example",
+      matches: ["*://sole.example/*", "*://*.sole.example/*"],
     });
+  });
+
+  it("builds nothing from an empty list, rather than reaching for a default", () => {
+    expect(hostBlockSeedRules({ ...seed, hosts: [] })).toEqual([]);
   });
 
   it("passes the outcome window through", () => {
