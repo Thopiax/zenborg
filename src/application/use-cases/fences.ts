@@ -1,9 +1,17 @@
 import type { AreaId, RuleId } from "../../domain/attention/ids";
-import type { Primitive } from "../../domain/intervention/Primitive";
+import {
+  carriesExit,
+  type Primitive,
+} from "../../domain/intervention/Primitive.ts";
 import {
   type RuleSpec,
   validateRuleSpec,
 } from "../../domain/intervention/RuleSpec.ts";
+import { browserDwellGateRule } from "../../domain/intervention/rules/browserGate.ts";
+import {
+  hostBlockRule,
+  hostBlockSeedRules,
+} from "../../domain/intervention/rules/hostBlock.ts";
 import {
   rungFor,
   sessionFenceRule,
@@ -170,6 +178,323 @@ export async function declareFence(
   const all = await deps.store.read();
   await deps.store.write({ ...all, [fence.id]: fence });
   return { declared: fence, standing: Object.keys(all).length + 1 };
+}
+
+// ── Browser-scoped fences ──────────────────────────────────────────────
+//
+// Migration step 5 is "flip the readers", and it could not be flipped without
+// this. Slice E of the extension work said so in its own report: `loadArmed()`
+// read `fences.json` *and* `~/.kairos/keel/rules/*.json`, merged, because
+// zenborg's only fence writer was `sessionFenceRule` and a session-scoped rule
+// reaches no browser. A fences-only read would have shipped an inert feature.
+//
+// So the writer comes first and the reader collapses after it. Everything below
+// builds `scope.surface: "browser"` rules, which is the scope the host's armed
+// projection keeps and every other scope it drops.
+//
+// The 2026-08-20 guard still holds and is still structural: every rule here is
+// built from the caller's arguments, and nothing in this file reads
+// `discrepancy.json`. A host block and a dwell gate are declarations, not
+// derivations.
+
+/** A registrable host: no scheme, no path, no port, no wildcard. What the
+ * armed record carries is domains, and the privacy posture stops URLs at this
+ * boundary — so a caller who pasted a URL is told, not silently trimmed. */
+const HOST_PATTERN =
+  /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+function hostProblems(host: string): string[] {
+  const trimmed = host.trim().toLowerCase();
+  if (trimmed === "") return ["a host block must name a host"];
+  if (!HOST_PATTERN.test(trimmed)) {
+    return [
+      `"${host}" is not a registrable host — pass "example.com", not a URL, a path or a wildcard`,
+    ];
+  }
+  return [];
+}
+
+/**
+ * Invariant 6, enforced at the writer's door.
+ *
+ * The type system already carries most of it: `gate` requires a
+ * `proceedAffordance` and `cooldown` requires an `unlockPath`, so the two
+ * primitives a fence is built from cannot be constructed without an exit. What
+ * this adds is the case the types cannot see — a rule assembled from some other
+ * primitive, or one whose exit is present but empty. A fence with no way out is
+ * refused here rather than armed and refused later by the extension, because the
+ * cheapest place to hold the line is the one place the record is written.
+ */
+function exitProblems(rule: RuleSpec): string[] {
+  const problems: string[] = [];
+  for (const primitive of rule.primitives) {
+    if (!carriesExit(primitive)) {
+      problems.push(
+        `primitive "${primitive.kind}" carries no proceed affordance — a fence with no exit is refused, not armed (invariant 6)`,
+      );
+      continue;
+    }
+    if (primitive.kind === "cooldown") {
+      const unlock = primitive.unlockPath;
+      if (unlock.type === "out_of_band" && unlock.note.trim() === "") {
+        problems.push(
+          "the lift is stated nowhere — an out-of-band exit whose note is empty is unreachable, which is no exit at all",
+        );
+      }
+      if (
+        unlock.type === "unlock_with_intention" &&
+        unlock.prompt.trim() === ""
+      ) {
+        problems.push("the unlock asks nothing, so there is nothing to answer");
+      }
+    }
+    if (
+      primitive.kind === "gate" &&
+      primitive.proceedAffordance.label.trim() === ""
+    ) {
+      problems.push(
+        "the gate's exit has no label, so there is nothing to press",
+      );
+    }
+  }
+  return problems;
+}
+
+/** Resolve the areas a browser rule returns attention to, and the season it
+ * serves. Shared by both browser writers, because both make the same proximal
+ * claim: the point is not the interruption, it is where the next ten minutes go. */
+async function resolveReturn(
+  deps: FenceDeps,
+  returnsTo: readonly string[],
+): Promise<
+  | { readonly areaIds: AreaId[]; readonly cycleId: string }
+  | { readonly problems: string[] }
+> {
+  const problems: string[] = [];
+  const areas = await deps.garden.areas();
+  const areaIds: AreaId[] = [];
+
+  if (returnsTo.length === 0) {
+    problems.push(
+      "name at least one area attention should return to — a rule that cannot say where the next ten minutes go can never be settled",
+    );
+  }
+  for (const ref of returnsTo) {
+    const resolved = resolveArea(areas, ref);
+    if ("problem" in resolved) problems.push(resolved.problem);
+    else areaIds.push(resolved.id);
+  }
+
+  const cycleId = await deps.garden.activeCycleId();
+  if (cycleId === null) {
+    problems.push(
+      "no season is running — a fence serves the season's intention, so open a cycle first",
+    );
+  }
+
+  if (problems.length > 0 || cycleId === null || areaIds.length === 0) {
+    return { problems };
+  }
+  return { areaIds, cycleId };
+}
+
+/** Validate, then write. One place, so no caller can skip the check. */
+async function writeFence(
+  deps: FenceDeps,
+  rule: RuleSpec,
+): Promise<DeclareFenceResult> {
+  const problems = [...validateRuleSpec(rule), ...exitProblems(rule)];
+  if (problems.length > 0) return { problems };
+
+  const all = await deps.store.read();
+  await deps.store.write({ ...all, [rule.id]: rule });
+  return { declared: rule, standing: Object.keys(all).length + 1 };
+}
+
+export interface HostBlockDeclaration {
+  /** A registrable host, without scheme or path. */
+  readonly host: string;
+  /** Areas attention should land in when the wall is met — ids or names. */
+  readonly returnsTo: readonly string[];
+  /** How the block is lifted, deliberately outside the running system. */
+  readonly unlockNote: string;
+  readonly name?: string;
+  readonly description?: string;
+  /**
+   * The resolver profile carrying the block, when the block is a resolver one.
+   * Absent means the browser enforces it, which is the surface this app reaches.
+   */
+  readonly resolverProfile?: string;
+}
+
+/**
+ * Declare a standing host block, browser-enforced unless a resolver profile is
+ * named.
+ *
+ * This is the writer `hostBlockSeedRules` has been waiting for. The seed
+ * blocklist has been the oldest working piece of the system and has lived in
+ * keel's own rules directory, invisible to the kernel; now it is a record in the
+ * collection the contract registers, written by the one instrument allowed to
+ * write it.
+ */
+export async function declareHostBlock(
+  deps: FenceDeps,
+  input: HostBlockDeclaration,
+): Promise<DeclareFenceResult> {
+  const problems = hostProblems(input.host);
+  if (input.unlockNote.trim() === "") {
+    problems.push(
+      "say how the block is lifted — teeth that name no way out are a punishment, and invariant 6 forbids arming one",
+    );
+  }
+
+  const resolved = await resolveReturn(deps, input.returnsTo);
+  if ("problems" in resolved) problems.push(...resolved.problems);
+  if (problems.length > 0 || "problems" in resolved) return { problems };
+
+  const host = input.host.trim().toLowerCase();
+  return writeFence(
+    deps,
+    hostBlockRule({
+      id: deps.newRuleId(),
+      host,
+      name: input.name?.trim() || host,
+      description:
+        input.description?.trim() ||
+        `A standing block on ${host} — declared in conversation, lifted out of band.`,
+      serves: { cycleId: resolved.cycleId, areaId: resolved.areaIds[0] },
+      returnsTo: resolved.areaIds,
+      unlockNote: input.unlockNote.trim(),
+      ...(input.resolverProfile === undefined
+        ? { enforcement: { at: "browser" as const } }
+        : { resolverProfile: input.resolverProfile }),
+    }),
+  );
+}
+
+export interface BrowserGateDeclaration {
+  readonly host: string;
+  readonly returnsTo: readonly string[];
+  /** Accumulated attended dwell between firings. */
+  readonly everyMinutes: number;
+  /** What the gate asks. */
+  readonly prompt: string;
+  readonly name?: string;
+  readonly description?: string;
+}
+
+/**
+ * Declare a browser dwell gate — friction on the duration rather than on the
+ * visit.
+ *
+ * The case for it is written up as a pain in keel (`b59b01f`): a standing block
+ * on a host with a real use gets lifted, and a block lifted in the moment is not
+ * a boundary. What actually goes wrong is that a visit becomes a session, so the
+ * gate charges for the session.
+ */
+export async function declareBrowserGate(
+  deps: FenceDeps,
+  input: BrowserGateDeclaration,
+): Promise<DeclareFenceResult> {
+  const problems = hostProblems(input.host);
+  if (input.prompt.trim() === "") {
+    problems.push(
+      "say what the gate asks — the question is the friction, and a gate with nothing to answer is a click",
+    );
+  }
+
+  const resolved = await resolveReturn(deps, input.returnsTo);
+  if ("problems" in resolved) problems.push(...resolved.problems);
+  if (problems.length > 0 || "problems" in resolved) return { problems };
+
+  const host = input.host.trim().toLowerCase();
+  return writeFence(
+    deps,
+    browserDwellGateRule({
+      id: deps.newRuleId(),
+      host,
+      name: input.name?.trim() || host,
+      description:
+        input.description?.trim() ||
+        `A recurring stopping cue on ${host}, every ${input.everyMinutes} attended minutes.`,
+      serves: { cycleId: resolved.cycleId, areaId: resolved.areaIds[0] },
+      returnsTo: resolved.areaIds,
+      everyMinutes: input.everyMinutes,
+      prompt: input.prompt.trim(),
+    }),
+  );
+}
+
+export interface HostBlockSeedDeclaration {
+  readonly returnsTo: readonly string[];
+  readonly unlockNote: string;
+  /**
+   * The hosts to wall. Required, and with no default behind it: the domain
+   * carries no list, so a seed with nothing in it walls nothing.
+   */
+  readonly hosts: readonly string[];
+  readonly resolverProfile?: string;
+}
+
+export type SeedHostBlocksResult =
+  | { readonly declared: readonly RuleSpec[]; readonly standing: number }
+  | { readonly problems: readonly string[] };
+
+/**
+ * Write the seed blocklist into `fences`, as rules that say what they are for.
+ *
+ * Idempotent by construction: `hostBlockSeedRules` derives each id from the host
+ * and the enforcement point, so a second run replaces the first rather than
+ * standing a second fence on the same host. Anything the seeder did not write is
+ * left exactly as it was — this is a migration of one list, not a reset of the
+ * collection.
+ *
+ * One write, not one per host: the store's contract is read-modify-write over
+ * the whole record set, and three sequential writes would leave a reader able to
+ * catch the collection with one host fenced and two not.
+ */
+export async function seedHostBlocks(
+  deps: FenceDeps,
+  input: HostBlockSeedDeclaration,
+): Promise<SeedHostBlocksResult> {
+  const problems: string[] = [];
+  if (input.unlockNote.trim() === "") {
+    problems.push(
+      "say how the block is lifted — teeth that name no way out are a punishment, and invariant 6 forbids arming one",
+    );
+  }
+  for (const host of input.hosts) problems.push(...hostProblems(host));
+
+  const resolved = await resolveReturn(deps, input.returnsTo);
+  if ("problems" in resolved) problems.push(...resolved.problems);
+  if (problems.length > 0 || "problems" in resolved) return { problems };
+
+  const seeded = hostBlockSeedRules({
+    serves: { cycleId: resolved.cycleId, areaId: resolved.areaIds[0] },
+    returnsTo: resolved.areaIds,
+    unlockNote: input.unlockNote.trim(),
+    hosts: input.hosts,
+    ...(input.resolverProfile === undefined
+      ? {}
+      : {
+          enforcement: {
+            at: "resolver" as const,
+            profile: input.resolverProfile,
+          },
+        }),
+  });
+
+  for (const rule of seeded) {
+    const bad = [...validateRuleSpec(rule), ...exitProblems(rule)];
+    if (bad.length > 0) problems.push(...bad);
+  }
+  if (problems.length > 0) return { problems };
+
+  const all = await deps.store.read();
+  const next = { ...all };
+  for (const rule of seeded) next[rule.id] = rule;
+  await deps.store.write(next);
+  return { declared: seeded, standing: Object.keys(next).length };
 }
 
 /**
