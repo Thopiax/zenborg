@@ -232,3 +232,90 @@ Copy `scripts/people-migration.mts` wholesale for structure: dry-run default, `-
 - **Wake's registry (spec S2) and minting (S5)**, in `penceive/crates/wake`. Needs its own plan: person entities with the D10 shape, the key-resolve tool, and place minting from `placeUrl`.
 - **Desktop UI pickers** for people and places. MCP-first, as the last people bet shipped.
 - **The `.ics` feed.** Unbuilt, and blocked on S5.
+
+---
+
+## As built (2026-08-21)
+
+Part A (Tasks 0–5) landed on 2026-08-18. Part B and Part C landed 2026-08-21.
+Three things deviate from the plan above; all three were decided by Rafa mid-run
+and are recorded here rather than silently absorbed.
+
+### 1. A merge came first
+
+The branch had fallen 46 commits behind main, which had since gained the fences
+work, the library port, the background agent, and — the one that matters —
+`feat/gap-practice-place`, a **new consumer of the `place-<city>` tag namespace**
+that no document in this plan knew about. Six files conflicted.
+
+Reconciling before Part B rather than after: Task 7 edits line ranges in
+`mcp-server/index.ts` that main had already moved. Every conflict outside
+`index.ts` resolved to the branch, main's changes there being quote-style lint
+plus fixture de-PII-ing that the branch had already superseded with synthetic
+slugs.
+
+### 2. `Cycle.placeIds` and `Habit.placeIds` — a task the plan did not have
+
+Task 7 says *"`far` compares a person's registry `basePlace` against the
+`placeIds` of the current cycle"*, and the spec says the same at D9. **`Cycle`
+had no `placeIds` field, and no task added one.** The plan's file lists never
+mention `Cycle.ts`.
+
+Rafa chose the cycle over the alternative (an `at` parameter answered by the
+edge, which is what `practicesForGap` does). A season is a stretch of time
+*somewhere*, so the running cycle is the smallest container that already knows
+where "here" is: one source, nothing told twice, and it survives across sessions.
+`ZENBORG_PLACE` remains an override for a trip inside a season.
+
+`Habit.placeIds` follows from deviation 3.
+
+### 3. `gapPractice` migrated onto `placeIds`, widening Task 8
+
+Task 8 as written only rewrites three docstrings. But main's `practicesForGap`
+reads habit `place-` tags — the namespace Task 8 declares retired and Task 10
+migrates away from. Leaving it would have left zenborg with two place mechanisms
+and no plan to converge them.
+
+What made this cheap: `placeName()` in `gapPractice.ts` already strips the
+`place-` prefix and returns a bare key, so `placesOf` was **the kernel's unflatten
+rule written by hand**. It was already working in entity keys without knowing it.
+
+`placesOf` now reads `Habit.placeIds`, falling back to parsing the tags so the
+roster does not go quiet between now and whenever the migration runs. The field
+wins *whole* rather than merging: a half-migrated habit would otherwise stay
+bound to a place it was moved off, and an offer in the wrong city is the exact
+failure the rule exists to prevent.
+
+### Verification
+
+- **76 test files, 1265 tests**, green. Branch baseline before the merge was
+  50 files / 839 tests; main's baseline was 74 / 1208.
+- `npx tsc --noEmit` clean. Both `.mts` migration scripts typecheck under
+  `--strict` by hand, since nothing automated covers `.mts`.
+- `pnpm lint`: findings identical to main's baseline, no new errors.
+- **28/28 MCP smoke steps**, six of them new: a pasted label round-tripping to a
+  slugged key, an unplaced moment carrying neither field, both clear paths, a
+  refused non-URL, and the empty registry returning an empty queue.
+
+### The migrations have NOT been run
+
+Both were dry-run end to end against a **fabricated vault**, where the
+inherited-place refusal and the desktop-app detection both fired correctly, and
+the export file matched the D10 shape.
+
+They have **not** been dry-run against the live vault. `~/.kairos` sits behind
+keel's private-tier guard, whose contract is aggregates only; raw access needs a
+session launched with `KEEL_RAW=1`. So Task 11 Step 4's "report with both
+dry-run outputs" is satisfied with synthetic outputs, not real counts.
+
+**Before running either script against the live vault:** launch a session with
+raw access, dry-run both, read the counts (particularly `inherited places
+refused` and `cadence conflicts`), and only then `--write` with the zenborg
+desktop app closed.
+
+### Still out of scope, unchanged
+
+Wake's registry (S2) and minting (S5) in `penceive`. Until the key-resolve tool
+exists, `list_people_to_reach` receives an empty registry and returns an empty
+queue — by design, and covered by a smoke step so it can never become an error.
+Desktop UI pickers and the `.ics` feed remain unbuilt.
