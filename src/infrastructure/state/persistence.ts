@@ -26,9 +26,9 @@ import type { Habit } from "@/domain/entities/Habit";
 import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
-import { isTauri } from "../vault/is-tauri";
-import { syncedVaultCollection } from "../vault/synced-vault";
-import { trmnlSettings$ } from "./integration-store";
+import { isTauri } from "../vault/is-tauri.ts";
+import { syncedVaultCollection } from "../vault/synced-vault.ts";
+import { trmnlSettings$ } from "./integration-store.ts";
 import {
   activeCycleId$,
   areas$,
@@ -40,7 +40,7 @@ import {
   moments$,
   phaseConfigs$,
 } from "./store";
-import { lastUsedAreaId$ } from "./ui-store";
+import { lastUsedAreaId$ } from "./ui-store.ts";
 
 let persistenceConfigured = false;
 

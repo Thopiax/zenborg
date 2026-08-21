@@ -13,7 +13,7 @@ import {
   momentsByDayAndPhase$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
-import { pushToRelay, pushToTrmnlDirect } from "./trmnl-client";
+import { pushToRelay, pushToTrmnlDirect } from "./trmnl-client.ts";
 
 // ============================================================================
 // State

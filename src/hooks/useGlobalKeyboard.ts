@@ -15,7 +15,7 @@ import {
   closeMomentForm,
   momentFormState$,
 } from "@/infrastructure/state/ui-store";
-import { useFocusManager } from "./useFocusManager";
+import { useFocusManager } from "./useFocusManager.ts";
 
 /**
  * Global keyboard shortcuts - reads from command registry
