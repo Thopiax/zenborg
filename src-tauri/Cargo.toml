@@ -38,6 +38,21 @@ tauri-plugin-dialog = "2"
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }
 
+# The library. Slice C step 3: penceive's engine becomes a crate in this
+# process so the app can read the notes.
+#
+# `default-features = false` is the privacy invariant made checkable. The
+# crate's cloud (Anthropic) and local (mistral.rs) inference arms are both
+# opt-in features, and this app enables neither: it uses the retrieval half
+# and nothing that can make an inference call.
+#
+# The rev is pinned rather than floating, and the dependency reverts by
+# deleting these three lines. It points at a `file://` URL because penceive
+# has no git remote at all — the design note assumed one and there is none,
+# so a portable pin does not exist to be had. This is the honest form of the
+# same intent, and it dissolves when the repos consolidate.
+penceive-core = { git = "file:///Users/rafa/Developer/equanimitech/penceive", rev = "d8f82dd7a49a82349ed3f1286621d7ce4fd9beba", default-features = false }
+
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-global-shortcut = "2"
