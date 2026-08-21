@@ -5,7 +5,6 @@ import {
   createHabit,
   type Habit,
   isHabitError,
-  isPerson,
   unarchiveHabit,
   updateHabit,
 } from "../entities/Habit";
@@ -348,29 +347,5 @@ describe("Habit rhythm field", () => {
     const updated = updateHabit(created, { rhythm: undefined });
     if (isHabitError(updated)) throw new Error(updated.error);
     expect(updated.rhythm).toBeUndefined();
-  });
-});
-
-describe("isPerson", () => {
-  const base: Habit = {
-    id: "h1",
-    name: "Uma",
-    areaId: "a1",
-    attitude: null,
-    phase: null,
-    tags: [],
-    emoji: null,
-    isArchived: false,
-    order: 0,
-    createdAt: "2026-08-07T00:00:00.000Z",
-    updatedAt: "2026-08-07T00:00:00.000Z",
-  };
-
-  it("is true when kind is person", () => {
-    expect(isPerson({ ...base, kind: "person" })).toBe(true);
-  });
-
-  it("is false when kind is absent — a plain habit", () => {
-    expect(isPerson(base)).toBe(false);
   });
 });

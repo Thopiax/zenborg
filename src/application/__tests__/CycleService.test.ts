@@ -1174,7 +1174,6 @@ describe("CycleService.getCyclePlanningProposals — daysSinceLast agrees with c
     name,
     attitude: Attitude.KEEPING,
     rhythm: WEEKLY,
-    kind: "person" as const,
   });
 
   const makeMoment = (

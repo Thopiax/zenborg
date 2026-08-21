@@ -13,18 +13,6 @@ import {
 } from "../value-objects/Schedule";
 
 /**
- * HabitKind — discriminates a person record from a practice.
- *
- * Absent means habit. People share the habits collection because a Habit
- * already carries every field a person needs (name, areaId, tags, aliases,
- * rhythm, emoji, order, description). The three fields a person does not
- * use — attitude, phase, guidance — are nullable and inert.
- *
- * See docs/decisions/2026-08-07-people-are-a-kind-on-habit-not-a-new-collection.md
- */
-export type HabitKind = "person";
-
-/**
  * Habit - Recurring moment template
  *
  * Habits represent patterns that emerge from repeated moments.
@@ -46,7 +34,18 @@ export interface Habit {
   guidance?: string; // Practitioner-facing guidance for the habit
   rhythm?: Rhythm; // Optional declared cadence (count per period)
   schedule?: Schedule; // Optional clock-time commitment (weekdays + HH:MM + minutes)
-  kind?: HabitKind; // Absent = habit. "person" = a person, not a practice.
+  /**
+   * Where this practice can actually be done, as registry entity keys.
+   *
+   * `dead hang` needs a pull-up bar and the bar is in one city. A practice
+   * bound to no place is offered everywhere, which is most of the roster;
+   * binding is the exception and says so by being present.
+   *
+   * Supersedes the `place-<key>` tag, which was the same reference written
+   * smaller because there was no field to hold it. `placesOf` still falls
+   * back to those tags until the migration moves them here.
+   */
+  placeIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -390,12 +389,4 @@ export function unarchiveHabit(habit: Habit): Habit {
  */
 export function isHabitError(result: HabitResult): result is { error: string } {
   return "error" in result;
-}
-
-/**
- * Narrows a habit record to a person. Prefer this over comparing `kind`
- * inline so a typo cannot silently make someone not-a-person.
- */
-export function isPerson(habit: Habit): boolean {
-  return habit.kind === "person";
 }

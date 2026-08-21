@@ -13,7 +13,6 @@ import {
 import {
   areas$,
   cycles$,
-  habits$,
   moments$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
@@ -47,7 +46,6 @@ export default function HarvestPage() {
   const cycles = useValue(cycles$);
   const moments = useValue(moments$);
   const areas = useValue(areas$);
-  const habits = useValue(habits$);
   const phaseConfigs = useValue(phaseConfigs$);
   const selectedCycleId = useValue(harvestSelectedCycleId$);
 
@@ -75,10 +73,9 @@ export default function HarvestPage() {
       cycle,
       moments: momentList,
       areas: areaList,
-      habits: Object.values(habits),
       phaseConfigs: phaseConfigList,
     });
-  }, [cycle, momentList, areaList, habits, phaseConfigList]);
+  }, [cycle, momentList, areaList, phaseConfigList]);
 
   const cycleService = useMemo(() => new CycleService(), []);
 

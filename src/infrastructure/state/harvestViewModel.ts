@@ -4,7 +4,6 @@ import {
   isDateInCycle,
   isHumanWritten,
 } from "@/domain/entities/Cycle";
-import type { Habit } from "@/domain/entities/Habit";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Phase, PhaseConfig } from "@/domain/value-objects/Phase";
 import {
@@ -67,7 +66,6 @@ export interface DeriveHarvestInput {
   readonly cycle: Cycle;
   readonly moments: readonly Moment[];
   readonly areas: readonly Area[];
-  readonly habits: readonly Habit[];
   readonly phaseConfigs: readonly PhaseConfig[];
 }
 
@@ -107,11 +105,9 @@ export function deriveHarvestSeason({
   cycle,
   moments,
   areas,
-  habits,
   phaseConfigs,
 }: DeriveHarvestInput): HarvestSeason {
   const areasById = new Map(areas.map((a) => [a.id, a]));
-  const habitsById = new Map(habits.map((h) => [h.id, h]));
 
   const planted = moments.filter(
     (m): m is Moment & { day: string } =>
@@ -131,9 +127,10 @@ export function deriveHarvestSeason({
       areaId: moment.areaId,
       areaName: area?.name ?? null,
       areaColor: area?.color ?? null,
-      people: (moment.personIds ?? [])
-        .map((id) => habitsById.get(id)?.name)
-        .filter((name): name is string => Boolean(name)),
+      // Registry entity keys, rendered as-is (spec D3). The registry owns
+      // display names and zenborg cannot resolve them; the kernel's fail-soft
+      // rule says render the key rather than silently drop the person.
+      people: [...(moment.personIds ?? [])],
     };
 
     const day = byDay.get(moment.day);

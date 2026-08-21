@@ -497,6 +497,103 @@ try {
       throw new Error("activeMoment.json missing `at`");
   });
 
+  // ── places ──────────────────────────────────────────────────────────
+  // The round trip that matters: a label goes in, an entity key comes back,
+  // and clearing leaves the key absent rather than holding an empty list.
+
+  await step(
+    "create_standalone_moment slugs a pasted place label",
+    async () => {
+      const created = parseOk(
+        await callTool("create_standalone_moment", {
+          name: "morning coffee",
+          areaId,
+          day: wakingDay,
+          phase: "MORNING",
+          placeIds: ["Ávalon Café", "Avalon"],
+          placeUrl: "https://maps.example/avalon",
+        }),
+      ).created;
+      const got = JSON.stringify(created.placeIds);
+      if (got !== JSON.stringify(["avalon-cafe", "avalon"]))
+        throw new Error(`expected slugged keys, got ${got}`);
+      if (created.placeUrl !== "https://maps.example/avalon")
+        throw new Error("placeUrl did not round-trip verbatim");
+      return created;
+    },
+  );
+
+  await step("a moment with no place carries neither key", async () => {
+    const created = parseOk(
+      await callTool("create_standalone_moment", {
+        name: "quiet sit",
+        areaId,
+        day: wakingDay,
+        phase: "EVENING",
+      }),
+    ).created;
+    if ("placeIds" in created || "placeUrl" in created)
+      throw new Error(
+        "absent, never empty — an unplaced moment carries no key",
+      );
+  });
+
+  await step("update_moment clears placeIds with an empty list", async () => {
+    const created = parseOk(
+      await callTool("create_standalone_moment", {
+        name: "lunch out",
+        areaId,
+        day: wakingDay,
+        phase: "AFTERNOON",
+        placeIds: ["Atlantis"],
+      }),
+    ).created;
+    const updated = parseOk(
+      await callTool("update_moment", { id: created.id, placeIds: [] }),
+    ).updated;
+    if ("placeIds" in updated)
+      throw new Error("an empty replacement must delete the key, not store []");
+  });
+
+  await step("update_moment clears placeUrl with null", async () => {
+    const created = parseOk(
+      await callTool("create_standalone_moment", {
+        name: "book shop",
+        areaId,
+        day: wakingDay,
+        phase: "AFTERNOON",
+        placeUrl: "https://maps.example/arcadia",
+      }),
+    ).created;
+    const updated = parseOk(
+      await callTool("update_moment", { id: created.id, placeUrl: null }),
+    ).updated;
+    if ("placeUrl" in updated) throw new Error("null must delete placeUrl");
+  });
+
+  await step("a placeUrl that is not a URL is refused", async () => {
+    const text = toolText(
+      await callTool("create_standalone_moment", {
+        name: "vague place",
+        areaId,
+        day: wakingDay,
+        phase: "MORNING",
+        placeUrl: "the cafe on the corner",
+      }),
+    );
+    if (!text.startsWith("Error:"))
+      throw new Error(`expected refusal, got: ${text}`);
+  });
+
+  await step(
+    "list_people_to_reach is an empty queue, not an error",
+    async () => {
+      const parsed = parseOk(await callTool("list_people_to_reach", {}));
+      if (!Array.isArray(parsed) || parsed.length !== 0)
+        throw new Error(`expected [], got ${JSON.stringify(parsed)}`);
+    },
+  );
+
   await step("get_active_moment resolves the pointer", async () => {
     const parsed = parseOk(await callTool("get_active_moment", {}));
     if (parsed.active?.moment?.name !== "ship export") {

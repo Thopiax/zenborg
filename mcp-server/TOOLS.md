@@ -106,8 +106,8 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_habits` | `areaId?, includeArchived?` | |
 | `get_habit` | `id` | |
-| `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, kind?, emoji?, description?, guidance?, rhythm?, schedule?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. `kind: "person"` marks the record as a person; absent means an ordinary habit. |
-| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear; `kind?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. `kind: null` untags a mistagged person back into an ordinary habit. |
+| `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, emoji?, description?, guidance?, rhythm?, schedule?, placeIds?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. A habit is always a ritual — a person is a registry entity carried in `Moment.personIds`, never a habit. `placeIds` bind a practice to where its object actually is, so the gap roster stops offering something whose equipment is in another city; a practice bound to no place is offered everywhere. |
+| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. |
 | `archive_habit` | `id` | **Cascade:** deletes all cycle plans for this habit; allocated moments preserved as historical records (orphan via `habitId`). |
 | `unarchive_habit` | `id` | |
 
@@ -116,9 +116,9 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_cycles` | `filter?: "active"\|"current"\|"upcoming"\|"all"` | `active` = derived from dates. |
 | `get_cycle` | `id` | |
-| `plan_cycle` | `name, templateDuration?, startDate?, endDate?, intention?` | Mirrors `CycleService.planCycle`. |
+| `plan_cycle` | `name, templateDuration?, startDate?, endDate?, intention?, placeIds?` | Mirrors `CycleService.planCycle`. `placeIds` say where the season is lived — a season is a stretch of time *somewhere*, and it is what `list_people_to_reach` reads to answer `far` and what the gap roster reads to know which practices are within reach. A list, because a season split between two cities names both. |
 | `quick_create_cycle` | `template` | Should-have. |
-| `update_cycle` | `id, updates` | Writing `reflection` stamps `reflectionSource: "machine"` — an agent writing is a machine writing, whoever asked for it. Only a hand edit in the app stamps `"human"`; harvest marks everything else as drafted. |
+| `update_cycle` | `id, updates` | Writing `reflection` stamps `reflectionSource: "machine"` — an agent writing is a machine writing, whoever asked for it. Only a hand edit in the app stamps `"human"`; harvest marks everything else as drafted. `placeIds` follow the moment contract: `null` or `[]` clears, omitting leaves alone. |
 | `end_cycle` | `id, endDate?` | Sets `endDate`; keeps cycle. |
 | `delete_cycle` | `id` | **Cascade:** plans + moments scoped to cycle. |
 | `list_cycle_plans` | `cycleId?` | |
@@ -133,14 +133,14 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 |---|---|---|
 | `list_moments` | `filter: { areaId?, habitId?, cycleId?, day?, phase?, allocation?: "unallocated"\|"deck"\|"allocated"\|"budgeted"\|"spontaneous", tags? }` | One tool, structured filter. `tags` = AND over normalized tags. |
 | `get_moment` | `id` | |
-| `create_moment` | `name, areaId, phase?, emoji?, tags?, personIds?, customMetric?, startTime?, durationMin?, refs?` | Unallocated. `refs` = URLs this moment refers to (pointers only). `personIds` are the people present; an empty array writes nothing (absent means nobody). |
-| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, personIds?, customMetric?, startTime?, durationMin?, refs? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. `refs` replaces the list; `[]` clears it. `personIds` replaces the whole list; pass `null` or `[]` to clear it (absent means nobody — the same single empty representation `create_moment` writes); omit it to leave the existing list untouched. |
+| `create_moment` | `name, areaId, phase?, emoji?, tags?, personIds?, placeIds?, placeUrl?, customMetric?, startTime?, durationMin?, refs?` | Unallocated. `refs` = URLs this moment refers to (pointers only). `personIds` are the people present; an empty array writes nothing (absent means nobody). `placeIds` are entity keys for where it happened, at whatever grain you know (a café, its neighbourhood, its city) — labels are slugged for you, and an empty array writes nothing. `placeUrl` is a pasted map link kept verbatim, so wake can mint the place entity from it; anything the URL parser cannot read is refused. |
+| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, personIds?, placeIds?, placeUrl?, customMetric?, startTime?, durationMin?, refs? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. `refs` replaces the list; `[]` clears it. `personIds` replaces the whole list; pass `null` or `[]` to clear it (absent means nobody — the same single empty representation `create_moment` writes); omit it to leave the existing list untouched. `placeIds` and `placeUrl` follow the same contract: `null` or `[]` clears, omitting leaves alone. |
 | `delete_moment` | `id` | |
 | `allocate_moment` | `id, day, phase, order?, startTime?, durationMin?` | No cap. Returns `dayViewOverflow` past 3 in the slot. |
 | `unallocate_moment` | `id` | |
 | `allocate_from_plan` | `cycleId, habitId, day, phase` | Materialize a virtual deck card onto a slot. Resolves plan server-side; creates `Moment` with `cyclePlanId` set and the habit's schedule timing inherited. Returns `dayViewOverflow` past 3 in the slot. |
 | `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags, plus the habit's schedule timing. No `refs`: a habit has none — what a moment points at is particular to the occurrence. Returns `dayViewOverflow` past 3 in the slot. |
-| `create_standalone_moment` | `name, areaId, day, phase, order?, emoji?, tags?, personIds?, startTime?, durationMin?, refs?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. `personIds` are the people present; an empty array writes nothing (absent means nobody). |
+| `create_standalone_moment` | `name, areaId, day, phase, order?, emoji?, tags?, personIds?, placeIds?, placeUrl?, startTime?, durationMin?, refs?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. `personIds` are the people present; an empty array writes nothing (absent means nobody). `placeIds` are entity keys for where it happened, at whatever grain you know (a café, its neighbourhood, its city) — labels are slugged for you, and an empty array writes nothing. `placeUrl` is a pasted map link kept verbatim, so wake can mint the place entity from it; anything the URL parser cannot read is refused. Place is **not** inherited from a habit by `spawn_spontaneous_from_habit` or `allocate_from_plan`: a template has no place. |
 
 ### Active moment (`activeMoment.json`)
 
@@ -189,17 +189,27 @@ rule still sitting there is inert until it is re-declared through these tools.
 
 ### Tags — derived index (added 2026-08-14)
 
-People and places are **dash-namespaced tags** (`person-<name>`, `place-<name>`) on moments
-and habits — the stopgap for first-class Person/Place entities. These tools derive the index
-at read time from the existing collections: **no stored index, no vault shape change**, so
-neither vault implementation pays a cost. `normalizeTags` strips `/` and `:` — dashes are
-the only namespacing that survives.
+These tools derive a tag index at read time from the existing collections: **no stored
+index, no vault shape change**, so neither vault implementation pays a cost. `normalizeTags`
+strips `/` and `:` — dashes are the only namespacing that survives.
+
+**People and places are no longer tags.** `person-<name>` and `place-<name>` were the
+stopgap for first-class entities, and the entities arrived: people live in
+`Moment.personIds`, places in `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds`, all
+of them registry entity keys. The kernel's flatten rule always made `place-atlantis` and
+`kairos:place/atlantis` the same reference — only the storage changed.
+
+`tags.ts` and `graph.ts` needed no change for this, because they never parsed the prefixes;
+they aggregate strings and always did. What changed is that the claim these prefixes *are*
+the People and Places indexes is now false. Ask the fields instead, or
+`list_people_to_reach`. A `person-` or `place-` tag still showing up here is a record the
+migration has not reached.
 
 | Tool | Inputs | Notes |
 |---|---|---|
-| `list_tags` | `prefix?` | Every tag in use with moment/habit/area counts + first/last allocated day. `prefix: "person-"` = the People index, `"place-"` = the Places index. Sorted by total usage. |
-| `get_tag_profile` | `tag` | One tag's graph neighborhood: habits, areas, co-tags (people ↔ places ↔ themes), date range, recent sample (cap 10, truncation flagged). |
-| `get_related_habits` | `habitId` | A habit's derived edges: `sharedTags` (signature overlap incl. person-/place- mediation), `coOccurrence` (same-day allocation, cap 10), `areaSiblings` (active, same plot). Descriptive only — intentional relations (substitution groups, "enables") are not derivable and would be a vault shape change. |
+| `list_tags` | `prefix?` | Every tag in use with moment/habit/area counts + first/last allocated day. `prefix` reads any namespace as an index. Sorted by total usage. Not the People or Places index — see above. |
+| `get_tag_profile` | `tag` | One tag's graph neighbourhood: habits, areas, co-tags, date range, recent sample (cap 10, truncation flagged). Generic aggregation — it does not know what a person or a place is. |
+| `get_related_habits` | `habitId` | A habit's derived edges: `sharedTags` (tag signature overlap only — edges mediated by a shared person or place are not computed, since those are references now), `coOccurrence` (same-day allocation, cap 10), `areaSiblings` (active, same plot). Descriptive only — intentional relations (substitution groups, "enables") are not derivable and would be a vault shape change. |
 
 ### Phases (`phaseConfigs.json`) — Should-have
 | Tool | Inputs | Notes |
@@ -212,7 +222,7 @@ the only namespacing that survives.
 |---|---|---|
 | `get_habit_health` | `habitId` | Health is never stored — recomputed on every read. |
 | `list_wilting_habits` | `areaId?, attitude?` | Habits whose current health is `wilting`. |
-| `list_people_to_reach` | `areaId?, tag?, limit?` | The outreach queue: people (`kind: "person"`, non-archived) whose `personHealth` is `wilting` and who have **nothing already arranged** — anyone with a future-dated moment is excluded, so the queue stays quiet about someone you are already seeing on Thursday. `areaId` narrows to one plot; `tag` narrows to a place tag such as `paris`, `bcn`, `sp`, `london`, `nyc`; `limit` truncates *after* sorting, so it always returns the most overdue. **Ordered by `overdueRatio` — how far past their OWN rhythm they are, as a multiple of it — not by raw elapsed days.** A `{weekly,2}` friend at 20 days (5.71x) outranks an `{annually,1}` one at 400 days (1.1x); ranking by raw days would park the long-rhythm tail at the head of the queue forever and bury exactly the people the feature exists to protect. Every row carries `overdueRatio` beside `daysSinceLastContact`, so the ordering is explicable ("5.7x past their rhythm") rather than mysterious. Never-contacted people (`daysSinceLastContact: null`, `overdueRatio: null`) come first. People with no `rhythm` are `unstated`, never wilting, and never appear. |
+| `list_people_to_reach` | `category?, limit?, far?` | The outreach queue: registry people whose `personHealth` is `wilting` against their **declared cadence** (`weekly \| monthly \| quarterly \| yearly`, day counts 7/30/91/365 — a registry fact on the person entity, never stored in zenborg) and who have **nothing already arranged** — anyone with a future-dated moment is excluded, so the queue stays quiet about someone you are already seeing on Thursday. `category` narrows to a registry category (`friend`, `family`, `lover`, `colleague`); `limit` truncates *after* sorting, so it always returns the most overdue. **Ordered by `overdueRatio` — days-since divided by the cadence bucket's day count — not by raw elapsed days.** A `weekly` friend at 20 days (2.86x) outranks a `yearly` one at 400 days (1.1x); ranking by raw days would park the long-cadence tail at the head of the queue forever and bury exactly the people the feature exists to protect. Every row carries `overdueRatio` beside `daysSinceLastContact`, so the ordering is explicable rather than mysterious. Never-contacted people (`daysSinceLastContact: null`, `overdueRatio: null`) come first. People with no cadence are `unstated`, never wilting, and never appear; `status: paused` people are likewise `unstated` — stepped back deliberately, not let slide. Rows carry the entity `key`, **no display name** — the registry owns names; fail-soft renders the key. Until wake exposes its key-resolve tool the registry list is empty and the queue returns `[]` — normal, not an error. Every row also carries `far`: whether the person's registry base place differs from where the current cycle is being lived (`Cycle.placeIds`). `far: null` means the question could not be asked — the registry has no base place for them, or the season states none — and **nobody is ever dropped by a distance that could not be checked**, so a `far` filter still returns the unknowns. |
 
 ---
 

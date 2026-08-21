@@ -55,10 +55,35 @@ export interface Moment {
    * a dinner with three friends is ONE moment carrying three ids, not three
    * moments (which would also collide with the max-3-per-(day,phase) cap).
    *
-   * Ids reference habit records where `kind === "person"`.
+   * Ids are registry entity keys (e.g. `"ada"`) — the registry owns the
+   * person's metadata; zenborg stores only the reference (spec D1/D3).
    * Optional: absent means nobody. There is deliberately no `null` form.
    */
   personIds?: string[];
+
+  /**
+   * Where this moment happened. Ids are registry entity keys, at whatever
+   * grain the moment knows: a moment at `"avalon-cafe"` may also name
+   * `"avalon"`, and coarser grains roll up through the place tree (spec D5).
+   *
+   * This is the `place-` tag grown into the field it always wanted to be.
+   * The kernel's flatten rule makes `place-avalon` and `kairos:place/avalon`
+   * the same reference; only the storage changes (spec D4).
+   *
+   * Optional: absent means the place is unknown, which is honest. A wrong
+   * place is not. There is deliberately no `null` form.
+   */
+  placeIds?: string[];
+
+  /**
+   * The map link you pasted, kept verbatim as minting evidence.
+   *
+   * Wake reads this string to parse a label and coordinates, mints the place
+   * entity with its parent chain, and owns that metadata from then on. Zenborg
+   * holds the string and nothing else: label, latitude and longitude are entity
+   * metadata, and D1 forbids zenborg from holding them (spec D5).
+   */
+  placeUrl?: string;
 
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
@@ -112,6 +137,50 @@ export function normalizeRefs(refs: readonly string[] | undefined): string[] {
     out.push(trimmed);
   }
   return out;
+}
+
+/**
+ * Derives an entity key from a human label.
+ *
+ * lowercase → strip diacritics → non-alphanumeric to dash → collapse dash
+ * runs → trim dashes. `"Café Lab, Vila Madalena"` becomes
+ * `"cafe-lab-vila-madalena"`.
+ *
+ * The rule lives in the kernel contract (`entities.md`, "Deriving a key from
+ * a label") because two writers must agree on it without coordinating:
+ * zenborg derives a key to write `placeIds`, and wake derives a key from the
+ * same label to mint the entity. A copy of this function lives in
+ * `mcp-server/validation.ts`, which cannot import from `src/domain`.
+ *
+ * Zenborg's key is only a proposal. Wake owns collision resolution, and a key
+ * that resolves to nothing renders as itself under the kernel's fail-soft rule.
+ */
+export function slugify(label: string): string {
+  return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/**
+ * Validates the pasted place link.
+ *
+ * Permissive about the scheme for the same reason `refs` is: a place can
+ * arrive as an `https://` map link or as a deep link into another app.
+ *
+ * @returns an error message, or null when absent or parseable
+ */
+export function validatePlaceUrl(url: string | undefined): string | null {
+  if (url === undefined) {
+    return null;
+  }
+  if (!isParseableRef(url.trim())) {
+    return `Moment placeUrl is not a parseable URL: ${url}`;
+  }
+  return null;
 }
 
 /**
