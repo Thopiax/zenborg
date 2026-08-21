@@ -49,6 +49,11 @@ describe("gapPracticeRule", () => {
     expect(gate.proceedAffordance.label).toBe("Skip");
   });
 
+  it("fires on entry — the gap opening, which is an event and not a stretch", () => {
+    const gate = rule.primitives[0] as GateSpec;
+    expect(gate.trigger).toEqual({ type: "entry" });
+  });
+
   it("claims an absence and bounds it where the drift excess ends", () => {
     expect(rule.outcome.measure).toEqual({
       kind: "no_span_matching",
