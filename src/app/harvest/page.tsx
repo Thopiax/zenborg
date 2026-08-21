@@ -30,16 +30,13 @@ import { getTodayISO } from "@/lib/dates";
  * already drawn there, so navigating them is picking one. Harvest opens on
  * the most recently closed season until you pick another.
  *
- * The one exception to "no network, no model" is not one: slice C put the
- * library in this process, so the journal is read locally, over an index on
- * this disk. This page is the composition root that hands the readback its
- * ports, and it is the only place in the garden that names the adapters.
- *
- * There are two of them since step 5's data half. `tauriLibrary` reads the
- * journal; `tauriNotebook` brings in what was written on the device, which the
- * app took over from `wake sync` so that `journals` has one instrument writer
- * rather than two. The LAN pull is the one thing on this page that touches a
- * network, and it reaches a device on the desk rather than a service.
+ * "No network, no model" holds without qualification again. Slice C briefly
+ * made this page the composition root that handed the readback a library
+ * port, so harvest could read the journal; that came out with the penceive
+ * dependency in 8f5c9aa and is meant to come back. This is a removal with a
+ * revert target, not a feature that was never built: `git revert 8f5c9aa`
+ * restores the seam whole, and what it then needs is a credential for the
+ * private penceive remote rather than any code.
  */
 export default function HarvestPage() {
   const cycles = useValue(cycles$);
