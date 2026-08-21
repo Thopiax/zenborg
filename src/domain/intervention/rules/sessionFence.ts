@@ -116,8 +116,15 @@ function rungs(label: string): readonly Primitive[] {
     action: { type: "continue" },
   });
 
+  /**
+   * Every rung fires on entry — the crossing. A fence has an event to hang on,
+   * which is what makes the ladder countable at all: rung 1 is the first
+   * crossing, rung 2 the second. A dwell trigger here would count minutes rather
+   * than crossings and the ladder would lose its meaning.
+   */
   const first: GateSpec = {
     kind: "gate",
+    trigger: { type: "entry" },
     frictionType: { type: "confirmation" },
     proceedAffordance: proceed("Cross anyway"),
     abortAffordance: { label: `Stay inside "${label}"` },
@@ -125,6 +132,7 @@ function rungs(label: string): readonly Primitive[] {
 
   const second: GateSpec = {
     kind: "gate",
+    trigger: { type: "entry" },
     frictionType: { type: "delay", seconds: TEN_SECONDS },
     proceedAffordance: proceed("Cross anyway"),
     abortAffordance: { label: `Stay inside "${label}"` },

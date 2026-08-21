@@ -18,6 +18,7 @@ const rule: RuleSpec = {
   primitives: [
     {
       kind: "gate",
+      trigger: { type: "entry" },
       frictionType: { type: "intention", prompt: "what is this for?" },
       proceedAffordance: { label: "proceed", action: { type: "continue" } },
     },

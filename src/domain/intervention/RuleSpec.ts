@@ -52,6 +52,35 @@ export interface RuleSpec {
 }
 
 /**
+ * A dwell interval that is not a positive number of minutes is not an interval.
+ *
+ * Zero or a negative accumulates to "due" the instant the rule is in scope, and
+ * a cue that is always due is a wall wearing a gate's clothes: the exit is still
+ * there in the type and unreachable in practice, because taking it puts you
+ * straight back in front of the next one. Invariant 6 is about an exit that can
+ * actually be taken.
+ *
+ * Recursive through `schedule` for the same reason `carriesExit` is: a scheduled
+ * gate is still a gate.
+ */
+function triggerProblems(primitives: readonly Primitive[]): readonly string[] {
+  const problems: string[] = [];
+  for (const primitive of primitives) {
+    if (primitive.kind === "schedule") {
+      for (const p of triggerProblems([primitive.wraps])) problems.push(p);
+      continue;
+    }
+    if (primitive.kind !== "gate") continue;
+    if (primitive.trigger.type !== "dwell") continue;
+    const every = primitive.trigger.everyMinutes;
+    if (!Number.isFinite(every) || every <= 0) {
+      problems.push("gate.trigger.everyMinutes must be positive");
+    }
+  }
+  return problems;
+}
+
+/**
  * Structural checks a rule must pass. Returns every problem found, not the first.
  *
  * Reporting one problem at a time turns authoring into a guessing game, and this
@@ -85,6 +114,10 @@ export function validateRuleSpec(rule: RuleSpec): readonly string[] {
     // area has nothing to look for, so it reports unknown forever, which is the
     // unevaluable state this layer exists to leave behind.
     problems.push("outcome.measure names no area, so it can never be settled");
+  }
+
+  for (const problem of triggerProblems(rule.primitives)) {
+    problems.push(problem);
   }
 
   if (rule.scope.surface === "browser") {

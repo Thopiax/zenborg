@@ -130,6 +130,10 @@ export interface GapPracticeInput {
 export function gapPracticeRule(input: GapPracticeInput): RuleSpec {
   const gate: GateSpec = {
     kind: "gate",
+    /** On entry: the gap opening. The agent starting work is the event, and the
+     * offer belongs at its edge — a cue fired part-way through a wait would be
+     * interrupting the practice it just offered. */
+    trigger: { type: "entry" },
     /** An acknowledgement, not a practice. Which practice is offered is resolved
      * from the garden at delivery, so the rule names none. */
     frictionType: { type: "confirmation" },

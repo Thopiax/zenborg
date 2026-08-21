@@ -79,6 +79,13 @@ export function areaDriftRule(input: AreaDriftInput): RuleSpec {
   const gate: GateSpec = {
     kind: "gate",
     /**
+     * On entry: the cross-area call itself. The hook already holds the event, so
+     * there is nothing to accumulate and nothing to dwell on — the rule fires
+     * where the crossing happens, which is the one moment naming what it is for
+     * can still change it.
+     */
+    trigger: { type: "entry" },
+    /**
      * An intention, not a confirmation. A confirmation is a click, and a click
      * costs nothing and teaches nothing. Naming what you are crossing for is the
      * friction, and it is also the only part of the exit worth reading later.
