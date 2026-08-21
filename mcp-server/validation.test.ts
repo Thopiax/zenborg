@@ -9,8 +9,10 @@ import {
   phaseForStartTime,
   schedulePhaseError,
   scheduleRhythmError,
+  slugify,
   timingFromSchedule,
   validateMomentTiming,
+  validatePlaceUrl,
   validateRefs,
 } from "./validation.js";
 import type { Moment, PhaseConfig, Schedule } from "./vault.js";
@@ -279,5 +281,57 @@ describe("refs", () => {
       ]),
     ).toEqual(["https://b.example/2", "https://a.example/1"]);
     expect(normalizeRefs(undefined)).toEqual([]);
+  });
+});
+
+/**
+ * Mirrors src/domain/__tests__/Moment.test.ts. Both copies must agree: wake
+ * mints from one, zenborg proposes from the other.
+ */
+describe("slugify", () => {
+  it("strips diacritics and lowercases", () => {
+    expect(slugify("São Paulo")).toBe("sao-paulo");
+  });
+
+  it("turns every non-alphanumeric run into a single dash", () => {
+    expect(slugify("Café Lab, Vila Madalena")).toBe("cafe-lab-vila-madalena");
+  });
+
+  it("collapses dash runs", () => {
+    expect(slugify("a  --  b")).toBe("a-b");
+  });
+
+  it("trims leading and trailing dashes", () => {
+    expect(slugify("  -Atlantis-  ")).toBe("atlantis");
+  });
+
+  it("agrees with wake on a key it will have to mint", () => {
+    expect(slugify("Ávalon Café")).toBe("avalon-cafe");
+  });
+
+  it("is idempotent — slugging a slug changes nothing", () => {
+    expect(slugify(slugify("Café Lab, Vila Madalena"))).toBe(
+      "cafe-lab-vila-madalena",
+    );
+  });
+});
+
+describe("validatePlaceUrl", () => {
+  it("accepts a map link", () => {
+    expect(validatePlaceUrl("https://maps.app.goo.gl/abc123")).toBeNull();
+  });
+
+  it("accepts any parseable scheme, as refs do", () => {
+    expect(validatePlaceUrl("things:///show?id=xyz")).toBeNull();
+  });
+
+  it("rejects a string the URL parser cannot read", () => {
+    expect(validatePlaceUrl("avalon coffee")).toBe(
+      "Moment placeUrl is not a parseable URL: avalon coffee",
+    );
+  });
+
+  it("is fine with the field being absent", () => {
+    expect(validatePlaceUrl(undefined)).toBeNull();
   });
 });
