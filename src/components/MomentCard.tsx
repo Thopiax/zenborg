@@ -11,6 +11,7 @@ import { openMomentFormEdit } from "@/infrastructure/state/ui-store";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { healthEmojiClass } from "@/lib/health-style";
 import { cn } from "@/lib/utils";
+import { TagSummary } from "./TagSummary";
 
 interface MomentCardProps {
   moment: Moment;
@@ -153,27 +154,16 @@ export function MomentCard({
         {/* Moment name */}
         <p
           className={cn(
-            "text-lg font-semibold font-mono line-clamp-1 flex-shrink-0",
+            "text-lg font-semibold font-mono truncate min-w-0",
             textColors.primary,
           )}
         >
           {moment.name}
         </p>
-        {moment.tags && (
-          <div className="flex flex-row justify-start text-ellipsis gap-1 overflow-hidden">
-            {moment.tags.map((tag) => (
-              <div
-                key={tag}
-                className={cn(
-                  "text-xs font-mono opacity-60",
-                  textColors.primary,
-                )}
-              >
-                #{tag}
-              </div>
-            ))}
-          </div>
-        )}
+        <TagSummary
+          tags={moment.tags}
+          className={cn("flex-shrink-0", textColors.primary)}
+        />
         {/* The intention marker — same glyph keel shows in its statusline HUD. */}
         {isActive && (
           <span
