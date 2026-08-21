@@ -5,6 +5,7 @@ import type { CooldownSpec, GateSpec, InterceptSpec } from "../Primitive";
 
 const gate: GateSpec = {
   kind: "gate",
+  trigger: { type: "entry" },
   frictionType: { type: "confirmation" },
   proceedAffordance: { label: "proceed", action: { type: "continue" } },
 };
