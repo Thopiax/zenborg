@@ -65,6 +65,10 @@ export interface TransformSpec {
  * overlooked. Nothing here arms them, keel wires neither, and vocabulary no
  * consumer agrees on is the optional escape hatch this field exists not to be.
  * They are one variant away the day a rule needs one.
+ *
+ * `everyMinutes` counts *attended* dwell, not wall-clock: a backgrounded tab or
+ * an idle person does not accrue it. That is keel's contract for the same
+ * trigger (`packages/domain/src/rules.ts`), carried over rather than re-derived.
  */
 export type GateTrigger =
   | { readonly type: "entry" }

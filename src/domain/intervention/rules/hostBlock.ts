@@ -1,5 +1,5 @@
 import type { AreaId, Duration, RuleId } from "../../attention/ids";
-import type { CooldownSpec } from "../Primitive";
+import type { CooldownEnforcement, CooldownSpec } from "../Primitive";
 import type { DistalRef } from "../ProximalOutcome";
 import type { RuleSpec } from "../RuleSpec";
 
@@ -34,16 +34,32 @@ export interface HostBlockInput {
    */
   readonly returnsTo: readonly AreaId[];
   /** The resolver profile carrying the block. Reaches devices the app does not. */
-  readonly resolverProfile: string;
+  readonly resolverProfile?: string;
+  /**
+   * Where the block is applied. Defaults to the resolver when a profile is
+   * named, because that is the reach nothing else here has.
+   *
+   * One rule, one enforcement point, on purpose. A host wanting both the phone
+   * and the laptop browser gets two rules with two ids, so a delivery stays
+   * attributable to the surface that actually made it — which is the whole
+   * reason `Delivery` records an origin.
+   */
+  readonly enforcement?: CooldownEnforcement;
   /** How the block is lifted, deliberately outside the running system. */
   readonly unlockNote: string;
   readonly windowMs?: Duration;
 }
 
 export function hostBlockRule(input: HostBlockInput): RuleSpec {
+  const enforcement: CooldownEnforcement =
+    input.enforcement ??
+    (input.resolverProfile === undefined
+      ? { at: "browser" }
+      : { at: "resolver", profile: input.resolverProfile });
+
   const cooldown: CooldownSpec = {
     kind: "cooldown",
-    enforcement: { at: "resolver", profile: input.resolverProfile },
+    enforcement,
     duration: { type: "standing" },
     unlockPath: { type: "out_of_band", note: input.unlockNote },
   };
@@ -118,19 +134,35 @@ export function hostBlockRule(input: HostBlockInput): RuleSpec {
  * meant to be*, and that is `dwellGate`.
  */
 
+/** A host or a profile name, reduced to something safe to put in an id. */
+function slug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-");
+}
+
 /**
- * A rule id derived from the host it blocks.
+ * A rule id derived from the host it blocks and the point the block is applied.
  *
  * Deterministic on purpose. The seed is installed by hand into the runtime
  * rules, and a re-derived id replaces the file it replaces instead of standing
  * up a second wall beside the first. Rule ids are never reused for a *different*
- * rule, which this respects: one host, one id, forever.
+ * rule, which this respects: one host at one enforcement point, one id, forever.
+ *
+ * The enforcement point is in the id deliberately. A host blocked at the
+ * resolver and in the browser is two rules, see `HostBlockInput.enforcement`,
+ * and two rules need two ids or the second silently overwrites the first.
  */
-export function seedRuleId(host: string): RuleId {
-  return `host-block-${host
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")}`;
+export function seedRuleId(
+  host: string,
+  enforcement: CooldownEnforcement,
+): RuleId {
+  const at =
+    enforcement.at === "resolver"
+      ? `resolver-${slug(enforcement.profile)}`
+      : enforcement.at;
+  return `host-block-${at}-${slug(host)}`;
 }
 
 /**
@@ -160,8 +192,17 @@ export interface HostBlockSeedInput {
    * attention lands next, and that does not change with which wall stopped it.
    */
   readonly returnsTo: readonly AreaId[];
-  readonly resolverProfile: string;
   readonly unlockNote: string;
+  /**
+   * Where every seeded block is applied. Defaults to the browser.
+   *
+   * A resolver-enforced rule reaches the phone and is enforced by a DNS profile
+   * nothing in this system writes; the rule only *describes* it. A
+   * browser-enforced one is actuated here and now, by the extension, from the
+   * armed record. That is the surface this app can actually close, so it is the
+   * default, and the resolver stays one argument away.
+   */
+  readonly enforcement?: CooldownEnforcement;
   /**
    * The hosts to wall, in the order they should be emitted.
    *
@@ -177,18 +218,21 @@ export interface HostBlockSeedInput {
 export function hostBlockSeedRules(
   input: HostBlockSeedInput,
 ): readonly RuleSpec[] {
+  const enforcement: CooldownEnforcement = input.enforcement ?? {
+    at: "browser",
+  };
   const rules: RuleSpec[] = [];
 
   for (const host of input.hosts) {
     rules.push(
       hostBlockRule({
-        id: seedRuleId(host),
+        id: seedRuleId(host, enforcement),
         host,
         name: host,
         description: `A standing wall at ${host}, lifted only out of band.`,
         serves: input.serves,
         returnsTo: input.returnsTo,
-        resolverProfile: input.resolverProfile,
+        enforcement,
         unlockNote: input.unlockNote,
         ...(input.windowMs === undefined ? {} : { windowMs: input.windowMs }),
       }),
