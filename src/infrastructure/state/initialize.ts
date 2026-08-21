@@ -24,7 +24,6 @@ import {
  * 2. Wait for persistence to load existing data
  * 3. Check if data exists (not first run)
  * 4. If empty (first run):
- *    - Create 5 default areas
  *    - Create 4 default phase configurations
  *    - Create first cycle ("First Cycle", starting today)
  * 5. Persist all to IndexedDB (automatically via syncObservable)
@@ -69,9 +68,11 @@ export async function initializeStore(): Promise<void> {
   // First run: seed default data
   console.log("[Zenborg] First run detected - initializing default data");
 
-  // NOTE: Areas are no longer seeded by default.
-  // Users must create their first area from templates in the AreaSelector.
-  // This creates a better first-time experience where users consciously choose their areas.
+  // Areas and habits are not seeded, and there is no code path here that could
+  // seed them. That absence is the guarantee, not a value someone remembered to
+  // clear: a plot is the one input the system cannot derive, infer or defer, so
+  // a first run leaves the board empty and the peer names their own. What ships
+  // is scaffolding only: four phase bands and one cycle to hang a day on.
 
   // Create 4 default phase configurations
   if (!hasPhaseConfigs) {
@@ -183,11 +184,11 @@ export function clearStore(): void {
 
 /**
  * Resets the entire store to factory defaults
- * This clears all data and re-initializes with default areas, phases, and cycle
+ * This clears all data and re-initializes with the phase bands and first cycle
  *
  * Process:
  * 1. Clear all existing data
- * 2. Reinitialize with default data (areas, phases, first cycle)
+ * 2. Reinitialize the scaffolding (phase configurations, first cycle)
  */
 export async function resetStore(): Promise<void> {
   console.log("[Zenborg] Resetting store to factory defaults...");
