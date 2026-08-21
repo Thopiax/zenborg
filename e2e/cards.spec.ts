@@ -1,0 +1,100 @@
+import { expect, test } from "@playwright/test";
+import { seedGarden } from "./support/seed";
+
+/**
+ * Two rules about how a card spends its space:
+ *
+ *   1. The name says what the habit is, so the name wins the row. Tags are
+ *      secondary context and collapse to "#first +N".
+ *   2. A timeline cell is three moment slots tall, always. A fourth moment
+ *      scrolls inside the cell instead of stretching the day out of line.
+ */
+
+test.beforeEach(async ({ page }) => {
+  await seedGarden(page);
+});
+
+test.describe("habit cards", () => {
+  test("shows one tag and a count, never the whole list", async ({ page }) => {
+    const card = page.locator('[data-habit-name="linguaggio"]');
+
+    await expect(card).toContainText("#gap");
+    await expect(card).toContainText("+2");
+    await expect(card).not.toContainText("#gap-screen");
+  });
+
+  test("keeps every tag readable on hover", async ({ page }) => {
+    const summary = page
+      .locator('[data-habit-name="linguaggio"] [data-tag-summary]')
+      .first();
+
+    await expect(summary).toHaveAttribute("title", "#gap #gap-screen #gap-5m");
+  });
+
+  test("leaves a short name untruncated", async ({ page }) => {
+    const name = page
+      .locator('[data-habit-name="linguaggio"] [data-habit-label]')
+      .first();
+
+    const clipped = await name.evaluate(
+      (el) => el.scrollWidth > el.clientWidth + 1,
+    );
+    expect(clipped).toBe(false);
+  });
+});
+
+test.describe("timeline cells", () => {
+  test("a fourth moment scrolls instead of stretching the row", async ({
+    page,
+  }) => {
+    await page.goto("/cultivate");
+
+    const today = new Date().toLocaleDateString("en-CA");
+    const morning = page.locator(`[data-cell="${today}-MORNING"]`);
+    const afternoon = page.locator(`[data-cell="${today}-AFTERNOON"]`);
+
+    await expect(morning.locator("[data-moment-id]")).toHaveCount(4);
+    await expect(afternoon.locator("[data-moment-id]")).toHaveCount(3);
+
+    const [overfull, exact] = await Promise.all([
+      morning.boundingBox(),
+      afternoon.boundingBox(),
+    ]);
+    expect(Math.round(overfull?.height ?? 0)).toBe(
+      Math.round(exact?.height ?? 0),
+    );
+
+    const scrolls = await morning
+      .locator(".overflow-y-auto")
+      .evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+    expect(scrolls).toBe(true);
+  });
+
+  test("three moments fit without scrolling", async ({ page }) => {
+    await page.goto("/cultivate");
+
+    const today = new Date().toLocaleDateString("en-CA");
+    const afternoon = page.locator(`[data-cell="${today}-AFTERNOON"]`);
+
+    const scrolls = await afternoon
+      .locator(".overflow-y-auto")
+      .evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+    expect(scrolls).toBe(false);
+  });
+
+  test("the fourth moment is reachable by scrolling", async ({ page }) => {
+    await page.goto("/cultivate");
+
+    const today = new Date().toLocaleDateString("en-CA");
+    const list = page
+      .locator(`[data-cell="${today}-MORNING"] .overflow-y-auto`)
+      .first();
+
+    await list.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+
+    const last = list.locator("[data-moment-id]").last();
+    await expect(last).toBeInViewport();
+  });
+});
