@@ -7,9 +7,11 @@ import {
   isParseableRef,
   type Moment,
   normalizeRefs,
+  slugify,
   unallocateMoment,
   updateMomentName,
   validateMomentName,
+  validatePlaceUrl,
   validateRefs,
 } from "../entities/Moment";
 import { Phase } from "../value-objects/Phase";
@@ -450,5 +452,99 @@ describe("Moment.personIds", () => {
     // @ts-expect-error personIds is string[] — a bare string must not assign
     const bad: Moment = { ...base, personIds: "p-uma" };
     expect(bad.personIds).toBe("p-uma");
+  });
+});
+
+describe("slugify", () => {
+  it("strips diacritics and lowercases", () => {
+    expect(slugify("São Paulo")).toBe("sao-paulo");
+  });
+
+  it("turns every non-alphanumeric run into a single dash", () => {
+    expect(slugify("Café Lab, Vila Madalena")).toBe("cafe-lab-vila-madalena");
+  });
+
+  it("collapses dash runs", () => {
+    expect(slugify("a  --  b")).toBe("a-b");
+  });
+
+  it("trims leading and trailing dashes", () => {
+    expect(slugify("  -Atlantis-  ")).toBe("atlantis");
+  });
+
+  it("agrees with wake on a key it will have to mint", () => {
+    expect(slugify("Ávalon Café")).toBe("avalon-cafe");
+  });
+
+  it("is idempotent — slugging a slug changes nothing", () => {
+    expect(slugify(slugify("Café Lab, Vila Madalena"))).toBe(
+      "cafe-lab-vila-madalena",
+    );
+  });
+});
+
+describe("validatePlaceUrl", () => {
+  it("accepts a map link", () => {
+    expect(validatePlaceUrl("https://maps.app.goo.gl/abc123")).toBeNull();
+  });
+
+  it("accepts any parseable scheme, as refs do", () => {
+    expect(validatePlaceUrl("things:///show?id=xyz")).toBeNull();
+  });
+
+  it("rejects a string the URL parser cannot read", () => {
+    expect(validatePlaceUrl("avalon coffee")).toBe(
+      "Moment placeUrl is not a parseable URL: avalon coffee",
+    );
+  });
+
+  it("is fine with the field being absent", () => {
+    expect(validatePlaceUrl(undefined)).toBeNull();
+  });
+});
+
+describe("Moment.placeIds and Moment.placeUrl", () => {
+  const base: Moment = {
+    id: "m1",
+    name: "coffee",
+    areaId: "a1",
+    habitId: null,
+    cycleId: null,
+    cyclePlanId: null,
+    phase: Phase.MORNING,
+    day: "2026-08-18",
+    order: 0,
+    tags: null,
+    createdAt: "2026-08-18T00:00:00.000Z",
+    updatedAt: "2026-08-18T00:00:00.000Z",
+  };
+
+  it("names whatever grain the moment knows", () => {
+    const m: Moment = { ...base, placeIds: ["avalon-cafe", "avalon"] };
+    expect(m.placeIds).toEqual(["avalon-cafe", "avalon"]);
+  });
+
+  it("is absent on a moment that knows no place", () => {
+    expect(base.placeIds).toBeUndefined();
+    expect(base.placeUrl).toBeUndefined();
+  });
+
+  it("types placeIds as an optional string array", () => {
+    expectTypeOf<Moment["placeIds"]>().toEqualTypeOf<string[] | undefined>();
+  });
+
+  it("rejects a non-array placeIds at the type level", () => {
+    // @ts-expect-error placeIds is string[] — a bare string must not assign
+    const bad: Moment = { ...base, placeIds: "avalon" };
+    expect(bad.placeIds).toBe("avalon");
+  });
+
+  it("carries the pasted string as minting evidence", () => {
+    const m: Moment = { ...base, placeUrl: "https://maps.app.goo.gl/abc123" };
+    expect(m.placeUrl).toBe("https://maps.app.goo.gl/abc123");
+  });
+
+  it("types placeUrl as an optional string", () => {
+    expectTypeOf<Moment["placeUrl"]>().toEqualTypeOf<string | undefined>();
   });
 });

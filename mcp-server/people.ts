@@ -6,16 +6,19 @@
  * arrangement health.ts already has with HabitHealthService.ts. The two must
  * stay in lockstep; they are small and fully covered by tests on both sides.
  *
- * Deliberately independent of computeHealth: that gates on attitude before
- * rhythm, and people must not depend on attitude. A person is never BUILDING
- * or PUSHING; their health is rhythm and silence, nothing else.
+ * A person is a registry entity (spec D1), not a habit. Zenborg holds only
+ * references: `Moment.personIds` carries entity keys such as `"ada"`. The
+ * declared contact cadence and the paused/active status are registry facts
+ * and arrive here as parameters — this module never reads a habit record and
+ * never stores anything (spec D9). The outreach queue is a read composed at
+ * query time from registry cadence plus zenborg moments.
  *
  * Health is NEVER stored. Recomputed on every read.
  */
+import { type Cadence, cadenceDays, overdueRatio } from "./cadence.js";
 import type { Health } from "./health.js";
 import { parseVaultDay } from "./health.js";
-import type { Habit, Moment, Rhythm } from "./vault.js";
-import { rhythmSilenceThresholdDays } from "./vault.js";
+import type { Moment } from "./vault.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -27,10 +30,13 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  * person's own habit record, whose id the person kept. Most moments in a real
  * vault carry neither field, so the optional chain is load-bearing.
  */
-export function personMoments(personId: string, moments: Moment[]): Moment[] {
+export function personMoments(personKey: string, moments: Moment[]): Moment[] {
   const found: Moment[] = [];
   for (const m of moments) {
-    if (m.habitId === personId || (m.personIds?.includes(personId) ?? false)) {
+    if (
+      m.habitId === personKey ||
+      (m.personIds?.includes(personKey) ?? false)
+    ) {
       found.push(m);
     }
   }
@@ -44,12 +50,12 @@ export function personMoments(personId: string, moments: Moment[]): Moment[] {
  * Use `hasArrangedContact` for the "already sorted, stop nagging" signal.
  */
 export function latestContactDate(
-  personId: string,
+  personKey: string,
   moments: Moment[],
   now: Date,
 ): Date | null {
   let latest: Date | null = null;
-  for (const m of personMoments(personId, moments)) {
+  for (const m of personMoments(personKey, moments)) {
     if (m.day === null) {
       continue;
     }
@@ -73,11 +79,11 @@ export function latestContactDate(
  * moment itself.
  */
 export function hasArrangedContact(
-  personId: string,
+  personKey: string,
   moments: Moment[],
   now: Date,
 ): boolean {
-  for (const m of personMoments(personId, moments)) {
+  for (const m of personMoments(personKey, moments)) {
     if (m.day === null) {
       continue;
     }
@@ -92,15 +98,15 @@ export function hasArrangedContact(
  * Whole days since the last real contact. Null means never.
  *
  * Floors, whereas `personHealth` compares the fractional elapsed days against
- * the threshold — so a `count > 1` rhythm (e.g. {monthly, 4} → 7.5 days) can
- * show a stable "7" here while health flips from blooming to wilting at midday.
+ * the threshold — so this can show a stable "7" while health flips from
+ * blooming to wilting at midday.
  */
 export function daysSinceLastContact(
-  personId: string,
+  personKey: string,
   moments: Moment[],
   now: Date,
 ): number | null {
-  const last = latestContactDate(personId, moments, now);
+  const last = latestContactDate(personKey, moments, now);
   if (last === null) {
     return null;
   }
@@ -108,58 +114,35 @@ export function daysSinceLastContact(
 }
 
 /**
- * Person health: rhythm and silence only. Attitude is never consulted.
+ * Person health: declared cadence and silence only.
  *
- *   no rhythm      -> "unstated"  (a roster entry, not a commitment)
- *   never seen     -> "wilting"
- *   within period  -> "blooming"
- *   past period    -> "wilting"
+ *   paused          -> "unstated"  (stepped back deliberately, never nagged)
+ *   no cadence      -> "unstated"  (a roster entry, not a commitment)
+ *   never seen      -> "wilting"
+ *   within bucket   -> "blooming"
+ *   past bucket     -> "wilting"
+ *
+ * Cadence and status are registry facts, passed in — zenborg stores neither.
  */
 export function personHealth(
-  person: Habit,
+  personKey: string,
+  cadence: Cadence | null,
+  status: "active" | "paused",
   moments: Moment[],
   now: Date,
 ): Health {
-  if (!person.rhythm) {
+  if (status === "paused") {
     return "unstated";
   }
-  const last = latestContactDate(person.id, moments, now);
+  if (cadence === null) {
+    return "unstated";
+  }
+  const last = latestContactDate(personKey, moments, now);
   if (last === null) {
     return "wilting";
   }
   const daysSince = (now.getTime() - last.getTime()) / MS_PER_DAY;
-  return daysSince <= rhythmSilenceThresholdDays(person.rhythm)
-    ? "blooming"
-    : "wilting";
-}
-
-/**
- * How far past their rhythm this person has gone, as a multiple of it.
- *
- * 1.0 is exactly at the threshold; 5.71 is "five and a half times past due".
- * Raw elapsed days cannot express this — an `{annually,1}` friend at 400 days
- * (1.1x) is far less overdue than a `{weekly,2}` friend at 20 days (5.71x),
- * yet raw days ranks the annual one higher forever and buries the short-rhythm
- * people the queue exists to protect.
- *
- * Null means unrankable by ratio: never contacted, or no rhythm to measure
- * against. Both sort to the head via `overdueRank`; in practice only the
- * never-contacted case reaches the queue, since a person with no rhythm is
- * `unstated` and so never wilting.
- *
- * Rounded to 2 decimals, and it is the ROUNDED value that sorts — so the order
- * an agent reads aloud is the order it was handed.
- */
-export function overdueRatio(
-  daysSince: number | null,
-  rhythm: Rhythm | null | undefined,
-): number | null {
-  if (daysSince === null || !rhythm) {
-    return null;
-  }
-  return (
-    Math.round((daysSince / rhythmSilenceThresholdDays(rhythm)) * 100) / 100
-  );
+  return daysSince <= cadenceDays(cadence) ? "blooming" : "wilting";
 }
 
 /**
@@ -171,71 +154,121 @@ export function overdueRank(ratio: number | null): number {
   return ratio === null ? Number.MAX_SAFE_INTEGER : ratio;
 }
 
+/**
+ * A person as wake's registry hands them over (spec D10). The registry owns
+ * display name, aliases and every other piece of entity metadata; zenborg
+ * receives only what the queue needs. No name on purpose — fail-soft says
+ * render the key.
+ */
+export interface RegistryPerson {
+  key: string;
+  cadence: Cadence | null;
+  status: "active" | "paused";
+  category: string | null;
+  favorite: boolean;
+  basePlace: string | null;
+}
+
 export interface PersonToReach {
-  personId: string;
-  name: string;
-  areaId: string;
-  tags: string[];
-  rhythm: Rhythm | null;
+  key: string;
+  category: string | null;
+  cadence: Cadence | null;
   daysSinceLastContact: number | null;
   overdueRatio: number | null;
+  /**
+   * Is this person somewhere other than where the season is being lived?
+   *
+   * `null` means the question could not be asked: either the registry does not
+   * know where they are based, or the current cycle states no place. Unknown
+   * is not the same as near, and a row says so rather than guessing.
+   */
+  far: boolean | null;
 }
 
 /**
- * The outreach queue: who has gone quiet past their rhythm with nothing
- * already arranged, most overdue first.
+ * Where a person is, against where the season is.
  *
- * Pure — the tool handler only reads the two collections and hands them over,
- * so the filter chain, the sort direction and the after-sort slice are all
- * testable without a vault.
+ * Both sides are entity keys, and both sides derive them with the same slug
+ * rule, so this is a plain comparison and not a matching problem.
+ */
+function isFar(
+  basePlace: string | null,
+  here: string[] | undefined,
+): boolean | null {
+  if (basePlace === null || here === undefined || here.length === 0) {
+    return null;
+  }
+  return !here.includes(basePlace);
+}
+
+/**
+ * The outreach queue: who has gone quiet past their declared cadence with
+ * nothing already arranged, most overdue first.
+ *
+ * Ranked by overdue RATIO (days-since / cadence bucket days), never raw days:
+ * raw days would park the long-cadence tail at the head of the queue forever
+ * and bury the short-cadence people the queue exists to protect.
+ *
+ * Pure — the tool handler only reads the registry list and the moments and
+ * hands them over, so the filter chain, the sort direction and the after-sort
+ * slice are all testable without a vault. An empty registry (spec C4: wake's
+ * key-resolve tool does not exist yet) is a normal empty queue, never an
+ * error.
  */
 export function selectPeopleToReach(
-  habits: Record<string, Habit>,
+  people: RegistryPerson[],
   moments: Moment[],
   now: Date,
-  opts: { areaId?: string; tag?: string; limit?: number } = {},
+  opts: {
+    category?: string;
+    limit?: number;
+    here?: string[];
+    far?: boolean;
+  } = {},
 ): PersonToReach[] {
-  const { areaId, tag, limit } = opts;
+  const { category, limit, here, far } = opts;
   const results: PersonToReach[] = [];
 
-  for (const habit of Object.values(habits)) {
-    if (habit.kind !== "person") {
+  for (const person of people) {
+    if (category && person.category !== category) {
       continue;
     }
-    if (habit.isArchived) {
-      continue;
-    }
-    if (areaId && habit.areaId !== areaId) {
-      continue;
-    }
-    if (tag && !(habit.tags ?? []).includes(tag)) {
-      continue;
-    }
-    if (personHealth(habit, moments, now) !== "wilting") {
+    // Paused and cadence-less people are "unstated", never wilting.
+    if (
+      personHealth(person.key, person.cadence, person.status, moments, now) !==
+      "wilting"
+    ) {
       continue;
     }
     // Already reached out and agreed a date — stay quiet.
-    if (hasArrangedContact(habit.id, moments, now)) {
+    if (hasArrangedContact(person.key, moments, now)) {
       continue;
     }
 
-    const daysSince = daysSinceLastContact(habit.id, moments, now);
-    const rhythm = habit.rhythm ?? null;
+    const distance = isFar(person.basePlace, here);
+    // Nobody is excluded by a distance that could not be checked. The same
+    // call `practicesForGap` makes one field over: a list that shrinks in
+    // silence is a failure nobody sees, while one extra row costs a glance.
+    if (far !== undefined && distance !== null && distance !== far) {
+      continue;
+    }
+
+    const daysSince = daysSinceLastContact(person.key, moments, now);
     results.push({
-      personId: habit.id,
-      name: habit.name,
-      areaId: habit.areaId,
-      // Guarded like the `tag` filter above — `PersonToReach.tags` promises
-      // `string[]`, and a vault record written before tags existed has none.
-      tags: habit.tags ?? [],
-      rhythm,
+      key: person.key,
+      category: person.category,
+      cadence: person.cadence,
       daysSinceLastContact: daysSince,
-      overdueRatio: overdueRatio(daysSince, rhythm),
+      overdueRatio:
+        daysSince === null || person.cadence === null
+          ? null
+          : overdueRatio(daysSince, person.cadence),
+      far: distance,
     });
   }
 
   // Sort FIRST, then slice — `limit` must surface the most overdue, not an
-  // arbitrary prefix of the vault's insertion order.
+  // arbitrary prefix of the registry's order.
   results.sort(
     (a, b) => overdueRank(b.overdueRatio) - overdueRank(a.overdueRatio),
   );

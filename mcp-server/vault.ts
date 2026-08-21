@@ -141,7 +141,8 @@ export interface Habit {
   guidance?: string;
   rhythm?: Rhythm;
   schedule?: Schedule;
-  kind?: "person"; // Absent = habit. Mirrors src/domain/entities/Habit.ts
+  /** Where this practice can be done. Mirrors src/domain/entities/Habit.ts. */
+  placeIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -161,6 +162,8 @@ export interface Cycle {
   startDate: string; // YYYY-MM-DD
   endDate: string | null;
   intention?: string;
+  /** Where this season is lived. Mirrors src/domain/entities/Cycle.ts. */
+  placeIds?: string[];
   reflection?: string;
   reflectionSource?: ReflectionSource | null;
   createdAt: string;
@@ -198,6 +201,14 @@ export interface Moment {
    */
   refs?: readonly string[];
   personIds?: string[]; // People present. Mirrors src/domain/entities/Moment.ts
+  /**
+   * Where this moment happened, as registry entity keys at whatever grain
+   * it knows. Absent means unknown, which is honest; a wrong place is not.
+   * Mirrors src/domain/entities/Moment.ts.
+   */
+  placeIds?: string[];
+  /** The pasted map link, kept verbatim as minting evidence for wake. */
+  placeUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
