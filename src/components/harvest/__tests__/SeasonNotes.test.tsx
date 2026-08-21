@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import type { LibraryPort, NoteHit } from "@/application/ports";
+import type { LibraryPort, NotebookPort, NoteHit } from "@/application/ports";
 import { SeasonNotes } from "../SeasonNotes";
 
 globalThis.React = React;
@@ -162,5 +162,124 @@ describe("SeasonNotes: the season's own account of itself", () => {
 
     expect(await screen.findByText(/no ponds registered/)).toBeInTheDocument();
     expect(screen.queryByText(/nothing in the journal/i)).toBeNull();
+  });
+});
+
+/**
+ * Slice C step 5's data half: the garden is the writer of the notes now.
+ *
+ * `wake sync` pulled the device's handwriting into a pond, which left
+ * `journals` with two instrument writers and the substrate's one-writer rule
+ * with nothing to say. The app absorbed the pull, so the garden needs a way for
+ * a person to ask for it — and the place to ask is the one place the garden
+ * reads the journal at all.
+ *
+ * The notebook is a **second port**, not a second method on `LibraryPort`.
+ * Bringing prose in is not a date and some text crossing a boundary; it is a
+ * different relationship, and giving it its own interface is what keeps the
+ * seam's tripwire meaningful instead of merely passed.
+ */
+describe("SeasonNotes: bringing in what the notebook holds", () => {
+  const notebook = (
+    pull: NotebookPort["pull"] = vi.fn().mockResolvedValue("pulled"),
+  ): NotebookPort => ({ pull });
+
+  it("offers nothing when no notebook was handed to it", async () => {
+    render(
+      <SeasonNotes
+        endDate="2026-03-31"
+        intention="Read the tide."
+        library={library()}
+        startDate="2026-03-01"
+      />,
+    );
+
+    await screen.findByText(/nothing in the journal/i);
+    expect(screen.queryByRole("button", { name: /notebook/i })).toBeNull();
+  });
+
+  it("pulls the notebook and then asks the journal again", async () => {
+    const search = vi.fn().mockResolvedValue([]);
+    const pull = vi.fn().mockResolvedValue("pulled lan; index marked stale");
+
+    render(
+      <SeasonNotes
+        endDate="2026-03-31"
+        intention="Read the tide."
+        library={library(search)}
+        notebook={notebook(pull)}
+        startDate="2026-03-01"
+      />,
+    );
+
+    await screen.findByText(/nothing in the journal/i);
+    expect(search).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /notebook/i }));
+
+    // The pull writes prose and marks the index stale; the next read is what
+    // pays for it. Asking again is how the person sees what just arrived.
+    await waitFor(() => expect(pull).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(search).toHaveBeenCalledTimes(2));
+  });
+
+  it("says why a pull failed rather than looking like an empty season", async () => {
+    render(
+      <SeasonNotes
+        endDate="2026-03-31"
+        intention="Read the tide."
+        library={library()}
+        notebook={notebook(
+          vi
+            .fn()
+            .mockRejectedValue(
+              new Error(
+                "supynote CLI not found (install: `uv tool install supynote`)",
+              ),
+            ),
+        )}
+        startDate="2026-03-01"
+      />,
+    );
+
+    await screen.findByText(/nothing in the journal/i);
+    fireEvent.click(screen.getByRole("button", { name: /notebook/i }));
+
+    expect(
+      await screen.findByText(/uv tool install supynote/),
+    ).toBeInTheDocument();
+  });
+
+  it("does not ask twice while a pull is still running", async () => {
+    let release: (value: string) => void = () => {};
+    const pull = vi.fn().mockReturnValue(
+      new Promise<string>((resolve) => {
+        release = resolve;
+      }),
+    );
+
+    render(
+      <SeasonNotes
+        endDate="2026-03-31"
+        intention="Read the tide."
+        library={library()}
+        notebook={notebook(pull)}
+        startDate="2026-03-01"
+      />,
+    );
+
+    await screen.findByText(/nothing in the journal/i);
+    const button = screen.getByRole("button", { name: /notebook/i });
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    expect(pull).toHaveBeenCalledTimes(1);
+
+    release("pulled");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /bring in the notebook/i }),
+      ).toBeEnabled(),
+    );
   });
 });

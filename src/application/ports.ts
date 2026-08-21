@@ -72,8 +72,9 @@ type NoteHit = {
  * again. A method that cannot be described as dates and text belongs in a
  * design of its own.
  *
- * Read-only, and not because writing is unimplemented: the library owns its
- * ponds, and the garden is a reader of them.
+ * Read-only, and not because writing is unimplemented: what the garden writes
+ * to the ponds is prose arriving from a device, and that is `NotebookPort`
+ * below rather than a second method here.
  */
 export interface LibraryPort {
   search(
@@ -86,6 +87,38 @@ export interface LibraryPort {
       readonly until?: string;
     },
   ): Promise<readonly NoteHit[]>;
+}
+
+/**
+ * Bringing prose in from the device.
+ *
+ * Slice C step 5's data half. `journals` used to have two instrument writers —
+ * `wake sync` pulling the Supernote's handwriting into a pond, and a person
+ * with a text editor — and the substrate's one-writer rule was written about
+ * instruments and had no shape for that pair. The app absorbed the pull, so
+ * there is exactly one instrument writing the prose and the rule stands
+ * unchanged. The person stays the author; this does not compete with them.
+ *
+ * **A second port rather than a second method on `LibraryPort`.** Nothing
+ * crosses here: no date, no text, no library concept and no garden concept. It
+ * is a different relationship with the same neighbour, and giving it its own
+ * interface is what keeps the seam's tripwire meaningful rather than merely
+ * passed. A surface handed only a `LibraryPort` still cannot write.
+ *
+ * The pull writes markdown and marks the index stale. It never takes the index
+ * writer lock, so it cannot block a `wake reindex` in a terminal, and a
+ * terminal cannot block it. The next read pays for the staleness, which is the
+ * standing answer to who owns reindex.
+ */
+export interface NotebookPort {
+  /** Pull the device's notes into the journals pond. Returns what happened. */
+  pull(opts?: {
+    /** `lan` (the device's export server) or `server` (a local export dir). */
+    readonly mode?: "lan" | "server";
+    /** Pin the device when LAN discovery is flaky. */
+    readonly ip?: string;
+    readonly port?: number;
+  }): Promise<string>;
 }
 
 export type { NoteHit };
