@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { type Delivery, validateDelivery } from "../../Delivery";
 import type { CooldownSpec } from "../../Primitive";
 import { validateRuleSpec } from "../../RuleSpec";
-import { DROGUE_SEED_HOSTS, hostBlockRule } from "../hostBlock";
+import {
+  DROGUE_SEED_HOSTS,
+  hostBlockRule,
+  hostBlockSeedRules,
+} from "../hostBlock";
 
 const serves = { cycleId: "c-1", areaId: "area-craft" };
 
@@ -154,5 +158,60 @@ describe("DROGUE_SEED_HOSTS", () => {
     );
     for (const r of rules) expect(validateRuleSpec(r)).toEqual([]);
     expect(new Set(rules.map((r) => r.id)).size).toBe(3);
+  });
+});
+
+describe("hostBlockSeedRules", () => {
+  const seeded = hostBlockSeedRules({
+    serves,
+    returnsTo: ["area-craft"],
+    unlockNote: "take it out of the resolver profile, and wait for propagation",
+  });
+
+  it("produces one rule per seed host, and nothing else", () => {
+    expect(seeded.map((r) => (r.scope as { domain: string }).domain)).toEqual([
+      ...DROGUE_SEED_HOSTS,
+    ]);
+  });
+
+  it("every seed rule passes the validator", () => {
+    for (const rule of seeded) expect(validateRuleSpec(rule)).toEqual([]);
+  });
+
+  it("enforces in the browser by default, which is the surface step 5 flips", () => {
+    for (const rule of seeded) {
+      expect((rule.primitives[0] as CooldownSpec).enforcement).toEqual({
+        at: "browser",
+      });
+    }
+  });
+
+  it("gives each host a stable id, so re-seeding replaces rather than duplicates", () => {
+    const again = hostBlockSeedRules({
+      serves,
+      returnsTo: ["area-craft"],
+      unlockNote:
+        "take it out of the resolver profile, and wait for propagation",
+    });
+    expect(again.map((r) => r.id)).toEqual(seeded.map((r) => r.id));
+    expect(new Set(seeded.map((r) => r.id)).size).toBe(seeded.length);
+  });
+
+  it("can be asked for the resolver instead — the reach that covers a phone", () => {
+    const resolver = hostBlockSeedRules({
+      serves,
+      returnsTo: ["area-craft"],
+      unlockNote: "n",
+      enforcement: { at: "resolver", profile: "kairos" },
+    });
+    for (const rule of resolver) {
+      expect((rule.primitives[0] as CooldownSpec).enforcement).toEqual({
+        at: "resolver",
+        profile: "kairos",
+      });
+    }
+    // A different enforcement point is a different rule, so its deliveries stay
+    // attributable to the surface that actually made them.
+    expect(resolver.map((r) => r.id)).not.toEqual(seeded.map((r) => r.id));
   });
 });
