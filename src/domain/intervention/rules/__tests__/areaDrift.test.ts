@@ -48,6 +48,13 @@ describe("areaDriftRule", () => {
     expect(gate.proceedAffordance.label.length).toBeGreaterThan(0);
   });
 
+  it("fires on entry — the crossing itself, not a clock", () => {
+    // The decision point the rule's evaluation already found: the cross-area
+    // tool call. There is nothing to accumulate, so there is nothing to dwell
+    // on.
+    expect(gate.trigger).toEqual({ type: "entry" });
+  });
+
   it("asks for an intention rather than a confirmation", () => {
     // A confirmation is a click. The gate is a door, and stating why you are
     // walking through it is the whole of the friction.
