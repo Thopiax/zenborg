@@ -22,6 +22,7 @@ use std::sync::Arc;
 use penceive_core::infrastructure::workspace;
 use serde::Serialize;
 
+pub mod journals;
 mod staleness;
 
 pub use staleness::{is_note, watch_ponds, Staleness};
@@ -134,13 +135,21 @@ pub fn ponds() -> Vec<PathBuf> {
     }
 }
 
-/// The pond the app reads: the first source in `~/.wake/sources.yaml`.
+/// The pond the app reads and writes: the `journals` collection.
 ///
-/// The registry stays the library's, and the app does not gain a second notion
-/// of where the notes live. Naming a pond is a later question — the app will
-/// want one once there is more than one — and `search_pond` is already the
-/// shape that answers it, so this resolution can change without the port
-/// changing.
+/// Slice C step 5's data half moved this question to the substrate. Once the
+/// prose lives at `$KAIROS_HOME/journals` it is resolved the way every other
+/// collection is, and until then the library's own registry still answers —
+/// see `journals.rs` for why the fallback is a feature rather than a leftover.
+///
+/// Naming a pond is a later question, and `search_pond` is already the shape
+/// that answers it, so this resolution can change without the port changing.
+pub fn pond() -> Result<PathBuf, String> {
+    journals::pond_in(&crate::vault::fs::vault_root()?, primary_pond)
+}
+
+/// The pond the library's registry names: the first source in
+/// `~/.wake/sources.yaml`. What answered before `journals` was a collection.
 fn primary_pond() -> Result<PathBuf, String> {
     workspace::load_sources()?
         .primary()
@@ -163,7 +172,7 @@ pub async fn library_search(
     let staleness = Arc::clone(&staleness);
 
     tauri::async_runtime::spawn_blocking(move || {
-        let pond = primary_pond()?;
+        let pond = pond()?;
         search_fresh(
             &pond,
             &staleness,

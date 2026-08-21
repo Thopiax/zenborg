@@ -7,7 +7,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...a: unknown[]) => invoke(...a),
 }));
 
-import { tauriLibrary } from "../adapter";
+import { tauriLibrary, tauriNotebook } from "../adapter";
 
 describe("LibraryPort — the app can read the notes", () => {
   beforeEach(() => {
@@ -66,6 +66,43 @@ describe("LibraryPort — the app can read the notes", () => {
   });
 });
 
+describe("the notebook: the pull the app absorbed from `wake sync`", () => {
+  it("asks the app to pull, and hands back what happened", async () => {
+    invoke.mockResolvedValue(
+      "pulled lan into /ponds/journals; index marked stale",
+    );
+
+    const said = await tauriNotebook.pull();
+
+    expect(invoke).toHaveBeenCalledWith("library_sync", {
+      mode: undefined,
+      ip: undefined,
+      port: undefined,
+    });
+    expect(said).toMatch(/index marked stale/);
+  });
+
+  it("passes a pinned device through when LAN discovery is flaky", async () => {
+    invoke.mockResolvedValue("pulled");
+
+    await tauriNotebook.pull({ mode: "lan", ip: "192.168.1.9", port: 8089 });
+
+    expect(invoke).toHaveBeenCalledWith("library_sync", {
+      mode: "lan",
+      ip: "192.168.1.9",
+      port: 8089,
+    });
+  });
+
+  it("surfaces a failed pull rather than reporting a quiet success", async () => {
+    invoke.mockRejectedValue(
+      "supynote CLI not found (install: `uv tool install supynote`)",
+    );
+
+    await expect(tauriNotebook.pull()).rejects.toThrow(/uv tool install/);
+  });
+});
+
 describe("the seam carries dates and text, and nothing else", () => {
   /**
    * The port's whole argument is that one method with three scalar fields
@@ -89,5 +126,22 @@ describe("the seam carries dates and text, and nothing else", () => {
       ports.match(/interface LibraryPort \{([\s\S]*?)\n\}/)?.[1] ?? "";
     const methods = [...port.matchAll(/^\s{2}(\w+)\(/gm)].map((m) => m[1]);
     expect(methods).toEqual(["search"]);
+  });
+
+  /**
+   * Step 5's data half added a *second port* rather than a second method, so
+   * the tripwire above stays meaningful. It has the same discipline: writing
+   * prose in is one verb, and a second one needs its own argument.
+   */
+  it("NotebookPort has exactly one method, and it is not on LibraryPort", () => {
+    const ports = readFileSync(
+      join(process.cwd(), "src/application/ports.ts"),
+      "utf-8",
+    );
+
+    const port =
+      ports.match(/interface NotebookPort \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    const methods = [...port.matchAll(/^\s{2}(\w+)\(/gm)].map((m) => m[1]);
+    expect(methods).toEqual(["pull"]);
   });
 });

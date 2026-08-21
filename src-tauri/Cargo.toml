@@ -51,7 +51,7 @@ uuid = { version = "1", features = ["v4"] }
 # has no git remote at all — the design note assumed one and there is none,
 # so a portable pin does not exist to be had. This is the honest form of the
 # same intent, and it dissolves when the repos consolidate.
-penceive-core = { git = "file:///Users/rafa/Developer/equanimitech/penceive", rev = "d8f82dd7a49a82349ed3f1286621d7ce4fd9beba", default-features = false }
+penceive-core = { git = "file:///Users/rafa/Developer/equanimitech/penceive", rev = "21717bc93bc2ef3165fa463579011f034c70e5dc", default-features = false }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

@@ -61,6 +61,7 @@ pub fn run() {
             vault::vault_write_collection,
             vault::vault_root_path,
             library::library_search,
+            library::journals::library_sync,
             mcp_integrations_status,
             rewire_mcp_integrations,
             observer::observer_status,
