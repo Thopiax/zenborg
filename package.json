@@ -38,7 +38,8 @@
     "areas:things": "node scripts/things-area-align.mts",
     "shadow": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/shadow.mts",
     "dev:tauri": "tauri dev",
-    "build:tauri": "PATH=/usr/bin:$PATH dotenv -f .env.development.local,.env tauri build"
+    "build:tauri": "PATH=/usr/bin:$PATH dotenv -f .env.development.local,.env tauri build",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
