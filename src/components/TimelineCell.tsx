@@ -1,6 +1,6 @@
-/** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
-/** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
+/** biome-ignore-all lint/a11y/useSemanticElements: a grid cell that is also a drop target, which no single semantic element covers */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: pointer handlers implement dragging; keyboard access lives on the wrapping control */
+/** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: the role is set dynamically on the same element, which the rule does not follow */
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
@@ -11,12 +11,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
-import { useMemo } from "react";
 import type { Area } from "@/domain/entities/Area";
-import {
-  DAY_VIEW_PHASE_CAPACITY,
-  type Moment,
-} from "@/domain/entities/Moment";
+import { DAY_VIEW_PHASE_CAPACITY, type Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { selectionState$ } from "@/infrastructure/state/selection";

@@ -1,15 +1,13 @@
-import { Command } from "./types";
-import {
-  moments$,
-} from "@/infrastructure/state/store";
-import {
-  focusedMomentId$,
-  openMomentFormCreate,
-} from "@/infrastructure/state/ui-store";
 import {
   deleteMomentWithHistory,
   duplicateMomentWithHistory,
 } from "@/infrastructure/state/history-middleware";
+import { moments$ } from "@/infrastructure/state/store";
+import {
+  focusedMomentId$,
+  openMomentFormCreate,
+} from "@/infrastructure/state/ui-store";
+import type { Command } from "./types";
 
 export const momentCommands: Command[] = [
   {
@@ -20,7 +18,7 @@ export const momentCommands: Command[] = [
     keywords: ["new", "add"],
     action: () => {
       openMomentFormCreate();
-    }
+    },
   },
   {
     id: "moment.delete",
@@ -33,7 +31,7 @@ export const momentCommands: Command[] = [
       if (focusedId) {
         deleteMomentWithHistory(focusedId);
       }
-    }
+    },
   },
   {
     id: "moment.duplicate",
@@ -53,6 +51,6 @@ export const momentCommands: Command[] = [
       if (newMomentId) {
         focusedMomentId$.set(newMomentId);
       }
-    }
-  }
+    },
+  },
 ];

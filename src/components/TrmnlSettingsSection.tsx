@@ -1,19 +1,19 @@
 "use client";
 
 import { useValue } from "@legendapp/state/react";
-import { Dice5, Loader2, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Dice5, Loader2, RefreshCw } from "lucide-react";
+import {
+  startTrmnlSync,
+  stopTrmnlSync,
+  syncTrmnlNow,
+} from "@/infrastructure/integrations/trmnl-sync";
 import type { PublishMode } from "@/infrastructure/state/integration-store";
 import {
   isTrmnlConfigured,
   trmnlSettings$,
   trmnlSyncStatus$,
 } from "@/infrastructure/state/integration-store";
-import {
-  startTrmnlSync,
-  stopTrmnlSync,
-  syncTrmnlNow,
-} from "@/infrastructure/integrations/trmnl-sync";
 
 function generateApiKey(): string {
   const array = new Uint8Array(16);
@@ -56,10 +56,10 @@ export function TrmnlSettingsSection() {
       </p>
 
       {/* Publish Mode */}
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-stone-700 dark:text-stone-300">
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-medium text-stone-700 dark:text-stone-300">
           Mode
-        </label>
+        </legend>
         <div className="flex gap-2">
           {(["direct", "relay"] as const).map((mode) => (
             <button
@@ -81,15 +81,19 @@ export function TrmnlSettingsSection() {
             ? "Push directly to TRMNL webhook. Works when app is open."
             : "Push via server relay. Works even when browser is closed."}
         </p>
-      </div>
+      </fieldset>
 
       {/* Direct Mode Fields */}
       {settings.publishMode === "direct" && (
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-stone-700 dark:text-stone-300">
+          <label
+            htmlFor="trmnl-webhook-uuid"
+            className="text-xs font-medium text-stone-700 dark:text-stone-300"
+          >
             Plugin UUID
           </label>
           <input
+            id="trmnl-webhook-uuid"
             type="text"
             value={settings.webhookUuid}
             onChange={(e) => trmnlSettings$.webhookUuid.set(e.target.value)}
@@ -106,11 +110,15 @@ export function TrmnlSettingsSection() {
       {settings.publishMode === "relay" && (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-stone-700 dark:text-stone-300">
+            <label
+              htmlFor="trmnl-relay-api-key"
+              className="text-xs font-medium text-stone-700 dark:text-stone-300"
+            >
               API Key
             </label>
             <div className="flex gap-2">
               <input
+                id="trmnl-relay-api-key"
                 type="text"
                 value={settings.relayApiKey}
                 onChange={(e) => trmnlSettings$.relayApiKey.set(e.target.value)}
@@ -128,7 +136,8 @@ export function TrmnlSettingsSection() {
               </button>
             </div>
             <p className="text-xs text-stone-400 dark:text-stone-600">
-              Shared secret between Zenborg and the relay. Copy this to your TRMNL plugin&apos;s polling headers.
+              Shared secret between Zenborg and the relay. Copy this to your
+              TRMNL plugin&apos;s polling headers.
             </p>
           </div>
         </div>
@@ -147,9 +156,7 @@ export function TrmnlSettingsSection() {
       >
         <div
           className={`w-2 h-2 rounded-full ${
-            settings.enabled
-              ? "bg-green-500"
-              : "bg-stone-300 dark:bg-stone-600"
+            settings.enabled ? "bg-green-500" : "bg-stone-300 dark:bg-stone-600"
           }`}
         />
         <span className="text-sm font-medium text-stone-900 dark:text-stone-100">

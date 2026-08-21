@@ -8,16 +8,19 @@
 import { differenceInDays, subDays } from "date-fns";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
-import type { Moment } from "@/domain/entities/Moment";
 import type { MetricLog } from "@/domain/entities/MetricLog";
-import { Attitude } from "@/domain/value-objects/Attitude";
+import type { Moment } from "@/domain/entities/Moment";
 import { attitudeService } from "@/domain/services/AttitudeService";
+import { Attitude } from "@/domain/value-objects/Attitude";
 
 /**
  * BEGINNING attitude feedback
  * Shows: Count of times allocated
  */
-export function getBeginningFeedback(moments: Moment[], momentName: string): string {
+export function getBeginningFeedback(
+  moments: Moment[],
+  momentName: string,
+): string {
   const count = moments.filter((m) => m.name === momentName).length;
 
   if (count === 0) return "Not yet allocated";
@@ -31,7 +34,10 @@ export function getBeginningFeedback(moments: Moment[], momentName: string): str
  * KEEPING attitude feedback
  * Shows: Days since last allocation (neutral, not guilt)
  */
-export function getKeepingFeedback(moments: Moment[], momentName: string): string {
+export function getKeepingFeedback(
+  moments: Moment[],
+  momentName: string,
+): string {
   // Find all allocated instances of this moment (has a day)
   const allocatedMoments = moments
     .filter((m) => m.name === momentName && m.day !== null)
@@ -60,7 +66,10 @@ export function getKeepingFeedback(moments: Moment[], momentName: string): strin
  * BUILDING attitude feedback
  * Shows: Frequency patterns over time
  */
-export function getBuildingFeedback(moments: Moment[], momentName: string): {
+export function getBuildingFeedback(
+  moments: Moment[],
+  momentName: string,
+): {
   thisWeek: number;
   thisMonth: number;
   display: string;
@@ -71,7 +80,7 @@ export function getBuildingFeedback(moments: Moment[], momentName: string): {
 
   // Only count allocated moments (has a day)
   const allocatedMoments = moments.filter(
-    (m) => m.name === momentName && m.day !== null
+    (m) => m.name === momentName && m.day !== null,
   );
 
   const thisWeek = allocatedMoments.filter((m) => {
@@ -109,7 +118,7 @@ export function getBuildingFeedback(moments: Moment[], momentName: string): {
  */
 export function getPushingFeedback(
   moment: Moment,
-  logs: MetricLog[]
+  logs: MetricLog[],
 ): {
   latest: MetricLog | null;
   display: string;
@@ -154,7 +163,7 @@ export function getAttitudeFeedback(
   allMoments: Moment[],
   metricLogs: MetricLog[],
   habits: Record<string, Habit>,
-  areas: Record<string, Area>
+  areas: Record<string, Area>,
 ): string | null {
   const attitude = attitudeService.getMomentAttitude(moment, habits, areas);
 
@@ -200,7 +209,7 @@ export function getAttitudeFeedback(
 export function shouldShowAttitudeFeedback(
   moment: Moment,
   habits: Record<string, Habit>,
-  areas: Record<string, Area>
+  areas: Record<string, Area>,
 ): boolean {
   const attitude = attitudeService.getMomentAttitude(moment, habits, areas);
   return attitude !== null;
@@ -209,6 +218,9 @@ export function shouldShowAttitudeFeedback(
 /**
  * Get count of allocations for a moment (used by BEGINNING attitude)
  */
-export function getAllocationCount(moments: Moment[], momentName: string): number {
+export function getAllocationCount(
+  moments: Moment[],
+  momentName: string,
+): number {
   return moments.filter((m) => m.name === momentName).length;
 }

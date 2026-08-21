@@ -32,20 +32,25 @@ export function useHabitHealth(habitId: string): HabitHealthSnapshot {
 
   const plan = activeCycleId
     ? (Object.values(allPlans).find(
-        (p) => p.cycleId === activeCycleId && p.habitId === habitId
+        (p) => p.cycleId === activeCycleId && p.habitId === habitId,
       ) ?? null)
     : null;
 
   const momentsList = Object.values(allMoments);
   const now = new Date();
 
-  const health = habitHealthService.computeHealth(habit, plan, momentsList, now);
+  const health = habitHealthService.computeHealth(
+    habit,
+    plan,
+    momentsList,
+    now,
+  );
 
   // Same selection `computeHealth` just used, via the one shared predicate.
   // A narrower filter here would render "·400d" on the card of someone whose
   // group dinner two days ago already made them blooming above.
   const habitMoments = momentsList.filter((m) =>
-    momentInvolvesHabit(m, habitId)
+    momentInvolvesHabit(m, habitId),
   );
   const latest = habitHealthService.latestAllocationDate(habitMoments, now);
   const daysSinceLast =

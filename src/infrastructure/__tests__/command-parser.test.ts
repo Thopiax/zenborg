@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { parseCommand, isCommandError } from "../state/command-parser";
+import { describe, expect, it } from "vitest";
 import { Phase } from "@/domain/value-objects/Phase";
+import { isCommandError, parseCommand } from "../state/command-parser";
 
 describe("Command Parser", () => {
   describe("Allocation Commands", () => {

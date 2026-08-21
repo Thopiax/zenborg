@@ -2,7 +2,11 @@ import { format, parseISO } from "date-fns";
 import type { Area } from "@/domain/entities/Area";
 import type { Cycle } from "@/domain/entities/Cycle";
 import type { Moment } from "@/domain/entities/Moment";
-import { type PhaseConfig, getCurrentPhase, getPhaseConfig } from "@/domain/value-objects/Phase";
+import {
+  getCurrentPhase,
+  getPhaseConfig,
+  type PhaseConfig,
+} from "@/domain/value-objects/Phase";
 
 // ============================================================================
 // Types
@@ -42,7 +46,7 @@ export function formatTodayForTrmnl(
   phaseConfigs: Record<string, PhaseConfig>,
   activeCycle: Cycle | null,
   today: string,
-  currentHour?: number
+  currentHour?: number,
 ): TrmnlPayload {
   const allMoments = Object.values(moments);
   const configsArray = Object.values(phaseConfigs);

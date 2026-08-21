@@ -5,11 +5,7 @@ import {
   type SelectorOption,
   SelectorPopover,
 } from "@/components/SelectorPopover";
-import {
-  ATTITUDE_METADATA,
-  ATTITUDE_METADATA_ARRAY,
-  Attitude,
-} from "@/domain/value-objects/Attitude";
+import { ATTITUDE_METADATA, Attitude } from "@/domain/value-objects/Attitude";
 
 interface AttitudeSelectorProps {
   open: boolean;
@@ -61,7 +57,7 @@ export function AttitudeSelector({
         ...ATTITUDE_METADATA[attitude],
       })),
     ],
-    []
+    [],
   );
 
   return (

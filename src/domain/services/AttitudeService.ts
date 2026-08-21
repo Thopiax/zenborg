@@ -1,6 +1,6 @@
-import type { Moment } from "@/domain/entities/Moment";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
+import type { Moment } from "@/domain/entities/Moment";
 import type { Attitude } from "@/domain/value-objects/Attitude";
 
 /**
@@ -29,7 +29,7 @@ export class AttitudeService {
   getMomentAttitude(
     moment: Moment,
     habits: Record<string, Habit>,
-    areas: Record<string, Area>
+    areas: Record<string, Area>,
   ): Attitude | null {
     // Try to get attitude from linked habit first
     if (moment.habitId) {
@@ -61,7 +61,7 @@ export class AttitudeService {
   getMomentsAttitudes(
     moments: Moment[],
     habits: Record<string, Habit>,
-    areas: Record<string, Area>
+    areas: Record<string, Area>,
   ): Map<string, Attitude | null> {
     const result = new Map<string, Attitude | null>();
 

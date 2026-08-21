@@ -74,7 +74,7 @@ describe("MomentStack", () => {
     it("should not show counter badge for single moment", () => {
       const moment = createTestMoment();
       const { container } = render(
-        <MomentStack moments={[moment]} area={testArea} />
+        <MomentStack moments={[moment]} area={testArea} />,
       );
 
       // Counter badge should not be present
@@ -99,11 +99,11 @@ describe("MomentStack", () => {
 
     it("should render visual stack layers (max 2 layers behind)", () => {
       const moments = Array.from({ length: 6 }, (_, i) =>
-        createTestMoment({ id: `moment-${i}` })
+        createTestMoment({ id: `moment-${i}` }),
       );
 
-      const { container} = render(
-        <MomentStack moments={moments} area={testArea} />
+      const { container } = render(
+        <MomentStack moments={moments} area={testArea} />,
       );
 
       // Should have exactly 2 visual layers behind the top card (max is 2)
@@ -118,7 +118,7 @@ describe("MomentStack", () => {
       ];
 
       const { container } = render(
-        <MomentStack moments={moments} area={testArea} />
+        <MomentStack moments={moments} area={testArea} />,
       );
 
       // count-1 = 2-1 = 1 layer behind
@@ -143,7 +143,7 @@ describe("MomentStack", () => {
   describe("edge cases", () => {
     it("should handle empty moments array gracefully", () => {
       const { container } = render(
-        <MomentStack moments={[]} area={testArea} />
+        <MomentStack moments={[]} area={testArea} />,
       );
 
       // Should render nothing or a placeholder
@@ -152,7 +152,7 @@ describe("MomentStack", () => {
 
     it("should show counter badge for 10+ moments", () => {
       const moments = Array.from({ length: 15 }, (_, i) =>
-        createTestMoment({ id: `moment-${i}` })
+        createTestMoment({ id: `moment-${i}` }),
       );
 
       render(<MomentStack moments={moments} area={testArea} />);
@@ -173,7 +173,7 @@ describe("MomentStack", () => {
           onIncrement={() => {}}
           onDecrement={() => {}}
           onRemove={() => {}}
-        />
+        />,
       );
 
       // Even with 1 moment (no visual layers), padding-top should be reserved
@@ -195,7 +195,7 @@ describe("MomentStack", () => {
           onIncrement={() => {}}
           onDecrement={() => {}}
           onRemove={() => {}}
-        />
+        />,
       );
 
       const draggable = container.querySelector("[data-draggable]");
@@ -206,7 +206,7 @@ describe("MomentStack", () => {
       const singleMoment = [createTestMoment({ id: "1" })];
 
       const { container } = render(
-        <MomentStack moments={singleMoment} area={testArea} />
+        <MomentStack moments={singleMoment} area={testArea} />,
       );
 
       const draggable = container.querySelector("[data-draggable]");
@@ -222,7 +222,7 @@ describe("MomentStack", () => {
       ];
 
       const { container } = render(
-        <MomentStack moments={moments} area={testArea} />
+        <MomentStack moments={moments} area={testArea} />,
       );
 
       // Should have draggable container
@@ -237,7 +237,7 @@ describe("MomentStack", () => {
       ];
 
       const { container } = render(
-        <MomentStack moments={moments} area={testArea} />
+        <MomentStack moments={moments} area={testArea} />,
       );
 
       const draggable = container.querySelector("[data-draggable]");

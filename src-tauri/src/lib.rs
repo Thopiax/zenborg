@@ -1,7 +1,20 @@
+mod login_item;
+pub mod library;
 mod mcp_install;
+mod observer;
+mod scheduler;
 mod vault;
 
+use std::sync::Arc;
+
+use library::Staleness;
+use observer::{ObserverConfig, ObserverState};
+use tauri::Manager;
 use vault::VaultState;
+
+/// The window zenborg opens. Named here because background mode has to find it
+/// again to hide it.
+const MAIN_WINDOW: &str = "main";
 
 #[tauri::command]
 fn mcp_integrations_status() -> mcp_install::IntegrationsStatus {
@@ -21,8 +34,22 @@ async fn rewire_mcp_integrations() -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Resolved before the builder so the window policy and the observer read
+    // the same document exactly once.
+    let observer_config: ObserverConfig = observer::resolve_config();
+    let background = observer_config.enabled;
+    let start_hidden = observer_config.start_hidden;
+
+    // Slice C step 5. The app owns reindex now, and this is the whole of what
+    // it owns: one bit saying the ponds have moved on. The watcher sets it and
+    // the next reader clears it. See `library/staleness.rs` for why neither a
+    // watcher-triggered nor a clock-triggered reindex is the right shape.
+    let staleness = Arc::new(Staleness::fresh());
+
     tauri::Builder::default()
         .manage(VaultState::new())
+        .manage(ObserverState::new(observer_config))
+        .manage(Arc::clone(&staleness))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
@@ -33,10 +60,17 @@ pub fn run() {
             vault::vault_read_collection,
             vault::vault_write_collection,
             vault::vault_root_path,
+            library::library_search,
+            library::journals::library_sync,
             mcp_integrations_status,
             rewire_mcp_integrations,
+            observer::observer_status,
+            observer::observer_set_paused,
+            login_item::login_item_status,
+            login_item::login_item_register,
+            login_item::login_item_unregister,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             // Global shortcuts (desktop only)
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
@@ -57,6 +91,44 @@ pub fn run() {
             // Start vault watcher (fires `vault:collection-changed` events)
             if let Err(e) = vault::bootstrap(app.handle()) {
                 log::warn!("[vault] Failed to start watcher: {}", e);
+            }
+
+            // Watch the library's ponds. Managed rather than dropped: a
+            // `notify` watcher stops watching the moment it falls out of
+            // scope, and this one has to outlive setup.
+            if let Some(watcher) = library::bootstrap(Arc::clone(&staleness)) {
+                app.manage(std::sync::Mutex::new(watcher));
+            }
+
+            // ── Background mode ──────────────────────────────────
+            //
+            // Migration steps 3 and 4 of "the garden absorbs keel". The
+            // desktop activity writer and the two schedules that were three
+            // launchd agents now belong to this process. Both are off unless
+            // the keel config says otherwise, because `apps/tray` and the
+            // plists are not retired until step 6 and two writers on one
+            // collection would double every event.
+            observer::bootstrap(app.handle());
+            scheduler::bootstrap();
+
+            if background {
+                // Closing the window stops being quitting. The observer's
+                // whole value is uptime, and a writer that dies when you tidy
+                // your desktop is the failure the tray's launchd agent was
+                // written to end. Cmd-Q still quits — the exit stays reachable,
+                // which is the invariant this system does not trade away.
+                if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
+                    let hidden = window.clone();
+                    window.on_window_event(move |event| {
+                        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                            api.prevent_close();
+                            let _ = hidden.hide();
+                        }
+                    });
+                    if start_hidden {
+                        let _ = window.hide();
+                    }
+                }
             }
 
             // Auto-wire the bundled `zenborg-mcp` sidecar into Claude

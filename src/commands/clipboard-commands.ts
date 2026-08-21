@@ -1,17 +1,15 @@
-import { Command } from "./types";
-import {
-  moments$,
-} from "@/infrastructure/state/store";
-import {
-  focusedMomentId$,
-  momentFormState$,
-} from "@/infrastructure/state/ui-store";
-import { selectionState$ } from "@/infrastructure/state/selection";
 import { createMoment } from "@/domain/entities/Moment";
 import {
   createMomentWithHistory,
   unallocateMomentWithHistory,
 } from "@/infrastructure/state/history-middleware";
+import { selectionState$ } from "@/infrastructure/state/selection";
+import { moments$ } from "@/infrastructure/state/store";
+import {
+  focusedMomentId$,
+  momentFormState$,
+} from "@/infrastructure/state/ui-store";
+import type { Command } from "./types";
 
 // Internal clipboard state (could also use Legend State observable)
 let clipboardMoment: any = null;
@@ -31,7 +29,7 @@ export const clipboardCommands: Command[] = [
       if (moment) {
         clipboardMoment = moment;
       }
-    }
+    },
   },
   {
     id: "clipboard.paste",
@@ -47,11 +45,11 @@ export const clipboardCommands: Command[] = [
         areaId: clipboardMoment.areaId,
       });
 
-      if (!('error' in result)) {
+      if (!("error" in result)) {
         createMomentWithHistory(result);
         focusedMomentId$.set(result.id);
       }
-    }
+    },
   },
   {
     id: "clipboard.delete",
@@ -68,7 +66,7 @@ export const clipboardCommands: Command[] = [
         // Unallocate if allocated
         unallocateMomentWithHistory(focusedId);
       }
-    }
+    },
   },
   {
     id: "selection.all",
@@ -79,7 +77,7 @@ export const clipboardCommands: Command[] = [
     action: () => {
       const allMomentIds = Object.keys(moments$.peek());
       selectionState$.selectedMomentIds.set(allMomentIds);
-    }
+    },
   },
   {
     id: "selection.clear",
@@ -91,6 +89,6 @@ export const clipboardCommands: Command[] = [
       selectionState$.selectedMomentIds.set([]);
       // Also close any open dialogs
       momentFormState$.open.set(false);
-    }
-  }
+    },
+  },
 ];
