@@ -29,7 +29,7 @@ import {
   parseVaultDay,
   resolveRhythm,
 } from "./health.js";
-import { selectPeopleToReach } from "./people.js";
+import { type RegistryPerson, selectPeopleToReach } from "./people.js";
 import { buildTagIndex, buildTagProfile } from "./tags.js";
 import {
   areaHasMoments,
@@ -55,9 +55,11 @@ import {
   requireCycle,
   schedulePhaseError,
   scheduleRhythmError,
+  slugify,
   timingFromSchedule,
   validateMomentTiming,
   validateOneToThreeWords,
+  validatePlaceUrl,
   validateRefs,
 } from "./validation.js";
 import {
@@ -410,12 +412,12 @@ server.tool(
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
     aliases: z.array(z.string()).optional(),
-    kind: z.literal("person").optional(),
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
     rhythm: RhythmSchema.optional(),
     schedule: ScheduleSchema.optional(),
+    placeIds: z.array(z.string()).optional(),
   },
   async (params): Promise<ToolResult> => {
     const nameError = validateOneToThreeWords(params.name, "Habit");
@@ -456,13 +458,17 @@ server.tool(
       isArchived: false,
       order: params.order,
       ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
-      ...(params.kind ? { kind: params.kind } : {}),
       ...(params.description?.trim()
         ? { description: params.description.trim() }
         : {}),
       ...(params.guidance?.trim() ? { guidance: params.guidance.trim() } : {}),
       ...(rhythm ? { rhythm } : {}),
       ...(schedule ? { schedule } : {}),
+      ...(params.placeIds && params.placeIds.length > 0
+        ? {
+            placeIds: params.placeIds.map(slugify).filter((k) => k.length > 0),
+          }
+        : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -484,12 +490,12 @@ server.tool(
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
     aliases: z.array(z.string()).nullable().optional(),
-    kind: z.literal("person").nullable().optional(),
     emoji: z.string().nullable().optional(),
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
     rhythm: RhythmSchema.nullable().optional(),
     schedule: ScheduleSchema.nullable().optional(),
+    placeIds: z.array(z.string()).nullable().optional(),
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
@@ -542,11 +548,14 @@ server.tool(
         next.rhythm = updates.rhythm;
       }
     }
-    if ("kind" in updates) {
-      if (updates.kind === null) {
-        delete next.kind;
-      } else if (updates.kind !== undefined) {
-        next.kind = updates.kind;
+    if ("placeIds" in updates) {
+      const keys = (updates.placeIds ?? [])
+        .map(slugify)
+        .filter((k) => k.length > 0);
+      if (keys.length === 0) {
+        delete next.placeIds;
+      } else {
+        next.placeIds = keys;
       }
     }
     if ("aliases" in updates) {
@@ -731,17 +740,25 @@ server.tool(
 
 server.tool(
   "list_people_to_reach",
-  "List people who have gone quiet past their rhythm and have nothing already arranged. Ordered by how far past their OWN rhythm they are (`overdueRatio`, a multiple of their threshold — 5.71 means five and a half times overdue), NOT by raw elapsed days, so a weekly friend at 20 days outranks an annual one at 400. Never-contacted people come first. Filter by areaId or by a place tag such as paris, bcn, sp, london, nyc.",
+  "The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by registry `category` (friend, family, lover, colleague), or by `far` — whether they are based somewhere other than where the current cycle is being lived. Every row carries `far`; `null` means unknown, either because the registry has no base place for them or because the season states none, and nobody is ever dropped by a distance that could not be checked.",
   {
-    areaId: z.string().optional(),
-    tag: z.string().optional(),
+    category: z.string().optional(),
     limit: z.number().int().positive().optional(),
+    far: z.boolean().optional(),
   },
-  async ({ areaId, tag, limit }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, "habits");
+  async ({ category, limit, far }): Promise<ToolResult> => {
+    // Registry people come from wake's knowledge graph (spec D1/D9). The
+    // key-resolve tool does not exist yet (spec C2/C4), so the list is empty
+    // and the queue returns [] — by design, never an error.
+    const registryPeople: RegistryPerson[] = [];
     const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
     return ok(
-      selectPeopleToReach(habits, moments, new Date(), { areaId, tag, limit }),
+      selectPeopleToReach(registryPeople, moments, new Date(), {
+        category,
+        limit,
+        here: currentPlaceIds(),
+        ...(far !== undefined ? { far } : {}),
+      }),
     );
   },
 );
@@ -918,6 +935,26 @@ function isCycleActive(cycle: Cycle, todayMs: number): boolean {
   return !Number.isNaN(endMs) && endMs >= todayMs;
 }
 
+/**
+ * Where the season is being lived, as entity keys.
+ *
+ * A cycle is a stretch of time somewhere, so the current cycle is the smallest
+ * container that already knows where "here" is — nothing has to be told twice
+ * and nothing has to ask an operating system. Empty when no cycle is running or
+ * the running one states no place, and an empty "here" excludes nobody.
+ */
+function currentPlaceIds(): string[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayMs = today.getTime();
+  // Latest-starting active cycle wins, matching how overlapping seasons
+  // resolve everywhere else dates are the arbiter.
+  const active = Object.values(readCollection(VAULT_ROOT, "cycles"))
+    .filter((c) => isCycleActive(c, todayMs))
+    .sort((a, b) => b.startDate.localeCompare(a.startDate));
+  return active[0]?.placeIds ?? [];
+}
+
 server.tool(
   "list_cycles",
   'List cycles. filter: "active"/"current" = contains today (derived from dates), "upcoming" = starts in future, "all" = everything. Default "all".',
@@ -982,8 +1019,15 @@ server.tool(
       .nullable()
       .optional(),
     intention: z.string().optional(),
+    placeIds: z.array(z.string()).optional(),
   },
-  async ({ name, startDate, endDate, intention }): Promise<ToolResult> => {
+  async ({
+    name,
+    startDate,
+    endDate,
+    intention,
+    placeIds,
+  }): Promise<ToolResult> => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const now = nowIso();
     const resolvedStart = startDate ?? new Date().toISOString().slice(0, 10);
@@ -993,6 +1037,9 @@ server.tool(
       startDate: resolvedStart,
       endDate: endDate ?? null,
       ...(intention?.trim() ? { intention: intention.trim() } : {}),
+      ...(placeIds && placeIds.length > 0
+        ? { placeIds: placeIds.map(slugify).filter((k) => k.length > 0) }
+        : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -1052,6 +1099,7 @@ server.tool(
       .optional(),
     intention: z.string().optional(),
     reflection: z.string().optional(),
+    placeIds: z.array(z.string()).nullable().optional(),
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
@@ -1080,6 +1128,16 @@ server.tool(
         : {}),
       updatedAt: nowIso(),
     };
+    if ("placeIds" in updates) {
+      const keys = (updates.placeIds ?? [])
+        .map(slugify)
+        .filter((k) => k.length > 0);
+      if (keys.length === 0) {
+        delete next.placeIds;
+      } else {
+        next.placeIds = keys;
+      }
+    }
     cycles[id] = next;
     writeCollection(VAULT_ROOT, "cycles", cycles);
     return ok({ updated: next });
@@ -1416,6 +1474,8 @@ function buildMoment(params: {
   emoji?: string | null;
   tags?: string[] | null;
   personIds?: string[];
+  placeIds?: string[];
+  placeUrl?: string;
   customMetric?: Moment["customMetric"];
   startTime?: string;
   durationMin?: number;
@@ -1442,6 +1502,12 @@ function buildMoment(params: {
     ...(params.personIds && params.personIds.length > 0
       ? { personIds: params.personIds }
       : {}),
+    // Same absent-never-empty rule as `personIds`: one representation of
+    // "the place is unknown", which is honest where a wrong place is not.
+    ...(params.placeIds && params.placeIds.length > 0
+      ? { placeIds: params.placeIds.map(slugify).filter((k) => k.length > 0) }
+      : {}),
+    ...(params.placeUrl !== undefined ? { placeUrl: params.placeUrl } : {}),
     ...(params.customMetric ? { customMetric: params.customMetric } : {}),
     // Absent, not empty: one representation of "refers to nothing".
     ...(refs.length > 0 ? { refs } : {}),
@@ -1460,6 +1526,8 @@ server.tool(
     emoji: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
     personIds: z.array(z.string()).optional(),
+    placeIds: z.array(z.string()).optional(),
+    placeUrl: z.string().optional(),
     customMetric: CustomMetricSchema.optional(),
     startTime: StartTimeSchema.optional(),
     durationMin: z.number().int().positive().optional(),
@@ -1478,6 +1546,9 @@ server.tool(
     const refsError = validateRefs(params.refs);
     if (refsError) return err(refsError);
 
+    const placeUrlError = validatePlaceUrl(params.placeUrl);
+    if (placeUrlError) return err(placeUrlError);
+
     const areas = readCollection(VAULT_ROOT, "areas");
     const areaCheck = requireActiveArea(areas, params.areaId);
     if (typeof areaCheck === "string") return err(areaCheck);
@@ -1492,7 +1563,7 @@ server.tool(
 
 server.tool(
   "update_moment",
-  "Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, pass `[]` to clear. `personIds` replaces the whole guest list — pass null or [] to clear it, omit it to leave it alone.",
+  "Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, pass `[]` to clear. `personIds` replaces the whole guest list — pass null or [] to clear it, omit it to leave it alone. `placeIds` and `placeUrl` behave the same way: pass null or [] to clear, omit to leave alone.",
   {
     id: z.string(),
     name: z.string().optional(),
@@ -1501,6 +1572,8 @@ server.tool(
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
     personIds: z.array(z.string()).nullable().optional(),
+    placeIds: z.array(z.string()).nullable().optional(),
+    placeUrl: z.string().nullable().optional(),
     customMetric: CustomMetricSchema.optional(),
     startTime: StartTimeSchema.nullable().optional(),
     durationMin: z.number().int().positive().nullable().optional(),
@@ -1564,6 +1637,25 @@ server.tool(
         delete next.personIds;
       } else {
         next.personIds = list;
+      }
+    }
+    if ("placeIds" in updates) {
+      const keys = (updates.placeIds ?? [])
+        .map(slugify)
+        .filter((k) => k.length > 0);
+      if (keys.length === 0) {
+        delete next.placeIds;
+      } else {
+        next.placeIds = keys;
+      }
+    }
+    if ("placeUrl" in updates) {
+      const placeUrlError = validatePlaceUrl(updates.placeUrl ?? undefined);
+      if (placeUrlError) return err(placeUrlError);
+      if (updates.placeUrl === null || updates.placeUrl === undefined) {
+        delete next.placeUrl;
+      } else {
+        next.placeUrl = updates.placeUrl;
       }
     }
     moments[id] = next;
@@ -1806,6 +1898,8 @@ server.tool(
     emoji: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
     personIds: z.array(z.string()).optional(),
+    placeIds: z.array(z.string()).optional(),
+    placeUrl: z.string().optional(),
     startTime: StartTimeSchema.optional(),
     durationMin: z.number().int().positive().optional(),
     refs: z.array(z.string()).optional(),
@@ -1822,6 +1916,9 @@ server.tool(
 
     const refsError = validateRefs(params.refs);
     if (refsError) return err(refsError);
+
+    const placeUrlError = validatePlaceUrl(params.placeUrl);
+    if (placeUrlError) return err(placeUrlError);
 
     const areas = readCollection(VAULT_ROOT, "areas");
     const areaCheck = requireActiveArea(areas, params.areaId);
@@ -1843,6 +1940,8 @@ server.tool(
       emoji: params.emoji ?? null,
       tags: params.tags,
       personIds: params.personIds,
+      placeIds: params.placeIds,
+      placeUrl: params.placeUrl,
       startTime: params.startTime,
       durationMin: params.durationMin,
       refs: params.refs,
@@ -2043,7 +2142,7 @@ server.tool(
 
 server.tool(
   "list_tags",
-  "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read a namespace as an index — `person-` = the People index, `place-` = the Places index. Sorted by total usage.",
+  "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read any namespace as an index. Sorted by total usage. People and places are NOT here: they are entity keys in `Moment.personIds`, `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds` — ask those fields, or `list_people_to_reach`. A `person-` or `place-` tag surfacing in this index is a habit the migration has not reached, not the index for that type.",
   {
     prefix: z.string().optional(),
   },
@@ -2057,7 +2156,7 @@ server.tool(
 
 server.tool(
   "get_tag_profile",
-  'One tag\'s neighborhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments (people ↔ places ↔ themes), first/last day, and a recent sample. Answers questions like "what did I do with person-ada, and where?" — the co-occurrence of a `person-` tag with `place-` tags and habits IS that story.',
+  'One tag\'s neighbourhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments, first/last day, and a recent sample. Generic tag aggregation — it never parsed a prefix and does not know what a person or a place is. "What did I do with someone, and where?" is now a question for `personIds` and `placeIds`, which hold references rather than strings.',
   {
     tag: z.string().min(1),
   },
@@ -2076,7 +2175,7 @@ server.tool(
 
 server.tool(
   "get_related_habits",
-  "A habit's derived edges in the garden graph — no stored relations, computed from existing data: `sharedTags` (habits whose tag signatures overlap — a signature is the habit's tags plus its moments' tags, so person-/place- mediation like \"gym and padel, both with Ada\" surfaces here), `coOccurrence` (habits allocated on the same days, with the share of this habit's active days), and `areaSiblings` (active habits in the same plot).",
+  "A habit's derived edges in the garden graph — no stored relations, computed from existing data: `sharedTags` (habits whose tag signatures overlap — a signature is the habit's tags plus its moments' tags), `coOccurrence` (habits allocated on the same days, with the share of this habit's active days), and `areaSiblings` (active habits in the same plot). Tags only. Edges mediated by a shared person or place are not computed here, because those are references now rather than tags; a habit whose moments share `personIds` will not surface as related until something reads that field.",
   {
     habitId: z.string(),
   },
