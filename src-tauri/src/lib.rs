@@ -1,4 +1,5 @@
 mod login_item;
+pub mod library;
 mod mcp_install;
 mod observer;
 mod scheduler;
@@ -49,6 +50,7 @@ pub fn run() {
             vault::vault_read_collection,
             vault::vault_write_collection,
             vault::vault_root_path,
+            library::library_search,
             mcp_integrations_status,
             rewire_mcp_integrations,
             observer::observer_status,
