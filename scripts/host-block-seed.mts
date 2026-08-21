@@ -8,11 +8,13 @@
  * plots attention should come back to, and the resolver profile — and splitting
  * the file would have split one person's ids across two.
  *
- * `hostBlockSeedRules` in the domain names no plot and no season, because the
- * plots below are one person's garden and the domain is not the place for one
- * person's ids. This file is that place, the same arrangement
- * `things-area-map.seed.json` uses: the proposal is committed to the repo, the
- * live artefact lands in the vault, and the vault is edited by hand.
+ * `hostBlockSeedRules` in the domain names no plot, no season and, since
+ * 2026-08-21, no host either. The plots below and the hosts in
+ * `host-block-seed.hosts.json` beside it are one person's garden and one
+ * person's compulsions, and the domain is not the place for either. This file is
+ * that place, the same arrangement `things-area-map.seed.json` uses: the
+ * proposal is committed to the repo, the live artefact lands in the vault, and
+ * the vault is edited by hand.
  *
  * It writes nothing. `$KAIROS_HOME/keel/rules/` is private tier, so this prints
  * and stops; installing is a deliberate act, which is the same thing the rules
@@ -23,8 +25,11 @@
  *   node scripts/host-block-seed.mts --cycle <id> --profile <resolver-profile>
  *   node scripts/host-block-seed.mts --cycle <id> --host lichess.org --host chess.com
  *
- * `--host` narrows the walls only. The dwell gate is one named site with a
- * written diagnosis rather than an entry on a list, so it is always emitted.
+ * With no `--host`, the walls are the ones in `host-block-seed.hosts.json`,
+ * which is where the list itself now lives and where it is edited. `--host`
+ * narrows the walls to what is named on the command line. The dwell gate is one
+ * named site with a written diagnosis rather than an entry on a list, so it is
+ * always emitted.
  *
  * To install, one file per rule:
  *   node scripts/host-block-seed.mts --cycle <id> \
@@ -47,10 +52,33 @@
  * added beside a live block leaves the reload loop exactly where it was.
  */
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { validateDelivery } from "../src/domain/intervention/Delivery.ts";
 import { validateRuleSpec } from "../src/domain/intervention/RuleSpec.ts";
 import { linkedinDwellGate } from "../src/domain/intervention/rules/dwellGate.ts";
 import { hostBlockSeedRules } from "../src/domain/intervention/rules/hostBlock.ts";
+
+/**
+ * The walls, read rather than declared.
+ *
+ * The list is data, not code: it changes when a reach changes, it carries a
+ * written reason per host, and none of that is a domain concern. Reading it
+ * here is what keeps `hostBlock.ts` free of any host at all.
+ */
+const HOSTS_SEED = path.join(import.meta.dirname, "host-block-seed.hosts.json");
+
+function seedHosts(): string[] {
+  const doc = JSON.parse(readFileSync(HOSTS_SEED, "utf8")) as {
+    hosts?: { host?: string }[];
+  };
+  const hosts: string[] = [];
+  for (const entry of doc.hosts ?? []) {
+    const host = entry?.host?.trim();
+    if (host) hosts.push(host);
+  }
+  return hosts;
+}
 
 /**
  * The plots attention should return to when a wall is met.
@@ -106,7 +134,15 @@ function main(): void {
     process.exit(2);
   }
 
-  const hosts = args("--host");
+  const named = args("--host");
+  const hosts = named.length > 0 ? named : seedHosts();
+  if (hosts.length === 0) {
+    console.error(
+      `no hosts to wall: ${path.basename(HOSTS_SEED)} is empty and none were named with --host.\n` +
+        "The domain carries no default list, deliberately: a wall nobody chose is nobody's wall.",
+    );
+    process.exit(2);
+  }
   const serves = { cycleId, areaId: SERVES_AREA };
 
   const rules = [
@@ -115,12 +151,12 @@ function main(): void {
       returnsTo: [...RETURNS_TO],
       resolverProfile: arg("--profile") ?? DEFAULT_PROFILE,
       unlockNote: arg("--unlock") ?? DEFAULT_UNLOCK,
-      ...(hosts.length > 0 ? { hosts } : {}),
+      hosts,
     }),
     /**
      * LinkedIn, on the primitive that fits it.
      *
-     * It is not in `DROGUE_SEED_HOSTS` and must not go back: a standing wall on
+     * It is not in `host-block-seed.hosts.json` and must not go back: a wall on
      * a site you are already inside is a wall the running SPA keeps knocking on
      * (`keel/docs/pain/2026-08-19-linkedin-reloads-the-feed-...`). It gets the
      * shape that measurably curbed YouTube instead — a stopping cue every twenty
