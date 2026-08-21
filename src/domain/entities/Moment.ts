@@ -1,7 +1,7 @@
-import { validateTag } from "../services/TagService";
+import { validateTag } from "../services/TagService.ts";
 import type { CustomMetric } from "../value-objects/Attitude";
 import type { Phase } from "../value-objects/Phase";
-import { isValidStartTime } from "../value-objects/Schedule";
+import { isValidStartTime } from "../value-objects/Schedule.ts";
 
 /**
  * Moment - A named intention (1-3 words maximum)

@@ -6,8 +6,8 @@ import {
   readImportFile,
   validateImportData,
 } from "@/application/use-cases/export-import";
-import { writeCollection } from "../vault/adapter";
-import { isTauri } from "../vault/is-tauri";
+import { writeCollection } from "../vault/adapter.ts";
+import { isTauri } from "../vault/is-tauri.ts";
 import {
   areas$,
   cyclePlans$,
