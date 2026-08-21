@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { LibraryPort } from "@/application/ports";
+import type { LibraryPort, NotebookPort } from "@/application/ports";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { composeReflection } from "@/domain/value-objects/Reflection";
@@ -36,6 +36,7 @@ export function SeasonReadback({
   season,
   onEditReflection,
   library,
+  notebook,
 }: {
   season: HarvestSeason | null;
   /**
@@ -49,6 +50,12 @@ export function SeasonReadback({
    * handed a port.
    */
   library?: LibraryPort;
+  /**
+   * Write access to the notes: the pull the app absorbed from `wake sync`.
+   * Optional and separate from `library`, so reading the journal never implies
+   * being able to write to it.
+   */
+  notebook?: NotebookPort;
 }) {
   if (!season) {
     return (
@@ -119,6 +126,7 @@ export function SeasonReadback({
             endDate={season.endDate}
             intention={season.intention}
             library={library}
+            notebook={notebook}
             startDate={season.startDate}
           />
         </div>

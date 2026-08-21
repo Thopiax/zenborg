@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { LibraryPort, NoteHit } from "@/application/ports";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { LibraryPort, NotebookPort, NoteHit } from "@/application/ports";
 import { getDateLabel } from "@/lib/dates";
 
 /**
@@ -25,12 +25,20 @@ import { getDateLabel } from "@/lib/dates";
  * **No score renders.** The port carries one because ranking is how a search
  * orders itself, but harvest never returns a verdict (`docs/principles.md`
  * Red Lines). A relevance number beside your own words is a verdict.
+ *
+ * **The notebook is optional and separate.** Step 5's data half made the app
+ * the writer of the notes, so a person needs somewhere to ask for the pull, and
+ * the place to ask is the one place the garden reads the journal at all. It
+ * arrives as its own port: a surface handed only a `LibraryPort` still cannot
+ * write, and the seam stays one method wide. Omit `notebook` and nothing is
+ * offered.
  */
 export function SeasonNotes({
   intention,
   startDate,
   endDate,
   library,
+  notebook,
 }: {
   /** The season's intention. Null means no question to ask, so none is asked. */
   readonly intention: string | null;
@@ -38,6 +46,8 @@ export function SeasonNotes({
   /** Null while the season is still open, and the window stays open with it. */
   readonly endDate: string | null;
   readonly library: LibraryPort;
+  /** Omit and no pull is offered. Injected, never imported, like the library. */
+  readonly notebook?: NotebookPort;
 }) {
   const [state, setState] = useState<
     | { readonly kind: "asking" }
@@ -45,12 +55,25 @@ export function SeasonNotes({
     | { readonly kind: "unreachable"; readonly why: string }
   >({ kind: "asking" });
 
-  useEffect(() => {
+  const [pull, setPull] = useState<
+    | { readonly kind: "idle" }
+    | { readonly kind: "pulling" }
+    | { readonly kind: "failed"; readonly why: string }
+  >({ kind: "idle" });
+
+  // Which question is the current one. An answer to an abandoned question --
+  // the season changed, or a later ask overtook this one -- is discarded rather
+  // than rendered, so what is on screen is always the answer to what is asked.
+  const current = useRef(0);
+
+  const ask = useCallback(() => {
     if (!intention) {
       return;
     }
 
-    let live = true;
+    current.current += 1;
+    const mine = current.current;
+    setState({ kind: "asking" });
 
     library
       .search(intention, {
@@ -59,23 +82,55 @@ export function SeasonNotes({
         until: endDate ?? undefined,
       })
       .then((hits) => {
-        if (live) {
+        if (mine === current.current) {
           setState({ kind: "answered", hits });
         }
       })
       .catch((error: unknown) => {
-        if (live) {
+        if (mine === current.current) {
           setState({
             kind: "unreachable",
             why: error instanceof Error ? error.message : String(error),
           });
         }
       });
-
-    return () => {
-      live = false;
-    };
   }, [intention, startDate, endDate, library]);
+
+  /**
+   * Bring in what the notebook holds, then ask the journal again.
+   *
+   * Asking again is not a refresh for its own sake. The pull writes prose and
+   * marks the index stale; the next read is what pays for that staleness. So
+   * the second ask is how what just arrived becomes visible, and it is the
+   * whole loop -- write, mark, read, pay -- running once in front of a person.
+   */
+  const bringInTheNotebook = useCallback(() => {
+    if (!notebook || pull.kind === "pulling") {
+      return;
+    }
+
+    setPull({ kind: "pulling" });
+    notebook
+      .pull()
+      .then(() => {
+        setPull({ kind: "idle" });
+        ask();
+      })
+      .catch((error: unknown) => {
+        setPull({
+          kind: "failed",
+          why: error instanceof Error ? error.message : String(error),
+        });
+      });
+  }, [notebook, pull.kind, ask]);
+
+  useEffect(() => {
+    ask();
+    // Leaving, or a new season: abandon whatever is still in flight.
+    return () => {
+      current.current += 1;
+    };
+  }, [ask]);
 
   if (!intention) {
     return null;
@@ -83,9 +138,35 @@ export function SeasonNotes({
 
   return (
     <section className="border-t border-stone-200 pt-8 dark:border-stone-800">
-      <h2 className="text-xs uppercase tracking-wider text-stone-400 dark:text-stone-500">
-        From the journal
-      </h2>
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-xs uppercase tracking-wider text-stone-400 dark:text-stone-500">
+          From the journal
+        </h2>
+
+        {notebook && (
+          <button
+            className="text-xs text-stone-400 underline-offset-4 hover:underline disabled:no-underline disabled:opacity-60 dark:text-stone-500"
+            disabled={pull.kind === "pulling"}
+            onClick={bringInTheNotebook}
+            type="button"
+          >
+            {pull.kind === "pulling"
+              ? "Bringing in the notebook…"
+              : "Bring in the notebook"}
+          </button>
+        )}
+      </div>
+
+      {/*
+        A pull that failed is not an empty season either. The device being
+        unreachable and having written nothing are different facts, and only
+        one of them is about the person.
+      */}
+      {pull.kind === "failed" && (
+        <p className="mt-4 text-sm text-stone-500 dark:text-stone-400">
+          The notebook could not be brought in. {pull.why}
+        </p>
+      )}
 
       {state.kind === "asking" && (
         <p className="mt-4 text-sm text-stone-400 dark:text-stone-500">
