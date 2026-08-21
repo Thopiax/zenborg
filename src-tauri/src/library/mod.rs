@@ -17,9 +17,14 @@
 //! or any garden concept, and nothing in this module tempts it to.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use penceive_core::infrastructure::workspace;
 use serde::Serialize;
+
+mod staleness;
+
+pub use staleness::{is_note, watch_ponds, Staleness};
 
 /// One thing the library found: when it was written, what it says, how well it
 /// matched. Three fields, and the garden must not grow a fourth without the
@@ -85,6 +90,50 @@ pub fn search_pond(
         .collect())
 }
 
+/// Search one pond, paying first for whatever the watcher noticed.
+///
+/// Slice C step 5. The app owns reindex now, and this is where it owns it: not
+/// on a clock, and not in the watcher, but in the hands of the reader who
+/// actually wants a current answer. See `staleness.rs` for the argument.
+///
+/// A reindex that fails is logged and dropped. The index is derived and
+/// disposable, so the worst it costs is an older answer, and an older answer
+/// is a great deal better than a garden that cannot read the notes at all
+/// because a pond moved.
+pub fn search_fresh(
+    pond: &Path,
+    staleness: &Staleness,
+    query: &str,
+    limit: usize,
+    since: Option<&str>,
+    until: Option<&str>,
+) -> Result<Vec<NoteHit>, String> {
+    if staleness.take() {
+        // Incremental. On a journal pond that is an mtime scan, so the cost is
+        // proportional to what changed rather than to what exists.
+        if let Err(e) = penceive_core::reindex_source(pond, false) {
+            log::warn!("[library] reindex skipped, answering from the index we have: {e}");
+        }
+    }
+
+    search_pond(pond, query, limit, since, until)
+}
+
+/// Everything the app reads: every pond in the library's own registry.
+///
+/// The registry stays the library's. Slice C did not give the app a second
+/// notion of where the notes live, and this is a read of the library's answer
+/// rather than an opinion of the app's.
+pub fn ponds() -> Vec<PathBuf> {
+    match workspace::load_sources() {
+        Ok(cfg) => cfg.sources.iter().map(|s| s.path.clone()).collect(),
+        Err(e) => {
+            log::warn!("[library] no ponds to watch: {e}");
+            Vec::new()
+        }
+    }
+}
+
 /// The pond the app reads: the first source in `~/.wake/sources.yaml`.
 ///
 /// The registry stays the library's, and the app does not gain a second notion
@@ -105,15 +154,19 @@ fn primary_pond() -> Result<PathBuf, String> {
 /// and an always-on app must not stall its UI on a corpus scan.
 #[tauri::command]
 pub async fn library_search(
+    staleness: tauri::State<'_, Arc<Staleness>>,
     query: String,
     limit: Option<usize>,
     since: Option<String>,
     until: Option<String>,
 ) -> Result<Vec<NoteHit>, String> {
+    let staleness = Arc::clone(&staleness);
+
     tauri::async_runtime::spawn_blocking(move || {
         let pond = primary_pond()?;
-        search_pond(
+        search_fresh(
             &pond,
+            &staleness,
             &query,
             limit.unwrap_or(20),
             since.as_deref(),
@@ -122,6 +175,26 @@ pub async fn library_search(
     })
     .await
     .map_err(|e| format!("join error: {e}"))?
+}
+
+/// Start watching the ponds. The watcher lives as long as the app does.
+///
+/// Failing here costs freshness and nothing else, so it warns rather than
+/// stopping the launch: a garden that cannot watch the notes must still open.
+pub fn bootstrap(staleness: Arc<Staleness>) -> Option<notify::RecommendedWatcher> {
+    let ponds = ponds();
+    if ponds.is_empty() {
+        log::info!("[library] no ponds registered; nothing to watch");
+        return None;
+    }
+
+    match watch_ponds(&ponds, staleness) {
+        Ok(w) => Some(w),
+        Err(e) => {
+            log::warn!("[library] pond watcher not started: {e}");
+            None
+        }
+    }
 }
 
 #[cfg(test)]

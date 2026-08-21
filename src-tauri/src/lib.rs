@@ -5,6 +5,9 @@ mod observer;
 mod scheduler;
 mod vault;
 
+use std::sync::Arc;
+
+use library::Staleness;
 use observer::{ObserverConfig, ObserverState};
 use tauri::Manager;
 use vault::VaultState;
@@ -37,9 +40,16 @@ pub fn run() {
     let background = observer_config.enabled;
     let start_hidden = observer_config.start_hidden;
 
+    // Slice C step 5. The app owns reindex now, and this is the whole of what
+    // it owns: one bit saying the ponds have moved on. The watcher sets it and
+    // the next reader clears it. See `library/staleness.rs` for why neither a
+    // watcher-triggered nor a clock-triggered reindex is the right shape.
+    let staleness = Arc::new(Staleness::fresh());
+
     tauri::Builder::default()
         .manage(VaultState::new())
         .manage(ObserverState::new(observer_config))
+        .manage(Arc::clone(&staleness))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
@@ -80,6 +90,13 @@ pub fn run() {
             // Start vault watcher (fires `vault:collection-changed` events)
             if let Err(e) = vault::bootstrap(app.handle()) {
                 log::warn!("[vault] Failed to start watcher: {}", e);
+            }
+
+            // Watch the library's ponds. Managed rather than dropped: a
+            // `notify` watcher stops watching the moment it falls out of
+            // scope, and this one has to outlive setup.
+            if let Some(watcher) = library::bootstrap(Arc::clone(&staleness)) {
+                app.manage(std::sync::Mutex::new(watcher));
             }
 
             // ── Background mode ──────────────────────────────────
