@@ -175,6 +175,30 @@ export interface PersonToReach {
   cadence: Cadence | null;
   daysSinceLastContact: number | null;
   overdueRatio: number | null;
+  /**
+   * Is this person somewhere other than where the season is being lived?
+   *
+   * `null` means the question could not be asked: either the registry does not
+   * know where they are based, or the current cycle states no place. Unknown
+   * is not the same as near, and a row says so rather than guessing.
+   */
+  far: boolean | null;
+}
+
+/**
+ * Where a person is, against where the season is.
+ *
+ * Both sides are entity keys, and both sides derive them with the same slug
+ * rule, so this is a plain comparison and not a matching problem.
+ */
+function isFar(
+  basePlace: string | null,
+  here: string[] | undefined,
+): boolean | null {
+  if (basePlace === null || here === undefined || here.length === 0) {
+    return null;
+  }
+  return !here.includes(basePlace);
 }
 
 /**
@@ -195,9 +219,14 @@ export function selectPeopleToReach(
   people: RegistryPerson[],
   moments: Moment[],
   now: Date,
-  opts: { category?: string; limit?: number } = {},
+  opts: {
+    category?: string;
+    limit?: number;
+    here?: string[];
+    far?: boolean;
+  } = {},
 ): PersonToReach[] {
-  const { category, limit } = opts;
+  const { category, limit, here, far } = opts;
   const results: PersonToReach[] = [];
 
   for (const person of people) {
@@ -216,6 +245,14 @@ export function selectPeopleToReach(
       continue;
     }
 
+    const distance = isFar(person.basePlace, here);
+    // Nobody is excluded by a distance that could not be checked. The same
+    // call `practicesForGap` makes one field over: a list that shrinks in
+    // silence is a failure nobody sees, while one extra row costs a glance.
+    if (far !== undefined && distance !== null && distance !== far) {
+      continue;
+    }
+
     const daysSince = daysSinceLastContact(person.key, moments, now);
     results.push({
       key: person.key,
@@ -226,6 +263,7 @@ export function selectPeopleToReach(
         daysSince === null || person.cadence === null
           ? null
           : overdueRatio(daysSince, person.cadence),
+      far: distance,
     });
   }
 

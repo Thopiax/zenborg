@@ -141,6 +141,8 @@ export interface Habit {
   guidance?: string;
   rhythm?: Rhythm;
   schedule?: Schedule;
+  /** Where this practice can be done. Mirrors src/domain/entities/Habit.ts. */
+  placeIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -160,6 +162,8 @@ export interface Cycle {
   startDate: string; // YYYY-MM-DD
   endDate: string | null;
   intention?: string;
+  /** Where this season is lived. Mirrors src/domain/entities/Cycle.ts. */
+  placeIds?: string[];
   reflection?: string;
   reflectionSource?: ReflectionSource | null;
   createdAt: string;

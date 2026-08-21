@@ -524,3 +524,113 @@ describe("selectPeopleToReach", () => {
     expect(rows.map((r) => r.key)).toEqual(["wes", "yin"]);
   });
 });
+
+/**
+ * `far` compares where a person is based against where the season is being
+ * lived — `Cycle.placeIds` on the current cycle, passed in as `here` so the
+ * function stays pure and the tool handler owns the vault read.
+ */
+describe("selectPeopleToReach — far", () => {
+  const silent = { moments: [] as Moment[], now: NOW };
+
+  it("is true when the person's base is not where the season is", () => {
+    const rows = selectPeopleToReach(
+      [registryPerson({ key: "ada", basePlace: "avalon" })],
+      silent.moments,
+      silent.now,
+      { here: ["atlantis"] },
+    );
+    expect(rows[0]?.far).toBe(true);
+  });
+
+  it("is false when the person is based where the season is", () => {
+    const rows = selectPeopleToReach(
+      [registryPerson({ key: "bea", basePlace: "atlantis" })],
+      silent.moments,
+      silent.now,
+      { here: ["atlantis"] },
+    );
+    expect(rows[0]?.far).toBe(false);
+  });
+
+  it("counts a season spanning two cities as near to both", () => {
+    const rows = selectPeopleToReach(
+      [
+        registryPerson({ key: "ada", basePlace: "avalon" }),
+        registryPerson({ key: "bea", basePlace: "atlantis" }),
+      ],
+      silent.moments,
+      silent.now,
+      { here: ["atlantis", "avalon"] },
+    );
+    expect(rows.map((r) => r.far)).toEqual([false, false]);
+  });
+
+  it("is null when the registry does not know where they are based", () => {
+    const rows = selectPeopleToReach(
+      [registryPerson({ key: "cai", basePlace: null })],
+      silent.moments,
+      silent.now,
+      { here: ["atlantis"] },
+    );
+    expect(rows[0]?.far).toBeNull();
+  });
+
+  it("is null when the season states no place — an uncheckable constraint", () => {
+    const rows = selectPeopleToReach(
+      [registryPerson({ key: "ada", basePlace: "avalon" })],
+      silent.moments,
+      silent.now,
+      {},
+    );
+    expect(rows[0]?.far).toBeNull();
+  });
+
+  it("filters to the far when asked", () => {
+    const rows = selectPeopleToReach(
+      [
+        registryPerson({ key: "ada", basePlace: "avalon" }),
+        registryPerson({ key: "bea", basePlace: "atlantis" }),
+      ],
+      silent.moments,
+      silent.now,
+      { here: ["atlantis"], far: true },
+    );
+    expect(rows.map((r) => r.key)).toEqual(["ada"]);
+  });
+
+  it("filters to the near when asked", () => {
+    const rows = selectPeopleToReach(
+      [
+        registryPerson({ key: "ada", basePlace: "avalon" }),
+        registryPerson({ key: "bea", basePlace: "atlantis" }),
+      ],
+      silent.moments,
+      silent.now,
+      { here: ["atlantis"], far: false },
+    );
+    expect(rows.map((r) => r.key)).toEqual(["bea"]);
+  });
+
+  it("never excludes someone by a distance it could not check", () => {
+    // The same call `practicesForGap` makes one field over: a roster that
+    // shrinks in silence is a failure nobody sees.
+    const rows = selectPeopleToReach(
+      [registryPerson({ key: "cai", basePlace: null })],
+      silent.moments,
+      silent.now,
+      { here: ["atlantis"], far: true },
+    );
+    expect(rows.map((r) => r.key)).toEqual(["cai"]);
+  });
+
+  it("compares keys, not labels — the registry and the cycle both slug", () => {
+    const rows = selectPeopleToReach(
+      [registryPerson({ key: "ada", basePlace: "new-atlantis" })],
+      silent.moments,
+      silent.now,
+      { here: ["new-atlantis"] },
+    );
+    expect(rows[0]?.far).toBe(false);
+  });
+});

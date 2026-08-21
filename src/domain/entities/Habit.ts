@@ -34,6 +34,18 @@ export interface Habit {
   guidance?: string; // Practitioner-facing guidance for the habit
   rhythm?: Rhythm; // Optional declared cadence (count per period)
   schedule?: Schedule; // Optional clock-time commitment (weekdays + HH:MM + minutes)
+  /**
+   * Where this practice can actually be done, as registry entity keys.
+   *
+   * `dead hang` needs a pull-up bar and the bar is in one city. A practice
+   * bound to no place is offered everywhere, which is most of the roster;
+   * binding is the exception and says so by being present.
+   *
+   * Supersedes the `place-<key>` tag, which was the same reference written
+   * smaller because there was no field to hold it. `placesOf` still falls
+   * back to those tags until the migration moves them here.
+   */
+  placeIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
