@@ -1,0 +1,40 @@
+{
+  "note": "The hosts that take a standing wall. Hand-editable. \"//\" is why this one, and it is the whole record of the decision. This seed is the proposal committed to the repo; the live artefacts are rule files under $KAIROS_HOME/keel/rules/, emitted by scripts/host-block-seed.mts and installed by hand. One person's list, not a default: the domain carries no host at all, and a peer's list is their own file.",
+  "version": 1,
+  "hosts": [
+    {
+      "host": "youtube.com",
+      "//": "the original, unchanged"
+    },
+    {
+      "host": "chess.com",
+      "//": "the original, unchanged"
+    },
+    {
+      "host": "lichess.org",
+      "//": "the one genuine hole in the old list: chess was named as a thing to curb and the second place it happens was matched by nothing. A different registrable domain, so no chess.com pattern reaches it, and a full site rather than a doorway to one."
+    }
+  ],
+  "consideredAndLeftOff": [
+    {
+      "host": "m.youtube.com",
+      "//": "already covered. hostBlockRule emits *://*.<host>/* alongside the bare host, and keel's DNR projection matches requestDomains against subdomains too. A second name for a route already closed is a second place to forget."
+    },
+    {
+      "host": "www.linkedin.com",
+      "//": "same: a subdomain of a host, and moot besides; see linkedin.com below."
+    },
+    {
+      "host": "youtu.be",
+      "//": "a pure redirector. Every path through it ends in a request to youtube.com, which is already refused, so adding it closes no route; it only moves where the refusal appears. It does not help on the phone either: the link hands off to the app, which never asks for either host."
+    },
+    {
+      "host": "lnkd.in",
+      "//": "the same shape for LinkedIn, and moot besides; see below."
+    },
+    {
+      "host": "linkedin.com",
+      "//": "it was here, and it was the wrong primitive. keel/docs/pain/2026-08-19-linkedin-reloads-the-feed-because-it-is-on-the-wrong-primiti.md records what a standing access-block does to a site you are already inside: the SPA is still running when the block lands, its data requests fail one at a time, its client reads each failure as a transient network error and re-mounts, and the shell keeps rendering because the asset domain is a different registrable domain. A wall a site can keep knocking on is the least reliable shape available. It gets the dwell gate instead, which the seed script emits alongside these."
+    }
+  ]
+}
