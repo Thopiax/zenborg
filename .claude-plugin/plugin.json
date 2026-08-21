@@ -1,6 +1,0 @@
-{
-  "name": "zenborg",
-  "version": "0.1.0",
-  "description": "The garden's Claude Code surface. Reads the fences you declared and puts friction on crossing them — and nothing else, yet.",
-  "author": { "name": "Rafael T. Ballestiero" }
-}
