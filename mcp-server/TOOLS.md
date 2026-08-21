@@ -189,17 +189,27 @@ rule still sitting there is inert until it is re-declared through these tools.
 
 ### Tags — derived index (added 2026-08-14)
 
-People and places are **dash-namespaced tags** (`person-<name>`, `place-<name>`) on moments
-and habits — the stopgap for first-class Person/Place entities. These tools derive the index
-at read time from the existing collections: **no stored index, no vault shape change**, so
-neither vault implementation pays a cost. `normalizeTags` strips `/` and `:` — dashes are
-the only namespacing that survives.
+These tools derive a tag index at read time from the existing collections: **no stored
+index, no vault shape change**, so neither vault implementation pays a cost. `normalizeTags`
+strips `/` and `:` — dashes are the only namespacing that survives.
+
+**People and places are no longer tags.** `person-<name>` and `place-<name>` were the
+stopgap for first-class entities, and the entities arrived: people live in
+`Moment.personIds`, places in `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds`, all
+of them registry entity keys. The kernel's flatten rule always made `place-atlantis` and
+`kairos:place/atlantis` the same reference — only the storage changed.
+
+`tags.ts` and `graph.ts` needed no change for this, because they never parsed the prefixes;
+they aggregate strings and always did. What changed is that the claim these prefixes *are*
+the People and Places indexes is now false. Ask the fields instead, or
+`list_people_to_reach`. A `person-` or `place-` tag still showing up here is a record the
+migration has not reached.
 
 | Tool | Inputs | Notes |
 |---|---|---|
-| `list_tags` | `prefix?` | Every tag in use with moment/habit/area counts + first/last allocated day. `prefix: "person-"` = the People index, `"place-"` = the Places index. Sorted by total usage. |
-| `get_tag_profile` | `tag` | One tag's graph neighborhood: habits, areas, co-tags (people ↔ places ↔ themes), date range, recent sample (cap 10, truncation flagged). |
-| `get_related_habits` | `habitId` | A habit's derived edges: `sharedTags` (signature overlap incl. person-/place- mediation), `coOccurrence` (same-day allocation, cap 10), `areaSiblings` (active, same plot). Descriptive only — intentional relations (substitution groups, "enables") are not derivable and would be a vault shape change. |
+| `list_tags` | `prefix?` | Every tag in use with moment/habit/area counts + first/last allocated day. `prefix` reads any namespace as an index. Sorted by total usage. Not the People or Places index — see above. |
+| `get_tag_profile` | `tag` | One tag's graph neighbourhood: habits, areas, co-tags, date range, recent sample (cap 10, truncation flagged). Generic aggregation — it does not know what a person or a place is. |
+| `get_related_habits` | `habitId` | A habit's derived edges: `sharedTags` (tag signature overlap only — edges mediated by a shared person or place are not computed, since those are references now), `coOccurrence` (same-day allocation, cap 10), `areaSiblings` (active, same plot). Descriptive only — intentional relations (substitution groups, "enables") are not derivable and would be a vault shape change. |
 
 ### Phases (`phaseConfigs.json`) — Should-have
 | Tool | Inputs | Notes |

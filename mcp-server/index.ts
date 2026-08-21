@@ -2142,7 +2142,7 @@ server.tool(
 
 server.tool(
   "list_tags",
-  "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read a namespace as an index — `person-` = the People index, `place-` = the Places index. Sorted by total usage.",
+  "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read any namespace as an index. Sorted by total usage. People and places are NOT here: they are entity keys in `Moment.personIds`, `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds` — ask those fields, or `list_people_to_reach`. A `person-` or `place-` tag surfacing in this index is a habit the migration has not reached, not the index for that type.",
   {
     prefix: z.string().optional(),
   },
@@ -2156,7 +2156,7 @@ server.tool(
 
 server.tool(
   "get_tag_profile",
-  'One tag\'s neighborhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments (people ↔ places ↔ themes), first/last day, and a recent sample. Answers questions like "what did I do with person-ada, and where?" — the co-occurrence of a `person-` tag with `place-` tags and habits IS that story.',
+  'One tag\'s neighbourhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments, first/last day, and a recent sample. Generic tag aggregation — it never parsed a prefix and does not know what a person or a place is. "What did I do with someone, and where?" is now a question for `personIds` and `placeIds`, which hold references rather than strings.',
   {
     tag: z.string().min(1),
   },
@@ -2175,7 +2175,7 @@ server.tool(
 
 server.tool(
   "get_related_habits",
-  "A habit's derived edges in the garden graph — no stored relations, computed from existing data: `sharedTags` (habits whose tag signatures overlap — a signature is the habit's tags plus its moments' tags, so person-/place- mediation like \"gym and padel, both with Ada\" surfaces here), `coOccurrence` (habits allocated on the same days, with the share of this habit's active days), and `areaSiblings` (active habits in the same plot).",
+  "A habit's derived edges in the garden graph — no stored relations, computed from existing data: `sharedTags` (habits whose tag signatures overlap — a signature is the habit's tags plus its moments' tags), `coOccurrence` (habits allocated on the same days, with the share of this habit's active days), and `areaSiblings` (active habits in the same plot). Tags only. Edges mediated by a shared person or place are not computed here, because those are references now rather than tags; a habit whose moments share `personIds` will not surface as related until something reads that field.",
   {
     habitId: z.string(),
   },
