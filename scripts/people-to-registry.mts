@@ -431,12 +431,27 @@ const main = (): number => {
   line();
   // Keys, not names — a key is what wake needs to resolve the mismatch, and
   // it is the least identifying thing that still makes the report actionable.
-  line(`habit with no csv row  ${report.habitOnly.length}`);
-  for (const k of report.habitOnly) line(`  · ${k}`);
-  line(`csv row with no habit  ${report.csvOnly.length}`);
-  for (const k of report.csvOnly) line(`  · ${k}`);
-  line(`cadence conflicts      ${report.cadenceConflicts.length} (csv wins)`);
-  for (const k of report.cadenceConflicts) line(`  · ${k}`);
+  //
+  // Capped, because "the ones that did not match" is only a useful list while
+  // it is a short one. Run without a CSV and every person is unmatched, so an
+  // uncapped list prints the entire contact roster to a terminal, a scrollback
+  // and whatever is reading over its shoulder. The count still tells the truth.
+  const LIST_CAP = 10;
+  const listed = (label: string, keys: readonly string[]) => {
+    line(`${label} ${keys.length}`);
+    if (csvRows.length === 0) {
+      // No CSV means no join was attempted. Naming every key would describe a
+      // mismatch that never happened.
+      return;
+    }
+    for (const k of keys.slice(0, LIST_CAP)) line(`  · ${k}`);
+    if (keys.length > LIST_CAP) {
+      line(`  … and ${keys.length - LIST_CAP} more (see the export file)`);
+    }
+  };
+  listed("habit with no csv row ", report.habitOnly);
+  listed("csv row with no habit ", report.csvOnly);
+  listed("cadence conflicts (csv wins)", report.cadenceConflicts);
 
   if (report.keyCollisions.length > 0) {
     line();
