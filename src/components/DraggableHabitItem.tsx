@@ -63,6 +63,7 @@ export function DraggableHabitItem({
       ref={setNodeRef}
       style={style}
       className="group flex items-center justify-between gap-2 px-3 py-3 rounded-md transition-all hover:ring-2 hover:ring-offset-2 ring-offset-transparent"
+      data-habit-name={habit.name}
       {...attributes}
       {...listeners}
     >
@@ -82,7 +83,10 @@ export function DraggableHabitItem({
           )}
         >
           <span className="text-lg flex-shrink-0">{habit.emoji}</span>
-          <span className="text-lg font-semibold truncate flex-1 min-w-0">
+          <span
+            data-habit-label
+            className="text-lg font-semibold truncate flex-1 min-w-0"
+          >
             {habit.name}
           </span>
           {/* Tags trail the name and never crowd it */}

@@ -189,9 +189,14 @@ pnpm lint           # biome check (not eslint/prettier); pnpm format to write
 
 pnpm only — never npm or yarn. Running `pnpm dev` and building to verify a change is fine.
 
-The husky pre-commit hook runs `pnpm test`, so a red suite blocks commits. `@playwright/test` is
-installed but has no config and no script — there is no working E2E suite. `mcp-server/` is its own
+The husky pre-commit hook runs `pnpm test`, so a red suite blocks commits. `mcp-server/` is its own
 package: `pnpm start` (tsx), `pnpm build` (tsc), `pnpm build:compile` (bun binary), `pnpm smoke`.
+
+`pnpm test:e2e` runs Playwright against the **web** build (IndexedDB, no vault, so it never touches
+a real garden). It boots `pnpm dev` itself and seeds a synthetic garden through the app's own
+Settings import path, so the fixture goes through real validation. Browsers install once with
+`npx playwright install chromium`. It is deliberately outside the pre-commit hook — it covers what
+unit tests cannot see, which is what a card does with the space it has.
 
 ## Design
 

@@ -24,6 +24,7 @@ export function TagSummary({ tags, className, visible = 1 }: TagSummaryProps) {
 
   return (
     <span
+      data-tag-summary
       className={cn(
         "flex items-center gap-1 text-xs font-mono opacity-50",
         className,
