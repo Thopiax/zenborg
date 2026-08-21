@@ -5,7 +5,6 @@ import { useCallback, useMemo } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import { BandedHeatmap } from "@/components/banded-heatmap/BandedHeatmap";
 import { SeasonReadback } from "@/components/harvest/SeasonReadback";
-import { tauriLibrary, tauriNotebook } from "@/infrastructure/library/adapter";
 import {
   deriveHarvestSeason,
   resolveHarvestCycle,
@@ -108,8 +107,6 @@ export default function HarvestPage() {
 
       <main className="flex-1 overflow-y-auto">
         <SeasonReadback
-          library={tauriLibrary}
-          notebook={tauriNotebook}
           onEditReflection={handleEditReflection}
           season={season}
         />
