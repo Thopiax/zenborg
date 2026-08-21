@@ -54,6 +54,19 @@ const HABITS = join(VAULT, "habits.json");
  * session, so an offer per turn would be a metronome rather than a cue. */
 const EVERY_MS = Number(process.env.ZENBORG_GAP_EVERY_MS) || 30 * 60_000;
 
+/**
+ * Where the principal is, spelled as the garden's `place-<city>` tags spell it:
+ * `sao-paulo`, `barcelona`. The whole tag is accepted too.
+ *
+ * The domain takes the place as an argument and refuses to look it up, the same
+ * way `host-block-seed.mts` keeps one person's plot ids out of the rules. This
+ * is the edge that answers, and it answers from the environment because the
+ * environment is all a request/response hook has. Unset means unknown, and
+ * unknown offers everything, so a shell that never sets it behaves exactly as it
+ * did before place existed.
+ */
+const PLACE = process.env.ZENBORG_PLACE?.trim() || undefined;
+
 const silent = (): never => process.exit(0);
 
 function readStdin(): Promise<Record<string, unknown> | null> {
@@ -93,12 +106,16 @@ function substitutionRule(): RuleSpec | null {
  * Read from `habits.json` rather than named by the rule. `Mindfulness` already
  * carries `breathwork` tagged `gap` / `gap-2m`; anything else the principal
  * tags joins it for free, and nothing here has an opinion about which.
+ *
+ * Except where: a practice tagged `place-sao-paulo` needs a pull-up bar that is
+ * on another continent half the year, so `PLACE` is passed through and the
+ * roster answers with what is actually within reach.
  */
 function offered(): GapPractice | null {
   try {
     const raw = JSON.parse(readFileSync(HABITS, "utf8"));
     const habits = Array.isArray(raw) ? raw : Object.values(raw ?? {});
-    return practicesForGap(habits as never)[0] ?? null;
+    return practicesForGap(habits as never, undefined, PLACE)[0] ?? null;
   } catch {
     return null;
   }

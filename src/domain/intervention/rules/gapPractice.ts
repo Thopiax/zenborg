@@ -49,6 +49,16 @@ export const GAP_TAG = "gap";
  * take; nothing here guesses. */
 const SIZE_TAG = /^gap-(\d+)(s|m)$/;
 
+/** The prefix a habit carries to bind a practice to a place: `place-sao-paulo`,
+ * `place-barcelona`. The garden's own namespace, the same one `person-<name>`
+ * uses, so a practice becomes placed by being tagged and the vault's shape
+ * learns nothing new. */
+export const PLACE_PREFIX = "place-";
+
+/** Where the principal is. A plain alias, like the ids: the vocabulary is worth
+ * having, a brand is not. */
+export type Place = string;
+
 /** Past this the principal's own logs show ordinary baseline drift, so a claim
  * about the gap stops being one. */
 export const FIVE_MINUTES: Duration = 5 * 60_000;
@@ -80,6 +90,35 @@ function sizeOf(tags: readonly string[]): Duration | undefined {
   return undefined;
 }
 
+/** A place as the garden spells it: trimmed, lowercased, prefix removed.
+ * Tolerant of a caller that hands over the whole tag, because `place-sao-paulo`
+ * and `sao-paulo` name the same city, and the alternative is every placed
+ * practice disappearing with nothing raised. */
+function placeName(value: string): Place {
+  const v = value.trim().toLowerCase();
+  return v.startsWith(PLACE_PREFIX) ? v.slice(PLACE_PREFIX.length) : v;
+}
+
+/**
+ * The places a practice is bound to. Empty means bound to none, which is not the
+ * same thing as bound to nowhere.
+ *
+ * Unlike `sizeOf` this does not return on the first match. Two sizes on one
+ * habit contradict each other, so the first wins and the rest are noise. Two
+ * places do not contradict: a practice that works in both cities says so by
+ * carrying both tags, and taking only the first would exile it from one of them.
+ */
+function placesOf(tags: readonly string[]): readonly Place[] {
+  const out: Place[] = [];
+  for (const t of tags) {
+    const tag = t.trim().toLowerCase();
+    if (!tag.startsWith(PLACE_PREFIX)) continue;
+    const place = placeName(tag);
+    if (place.length > 0) out.push(place);
+  }
+  return out;
+}
+
 /**
  * The practices that fit a gap, smallest first.
  *
@@ -88,16 +127,44 @@ function sizeOf(tags: readonly string[]): Duration | undefined {
  * two-minute practice is the right answer to a three-minute wait and useless
  * against the reflex, so an unsized or oversized practice must never crowd out a
  * short one. Practices declaring no size sort last — unknown is not small.
+ *
+ * ── Where the principal is ────────────────────────────────────────
+ *
+ * `at` names the city. It is a parameter rather than a lookup because the domain
+ * has no business knowing that this principal splits his year between two of
+ * them; the edge holds that, the way `host-block-seed.mts` holds his plot ids
+ * instead of pushing them into the rules.
+ *
+ * A practice tagged for a place is offered only there. `dead hang` needs a
+ * pull-up bar, the bar is in Sao Paulo, and the roster's own test is that the
+ * object is within reach or it never happens. An offer he cannot act on is worse
+ * than no offer, because it teaches him the roster is not worth reading.
+ *
+ * A practice tagged for no place is offered everywhere. That is all of the
+ * roster but two, and an unplaced practice is not a placed one with the place
+ * missing: breathwork asks for a body and nothing else.
+ *
+ * **When `at` is unknown, placed practices are still offered.** It is the call
+ * the `within` bound already made one field over: a practice is never excluded
+ * by a constraint that cannot be checked against it. Hiding them would quietly
+ * empty the roster on every surface not yet taught to say where he is, and a
+ * roster that shrinks in silence is a failure nobody sees, while an out-of-town
+ * suggestion is one he skips in the second it takes to read.
  */
 export function practicesForGap(
   habits: readonly PracticeCandidate[],
   within?: Duration,
+  at?: Place,
 ): readonly GapPractice[] {
+  const here = at === undefined ? undefined : placeName(at);
   const out: GapPractice[] = [];
   for (const h of habits ?? []) {
     if (h?.isArchived) continue;
     const tags = (h?.tags ?? []).map((t) => String(t).trim().toLowerCase());
     if (!tags.includes(GAP_TAG)) continue;
+    const places = placesOf(tags);
+    if (here !== undefined && places.length > 0 && !places.includes(here))
+      continue;
     const fitsMs = sizeOf(tags);
     if (within !== undefined && fitsMs !== undefined && fitsMs > within)
       continue;
