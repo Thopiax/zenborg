@@ -7,13 +7,13 @@ import {
   trmnlSyncStatus$,
 } from "@/infrastructure/state/integration-store";
 import {
-  areas$,
   activeCycle$,
+  areas$,
   moments$,
   momentsByDayAndPhase$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
-import { pushToRelay, pushToTrmnlDirect } from "./trmnl-client";
+import { pushToRelay, pushToTrmnlDirect } from "./trmnl-client.ts";
 
 // ============================================================================
 // State

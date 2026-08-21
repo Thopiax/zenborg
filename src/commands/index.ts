@@ -1,12 +1,12 @@
-import { Command } from "./types";
-import { momentCommands } from "./moment-commands";
-import { navigationCommands } from "./navigation-commands";
-import { viewCommands } from "./view-commands";
-import { clipboardCommands } from "./clipboard-commands";
-import { historyCommands } from "./history-commands";
-import { areaCommands } from "./area-commands";
-import { habitCommands } from "./habit-commands";
-import { formCommands } from "./form-commands";
+import { areaCommands } from "./area-commands.ts";
+import { clipboardCommands } from "./clipboard-commands.ts";
+import { formCommands } from "./form-commands.ts";
+import { habitCommands } from "./habit-commands.ts";
+import { historyCommands } from "./history-commands.ts";
+import { momentCommands } from "./moment-commands.ts";
+import { navigationCommands } from "./navigation-commands.ts";
+import type { Command } from "./types";
+import { viewCommands } from "./view-commands.ts";
 
 export const allCommands: Command[] = [
   ...momentCommands,

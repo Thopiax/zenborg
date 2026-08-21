@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from "vitest";
-import { computeVirtualDeckCards } from "../state/virtualDeckCards";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Area } from "@/domain/entities/Area";
 import type { CyclePlan } from "@/domain/entities/CyclePlan";
+import type { Habit } from "@/domain/entities/Habit";
 import type { Moment } from "@/domain/entities/Moment";
 import { Phase } from "@/domain/value-objects/Phase";
-import type { Area } from "@/domain/entities/Area";
+import { computeVirtualDeckCards } from "../state/virtualDeckCards";
 
 const area = (id: string, order: number): Area => ({
   id,
@@ -50,11 +50,7 @@ const plan = (
   updatedAt: "",
 });
 
-const allocatedMoment = (
-  id: string,
-  planId: string,
-  day: string,
-): Moment => ({
+const allocatedMoment = (id: string, planId: string, day: string): Moment => ({
   id,
   name: "x",
   areaId: "a",

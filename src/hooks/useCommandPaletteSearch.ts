@@ -46,7 +46,7 @@ const MAX_ENTITIES_PER_GROUP = 8;
  */
 export function useCommandPaletteSearch(
   mode: AppMode,
-  searchQuery: string
+  searchQuery: string,
 ): CommandPaletteSearchResult {
   const areasArray = useSelector(() => activeAreas$.get());
   const habitsArray = useSelector(() => activeHabits$.get());
@@ -79,27 +79,41 @@ export function useCommandPaletteSearch(
           entity: h,
         };
       });
-      return { areas: areaItems, habits: habitItems, moments: [] as SearchableEntity[] };
+      return {
+        areas: areaItems,
+        habits: habitItems,
+        moments: [] as SearchableEntity[],
+      };
     }
 
     if (mode === "cultivate") {
-      const momentItems: SearchableEntity[] = Object.values(allMoments).map((m) => {
-        const area = areaMap[m.areaId];
-        return {
-          type: "moment" as const,
-          id: m.id,
-          name: m.name,
-          emoji: m.emoji ?? null,
-          areaName: area?.name ?? null,
-          areaColor: area?.color ?? null,
-          areaEmoji: area?.emoji ?? null,
-          entity: m,
-        };
-      });
-      return { areas: [] as SearchableEntity[], habits: [] as SearchableEntity[], moments: momentItems };
+      const momentItems: SearchableEntity[] = Object.values(allMoments).map(
+        (m) => {
+          const area = areaMap[m.areaId];
+          return {
+            type: "moment" as const,
+            id: m.id,
+            name: m.name,
+            emoji: m.emoji ?? null,
+            areaName: area?.name ?? null,
+            areaColor: area?.color ?? null,
+            areaEmoji: area?.emoji ?? null,
+            entity: m,
+          };
+        },
+      );
+      return {
+        areas: [] as SearchableEntity[],
+        habits: [] as SearchableEntity[],
+        moments: momentItems,
+      };
     }
 
-    return { areas: [] as SearchableEntity[], habits: [] as SearchableEntity[], moments: [] as SearchableEntity[] };
+    return {
+      areas: [] as SearchableEntity[],
+      habits: [] as SearchableEntity[],
+      moments: [] as SearchableEntity[],
+    };
   }, [mode, areasArray, habitsArray, allMoments, areaMap]);
 
   // Fuse.js instances per entity group
@@ -124,20 +138,24 @@ export function useCommandPaletteSearch(
     return allCommands.filter(
       (cmd) =>
         cmd.label.toLowerCase().includes(lower) ||
-        cmd.keywords?.some((k) => k.toLowerCase().includes(lower))
+        cmd.keywords?.some((k) => k.toLowerCase().includes(lower)),
     );
   }, [searchQuery]);
 
   // Filter entities (only when searching)
   const filteredEntities = useMemo(() => {
-    const empty = { areas: [] as SearchableEntity[], habits: [] as SearchableEntity[], moments: [] as SearchableEntity[] };
+    const empty = {
+      areas: [] as SearchableEntity[],
+      habits: [] as SearchableEntity[],
+      moments: [] as SearchableEntity[],
+    };
     if (!searchQuery.trim()) return empty;
 
     const trimmed = searchQuery.trim();
 
     const searchGroup = (
       items: SearchableEntity[],
-      fuse: Fuse<SearchableEntity>
+      _fuse: Fuse<SearchableEntity>,
     ): SearchableEntity[] => {
       const lower = trimmed.toLowerCase();
 
@@ -176,7 +194,7 @@ export function useCommandPaletteSearch(
 
       return [...exact, ...prefix, ...contains, ...fuzzy].slice(
         0,
-        MAX_ENTITIES_PER_GROUP
+        MAX_ENTITIES_PER_GROUP,
       );
     };
 

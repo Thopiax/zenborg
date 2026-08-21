@@ -142,7 +142,7 @@ export function TagAutocompleteInline({
   // Total items includes suggestions + optional createNewTag
   const totalItems = useMemo(
     () => suggestions.length + (createNewTag ? 1 : 0),
-    [suggestions, createNewTag]
+    [suggestions, createNewTag],
   );
 
   // Keyboard navigation state
@@ -237,7 +237,7 @@ export function TagAutocompleteInline({
                   "text-left",
                   index === selectedIndex
                     ? "bg-stone-200 dark:bg-stone-700"
-                    : "hover:bg-stone-100 dark:hover:bg-stone-800"
+                    : "hover:bg-stone-100 dark:hover:bg-stone-800",
                 )}
               >
                 {/* Checkmark or Hash icon */}
@@ -279,7 +279,7 @@ export function TagAutocompleteInline({
                 "text-left border-t border-stone-200 dark:border-stone-700 mt-0.5 pt-2",
                 selectedIndex === suggestions.length
                   ? "bg-stone-200 dark:bg-stone-700"
-                  : "hover:bg-stone-100 dark:hover:bg-stone-800"
+                  : "hover:bg-stone-100 dark:hover:bg-stone-800",
               )}
             >
               {/* Plus icon */}

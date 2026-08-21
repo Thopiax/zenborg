@@ -123,6 +123,7 @@ vi.mock("../MomentCard", () => ({
 // identity string. Override behavior to match the order of calls in
 // DnDProvider: isDuplicateMode, moments, areas, selectedMomentIds.
 import { useValue } from "@legendapp/state/react";
+
 const mockUseValue = useValue as unknown as ReturnType<typeof vi.fn>;
 
 function primeUseValue() {
@@ -197,7 +198,7 @@ describe("DnDProvider handleDragEnd — deck-card over allocated moment (Bug C1)
 
     // Simulate: deck-card dragged on top of the allocated moment.
     // @dnd-kit resolves over.id to the sortable item's id (not its cell).
-    capturedOnDragEnd!({
+    capturedOnDragEnd?.({
       active: {
         id: "deck-card-c-1-h-target-0",
         data: {
@@ -238,7 +239,7 @@ describe("DnDProvider handleDragEnd — deck-card over allocated moment (Bug C1)
 
     // Simulate: a non-existent active moment (so activeMoment is undefined),
     // but the drag payload is a normal moment drag, not a deck-card.
-    capturedOnDragEnd!({
+    capturedOnDragEnd?.({
       active: {
         id: "missing-moment",
         data: {

@@ -5,8 +5,8 @@ import { Attitude } from "@/domain/value-objects/Attitude";
 import type { Health } from "@/domain/value-objects/Health";
 import {
   PERIOD_DAYS,
-  rhythmSilenceThresholdDays,
   type Rhythm,
+  rhythmSilenceThresholdDays,
 } from "@/domain/value-objects/Rhythm";
 import { fromISODate } from "@/lib/dates";
 
@@ -35,7 +35,7 @@ export class HabitHealthService {
     habit: Habit,
     cyclePlan: CyclePlan | null,
     moments: Moment[],
-    now: Date
+    now: Date,
   ): Health {
     const attitude = habit.attitude;
     if (attitude === null) return "unstated";
@@ -48,7 +48,9 @@ export class HabitHealthService {
     // health and the `daysSinceLast` emitted beside it cannot disagree.
     // The attitude gate above is untouched: person health still lives in
     // PersonService, standalone and attitude-free.
-    const habitMoments = moments.filter((m) => momentInvolvesHabit(m, habit.id));
+    const habitMoments = moments.filter((m) =>
+      momentInvolvesHabit(m, habit.id),
+    );
 
     switch (attitude) {
       case Attitude.BEGINNING:
@@ -72,7 +74,7 @@ export class HabitHealthService {
   private computeKeeping(
     rhythm: Rhythm | null,
     habitMoments: Moment[],
-    now: Date
+    now: Date,
   ): Health {
     if (!rhythm) return "unstated";
     const threshold = rhythmSilenceThresholdDays(rhythm);
@@ -92,7 +94,7 @@ export class HabitHealthService {
   private computeReturning(
     rhythm: Rhythm | null,
     habitMoments: Moment[],
-    now: Date
+    now: Date,
   ): Health {
     if (!rhythm) return "unstated";
     const threshold =
@@ -109,7 +111,7 @@ export class HabitHealthService {
     habit: Habit,
     rhythm: Rhythm | null,
     habitMoments: Moment[],
-    now: Date
+    now: Date,
   ): Health {
     if (!rhythm) return "unstated";
 
@@ -139,7 +141,7 @@ export class HabitHealthService {
 
   public latestAllocationDate(
     habitMoments: Moment[],
-    now: Date | null = null
+    now: Date | null = null,
   ): Date | null {
     let latest: Date | null = null;
     for (const m of habitMoments) {

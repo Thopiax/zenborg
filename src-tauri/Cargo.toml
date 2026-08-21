@@ -33,9 +33,31 @@ tauri-plugin-store = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-dialog = "2"
 
+# The desktop observer (migration step 3). Same crates and same versions the
+# keel tray used, so the two writers can be diffed rather than argued about.
+chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }
+
+# The library. Slice C step 3: penceive's engine becomes a crate in this
+# process so the app can read the notes.
+#
+# `default-features = false` is the privacy invariant made checkable. The
+# crate's cloud (Anthropic) and local (mistral.rs) inference arms are both
+# opt-in features, and this app enables neither: it uses the retrieval half
+# and nothing that can make an inference call.
+#
+# The rev is pinned rather than floating, and the dependency reverts by
+# deleting these three lines. It points at a `file://` URL because penceive
+# has no git remote at all — the design note assumed one and there is none,
+# so a portable pin does not exist to be had. This is the honest form of the
+# same intent, and it dissolves when the repos consolidate.
+penceive-core = { git = "file:///Users/rafa/Developer/equanimitech/penceive", rev = "21717bc93bc2ef3165fa463579011f034c70e5dc", default-features = false }
+
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-global-shortcut = "2"
+x-win = "5.7.0"
+user-idle = "0.6"
 
 # Dev profile tuned for disk usage. Full debuginfo + incremental compilation
 # push target/debug into double-digit GB territory during normal tauri:dev

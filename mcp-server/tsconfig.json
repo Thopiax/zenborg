@@ -6,7 +6,16 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "dist"
+    // The server imports the repo's domain + application layers directly
+    // (src/application/use-cases/fences.ts and below), the same way
+    // plugin/hooks/*.mts does, so the domain has one home instead of a
+    // mirrored copy that drifts. Those layers import with explicit .ts
+    // extensions, which tsc only allows under noEmit — and emit moved to
+    // bun anyway (see package.json `build`), because a plain tsc emit of
+    // cross-directory sources would scatter dist/ and keep src's
+    // extensionless specifiers node can't resolve.
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
   "include": ["*.ts"]
 }

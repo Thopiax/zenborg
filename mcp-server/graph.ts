@@ -1,4 +1,4 @@
-import type { Area, Habit, Moment } from './vault.js';
+import type { Area, Habit, Moment } from "./vault.js";
 
 /**
  * Habit relationships — derived edges, no stored graph.
@@ -56,10 +56,14 @@ export function buildRelatedHabits(
   const sharedTags = others
     .map((h) => ({
       habit: h.name,
-      tags: Array.from(tagSignature(h, moments)).filter((t) => mySignature.has(t)),
+      tags: Array.from(tagSignature(h, moments)).filter((t) =>
+        mySignature.has(t),
+      ),
     }))
     .filter((e) => e.tags.length > 0)
-    .sort((a, b) => b.tags.length - a.tags.length || a.habit.localeCompare(b.habit));
+    .sort(
+      (a, b) => b.tags.length - a.tags.length || a.habit.localeCompare(b.habit),
+    );
 
   const myDays = allocatedDays(habitId, moments);
   const coAll = others
@@ -70,7 +74,8 @@ export function buildRelatedHabits(
       return {
         habit: h.name,
         days: co,
-        shareOfMine: myDays.size === 0 ? 0 : Math.round((co / myDays.size) * 100) / 100,
+        shareOfMine:
+          myDays.size === 0 ? 0 : Math.round((co / myDays.size) * 100) / 100,
       };
     })
     .filter((e) => e.days > 0)

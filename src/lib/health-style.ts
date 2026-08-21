@@ -10,11 +10,6 @@ export function healthEmojiClass(health: Health): string {
       return "opacity-50";
     case "dormant":
       return "opacity-30 grayscale";
-    case "blooming":
-    case "budding":
-    case "seedling":
-    case "evergreen":
-    case "unstated":
     default:
       return "opacity-100";
   }

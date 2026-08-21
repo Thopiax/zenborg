@@ -124,7 +124,7 @@ describe("buildTagIndex", () => {
 
   it("sorts by total usage descending", () => {
     const index = buildTagIndex(gymWithAda, habits, areas);
-    expect(index[0]!.tag).toBe("place-atlantis");
+    expect(index[0]?.tag).toBe("place-atlantis");
   });
 
   it("tolerates null tags and empty collections", () => {
@@ -159,12 +159,7 @@ describe("buildTagProfile", () => {
   });
 
   it("lists a habit carrying the tag directly even with zero tagged moments", () => {
-    const profile = buildTagProfile(
-      "place-atlantis",
-      [],
-      habits,
-      areas,
-    );
+    const profile = buildTagProfile("place-atlantis", [], habits, areas);
     expect(profile.habits).toEqual([{ name: "Gym", count: 0 }]);
   });
 
@@ -178,13 +173,18 @@ describe("buildTagProfile", () => {
     );
     const profile = buildTagProfile("person-ada", many, [], areas);
     expect(profile.recentMoments).toHaveLength(10);
-    expect(profile.recentMoments[0]!.day).toBe("2026-01-12");
+    expect(profile.recentMoments[0]?.day).toBe("2026-01-12");
     expect(profile.recentMomentsTruncated).toBe(true);
   });
 
   it("names an archived habit gracefully", () => {
     const orphan = [
-      moment({ id: "m-x", habitId: "h-gone", day: "2025-01-01", tags: ["person-ada"] }),
+      moment({
+        id: "m-x",
+        habitId: "h-gone",
+        day: "2025-01-01",
+        tags: ["person-ada"],
+      }),
     ];
     const profile = buildTagProfile("person-ada", orphan, [], areas);
     expect(profile.habits).toEqual([{ name: "(archived habit)", count: 1 }]);

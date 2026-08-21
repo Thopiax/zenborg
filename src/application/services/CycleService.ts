@@ -26,7 +26,6 @@ import {
   calculateTemplateDates,
   findOverlappingCycle,
   generateCycleName,
-  getDayBefore,
   type TemplateDuration,
 } from "@/domain/services/CycleDateService";
 import { habitHealthService } from "@/domain/services/HabitHealthService";
@@ -946,18 +945,6 @@ export class CycleService {
   }
 
   /**
-   * Counts all moments (allocated + deck) for a habit in a cycle.
-   */
-  private countMomentsForHabitInCycle(
-    cycleId: string,
-    habitId: string,
-  ): number {
-    return Object.values(moments$.get()).filter(
-      (m) => m.cycleId === cycleId && m.habitId === habitId,
-    ).length;
-  }
-
-  /**
    * Counts only allocated (on timeline) moments for a habit in a cycle.
    */
   private countAllocatedMomentsForHabitInCycle(
@@ -970,23 +957,6 @@ export class CycleService {
         m.habitId === habitId &&
         m.day !== null &&
         m.phase !== null,
-    ).length;
-  }
-
-  /**
-   * Counts only deck (unallocated) moments for a habit in a cycle.
-   */
-  private countDeckMomentsForHabitInCycle(
-    cycleId: string,
-    habitId: string,
-  ): number {
-    return Object.values(moments$.get()).filter(
-      (m) =>
-        m.cycleId === cycleId &&
-        m.habitId === habitId &&
-        m.cyclePlanId !== null &&
-        m.day === null &&
-        m.phase === null,
     ).length;
   }
 

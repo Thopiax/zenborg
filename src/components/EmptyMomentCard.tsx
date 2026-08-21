@@ -43,7 +43,7 @@ export function EmptyMomentCard({
         "hover:bg-stone-100/50 dark:hover:bg-stone-800/50",
         "hover:-translate-y-0.5",
         // Focus states
-        "focus:ring-2 focus:ring-stone-400 focus:ring-offset-2 focus:ring-offset-stone-50 dark:focus:ring-offset-stone-900"
+        "focus:ring-2 focus:ring-stone-400 focus:ring-offset-2 focus:ring-offset-stone-50 dark:focus:ring-offset-stone-900",
       )}
       style={{
         minHeight: momentCard.minHeight,

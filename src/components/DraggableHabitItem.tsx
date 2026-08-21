@@ -81,9 +81,7 @@ export function DraggableHabitItem({
           )}
         >
           <span className="text-lg flex-shrink-0">{habit.emoji}</span>
-          <span className="text-lg font-semibold truncate">
-            {habit.name}
-          </span>
+          <span className="text-lg font-semibold truncate">{habit.name}</span>
           {/* Tags inline after name */}
           {habit.tags && habit.tags.length > 0 && (
             <div className="flex items-center gap-1 flex-shrink-0 ml-auto">

@@ -16,13 +16,14 @@ describe("Initialize Store", () => {
   });
 
   describe("initializeStore", () => {
-    it("should NOT create default areas on first run (user creates from templates)", async () => {
+    it("should NOT create default areas on first run (the peer names their own plots)", async () => {
       await initializeStore();
 
       const areas = areas$.get();
       const areaValues = Object.values(areas);
 
-      // Areas are NOT seeded automatically anymore - users create from templates
+      // Areas are NOT seeded, and there is no code path that could seed them.
+      // A plot is the one input the system cannot derive, infer or defer.
       expect(areaValues).toHaveLength(0);
     });
 
@@ -137,7 +138,7 @@ describe("Initialize Store", () => {
   });
 
   describe("Default Data Validation", () => {
-    it("should NOT seed default areas (template-based creation)", async () => {
+    it("should NOT seed default areas (the board starts empty)", async () => {
       await initializeStore();
 
       const areaValues = Object.values(areas$.get());

@@ -7,12 +7,12 @@ import type { Habit } from "@/domain/entities/Habit";
 import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
 import {
-  type PhaseConfig,
   getCurrentPhase,
+  type PhaseConfig,
 } from "@/domain/value-objects/Phase";
-import { getCurrentHour } from "@/lib/dates";
 import { readMeta, writeMeta } from "@/infrastructure/vault/meta-repository";
-import { cycleDeckSelectedCycleId$ } from "./ui-store";
+import { getCurrentHour } from "@/lib/dates";
+import { cycleDeckSelectedCycleId$ } from "./ui-store.ts";
 
 /**
  * Core application state stored as observables

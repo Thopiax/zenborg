@@ -1,7 +1,11 @@
 import type { Area } from "@/domain/entities/Area";
 import type { Cycle } from "@/domain/entities/Cycle";
 import type { Moment } from "@/domain/entities/Moment";
-import { Phase, type PhaseConfig, getVisiblePhases } from "@/domain/value-objects/Phase";
+import {
+  getVisiblePhases,
+  type Phase,
+  type PhaseConfig,
+} from "@/domain/value-objects/Phase";
 
 export type HeatmapTense = "past" | "active" | "future";
 export type HeatmapCellState = "planted" | "fallow" | "unplanted";
@@ -66,7 +70,7 @@ function toUtc(date: string): number {
   return Date.UTC(
     Number(date.slice(0, 4)),
     Number(date.slice(5, 7)) - 1,
-    Number(date.slice(8, 10))
+    Number(date.slice(8, 10)),
   );
 }
 
@@ -98,7 +102,7 @@ function effectiveEnd(cycle: Cycle, today: string): string {
 function findCycleForDate(
   date: string,
   cycles: Cycle[],
-  today: string
+  today: string,
 ): Cycle | null {
   for (const cycle of cycles) {
     if (date >= cycle.startDate && date <= effectiveEnd(cycle, today)) {
@@ -108,9 +112,7 @@ function findCycleForDate(
   return null;
 }
 
-function dominantAreaId(
-  moments: Moment[]
-): string | null {
+function dominantAreaId(moments: Moment[]): string | null {
   if (moments.length === 0) return null;
 
   const tally = new Map<string, { count: number; lastUpdatedAt: string }>();
@@ -145,12 +147,10 @@ function buildCell(
   phase: Phase,
   moments: Moment[],
   areaOrder: Map<string, number>,
-  today: string
+  today: string,
 ): HeatmapCell {
   const tense = tenseOf(date, today);
-  const matches = moments.filter(
-    (m) => m.day === date && m.phase === phase
-  );
+  const matches = moments.filter((m) => m.day === date && m.phase === phase);
 
   if (matches.length === 0) {
     return {
@@ -165,10 +165,13 @@ function buildCell(
   for (const m of matches) {
     counts.set(m.areaId, (counts.get(m.areaId) ?? 0) + 1);
   }
-  const areas: HeatmapCellAreaShare[] = Array.from(counts, ([areaId, count]) => ({
-    areaId,
-    count,
-  })).sort((a, b) => {
+  const areas: HeatmapCellAreaShare[] = Array.from(
+    counts,
+    ([areaId, count]) => ({
+      areaId,
+      count,
+    }),
+  ).sort((a, b) => {
     const oa = areaOrder.get(a.areaId) ?? Number.MAX_SAFE_INTEGER;
     const ob = areaOrder.get(b.areaId) ?? Number.MAX_SAFE_INTEGER;
     if (oa !== ob) return oa - ob;
@@ -238,8 +241,7 @@ function determineRange(
   // Past: bounded by the earliest cycle start (or today if none).
   // Future: today + futurePadDays, extended further if a cycle ends past that.
   let start = today;
-  let end =
-    futurePadDays > 0 ? shiftDateString(today, futurePadDays) : today;
+  let end = futurePadDays > 0 ? shiftDateString(today, futurePadDays) : today;
   for (const c of cycles) {
     if (c.startDate < start) start = c.startDate;
     const cEnd = effectiveEnd(c, today);
@@ -249,7 +251,7 @@ function determineRange(
 }
 
 export function deriveBandedHeatmapViewModel(
-  input: DeriveInput
+  input: DeriveInput,
 ): HeatmapViewModel {
   const { cycles, moments, areas, phaseConfigs, today } = input;
   const futurePadDays = input.futurePadDays ?? ONE_YEAR_DAYS;
@@ -282,7 +284,7 @@ export function deriveBandedHeatmapViewModel(
 
 function buildSegments(
   days: HeatmapDay[],
-  bands: HeatmapBand[]
+  bands: HeatmapBand[],
 ): HeatmapSegment[] {
   const bandByCycleId = new Map(bands.map((b) => [b.cycleId, b]));
   const out: HeatmapSegment[] = [];
@@ -293,7 +295,7 @@ function buildSegments(
     out.push({
       startIndex: runStart,
       endIndex,
-      band: runCycleId ? bandByCycleId.get(runCycleId) ?? null : null,
+      band: runCycleId ? (bandByCycleId.get(runCycleId) ?? null) : null,
     });
   };
 

@@ -21,7 +21,11 @@ interface GhostHabitCardProps {
   cycleId: string;
 }
 
-export function GhostHabitCard({ habitId, area, cycleId }: GhostHabitCardProps) {
+export function GhostHabitCard({
+  habitId,
+  area,
+  cycleId,
+}: GhostHabitCardProps) {
   const allHabits = useValue(habits$);
   const habit = allHabits[habitId];
   const cycleService = new CycleService();

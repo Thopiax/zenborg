@@ -2,7 +2,14 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import { Check, ChevronDown, ChevronUp, Flag, Pencil, Plus } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Flag,
+  Pencil,
+  Plus,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import {
@@ -31,9 +38,9 @@ import {
 } from "@/infrastructure/state/virtualDeckCards";
 import { formatCycleSubtitle } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { CycleDeckHeatmap } from "./banded-heatmap/CycleDeckHeatmap";
 import { CycleCalendarDialog } from "./CycleCalendarDialog";
 import { CycleDeckColumn } from "./CycleDeckColumn";
-import { CycleDeckHeatmap } from "./banded-heatmap/CycleDeckHeatmap";
 
 /**
  * CycleDeck - Container for virtual deck cards derived from cycle plans.
@@ -290,8 +297,12 @@ export function CycleDeck() {
               <button
                 type="button"
                 className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                title={effectiveCycle.endDate ? "Adjust end date" : "End this cycle"}
-                aria-label={effectiveCycle.endDate ? "Adjust end date" : "End this cycle"}
+                title={
+                  effectiveCycle.endDate ? "Adjust end date" : "End this cycle"
+                }
+                aria-label={
+                  effectiveCycle.endDate ? "Adjust end date" : "End this cycle"
+                }
               >
                 <Flag className="h-3.5 w-3.5" />
               </button>
@@ -337,7 +348,9 @@ export function CycleDeck() {
                   onClick={() => handleEndCycle(endDateInput)}
                   className="w-full px-3 py-1.5 rounded-md text-xs font-medium border border-stone-300 dark:border-stone-600 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                 >
-                  {effectiveCycle.endDate ? "Save end date" : "End on this date"}
+                  {effectiveCycle.endDate
+                    ? "Save end date"
+                    : "End on this date"}
                 </button>
               </div>
               {endCycleError && (
@@ -367,7 +380,11 @@ export function CycleDeck() {
               className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
               title={isEditMode ? "Done editing" : "Edit cycle deck"}
             >
-              {isEditMode ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+              {isEditMode ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Pencil className="h-3.5 w-3.5" />
+              )}
             </button>
           </>
         )}
@@ -378,7 +395,11 @@ export function CycleDeck() {
           className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
           title={isCollapsed ? "Expand cycle deck" : "Collapse cycle deck"}
         >
-          {isCollapsed ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          {isCollapsed ? (
+            <ChevronUp className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5" />
+          )}
         </button>
       </div>
     </div>

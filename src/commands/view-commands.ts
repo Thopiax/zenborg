@@ -1,9 +1,9 @@
-import { Command } from "./types";
 import { activeCycle$ } from "@/infrastructure/state/store";
 import {
   cycleDeckCollapsed$,
   isCommandPaletteOpen$,
 } from "@/infrastructure/state/ui-store";
+import type { Command } from "./types";
 
 export const viewCommands: Command[] = [
   {
@@ -14,7 +14,7 @@ export const viewCommands: Command[] = [
     keywords: ["search", "commands", "palette"],
     action: () => {
       isCommandPaletteOpen$.set(true);
-    }
+    },
   },
   {
     id: "view.planning.toggle",
@@ -28,7 +28,7 @@ export const viewCommands: Command[] = [
       if (cycle) {
         cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
       }
-    }
+    },
   },
   {
     id: "view.areas",
@@ -40,7 +40,7 @@ export const viewCommands: Command[] = [
       // Open area management dialog/view
       // This depends on how areas are currently managed
       console.log("Open area management");
-    }
+    },
   },
   {
     id: "view.settings",
@@ -51,6 +51,6 @@ export const viewCommands: Command[] = [
     action: () => {
       // Open settings dialog
       console.log("Open settings");
-    }
-  }
+    },
+  },
 ];

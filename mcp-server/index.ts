@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import * as crypto from "node:crypto";
 /**
  * Zenborg MCP server — the gardener's voice.
  *
@@ -8,50 +9,35 @@
  *
  * Vault path resolution: --vault CLI > $KAIROS_HOME > $ZENBORG_VAULT_DIR > ~/.kairos.
  */
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import * as crypto from 'node:crypto';
-import { z } from 'zod';
-
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import type { FenceDeps } from "../src/application/ports.ts";
 import {
-  AttitudeSchema,
-  CustomMetricSchema,
-  PhaseSchema,
-  RhythmSchema,
-  ScheduleSchema,
-  StartTimeSchema,
-  clearActiveMoment,
-  logVaultBanner,
-  readActiveMoment,
-  readCollection,
-  resolveVault,
-  rhythmToCycleBudget,
-  writeActiveMoment,
-  writeCollection,
-  type Area,
-  type Cycle,
-  type CyclePlan,
-  type Habit,
-  type Moment,
-  type Phase,
-  type PhaseConfig,
-  type Rhythm,
-  type Schedule,
-} from './vault.js';
+  clearFences,
+  declareBrowserGate,
+  declareFence,
+  declareHostBlock,
+  fenceReport,
+  seedHostBlocks,
+} from "../src/application/use-cases/fences.ts";
+import { crossingTally, expandHome, fenceStore } from "./fences.js";
+import { buildRelatedHabits } from "./graph.js";
+import {
+  computeHealth,
+  daysSinceLast,
+  parseVaultDay,
+  resolveRhythm,
+} from "./health.js";
+import { type RegistryPerson, selectPeopleToReach } from "./people.js";
+import { buildTagIndex, buildTagProfile } from "./tags.js";
 import {
   areaHasMoments,
+  computeCycleCascade,
   countMomentsInPhase,
   dayViewOverflow,
   deriveRhythmFromSchedule,
-  normalizeSchedule,
-  phaseForStartTime,
-  schedulePhaseError,
-  scheduleRhythmError,
-  timingFromSchedule,
-  validateMomentTiming,
-  computeCycleCascade,
   findAreaByIdOrName,
-  normalizeAliases,
   findCycleByIdOrName,
   findCyclePlan,
   findHabitByIdOrName,
@@ -59,18 +45,46 @@ import {
   isBudgeted,
   isInDeck,
   isSpontaneous,
+  normalizeAliases,
   normalizeRefs,
+  normalizeSchedule,
   normalizeTags,
+  phaseForStartTime,
   requireActiveArea,
   requireActiveHabit,
   requireCycle,
+  schedulePhaseError,
+  scheduleRhythmError,
+  timingFromSchedule,
+  validateMomentTiming,
   validateOneToThreeWords,
   validateRefs,
-} from './validation.js';
-import { computeHealth, daysSinceLast, parseVaultDay, resolveRhythm } from './health.js';
-import { buildTagIndex, buildTagProfile } from './tags.js';
-import { buildRelatedHabits } from './graph.js';
-import { type RegistryPerson, selectPeopleToReach } from './people.js';
+} from "./validation.js";
+import {
+  type Area,
+  AttitudeSchema,
+  CustomMetricSchema,
+  type Cycle,
+  type CyclePlan,
+  clearActiveMoment,
+  type Habit,
+  logVaultBanner,
+  type Moment,
+  type Phase,
+  type PhaseConfig,
+  PhaseSchema,
+  type Rhythm,
+  RhythmSchema,
+  readActiveMoment,
+  readCollection,
+  resolveVault,
+  rhythmToCycleBudget,
+  type Schedule,
+  ScheduleSchema,
+  StartTimeSchema,
+  writeActiveMoment,
+  writeCollection,
+} from "./vault.js";
 
 // ────────────────────────────────────────────────────────────────────────
 // Boot
@@ -85,17 +99,19 @@ const VAULT_ROOT = vault.root;
 // ────────────────────────────────────────────────────────────────────────
 
 type ToolResult = {
-  content: Array<{ type: 'text'; text: string }>;
+  content: Array<{ type: "text"; text: string }>;
 };
 
 function ok(payload: unknown): ToolResult {
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
+    content: [
+      { type: "text" as const, text: JSON.stringify(payload, null, 2) },
+    ],
   };
 }
 
 function err(message: string): ToolResult {
-  return { content: [{ type: 'text' as const, text: `Error: ${message}` }] };
+  return { content: [{ type: "text" as const, text: `Error: ${message}` }] };
 }
 
 function nowIso(): string {
@@ -121,7 +137,9 @@ function reconcileHabitSchedule(
     return { error: rhythmError };
   }
 
-  const phaseConfigs = Object.values(readCollection(VAULT_ROOT, 'phaseConfigs'));
+  const phaseConfigs = Object.values(
+    readCollection(VAULT_ROOT, "phaseConfigs"),
+  );
   const phaseError = schedulePhaseError(schedule, phase, phaseConfigs);
   if (phaseError) {
     return { error: phaseError };
@@ -138,7 +156,7 @@ function reconcileHabitSchedule(
 // ────────────────────────────────────────────────────────────────────────
 
 const server = new McpServer(
-  { name: 'zenborg-mcp', version: '0.3.0' },
+  { name: "zenborg-mcp", version: "0.3.0" },
   {
     instructions: `Zenborg is an intention-cultivation garden. The vault at \`${VAULT_ROOT}\` stores the garden state as JSON collections written by the Tauri app.
 
@@ -186,11 +204,11 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 // ────────────────────────────────────────────────────────────────────────
 
 server.tool(
-  'list_areas',
-  'List active (non-archived) areas, sorted by order. Pass includeArchived=true to include archived.',
+  "list_areas",
+  "List active (non-archived) areas, sorted by order. Pass includeArchived=true to include archived.",
   { includeArchived: z.boolean().optional() },
   async ({ includeArchived }): Promise<ToolResult> => {
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const list = Object.values(areas)
       .filter((a) => includeArchived || !a.isArchived)
       .sort((a, b) => a.order - b.order);
@@ -199,11 +217,11 @@ server.tool(
 );
 
 server.tool(
-  'get_area',
-  'Get a single area by id or exact name.',
+  "get_area",
+  "Get a single area by id or exact name.",
   { idOrName: z.string() },
   async ({ idOrName }): Promise<ToolResult> => {
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const area = findAreaByIdOrName(areas, idOrName);
     if (!area) return err(`Area not found or ambiguous: ${idOrName}`);
     return ok(area);
@@ -211,18 +229,27 @@ server.tool(
 );
 
 server.tool(
-  'create_area',
-  'Create a new area (plot of the garden).',
+  "create_area",
+  "Create a new area (plot of the garden).",
   {
     name: z.string().min(1),
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a hex like #aabbcc'),
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex like #aabbcc"),
     emoji: z.string().min(1),
     order: z.number().int().nonnegative(),
     attitude: AttitudeSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
   },
-  async ({ name, color, emoji, order, attitude, tags }): Promise<ToolResult> => {
-    const areas = readCollection(VAULT_ROOT, 'areas');
+  async ({
+    name,
+    color,
+    emoji,
+    order,
+    attitude,
+    tags,
+  }): Promise<ToolResult> => {
+    const areas = readCollection(VAULT_ROOT, "areas");
     const now = nowIso();
     const area: Area = {
       id: crypto.randomUUID(),
@@ -238,18 +265,21 @@ server.tool(
       updatedAt: now,
     };
     areas[area.id] = area;
-    writeCollection(VAULT_ROOT, 'areas', areas);
+    writeCollection(VAULT_ROOT, "areas", areas);
     return ok({ created: area });
   },
 );
 
 server.tool(
-  'update_area',
-  'Partially update an area. Pass only fields you want to change.',
+  "update_area",
+  "Partially update an area. Pass only fields you want to change.",
   {
     idOrName: z.string(),
     name: z.string().min(1).optional(),
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
     emoji: z.string().min(1).optional(),
     order: z.number().int().nonnegative().optional(),
     attitude: AttitudeSchema.nullable().optional(),
@@ -257,7 +287,7 @@ server.tool(
   },
   async (params): Promise<ToolResult> => {
     const { idOrName, ...updates } = params;
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const area = findAreaByIdOrName(areas, idOrName);
     if (!area) return err(`Area not found or ambiguous: ${idOrName}`);
     const next: Area = {
@@ -266,36 +296,38 @@ server.tool(
       ...(updates.color !== undefined ? { color: updates.color } : {}),
       ...(updates.emoji !== undefined ? { emoji: updates.emoji.trim() } : {}),
       ...(updates.order !== undefined ? { order: updates.order } : {}),
-      ...('attitude' in updates ? { attitude: updates.attitude ?? null } : {}),
-      ...(updates.tags !== undefined ? { tags: normalizeTags(updates.tags) } : {}),
+      ...("attitude" in updates ? { attitude: updates.attitude ?? null } : {}),
+      ...(updates.tags !== undefined
+        ? { tags: normalizeTags(updates.tags) }
+        : {}),
       updatedAt: nowIso(),
     };
     areas[area.id] = next;
-    writeCollection(VAULT_ROOT, 'areas', areas);
+    writeCollection(VAULT_ROOT, "areas", areas);
     return ok({ updated: next });
   },
 );
 
 server.tool(
-  'archive_area',
-  'Soft-delete an area (hides from active lists; moments preserved).',
+  "archive_area",
+  "Soft-delete an area (hides from active lists; moments preserved).",
   { idOrName: z.string() },
   async ({ idOrName }): Promise<ToolResult> => {
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const area = findAreaByIdOrName(areas, idOrName);
     if (!area) return err(`Area not found or ambiguous: ${idOrName}`);
     areas[area.id] = { ...area, isArchived: true, updatedAt: nowIso() };
-    writeCollection(VAULT_ROOT, 'areas', areas);
+    writeCollection(VAULT_ROOT, "areas", areas);
     return ok({ archived: area.id });
   },
 );
 
 server.tool(
-  'unarchive_area',
-  'Restore an archived area.',
+  "unarchive_area",
+  "Restore an archived area.",
   { idOrName: z.string() },
   async ({ idOrName }): Promise<ToolResult> => {
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const area =
       areas[idOrName] ??
       Object.values(areas).find(
@@ -303,30 +335,33 @@ server.tool(
       );
     if (!area) return err(`Archived area not found: ${idOrName}`);
     areas[area.id] = { ...area, isArchived: false, updatedAt: nowIso() };
-    writeCollection(VAULT_ROOT, 'areas', areas);
+    writeCollection(VAULT_ROOT, "areas", areas);
     return ok({ unarchived: area.id });
   },
 );
 
 server.tool(
-  'delete_area',
-  'Permanently delete an archived area. Only allowed if the area has no moments.',
+  "delete_area",
+  "Permanently delete an archived area. Only allowed if the area has no moments.",
   { idOrName: z.string() },
   async ({ idOrName }): Promise<ToolResult> => {
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const area =
       areas[idOrName] ??
       Object.values(areas).find(
         (a) => a.name.toLowerCase() === idOrName.toLowerCase(),
       );
     if (!area) return err(`Area not found: ${idOrName}`);
-    if (!area.isArchived) return err(`Area must be archived first: ${area.name}`);
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    if (!area.isArchived)
+      return err(`Area must be archived first: ${area.name}`);
+    const moments = readCollection(VAULT_ROOT, "moments");
     if (areaHasMoments(area.id, moments)) {
-      return err(`Area has moments; cannot delete. Reassign or delete moments first.`);
+      return err(
+        `Area has moments; cannot delete. Reassign or delete moments first.`,
+      );
     }
     delete areas[area.id];
-    writeCollection(VAULT_ROOT, 'areas', areas);
+    writeCollection(VAULT_ROOT, "areas", areas);
     return ok({ deleted: area.id });
   },
 );
@@ -336,14 +371,14 @@ server.tool(
 // ────────────────────────────────────────────────────────────────────────
 
 server.tool(
-  'list_habits',
-  'List habits. Filter by areaId and/or includeArchived.',
+  "list_habits",
+  "List habits. Filter by areaId and/or includeArchived.",
   {
     areaId: z.string().optional(),
     includeArchived: z.boolean().optional(),
   },
   async ({ areaId, includeArchived }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const list = Object.values(habits)
       .filter((h) => includeArchived || !h.isArchived)
       .filter((h) => (areaId ? h.areaId === areaId : true))
@@ -353,11 +388,11 @@ server.tool(
 );
 
 server.tool(
-  'get_habit',
-  'Get a habit by id or exact name.',
+  "get_habit",
+  "Get a habit by id or exact name.",
   { idOrName: z.string() },
   async ({ idOrName }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const habit = findHabitByIdOrName(habits, idOrName);
     if (!habit) return err(`Habit not found or ambiguous: ${idOrName}`);
     return ok(habit);
@@ -365,8 +400,8 @@ server.tool(
 );
 
 server.tool(
-  'create_habit',
-  'Create a habit (perennial) inside an area. Name must be 1–3 words. Pass `schedule` for clock-time commitments (e.g. singing at 14:00 on Mondays); it fills `rhythm` and `phase` when they are absent and is rejected when they contradict it. Omit it for ambient habits.',
+  "create_habit",
+  "Create a habit (perennial) inside an area. Name must be 1–3 words. Pass `schedule` for clock-time commitments (e.g. singing at 14:00 on Mondays); it fills `rhythm` and `phase` when they are absent and is rejected when they contradict it. Omit it for ambient habits.",
   {
     name: z.string(),
     areaId: z.string(),
@@ -382,31 +417,31 @@ server.tool(
     schedule: ScheduleSchema.optional(),
   },
   async (params): Promise<ToolResult> => {
-    const nameError = validateOneToThreeWords(params.name, 'Habit');
+    const nameError = validateOneToThreeWords(params.name, "Habit");
     if (nameError) return err(nameError);
 
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const areaCheck = requireActiveArea(areas, params.areaId);
-    if (typeof areaCheck === 'string') return err(areaCheck);
+    if (typeof areaCheck === "string") return err(areaCheck);
 
     let schedule: Schedule | undefined;
     let rhythm = params.rhythm;
     let phase: Phase | null = params.phase ?? null;
     if (params.schedule) {
       const normalized = normalizeSchedule(params.schedule);
-      if ('error' in normalized) return err(normalized.error);
+      if ("error" in normalized) return err(normalized.error);
       const reconciled = reconcileHabitSchedule(
         normalized,
         params.rhythm,
         params.phase ?? null,
       );
-      if ('error' in reconciled) return err(reconciled.error);
+      if ("error" in reconciled) return err(reconciled.error);
       schedule = normalized;
       rhythm = reconciled.rhythm;
       phase = reconciled.phase;
     }
 
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const now = nowIso();
     const normalizedAliases = normalizeAliases(params.aliases, params.name);
     const habit: Habit = {
@@ -430,14 +465,14 @@ server.tool(
       updatedAt: now,
     };
     habits[habit.id] = habit;
-    writeCollection(VAULT_ROOT, 'habits', habits);
+    writeCollection(VAULT_ROOT, "habits", habits);
     return ok({ created: habit });
   },
 );
 
 server.tool(
-  'update_habit',
-  'Partially update a habit. Pass `schedule: null` to drop a clock-time commitment. Setting or keeping a schedule re-reconciles `rhythm` and `phase` against it.',
+  "update_habit",
+  "Partially update a habit. Pass `schedule: null` to drop a clock-time commitment. Setting or keeping a schedule re-reconciles `rhythm` and `phase` against it.",
   {
     id: z.string(),
     name: z.string().optional(),
@@ -455,22 +490,23 @@ server.tool(
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const habit = habits[id];
     if (!habit) return err(`Habit not found: ${id}`);
 
     if (updates.name !== undefined) {
-      const nameError = validateOneToThreeWords(updates.name, 'Habit');
+      const nameError = validateOneToThreeWords(updates.name, "Habit");
       if (nameError) return err(nameError);
     }
 
     if (updates.areaId !== undefined) {
-      const areas = readCollection(VAULT_ROOT, 'areas');
+      const areas = readCollection(VAULT_ROOT, "areas");
       const areaCheck = requireActiveArea(areas, updates.areaId);
-      if (typeof areaCheck === 'string') return err(areaCheck);
+      if (typeof areaCheck === "string") return err(areaCheck);
     }
 
-    const nextName = updates.name !== undefined ? updates.name.trim() : habit.name;
+    const nextName =
+      updates.name !== undefined ? updates.name.trim() : habit.name;
     // Hoisted: inside the `else` of `'aliases' in updates` below, TS narrows
     // `updates` to `never`, so it cannot be read there.
     const nameProvided = updates.name !== undefined;
@@ -480,12 +516,12 @@ server.tool(
       ...(updates.name !== undefined ? { name: nextName } : {}),
       ...(updates.areaId !== undefined ? { areaId: updates.areaId } : {}),
       ...(updates.order !== undefined ? { order: updates.order } : {}),
-      ...('attitude' in updates ? { attitude: updates.attitude ?? null } : {}),
-      ...('phase' in updates ? { phase: updates.phase ?? null } : {}),
+      ...("attitude" in updates ? { attitude: updates.attitude ?? null } : {}),
+      ...("phase" in updates ? { phase: updates.phase ?? null } : {}),
       ...(updates.tags !== undefined
         ? { tags: normalizeTags(updates.tags) }
         : {}),
-      ...('emoji' in updates
+      ...("emoji" in updates
         ? { emoji: updates.emoji ? updates.emoji.trim() : null }
         : {}),
       ...(updates.description !== undefined
@@ -496,14 +532,14 @@ server.tool(
         : {}),
       updatedAt: nowIso(),
     };
-    if ('rhythm' in updates) {
+    if ("rhythm" in updates) {
       if (updates.rhythm === null) {
         delete next.rhythm;
       } else if (updates.rhythm !== undefined) {
         next.rhythm = updates.rhythm;
       }
     }
-    if ('aliases' in updates) {
+    if ("aliases" in updates) {
       const list = updates.aliases === null ? [] : updates.aliases;
       const normalized = normalizeAliases(list, nextName);
       if (normalized.length === 0) {
@@ -521,7 +557,7 @@ server.tool(
         next.aliases = renormalized;
       }
     }
-    if ('schedule' in updates) {
+    if ("schedule" in updates) {
       if (updates.schedule === null) {
         delete next.schedule;
       } else if (updates.schedule !== undefined) {
@@ -531,34 +567,34 @@ server.tool(
 
     if (next.schedule) {
       const normalized = normalizeSchedule(next.schedule);
-      if ('error' in normalized) return err(normalized.error);
+      if ("error" in normalized) return err(normalized.error);
       const reconciled = reconcileHabitSchedule(
         normalized,
         next.rhythm,
         next.phase,
       );
-      if ('error' in reconciled) return err(reconciled.error);
+      if ("error" in reconciled) return err(reconciled.error);
       next.schedule = normalized;
       next.rhythm = reconciled.rhythm;
       next.phase = reconciled.phase;
     }
 
     habits[id] = next;
-    writeCollection(VAULT_ROOT, 'habits', habits);
+    writeCollection(VAULT_ROOT, "habits", habits);
     return ok({ updated: next });
   },
 );
 
 server.tool(
-  'archive_habit',
-  'Archive a habit. Cascades: deletes all cycle plans for this habit. Allocated moments are preserved as historical record (virtual deck ghosts vanish because plans are gone).',
+  "archive_habit",
+  "Archive a habit. Cascades: deletes all cycle plans for this habit. Allocated moments are preserved as historical record (virtual deck ghosts vanish because plans are gone).",
   { id: z.string() },
   async ({ id }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const habit = habits[id];
     if (!habit) return err(`Habit not found: ${id}`);
 
-    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const plans = readCollection(VAULT_ROOT, "cyclePlans");
     const planIdsToDelete: string[] = [];
     for (const p of Object.values(plans)) {
       if (p.habitId === id) planIdsToDelete.push(p.id);
@@ -566,8 +602,8 @@ server.tool(
     for (const pId of planIdsToDelete) delete plans[pId];
     habits[id] = { ...habit, isArchived: true, updatedAt: nowIso() };
 
-    writeCollection(VAULT_ROOT, 'habits', habits);
-    writeCollection(VAULT_ROOT, 'cyclePlans', plans);
+    writeCollection(VAULT_ROOT, "habits", habits);
+    writeCollection(VAULT_ROOT, "cyclePlans", plans);
 
     return ok({
       archived: id,
@@ -577,31 +613,31 @@ server.tool(
 );
 
 server.tool(
-  'unarchive_habit',
-  'Restore an archived habit. Does not restore cascaded moments/plans.',
+  "unarchive_habit",
+  "Restore an archived habit. Does not restore cascaded moments/plans.",
   { id: z.string() },
   async ({ id }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const habit = habits[id];
     if (!habit) return err(`Habit not found: ${id}`);
     habits[id] = { ...habit, isArchived: false, updatedAt: nowIso() };
-    writeCollection(VAULT_ROOT, 'habits', habits);
+    writeCollection(VAULT_ROOT, "habits", habits);
     return ok({ unarchived: id });
   },
 );
 
 server.tool(
-  'get_habit_health',
-  'Compute health, effective rhythm, and days-since-last-allocation for a habit.',
+  "get_habit_health",
+  "Compute health, effective rhythm, and days-since-last-allocation for a habit.",
   { habitId: z.string() },
   async ({ habitId }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const habit = habits[habitId];
     if (!habit) return err(`Habit not found: ${habitId}`);
 
-    const cyclePlans = readCollection(VAULT_ROOT, 'cyclePlans');
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
+    const cycles = readCollection(VAULT_ROOT, "cycles");
+    const moments = readCollection(VAULT_ROOT, "moments");
 
     const now = new Date();
     const isoToday = now.toISOString().slice(0, 10);
@@ -611,9 +647,7 @@ server.tool(
         if (p.habitId !== habitId) return false;
         const c = cycles[p.cycleId];
         if (!c) return false;
-        return (
-          c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday)
-        );
+        return c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday);
       }) ?? null;
 
     const momentsArr = Object.values(moments);
@@ -629,17 +663,17 @@ server.tool(
 );
 
 server.tool(
-  'list_wilting_habits',
+  "list_wilting_habits",
   'List habits whose current health is "wilting". Optionally filter by areaId or attitude.',
   {
     areaId: z.string().optional(),
     attitude: AttitudeSchema.optional(),
   },
   async ({ areaId, attitude }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, 'habits');
-    const cyclePlans = readCollection(VAULT_ROOT, 'cyclePlans');
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
+    const cycles = readCollection(VAULT_ROOT, "cycles");
+    const moments = readCollection(VAULT_ROOT, "moments");
     const momentsArr = Object.values(moments);
     const now = new Date();
     const isoToday = now.toISOString().slice(0, 10);
@@ -648,7 +682,7 @@ server.tool(
       habitId: string;
       habitName: string;
       areaId: string;
-      attitude: Habit['attitude'];
+      attitude: Habit["attitude"];
       rhythm: ReturnType<typeof resolveRhythm>;
       daysSinceLast: number | null;
     }> = [];
@@ -669,7 +703,7 @@ server.tool(
         }) ?? null;
 
       const health = computeHealth(habit, activePlan, momentsArr, now);
-      if (health !== 'wilting') continue;
+      if (health !== "wilting") continue;
 
       results.push({
         habitId: habit.id,
@@ -686,8 +720,8 @@ server.tool(
 );
 
 server.tool(
-  'list_people_to_reach',
-  'The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by registry `category` (friend, family, lover, colleague).',
+  "list_people_to_reach",
+  "The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by registry `category` (friend, family, lover, colleague).",
   {
     category: z.string().optional(),
     limit: z.number().int().positive().optional(),
@@ -697,7 +731,7 @@ server.tool(
     // key-resolve tool does not exist yet (spec C2/C4), so the list is empty
     // and the queue returns [] — by design, never an error.
     const registryPeople: RegistryPerson[] = [];
-    const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
+    const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
     return ok(
       selectPeopleToReach(registryPeople, moments, new Date(), {
         category,
@@ -708,11 +742,11 @@ server.tool(
 );
 
 server.tool(
-  'get_cycle_planning_proposals',
-  'Read-only: compute habit proposals for a cycle based on attitude + rhythm + health. Caller decides what to accept.',
+  "get_cycle_planning_proposals",
+  "Read-only: compute habit proposals for a cycle based on attitude + rhythm + health. Caller decides what to accept.",
   { cycleId: z.string() },
   async ({ cycleId }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[cycleId];
     if (!cycle) return err(`Cycle not found: ${cycleId}`);
 
@@ -723,9 +757,9 @@ server.tool(
       Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1,
     );
 
-    const habits = readCollection(VAULT_ROOT, 'habits');
-    const cyclePlans = readCollection(VAULT_ROOT, 'cyclePlans');
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
+    const moments = readCollection(VAULT_ROOT, "moments");
     const momentsArr = Object.values(moments);
     const now = new Date();
 
@@ -733,7 +767,7 @@ server.tool(
     for (const habit of Object.values(habits)) {
       if (habit.isArchived) continue;
       if (habit.attitude === null) continue;
-      if (habit.attitude === 'BEING') continue;
+      if (habit.attitude === "BEING") continue;
 
       const plan =
         Object.values(cyclePlans).find(
@@ -743,7 +777,7 @@ server.tool(
       const health = computeHealth(habit, plan, momentsArr, now);
       const dsl = daysSinceLast(habit.id, momentsArr, now);
 
-      if (habit.attitude === 'BEGINNING') {
+      if (habit.attitude === "BEGINNING") {
         const count = momentsArr.filter((m) => m.habitId === habit.id).length;
         if (count >= 5) continue;
         proposals.push({
@@ -753,7 +787,7 @@ server.tool(
           attitude: habit.attitude,
           suggestedRhythm: effectiveRhythm,
           suggestedCount: 0,
-          reason: 'beginning',
+          reason: "beginning",
           currentHealth: health,
           daysSinceLast: dsl,
         });
@@ -763,13 +797,13 @@ server.tool(
       if (!effectiveRhythm) continue;
 
       const suggestedCount = rhythmToCycleBudget(effectiveRhythm, cycleDays);
-      let reason: 'wilting' | 'on-rhythm' | 'beginning' | 'returning';
-      if (health === 'wilting') {
-        reason = 'wilting';
-      } else if (habit.attitude === 'RETURNING') {
-        reason = 'returning';
+      let reason: "wilting" | "on-rhythm" | "beginning" | "returning";
+      if (health === "wilting") {
+        reason = "wilting";
+      } else if (habit.attitude === "RETURNING") {
+        reason = "returning";
       } else {
-        reason = 'on-rhythm';
+        reason = "on-rhythm";
       }
       proposals.push({
         habitId: habit.id,
@@ -789,23 +823,21 @@ server.tool(
 );
 
 server.tool(
-  'get_cycle_review',
-  'Read-only: descriptive review of a cycle. No aggregate scores. Observational mirror only.',
+  "get_cycle_review",
+  "Read-only: descriptive review of a cycle. No aggregate scores. Observational mirror only.",
   { cycleId: z.string() },
   async ({ cycleId }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[cycleId];
     if (!cycle) return err(`Cycle not found: ${cycleId}`);
 
-    const habitsColl = readCollection(VAULT_ROOT, 'habits');
-    const cyclePlans = readCollection(VAULT_ROOT, 'cyclePlans');
-    const momentsColl = readCollection(VAULT_ROOT, 'moments');
+    const habitsColl = readCollection(VAULT_ROOT, "habits");
+    const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
+    const momentsColl = readCollection(VAULT_ROOT, "moments");
     const momentsArr = Object.values(momentsColl);
 
     const cycleMoments = momentsArr.filter((m) => m.cycleId === cycleId);
-    const unplannedMoments = cycleMoments.filter(
-      (m) => m.cyclePlanId === null,
-    );
+    const unplannedMoments = cycleMoments.filter((m) => m.cyclePlanId === null);
     const start = parseVaultDay(cycle.startDate);
     const end = cycle.endDate ? parseVaultDay(cycle.endDate) : new Date();
 
@@ -830,8 +862,7 @@ server.tool(
       let longestGap: number | null = null;
       for (let i = 1; i < dates.length; i++) {
         const gap = Math.floor(
-          (dates[i].getTime() - dates[i - 1].getTime()) /
-            (24 * 60 * 60 * 1000),
+          (dates[i].getTime() - dates[i - 1].getTime()) / (24 * 60 * 60 * 1000),
         );
         if (longestGap === null || gap > longestGap) longestGap = gap;
       }
@@ -883,13 +914,13 @@ function isCycleActive(cycle: Cycle, todayMs: number): boolean {
 }
 
 server.tool(
-  'list_cycles',
+  "list_cycles",
   'List cycles. filter: "active"/"current" = contains today (derived from dates), "upcoming" = starts in future, "all" = everything. Default "all".',
   {
-    filter: z.enum(['active', 'upcoming', 'current', 'all']).optional(),
+    filter: z.enum(["active", "upcoming", "current", "all"]).optional(),
   },
-  async ({ filter = 'all' }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+  async ({ filter = "all" }): Promise<ToolResult> => {
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayMs = today.getTime();
@@ -897,14 +928,14 @@ server.tool(
     const list = Object.values(cycles)
       .filter((c) => {
         switch (filter) {
-          case 'active':
-          case 'current':
+          case "active":
+          case "current":
             return isCycleActive(c, todayMs);
-          case 'upcoming': {
+          case "upcoming": {
             const start = Date.parse(c.startDate);
             return !Number.isNaN(start) && start > todayMs;
           }
-          case 'all':
+          default:
             return true;
         }
       })
@@ -914,11 +945,11 @@ server.tool(
 );
 
 server.tool(
-  'get_cycle',
-  'Get a cycle by id or exact name.',
+  "get_cycle",
+  "Get a cycle by id or exact name.",
   { idOrName: z.string() },
   async ({ idOrName }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = findCycleByIdOrName(cycles, idOrName);
     if (!cycle) return err(`Cycle not found or ambiguous: ${idOrName}`);
     return ok(cycle);
@@ -932,23 +963,23 @@ function addDays(iso: string, days: number): string {
 }
 
 server.tool(
-  'plan_cycle',
-  'Create a new cycle (season). If startDate is omitted, defaults to today. If endDate is omitted, cycle is open-ended.',
+  "plan_cycle",
+  "Create a new cycle (season). If startDate is omitted, defaults to today. If endDate is omitted, cycle is open-ended.",
   {
     name: z.string().min(1),
     startDate: z
       .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'startDate must be YYYY-MM-DD')
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "startDate must be YYYY-MM-DD")
       .optional(),
     endDate: z
       .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'endDate must be YYYY-MM-DD')
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "endDate must be YYYY-MM-DD")
       .nullable()
       .optional(),
     intention: z.string().optional(),
   },
   async ({ name, startDate, endDate, intention }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const now = nowIso();
     const resolvedStart = startDate ?? new Date().toISOString().slice(0, 10);
     const cycle: Cycle = {
@@ -961,17 +992,17 @@ server.tool(
       updatedAt: now,
     };
     cycles[cycle.id] = cycle;
-    writeCollection(VAULT_ROOT, 'cycles', cycles);
+    writeCollection(VAULT_ROOT, "cycles", cycles);
     return ok({ created: cycle });
   },
 );
 
 server.tool(
-  'quick_create_cycle',
+  "quick_create_cycle",
   'Shortcut for common cycle templates. template: "week" (7 days), "month" (28 days), "quarter" (90 days).',
   {
     name: z.string().min(1),
-    template: z.enum(['week', 'month', 'quarter']),
+    template: z.enum(["week", "month", "quarter"]),
     startDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -979,10 +1010,10 @@ server.tool(
     intention: z.string().optional(),
   },
   async ({ name, template, startDate, intention }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const now = nowIso();
     const resolvedStart = startDate ?? new Date().toISOString().slice(0, 10);
-    const days = template === 'week' ? 7 : template === 'month' ? 28 : 90;
+    const days = template === "week" ? 7 : template === "month" ? 28 : 90;
     const resolvedEnd = addDays(resolvedStart, days - 1);
     const cycle: Cycle = {
       id: crypto.randomUUID(),
@@ -994,18 +1025,21 @@ server.tool(
       updatedAt: now,
     };
     cycles[cycle.id] = cycle;
-    writeCollection(VAULT_ROOT, 'cycles', cycles);
+    writeCollection(VAULT_ROOT, "cycles", cycles);
     return ok({ created: cycle });
   },
 );
 
 server.tool(
-  'update_cycle',
-  'Partially update a cycle (name, dates, intention, reflection). Writing a reflection here stamps it as a machine draft, so harvest never shows it as the human\'s own words.',
+  "update_cycle",
+  "Partially update a cycle (name, dates, intention, reflection). Writing a reflection here stamps it as a machine draft, so harvest never shows it as the human's own words.",
   {
     id: z.string(),
     name: z.string().min(1).optional(),
-    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    startDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
     endDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -1016,14 +1050,16 @@ server.tool(
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[id];
     if (!cycle) return err(`Cycle not found: ${id}`);
     const next: Cycle = {
       ...cycle,
       ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
-      ...(updates.startDate !== undefined ? { startDate: updates.startDate } : {}),
-      ...('endDate' in updates ? { endDate: updates.endDate ?? null } : {}),
+      ...(updates.startDate !== undefined
+        ? { startDate: updates.startDate }
+        : {}),
+      ...("endDate" in updates ? { endDate: updates.endDate ?? null } : {}),
       ...(updates.intention !== undefined
         ? { intention: updates.intention.trim() }
         : {}),
@@ -1035,18 +1071,18 @@ server.tool(
       // which is what keeps a draft from passing as the person's own words.
       // Only an edit made by hand in the app stamps "human".
       ...(updates.reflection !== undefined
-        ? { reflectionSource: 'machine' as const }
+        ? { reflectionSource: "machine" as const }
         : {}),
       updatedAt: nowIso(),
     };
     cycles[id] = next;
-    writeCollection(VAULT_ROOT, 'cycles', cycles);
+    writeCollection(VAULT_ROOT, "cycles", cycles);
     return ok({ updated: next });
   },
 );
 
 server.tool(
-  'end_cycle',
+  "end_cycle",
   "Set a cycle's endDate (defaults to today).",
   {
     id: z.string(),
@@ -1056,7 +1092,7 @@ server.tool(
       .optional(),
   },
   async ({ id, endDate }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[id];
     if (!cycle) return err(`Cycle not found: ${id}`);
     const next: Cycle = {
@@ -1065,31 +1101,31 @@ server.tool(
       updatedAt: nowIso(),
     };
     cycles[id] = next;
-    writeCollection(VAULT_ROOT, 'cycles', cycles);
+    writeCollection(VAULT_ROOT, "cycles", cycles);
     return ok({ ended: id, endDate: next.endDate });
   },
 );
 
 server.tool(
-  'delete_cycle',
-  'Permanently delete a cycle. Cascades: deletes all moments + cycle plans scoped to this cycle.',
+  "delete_cycle",
+  "Permanently delete a cycle. Cascades: deletes all moments + cycle plans scoped to this cycle.",
   { id: z.string() },
   async ({ id }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[id];
     if (!cycle) return err(`Cycle not found: ${id}`);
 
-    const moments = readCollection(VAULT_ROOT, 'moments');
-    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const moments = readCollection(VAULT_ROOT, "moments");
+    const plans = readCollection(VAULT_ROOT, "cyclePlans");
     const cascade = computeCycleCascade(id, moments, plans);
 
     for (const mId of cascade.momentIdsToDelete) delete moments[mId];
     for (const pId of cascade.planIdsToDelete) delete plans[pId];
     delete cycles[id];
 
-    writeCollection(VAULT_ROOT, 'cycles', cycles);
-    writeCollection(VAULT_ROOT, 'moments', moments);
-    writeCollection(VAULT_ROOT, 'cyclePlans', plans);
+    writeCollection(VAULT_ROOT, "cycles", cycles);
+    writeCollection(VAULT_ROOT, "moments", moments);
+    writeCollection(VAULT_ROOT, "cyclePlans", plans);
 
     return ok({
       deleted: id,
@@ -1104,11 +1140,11 @@ server.tool(
 // ────────────────────────────────────────────────────────────────────────
 
 server.tool(
-  'list_cycle_plans',
-  'List cycle plans. Optionally filter by cycleId.',
+  "list_cycle_plans",
+  "List cycle plans. Optionally filter by cycleId.",
   { cycleId: z.string().optional() },
   async ({ cycleId }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const plans = readCollection(VAULT_ROOT, "cyclePlans");
     const list = Object.values(plans).filter(
       (p) => !cycleId || p.cycleId === cycleId,
     );
@@ -1117,11 +1153,11 @@ server.tool(
 );
 
 server.tool(
-  'get_cycle_plan',
-  'Get a cycle plan by id.',
+  "get_cycle_plan",
+  "Get a cycle plan by id.",
   { id: z.string() },
   async ({ id }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const plans = readCollection(VAULT_ROOT, "cyclePlans");
     const plan = plans[id];
     if (!plan) return err(`Cycle plan not found: ${id}`);
     return ok(plan);
@@ -1129,8 +1165,8 @@ server.tool(
 );
 
 server.tool(
-  'budget_habit_to_cycle',
-  'Upsert a cycle plan: allocate N moments of a habit to a cycle. If count is omitted, derives it from rhythmOverride ?? habit.rhythm across the cycle length. If a plan for (cycleId, habitId) already exists, updates its budgetedCount.',
+  "budget_habit_to_cycle",
+  "Upsert a cycle plan: allocate N moments of a habit to a cycle. If count is omitted, derives it from rhythmOverride ?? habit.rhythm across the cycle length. If a plan for (cycleId, habitId) already exists, updates its budgetedCount.",
   {
     cycleId: z.string(),
     habitId: z.string(),
@@ -1138,14 +1174,14 @@ server.tool(
     rhythmOverride: RhythmSchema.optional(),
   },
   async ({ cycleId, habitId, count, rhythmOverride }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycleCheck = requireCycle(cycles, cycleId);
-    if (typeof cycleCheck === 'string') return err(cycleCheck);
+    if (typeof cycleCheck === "string") return err(cycleCheck);
     const cycle = cycleCheck;
 
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const habitCheck = requireActiveHabit(habits, habitId);
-    if (typeof habitCheck === 'string') return err(habitCheck);
+    if (typeof habitCheck === "string") return err(habitCheck);
     const habit = habitCheck;
 
     const effectiveRhythm: Rhythm | null =
@@ -1157,7 +1193,7 @@ server.tool(
     } else {
       if (!effectiveRhythm) {
         return err(
-          'Cannot derive budget: no explicit count and no rhythm on habit or override',
+          "Cannot derive budget: no explicit count and no rhythm on habit or override",
         );
       }
       const start = parseVaultDay(cycle.startDate);
@@ -1169,7 +1205,7 @@ server.tool(
       resolvedCount = rhythmToCycleBudget(effectiveRhythm, cycleDays);
     }
 
-    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const plans = readCollection(VAULT_ROOT, "cyclePlans");
     const existing = findCyclePlan(plans, cycleId, habitId);
     const now = nowIso();
     const plan: CyclePlan = existing
@@ -1190,21 +1226,25 @@ server.tool(
       plans[plan.id] = plan;
     }
 
-    writeCollection(VAULT_ROOT, 'cyclePlans', plans);
+    writeCollection(VAULT_ROOT, "cyclePlans", plans);
     return ok({ upserted: plan });
   },
 );
 
 server.tool(
-  'increment_habit_budget',
-  'Increment the budgeted count for a (cycle, habit) plan by 1. Creates the plan if absent.',
+  "increment_habit_budget",
+  "Increment the budgeted count for a (cycle, habit) plan by 1. Creates the plan if absent.",
   { cycleId: z.string(), habitId: z.string() },
   async ({ cycleId, habitId }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const plans = readCollection(VAULT_ROOT, "cyclePlans");
     const existing = findCyclePlan(plans, cycleId, habitId);
     const now = nowIso();
     const plan: CyclePlan = existing
-      ? { ...existing, budgetedCount: existing.budgetedCount + 1, updatedAt: now }
+      ? {
+          ...existing,
+          budgetedCount: existing.budgetedCount + 1,
+          updatedAt: now,
+        }
       : {
           id: crypto.randomUUID(),
           cycleId,
@@ -1214,26 +1254,24 @@ server.tool(
           updatedAt: now,
         };
     plans[plan.id] = plan;
-    writeCollection(VAULT_ROOT, 'cyclePlans', plans);
+    writeCollection(VAULT_ROOT, "cyclePlans", plans);
     return ok({ upserted: plan });
   },
 );
 
 server.tool(
-  'decrement_habit_budget',
-  'Decrement the budgeted count for a (cycle, habit) plan by 1, floored at the number of already-allocated moments. No-op when the floor is already reached — allocated work is sunk cost and survives.',
+  "decrement_habit_budget",
+  "Decrement the budgeted count for a (cycle, habit) plan by 1, floored at the number of already-allocated moments. No-op when the floor is already reached — allocated work is sunk cost and survives.",
   { cycleId: z.string(), habitId: z.string() },
   async ({ cycleId, habitId }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const plans = readCollection(VAULT_ROOT, "cyclePlans");
     const existing = findCyclePlan(plans, cycleId, habitId);
-    if (!existing) return err('No plan to decrement');
+    if (!existing) return err("No plan to decrement");
 
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const allocated = Object.values(moments).filter(
       (m) =>
-        m.cyclePlanId === existing.id &&
-        m.day !== null &&
-        m.phase !== null,
+        m.cyclePlanId === existing.id && m.day !== null && m.phase !== null,
     ).length;
 
     if (existing.budgetedCount - 1 < allocated) {
@@ -1247,26 +1285,23 @@ server.tool(
       updatedAt: nowIso(),
     };
     plans[next.id] = next;
-    writeCollection(VAULT_ROOT, 'cyclePlans', plans);
+    writeCollection(VAULT_ROOT, "cyclePlans", plans);
     return ok({ updated: next });
   },
 );
 
 server.tool(
-  'remove_habit_from_deck',
+  "remove_habit_from_deck",
   "Clears the deck-side of a (cycle, habit) plan: sets budgetedCount to the number of already-allocated moments. Plan is preserved; no moments are deleted. Mirrors CycleService.removeHabitFromDeck.",
   { cycleId: z.string(), habitId: z.string() },
   async ({ cycleId, habitId }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const plans = readCollection(VAULT_ROOT, "cyclePlans");
     const plan = findCyclePlan(plans, cycleId, habitId);
-    if (!plan) return err('No plan to remove');
+    if (!plan) return err("No plan to remove");
 
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const allocatedCount = Object.values(moments).filter(
-      (m) =>
-        m.cyclePlanId === plan.id &&
-        m.day !== null &&
-        m.phase !== null,
+      (m) => m.cyclePlanId === plan.id && m.day !== null && m.phase !== null,
     ).length;
 
     const next: CyclePlan = {
@@ -1275,7 +1310,7 @@ server.tool(
       updatedAt: nowIso(),
     };
     plans[next.id] = next;
-    writeCollection(VAULT_ROOT, 'cyclePlans', plans);
+    writeCollection(VAULT_ROOT, "cyclePlans", plans);
 
     return ok({
       updated: next,
@@ -1289,23 +1324,26 @@ server.tool(
 // ────────────────────────────────────────────────────────────────────────
 
 const MomentAllocationFilter = z.enum([
-  'unallocated',
-  'deck',
-  'allocated',
-  'budgeted',
-  'spontaneous',
+  "unallocated",
+  "deck",
+  "allocated",
+  "budgeted",
+  "spontaneous",
 ]);
 
 server.tool(
-  'list_moments',
-  'List moments with optional structured filters. `tags` requires ALL given tags on a moment (AND) — the way to pull every moment with a `person-<name>` / `place-<name>` tag.',
+  "list_moments",
+  "List moments with optional structured filters. `tags` requires ALL given tags on a moment (AND) — the way to pull every moment with a `person-<name>` / `place-<name>` tag.",
   {
     filter: z
       .object({
         areaId: z.string().optional(),
         habitId: z.string().optional(),
         cycleId: z.string().optional(),
-        day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        day: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
         phase: PhaseSchema.optional(),
         allocation: MomentAllocationFilter.optional(),
         tags: z.array(z.string()).nonempty().optional(),
@@ -1313,7 +1351,7 @@ server.tool(
       .optional(),
   },
   async ({ filter }): Promise<ToolResult> => {
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const wantedTags = filter?.tags ? normalizeTags(filter.tags) : null;
     const list = Object.values(moments).filter((m) => {
       if (!filter) return true;
@@ -1326,19 +1364,19 @@ server.tool(
         return false;
       if (filter.allocation) {
         switch (filter.allocation) {
-          case 'unallocated':
+          case "unallocated":
             if (!(m.day === null && m.cyclePlanId === null)) return false;
             break;
-          case 'deck':
+          case "deck":
             if (!isInDeck(m)) return false;
             break;
-          case 'allocated':
+          case "allocated":
             if (!isAllocated(m)) return false;
             break;
-          case 'budgeted':
+          case "budgeted":
             if (!isBudgeted(m)) return false;
             break;
-          case 'spontaneous':
+          case "spontaneous":
             if (!(isAllocated(m) && isSpontaneous(m))) return false;
             break;
         }
@@ -1350,11 +1388,11 @@ server.tool(
 );
 
 server.tool(
-  'get_moment',
-  'Get a moment by id.',
+  "get_moment",
+  "Get a moment by id.",
   { id: z.string() },
   async ({ id }): Promise<ToolResult> => {
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[id];
     if (!moment) return err(`Moment not found: ${id}`);
     return ok(moment);
@@ -1373,7 +1411,7 @@ function buildMoment(params: {
   emoji?: string | null;
   tags?: string[] | null;
   personIds?: string[];
-  customMetric?: Moment['customMetric'];
+  customMetric?: Moment["customMetric"];
   startTime?: string;
   durationMin?: number;
   refs?: readonly string[];
@@ -1408,8 +1446,8 @@ function buildMoment(params: {
 }
 
 server.tool(
-  'create_moment',
-  'Create an unallocated moment (lives in the drawing board). Name must be 1–3 words. `startTime`/`durationMin` are optional clock time — usually inherited from a habit schedule, but settable directly. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`.',
+  "create_moment",
+  "Create an unallocated moment (lives in the drawing board). Name must be 1–3 words. `startTime`/`durationMin` are optional clock time — usually inherited from a habit schedule, but settable directly. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`.",
   {
     name: z.string(),
     areaId: z.string(),
@@ -1423,7 +1461,7 @@ server.tool(
     refs: z.array(z.string()).optional(),
   },
   async (params): Promise<ToolResult> => {
-    const nameError = validateOneToThreeWords(params.name, 'Moment');
+    const nameError = validateOneToThreeWords(params.name, "Moment");
     if (nameError) return err(nameError);
 
     const timingError = validateMomentTiming(
@@ -1435,21 +1473,21 @@ server.tool(
     const refsError = validateRefs(params.refs);
     if (refsError) return err(refsError);
 
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const areaCheck = requireActiveArea(areas, params.areaId);
-    if (typeof areaCheck === 'string') return err(areaCheck);
+    if (typeof areaCheck === "string") return err(areaCheck);
 
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const moment = buildMoment(params);
     moments[moment.id] = moment;
-    writeCollection(VAULT_ROOT, 'moments', moments);
+    writeCollection(VAULT_ROOT, "moments", moments);
     return ok({ created: moment });
   },
 );
 
 server.tool(
-  'update_moment',
-  'Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, pass `[]` to clear. `personIds` replaces the whole guest list — pass null or [] to clear it, omit it to leave it alone.',
+  "update_moment",
+  "Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, pass `[]` to clear. `personIds` replaces the whole guest list — pass null or [] to clear it, omit it to leave it alone.",
   {
     id: z.string(),
     name: z.string().optional(),
@@ -1465,12 +1503,12 @@ server.tool(
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[id];
     if (!moment) return err(`Moment not found: ${id}`);
 
     if (updates.name !== undefined) {
-      const nameError = validateOneToThreeWords(updates.name, 'Moment');
+      const nameError = validateOneToThreeWords(updates.name, "Moment");
       if (nameError) return err(nameError);
     }
     if (updates.refs !== undefined) {
@@ -1478,17 +1516,17 @@ server.tool(
       if (refsError) return err(refsError);
     }
     if (updates.areaId !== undefined) {
-      const areas = readCollection(VAULT_ROOT, 'areas');
+      const areas = readCollection(VAULT_ROOT, "areas");
       const areaCheck = requireActiveArea(areas, updates.areaId);
-      if (typeof areaCheck === 'string') return err(areaCheck);
+      if (typeof areaCheck === "string") return err(areaCheck);
     }
 
     const next: Moment = {
       ...moment,
       ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
       ...(updates.areaId !== undefined ? { areaId: updates.areaId } : {}),
-      ...('emoji' in updates ? { emoji: updates.emoji ?? null } : {}),
-      ...('phase' in updates ? { phase: updates.phase ?? null } : {}),
+      ...("emoji" in updates ? { emoji: updates.emoji ?? null } : {}),
+      ...("phase" in updates ? { phase: updates.phase ?? null } : {}),
       ...(updates.tags !== undefined
         ? { tags: normalizeTags(updates.tags) }
         : {}),
@@ -1497,7 +1535,9 @@ server.tool(
         : {}),
       ...(updates.startTime ? { startTime: updates.startTime } : {}),
       ...(updates.durationMin ? { durationMin: updates.durationMin } : {}),
-      ...(updates.refs !== undefined ? { refs: normalizeRefs(updates.refs) } : {}),
+      ...(updates.refs !== undefined
+        ? { refs: normalizeRefs(updates.refs) }
+        : {}),
       updatedAt: nowIso(),
     };
     if (updates.startTime === null) {
@@ -1511,7 +1551,7 @@ server.tool(
     if (next.refs !== undefined && next.refs.length === 0) {
       delete next.refs;
     }
-    if ('personIds' in updates) {
+    if ("personIds" in updates) {
       // Absent is the single empty representation — the same one `buildMoment`
       // writes — so an empty list clears the key rather than persisting `[]`.
       const list = updates.personIds ?? [];
@@ -1522,26 +1562,26 @@ server.tool(
       }
     }
     moments[id] = next;
-    writeCollection(VAULT_ROOT, 'moments', moments);
+    writeCollection(VAULT_ROOT, "moments", moments);
     return ok({ updated: next });
   },
 );
 
 server.tool(
-  'delete_moment',
-  'Permanently delete a moment.',
+  "delete_moment",
+  "Permanently delete a moment.",
   { id: z.string() },
   async ({ id }): Promise<ToolResult> => {
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     if (!moments[id]) return err(`Moment not found: ${id}`);
     delete moments[id];
-    writeCollection(VAULT_ROOT, 'moments', moments);
+    writeCollection(VAULT_ROOT, "moments", moments);
     return ok({ deleted: id });
   },
 );
 
 server.tool(
-  'allocate_moment',
+  "allocate_moment",
   'Allocate a moment to a specific (day, phase). No hard cap: the "3 per phase" rule is a day-view display concern, so a slot beyond it comes back with a `dayViewOverflow` notice rather than an error. `startTime`/`durationMin` optionally pin the moment to the clock.',
   {
     id: z.string(),
@@ -1559,7 +1599,7 @@ server.tool(
     startTime,
     durationMin,
   }): Promise<ToolResult> => {
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[id];
     if (!moment) return err(`Moment not found: ${id}`);
 
@@ -1578,57 +1618,60 @@ server.tool(
       updatedAt: nowIso(),
     };
     moments[id] = next;
-    writeCollection(VAULT_ROOT, 'moments', moments);
+    writeCollection(VAULT_ROOT, "moments", moments);
     const overflow = dayViewOverflow(slotCount + 1);
-    return ok({ allocated: next, ...(overflow ? { dayViewOverflow: overflow } : {}) });
+    return ok({
+      allocated: next,
+      ...(overflow ? { dayViewOverflow: overflow } : {}),
+    });
   },
 );
 
 server.tool(
-  'unallocate_moment',
-  'Delete the moment row for a previously-allocated plan-linked moment. Virtual deck ghost reappears automatically as allocatedCount drops. Spontaneous moments (cyclePlanId === null) must use delete_moment instead.',
+  "unallocate_moment",
+  "Delete the moment row for a previously-allocated plan-linked moment. Virtual deck ghost reappears automatically as allocatedCount drops. Spontaneous moments (cyclePlanId === null) must use delete_moment instead.",
   { id: z.string() },
   async ({ id }): Promise<ToolResult> => {
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[id];
     if (!moment) return err(`Moment not found: ${id}`);
     if (moment.cyclePlanId === null) {
       return err(
-        'Cannot unallocate spontaneous moment; use delete_moment instead',
+        "Cannot unallocate spontaneous moment; use delete_moment instead",
       );
     }
     delete moments[id];
-    writeCollection(VAULT_ROOT, 'moments', moments);
+    writeCollection(VAULT_ROOT, "moments", moments);
     return ok({ unallocated: id });
   },
 );
 
 server.tool(
-  'allocate_from_plan',
-  'Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan, inheriting the habit\'s schedule timing when it has one. Errors if no plan exists, budget is exhausted, habit is archived, or day is outside cycle range. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.',
+  "allocate_from_plan",
+  "Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan, inheriting the habit's schedule timing when it has one. Errors if no plan exists, budget is exhausted, habit is archived, or day is outside cycle range. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
   {
     cycleId: z.string(),
     habitId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: z.enum(['MORNING', 'AFTERNOON', 'EVENING', 'NIGHT']),
+    phase: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]),
   },
   async ({ cycleId, habitId, day, phase }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[cycleId];
     if (!cycle) return err(`Cycle ${cycleId} not found`);
 
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const habit = habits[habitId];
     if (!habit) return err(`Habit ${habitId} not found`);
     if (habit.isArchived) return err(`Habit ${habitId} is archived`);
 
-    const plans = readCollection(VAULT_ROOT, 'cyclePlans');
+    const plans = readCollection(VAULT_ROOT, "cyclePlans");
     const plan = Object.values(plans).find(
       (p: CyclePlan) => p.cycleId === cycleId && p.habitId === habitId,
     ) as CyclePlan | undefined;
-    if (!plan) return err('No budget: habit not planned for cycle');
+    if (!plan) return err("No budget: habit not planned for cycle");
 
-    const allMoments = readCollection(VAULT_ROOT, 'moments');
+    const allMoments = readCollection(VAULT_ROOT, "moments");
     const allocatedForPlan = Object.values(allMoments).filter(
       (m: Moment) =>
         m.cyclePlanId === plan.id && m.day !== null && m.phase !== null,
@@ -1651,7 +1694,11 @@ server.tool(
 
     // No slot cap: the "3 per (day, phase)" rule is a day-view display
     // concern, reported below rather than enforced.
-    const slotCount = countMomentsInPhase(Object.values(allMoments), day, phase);
+    const slotCount = countMomentsInPhase(
+      Object.values(allMoments),
+      day,
+      phase,
+    );
 
     const nowIsoStr = nowIso();
     const moment: Moment = {
@@ -1672,7 +1719,7 @@ server.tool(
     };
 
     allMoments[moment.id] = moment;
-    writeCollection(VAULT_ROOT, 'moments', allMoments);
+    writeCollection(VAULT_ROOT, "moments", allMoments);
     const overflow = dayViewOverflow(slotCount + 1);
     return ok({
       allocated: moment,
@@ -1682,8 +1729,8 @@ server.tool(
 );
 
 server.tool(
-  'spawn_spontaneous_from_habit',
-  'Create an ad-hoc moment from a habit template and allocate it. Inherits name/area/emoji/tags, plus the habit\'s schedule timing when it has one. Spontaneous = no cyclePlanId. If a cycle contains the day, inherits its cycleId. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.',
+  "spawn_spontaneous_from_habit",
+  "Create an ad-hoc moment from a habit template and allocate it. Inherits name/area/emoji/tags, plus the habit's schedule timing when it has one. Spontaneous = no cyclePlanId. If a cycle contains the day, inherits its cycleId. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
   {
     habitId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -1691,20 +1738,20 @@ server.tool(
     order: z.number().int().nonnegative().optional(),
   },
   async ({ habitId, day, phase, order }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, 'habits');
+    const habits = readCollection(VAULT_ROOT, "habits");
     const habitCheck = requireActiveHabit(habits, habitId);
-    if (typeof habitCheck === 'string') return err(habitCheck);
+    if (typeof habitCheck === "string") return err(habitCheck);
     const habit = habitCheck;
 
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const areaCheck = requireActiveArea(areas, habit.areaId);
-    if (typeof areaCheck === 'string') return err(areaCheck);
+    if (typeof areaCheck === "string") return err(areaCheck);
 
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const slotCount = countMomentsInPhase(Object.values(moments), day, phase);
 
     // Inherit cycleId if a cycle contains `day`.
-    const cycles = readCollection(VAULT_ROOT, 'cycles');
+    const cycles = readCollection(VAULT_ROOT, "cycles");
     const dayMs = Date.parse(day);
     let cycleId: string | null = null;
     for (const c of Object.values(cycles)) {
@@ -1733,7 +1780,7 @@ server.tool(
       ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),
     });
     moments[moment.id] = moment;
-    writeCollection(VAULT_ROOT, 'moments', moments);
+    writeCollection(VAULT_ROOT, "moments", moments);
     const overflow = dayViewOverflow(slotCount + 1);
     return ok({
       created: moment,
@@ -1743,8 +1790,8 @@ server.tool(
 );
 
 server.tool(
-  'create_standalone_moment',
-  'Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.',
+  "create_standalone_moment",
+  "Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
   {
     name: z.string(),
     areaId: z.string(),
@@ -1759,7 +1806,7 @@ server.tool(
     refs: z.array(z.string()).optional(),
   },
   async (params): Promise<ToolResult> => {
-    const nameError = validateOneToThreeWords(params.name, 'Moment');
+    const nameError = validateOneToThreeWords(params.name, "Moment");
     if (nameError) return err(nameError);
 
     const timingError = validateMomentTiming(
@@ -1771,11 +1818,11 @@ server.tool(
     const refsError = validateRefs(params.refs);
     if (refsError) return err(refsError);
 
-    const areas = readCollection(VAULT_ROOT, 'areas');
+    const areas = readCollection(VAULT_ROOT, "areas");
     const areaCheck = requireActiveArea(areas, params.areaId);
-    if (typeof areaCheck === 'string') return err(areaCheck);
+    if (typeof areaCheck === "string") return err(areaCheck);
 
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const slotCount = countMomentsInPhase(
       Object.values(moments),
       params.day,
@@ -1796,7 +1843,7 @@ server.tool(
       refs: params.refs,
     });
     moments[moment.id] = moment;
-    writeCollection(VAULT_ROOT, 'moments', moments);
+    writeCollection(VAULT_ROOT, "moments", moments);
     const overflow = dayViewOverflow(slotCount + 1);
     return ok({
       created: moment,
@@ -1826,37 +1873,51 @@ const DAY_START_HOUR = 4;
 function wakingDayKey(now: Date = new Date()): string {
   const rolled = new Date(now.getTime() - DAY_START_HOUR * 3600_000);
   const y = rolled.getFullYear();
-  const m = String(rolled.getMonth() + 1).padStart(2, '0');
-  const d = String(rolled.getDate()).padStart(2, '0');
+  const m = String(rolled.getMonth() + 1).padStart(2, "0");
+  const d = String(rolled.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
 /** Shape the pointer into something a reader can act on without a second call. */
 function describeActiveMoment(pointer: { momentId: string; at: string }) {
-  const moment = readCollection(VAULT_ROOT, 'moments')[pointer.momentId];
+  const moment = readCollection(VAULT_ROOT, "moments")[pointer.momentId];
   if (!moment) {
-    return { ...pointer, moment: null, active: false, stale: true, reason: 'moment no longer exists' };
+    return {
+      ...pointer,
+      moment: null,
+      active: false,
+      stale: true,
+      reason: "moment no longer exists",
+    };
   }
-  const area = readCollection(VAULT_ROOT, 'areas')[moment.areaId];
+  const area = readCollection(VAULT_ROOT, "areas")[moment.areaId];
   const onToday = moment.day === wakingDayKey();
   return {
     ...pointer,
-    moment: { id: moment.id, name: moment.name, day: moment.day, phase: moment.phase },
+    moment: {
+      id: moment.id,
+      name: moment.name,
+      day: moment.day,
+      phase: moment.phase,
+    },
     area: area ? { id: area.id, name: area.name } : null,
     // keel surfaces the intention only while this is true.
     active: onToday,
     ...(onToday
       ? {}
-      : { stale: true, reason: `moment is allocated to ${moment.day}, not today` }),
+      : {
+          stale: true,
+          reason: `moment is allocated to ${moment.day}, not today`,
+        }),
   };
 }
 
 server.tool(
-  'set_active_moment',
+  "set_active_moment",
   "Point the intention at a moment — 'this is what I'm doing now'. Accepts a moment id, or a name matched against today's board. keel reads this pointer and surfaces it in every Claude Code session. Refuses moments that aren't on today's board, since keel would ignore them.",
   { momentIdOrName: z.string().min(1) },
   async ({ momentIdOrName }): Promise<ToolResult> => {
-    const moments = readCollection(VAULT_ROOT, 'moments');
+    const moments = readCollection(VAULT_ROOT, "moments");
     const today = wakingDayKey();
     const needle = momentIdOrName.trim();
 
@@ -1864,24 +1925,26 @@ server.tool(
     if (!moment) {
       const lower = needle.toLowerCase();
       const todays = Object.values(moments).filter((m) => m.day === today);
-      const matches = todays.filter((m) => m.name.trim().toLowerCase() === lower);
+      const matches = todays.filter(
+        (m) => m.name.trim().toLowerCase() === lower,
+      );
       if (matches.length > 1) {
         return err(
           `Ambiguous on today's board: ${matches.length} moments named "${needle}". ` +
-            `Pass the id — ${matches.map((m) => m.id).join(', ')}.`,
+            `Pass the id — ${matches.map((m) => m.id).join(", ")}.`,
         );
       }
       moment = matches[0];
       if (!moment) {
-        const board = todays.map((m) => `"${m.name}"`).join(', ') || '(empty)';
+        const board = todays.map((m) => `"${m.name}"`).join(", ") || "(empty)";
         return err(`No moment "${needle}" on today's board. Today: ${board}.`);
       }
     }
 
     if (moment.day !== today) {
       return err(
-        `"${moment.name}" is allocated to ${moment.day ?? 'no day'}, not today (${today}). ` +
-          'The active moment is what you are doing NOW — allocate it to today first.',
+        `"${moment.name}" is allocated to ${moment.day ?? "no day"}, not today (${today}). ` +
+          "The active moment is what you are doing NOW — allocate it to today first.",
       );
     }
 
@@ -1891,8 +1954,8 @@ server.tool(
 );
 
 server.tool(
-  'get_active_moment',
-  'Read the current intention pointer, resolved to its moment and area. Returns null when nothing is active.',
+  "get_active_moment",
+  "Read the current intention pointer, resolved to its moment and area. Returns null when nothing is active.",
   {},
   async (): Promise<ToolResult> => {
     const pointer = readActiveMoment(VAULT_ROOT);
@@ -1902,8 +1965,8 @@ server.tool(
 );
 
 server.tool(
-  'clear_active_moment',
-  'Release the intention — no moment is active. Removing the pointer IS the empty state.',
+  "clear_active_moment",
+  "Release the intention — no moment is active. Removing the pointer IS the empty state.",
   {},
   async (): Promise<ToolResult> => {
     const previous = readActiveMoment(VAULT_ROOT);
@@ -1917,24 +1980,27 @@ server.tool(
 // ────────────────────────────────────────────────────────────────────────
 
 server.tool(
-  'list_phase_configs',
-  'List phase configurations, sorted by order.',
+  "list_phase_configs",
+  "List phase configurations, sorted by order.",
   {},
   async (): Promise<ToolResult> => {
-    const configs = readCollection(VAULT_ROOT, 'phaseConfigs');
+    const configs = readCollection(VAULT_ROOT, "phaseConfigs");
     const list = Object.values(configs).sort((a, b) => a.order - b.order);
     return ok(list);
   },
 );
 
 server.tool(
-  'update_phase_config',
-  'Update a phase configuration (label, emoji, color, hours, visibility, order).',
+  "update_phase_config",
+  "Update a phase configuration (label, emoji, color, hours, visibility, order).",
   {
     id: z.string(),
     label: z.string().min(1).optional(),
     emoji: z.string().min(1).optional(),
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
     startHour: z.number().int().min(0).max(23).optional(),
     endHour: z.number().int().min(0).max(23).optional(),
     isVisible: z.boolean().optional(),
@@ -1942,7 +2008,7 @@ server.tool(
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
-    const configs = readCollection(VAULT_ROOT, 'phaseConfigs');
+    const configs = readCollection(VAULT_ROOT, "phaseConfigs");
     const config = configs[id];
     if (!config) return err(`Phase config not found: ${id}`);
     const next: PhaseConfig = {
@@ -1950,14 +2016,18 @@ server.tool(
       ...(updates.label !== undefined ? { label: updates.label } : {}),
       ...(updates.emoji !== undefined ? { emoji: updates.emoji } : {}),
       ...(updates.color !== undefined ? { color: updates.color } : {}),
-      ...(updates.startHour !== undefined ? { startHour: updates.startHour } : {}),
+      ...(updates.startHour !== undefined
+        ? { startHour: updates.startHour }
+        : {}),
       ...(updates.endHour !== undefined ? { endHour: updates.endHour } : {}),
-      ...(updates.isVisible !== undefined ? { isVisible: updates.isVisible } : {}),
+      ...(updates.isVisible !== undefined
+        ? { isVisible: updates.isVisible }
+        : {}),
       ...(updates.order !== undefined ? { order: updates.order } : {}),
       updatedAt: nowIso(),
     };
     configs[id] = next;
-    writeCollection(VAULT_ROOT, 'phaseConfigs', configs);
+    writeCollection(VAULT_ROOT, "phaseConfigs", configs);
     return ok({ updated: next });
   },
 );
@@ -1967,22 +2037,22 @@ server.tool(
 // ────────────────────────────────────────────────────────────────────────
 
 server.tool(
-  'list_tags',
-  'The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read a namespace as an index — `person-` = the People index, `place-` = the Places index. Sorted by total usage.',
+  "list_tags",
+  "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read a namespace as an index — `person-` = the People index, `place-` = the Places index. Sorted by total usage.",
   {
     prefix: z.string().optional(),
   },
   async ({ prefix }): Promise<ToolResult> => {
-    const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
-    const habits = Object.values(readCollection(VAULT_ROOT, 'habits'));
-    const areas = Object.values(readCollection(VAULT_ROOT, 'areas'));
+    const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
+    const habits = Object.values(readCollection(VAULT_ROOT, "habits"));
+    const areas = Object.values(readCollection(VAULT_ROOT, "areas"));
     return ok(buildTagIndex(moments, habits, areas, prefix));
   },
 );
 
 server.tool(
-  'get_tag_profile',
-  "One tag's neighborhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments (people ↔ places ↔ themes), first/last day, and a recent sample. Answers questions like \"what did I do with person-ada, and where?\" — the co-occurrence of a `person-` tag with `place-` tags and habits IS that story.",
+  "get_tag_profile",
+  'One tag\'s neighborhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments (people ↔ places ↔ themes), first/last day, and a recent sample. Answers questions like "what did I do with person-ada, and where?" — the co-occurrence of a `person-` tag with `place-` tags and habits IS that story.',
   {
     tag: z.string().min(1),
   },
@@ -1992,26 +2062,245 @@ server.tool(
       return err(
         `Not a valid tag after normalization: "${tag}". Tags are lowercase letters, digits and dashes, max 20 chars — e.g. "person-ada".`,
       );
-    const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
-    const habits = Object.values(readCollection(VAULT_ROOT, 'habits'));
-    const areas = Object.values(readCollection(VAULT_ROOT, 'areas'));
+    const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
+    const habits = Object.values(readCollection(VAULT_ROOT, "habits"));
+    const areas = Object.values(readCollection(VAULT_ROOT, "areas"));
     return ok(buildTagProfile(normalized, moments, habits, areas));
   },
 );
 
 server.tool(
-  'get_related_habits',
+  "get_related_habits",
   "A habit's derived edges in the garden graph — no stored relations, computed from existing data: `sharedTags` (habits whose tag signatures overlap — a signature is the habit's tags plus its moments' tags, so person-/place- mediation like \"gym and padel, both with Ada\" surfaces here), `coOccurrence` (habits allocated on the same days, with the share of this habit's active days), and `areaSiblings` (active habits in the same plot).",
   {
     habitId: z.string(),
   },
   async ({ habitId }): Promise<ToolResult> => {
-    const habits = Object.values(readCollection(VAULT_ROOT, 'habits'));
-    const moments = Object.values(readCollection(VAULT_ROOT, 'moments'));
-    const areas = Object.values(readCollection(VAULT_ROOT, 'areas'));
+    const habits = Object.values(readCollection(VAULT_ROOT, "habits"));
+    const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
+    const areas = Object.values(readCollection(VAULT_ROOT, "areas"));
     const related = buildRelatedHabits(habitId, habits, moments, areas);
     if (!related) return err(`Habit not found: ${habitId}`);
     return ok(related);
+  },
+);
+
+// ────────────────────────────────────────────────────────────────────────
+// Fences (fences.json) — declared rules only
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * The handlers below are thin adapters: construction, validation and the
+ * validate-before-write discipline live in `src/application/use-cases/
+ * fences.ts` and, below that, `src/domain/intervention/`. What this layer
+ * owns is environment: vault I/O (`./fences.ts`), `~` expansion, and reading
+ * the garden through the collections it already has open.
+ *
+ * Per the stamped 2026-08-20 decision, only *declared* rules enter `fences` —
+ * every fence written here is built from the caller's arguments, and no code
+ * path in this server reads `discrepancy.json`.
+ */
+const fenceDeps: FenceDeps = {
+  store: fenceStore(VAULT_ROOT),
+  tally: crossingTally(VAULT_ROOT),
+  garden: {
+    async areas() {
+      return Object.values(readCollection(VAULT_ROOT, "areas"))
+        .filter((a) => !a.isArchived)
+        .map((a) => ({ id: a.id, name: a.name }));
+    },
+    async activeCycleId() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayMs = today.getTime();
+      // Latest-starting active cycle wins, matching how overlapping seasons
+      // resolve everywhere else dates are the arbiter.
+      const active = Object.values(readCollection(VAULT_ROOT, "cycles"))
+        .filter((c) => isCycleActive(c, todayMs))
+        .sort((a, b) => b.startDate.localeCompare(a.startDate));
+      return active[0]?.id ?? null;
+    },
+  },
+  newRuleId: () => crypto.randomUUID(),
+};
+
+server.tool(
+  "set_fence",
+  'Declare a session fence: "only this stream, and friction on anything else". Builds a declared rule (never derived — fences come from what you say here, nothing else) and writes it to the fences collection, which zenborg alone writes. Every rung of the escalation ladder carries an exit; a fence can ask, never deny. Areas may be passed by name ("Themia") or id; paths are absolute prefixes INSIDE the fence (~ expands).',
+  {
+    label: z
+      .string()
+      .min(1)
+      .describe(
+        'What the stream is called — shown back at every crossing, e.g. "Themia data"',
+      ),
+    paths: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Absolute path prefixes the fence encloses"),
+    areas: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe(
+        "Areas the fence encloses — names or ids. Attention is expected to return to one of them.",
+      ),
+    description: z
+      .string()
+      .optional()
+      .describe("Optional: the declaration in the principal's own words"),
+  },
+  async ({ label, paths, areas, description }): Promise<ToolResult> => {
+    const result = await declareFence(fenceDeps, {
+      label,
+      paths: paths.map(expandHome),
+      areas,
+      description,
+    });
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({ declared: result.declared, standing: result.standing });
+  },
+);
+
+// ── Browser-scoped fences ─────────────────────────────────────────────
+//
+// `set_fence` above writes a session fence, which the plugin's PreToolUse hook
+// reads. The three below write BROWSER-scoped ones, which the extension reads
+// out of the armed record the native host pushes. Same collection, same writer,
+// same validate-before-write discipline — a different surface.
+//
+// They exist because migration step 5 could not flip the readers without them:
+// with no browser-scoped writer, a fences-only read reached no browser at all.
+
+server.tool(
+  "set_host_block",
+  "Declare a standing block on a host, as a rule that says what it is for. Browser-enforced by default — the extension actuates it from the pushed armed record; pass `resolverProfile` for a resolver-level block instead, which is the only reach that covers a phone. `unlockNote` is required and is the exit: a block that names no way out is refused, never armed.",
+  {
+    host: z
+      .string()
+      .min(1)
+      .describe('A registrable host — "chess.com", not a URL and not a path'),
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe(
+        "Areas attention should land in when the wall is met — names or ids. This is the proximal claim: blocking is not the point, not losing the next ten minutes is.",
+      ),
+    unlockNote: z
+      .string()
+      .min(1)
+      .describe(
+        "How the block is lifted, deliberately outside the running system so it cannot be taken in the moment of wanting",
+      ),
+    name: z.string().optional(),
+    description: z.string().optional(),
+    resolverProfile: z
+      .string()
+      .optional()
+      .describe(
+        "Name the resolver profile carrying the block to enforce it there instead of in the browser",
+      ),
+  },
+  async (input): Promise<ToolResult> => {
+    const result = await declareHostBlock(fenceDeps, input);
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({ declared: result.declared, standing: result.standing });
+  },
+);
+
+server.tool(
+  "set_browser_gate",
+  "Declare a recurring stopping cue on a host: every N attended minutes of dwell, the page asks a question with an exit. Friction on the duration rather than on the visit — which is the answer to a standing block on a host you have a real reason to use, since that block gets lifted and a block lifted in the moment is not a boundary. Ships below delivery probability 1, because whether a cue like this returns attention is exactly what is unknown.",
+  {
+    host: z
+      .string()
+      .min(1)
+      .describe('A registrable host — "linkedin.com", not a URL'),
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Areas attention should land in after the gate — names or ids"),
+    everyMinutes: z
+      .number()
+      .describe(
+        "Accumulated ATTENDED dwell between firings — a backgrounded tab or an idle person does not accrue it",
+      ),
+    prompt: z
+      .string()
+      .min(1)
+      .describe("What the gate asks. The question is the friction."),
+    name: z.string().optional(),
+    description: z.string().optional(),
+  },
+  async (input): Promise<ToolResult> => {
+    const result = await declareBrowserGate(fenceDeps, input);
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({ declared: result.declared, standing: result.standing });
+  },
+);
+
+server.tool(
+  "seed_host_blocks",
+  "Write the seed blocklist into fences as rules — the oldest working piece of the system, carried out of keel's own rules directory and into the collection the kernel contract registers. Idempotent: each rule's id is derived from its host and enforcement point, so re-running replaces rather than accumulating, and fences it did not write are left alone.",
+  {
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Areas attention should land in when a wall is met"),
+    unlockNote: z
+      .string()
+      .min(1)
+      .describe("How any of these blocks is lifted, out of band"),
+    hosts: z
+      .array(z.string().min(1))
+      .describe(
+        "The hosts to wall. Required: there is no default list, so a seed names its own hosts.",
+      ),
+    resolverProfile: z
+      .string()
+      .optional()
+      .describe("Enforce at the resolver instead of in the browser"),
+  },
+  async (input): Promise<ToolResult> => {
+    const result = await seedHostBlocks(fenceDeps, input);
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({
+      declared: result.declared.map((r) => ({
+        id: r.id,
+        host: (r.scope as { domain: string }).domain,
+      })),
+      standing: result.standing,
+    });
+  },
+);
+
+server.tool(
+  "clear_fence",
+  "Take a fence down, by id — or all of them at once. Pass exactly one of `id` or `all`. The crossing tally is plugin-owned and left alone; a cleared fence's id is never reused, so its count can never gate anything again.",
+  {
+    id: z.string().optional().describe("The fence's rule id"),
+    all: z.boolean().optional().describe("Take every standing fence down"),
+  },
+  async ({ id, all }): Promise<ToolResult> => {
+    if ((id === undefined) === (all === undefined)) {
+      return err("pass exactly one of `id` or `all`");
+    }
+    const result = await clearFences(
+      fenceDeps,
+      all ? { all: true } : { id: id as string },
+    );
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({
+      cleared: result.cleared.map((f) => ({ id: f.id, label: f.name })),
+    });
+  },
+);
+
+server.tool(
+  "get_fence",
+  "Report what is currently fenced: each standing fence with its crossing tally (from the plugin's fences-state.json, zero when never crossed) and the rung the NEXT crossing would land on.",
+  {},
+  async (): Promise<ToolResult> => {
+    return ok(await fenceReport(fenceDeps));
   },
 );
 

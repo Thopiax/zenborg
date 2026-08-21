@@ -1,4 +1,4 @@
-import { isHourInPhase, type Phase, type PhaseConfig } from "./Phase";
+import { isHourInPhase, type Phase, type PhaseConfig } from "./Phase.ts";
 import type { Rhythm } from "./Rhythm";
 
 /**

@@ -1,5 +1,4 @@
-import { Command } from "./types";
-import { habits$ } from "@/infrastructure/state/store";
+import type { Command } from "./types";
 
 /**
  * Habit management commands
@@ -20,7 +19,7 @@ export const habitCommands: Command[] = [
       // Open habit creation dialog
       // UI not implemented yet
       console.log("[Command] Create new habit");
-    }
+    },
   },
   {
     id: "habit.manage",
@@ -32,7 +31,7 @@ export const habitCommands: Command[] = [
       // Open habit management view
       // UI not implemented yet
       console.log("[Command] Manage habits");
-    }
+    },
   },
   {
     id: "habit.fromMoment",
@@ -59,7 +58,7 @@ export const habitCommands: Command[] = [
       // Create habit from moment template
       // UI not implemented yet
       console.log("[Command] Create habit from moment:", moment.name);
-    }
+    },
   },
   {
     id: "habit.instantiate",
@@ -71,7 +70,7 @@ export const habitCommands: Command[] = [
       // Open habit selector to create moment from template
       // UI not implemented yet
       console.log("[Command] Create moment from habit template");
-    }
+    },
   },
   {
     id: "habit.archive",
@@ -83,6 +82,6 @@ export const habitCommands: Command[] = [
       // Archive the focused habit (soft delete)
       // UI not implemented yet
       console.log("[Command] Archive habit");
-    }
+    },
   },
 ];

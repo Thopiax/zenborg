@@ -1,5 +1,5 @@
 import { useHotkeys } from "react-hotkeys-hook";
-import { useSelection } from "./useSelection";
+import { useSelection } from "./useSelection.ts";
 
 /**
  * Global keyboard shortcuts for selection
@@ -22,7 +22,7 @@ export function useGlobalSelection(allMomentIds: string[]) {
       }
     },
     { enableOnFormTags: false },
-    [allMomentIds, editingMomentId]
+    [allMomentIds, editingMomentId],
   );
 
   // Escape to clear selection
@@ -36,6 +36,6 @@ export function useGlobalSelection(allMomentIds: string[]) {
       }
     },
     { enableOnFormTags: false },
-    [hasAnySelected, editingMomentId]
+    [hasAnySelected, editingMomentId],
   );
 }

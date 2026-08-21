@@ -1,4 +1,4 @@
-import { normalizeTags } from "../services/TagService";
+import { normalizeTags } from "../services/TagService.ts";
 import type { Attitude } from "../value-objects/Attitude";
 import type { Moment } from "./Moment";
 
