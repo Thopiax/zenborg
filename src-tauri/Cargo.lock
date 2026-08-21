@@ -3642,7 +3642,7 @@ checksum = "35fb2e5f958ec131621fdd531e9fc186ed768cbe395337403ae56c17a74c68ec"
 [[package]]
 name = "penceive-core"
 version = "0.1.0"
-source = "git+file:///Users/rafa/Developer/equanimitech/penceive?rev=d8f82dd7a49a82349ed3f1286621d7ce4fd9beba#d8f82dd7a49a82349ed3f1286621d7ce4fd9beba"
+source = "git+file:///Users/rafa/Developer/equanimitech/penceive?rev=21717bc93bc2ef3165fa463579011f034c70e5dc#21717bc93bc2ef3165fa463579011f034c70e5dc"
 dependencies = [
  "chrono",
  "regex",
