@@ -30,8 +30,28 @@ export interface TransformSpec {
  * typecheck, which is what makes invariant 6 a property of the type rather than a
  * promise a validator has to keep.
  */
+/**
+ * When a gate fires.
+ *
+ * Optional, and the reason is the surface. A session fence has no trigger to
+ * declare: the tool call the PreToolUse hook already sees *is* the event, and a
+ * rule that restated it would be asserting a fact about a harness rather than
+ * about a commitment. A browser gate has no such event — overconsumption's whole
+ * problem is that nothing happens — so it names an accumulated-dwell interval,
+ * and the extension reads that interval off the rule instead of off a constant.
+ *
+ * `everyMinutes` counts *attended* dwell, not wall-clock: a backgrounded tab or
+ * an idle person does not accrue it. That is keel's contract for the same
+ * trigger (`packages/domain/src/rules.ts`), carried over rather than re-derived.
+ */
+export type GateTrigger =
+  | { readonly type: "navigation" }
+  | { readonly type: "dwell"; readonly everyMinutes: number };
+
 export interface GateSpec {
   readonly kind: "gate";
+  /** Absent means "the surface's own event is the trigger" — see `GateTrigger`. */
+  readonly trigger?: GateTrigger;
   readonly frictionType:
     | { readonly type: "confirmation" }
     | { readonly type: "intention"; readonly prompt: string }

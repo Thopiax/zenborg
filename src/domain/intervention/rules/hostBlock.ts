@@ -1,5 +1,5 @@
 import type { AreaId, Duration, RuleId } from "../../attention/ids";
-import type { CooldownSpec } from "../Primitive";
+import type { CooldownEnforcement, CooldownSpec } from "../Primitive";
 import type { DistalRef } from "../ProximalOutcome";
 import type { RuleSpec } from "../RuleSpec";
 
@@ -34,16 +34,32 @@ export interface HostBlockInput {
    */
   readonly returnsTo: readonly AreaId[];
   /** The resolver profile carrying the block. Reaches devices the app does not. */
-  readonly resolverProfile: string;
+  readonly resolverProfile?: string;
+  /**
+   * Where the block is applied. Defaults to the resolver when a profile is
+   * named, because that is the reach nothing else here has.
+   *
+   * One rule, one enforcement point, on purpose. A host wanting both the phone
+   * and the laptop browser gets two rules with two ids, so a delivery stays
+   * attributable to the surface that actually made it — which is the whole
+   * reason `Delivery` records an origin.
+   */
+  readonly enforcement?: CooldownEnforcement;
   /** How the block is lifted, deliberately outside the running system. */
   readonly unlockNote: string;
   readonly windowMs?: Duration;
 }
 
 export function hostBlockRule(input: HostBlockInput): RuleSpec {
+  const enforcement: CooldownEnforcement =
+    input.enforcement ??
+    (input.resolverProfile === undefined
+      ? { at: "browser" }
+      : { at: "resolver", profile: input.resolverProfile });
+
   const cooldown: CooldownSpec = {
     kind: "cooldown",
-    enforcement: { at: "resolver", profile: input.resolverProfile },
+    enforcement,
     duration: { type: "standing" },
     unlockPath: { type: "out_of_band", note: input.unlockNote },
   };
@@ -96,3 +112,61 @@ export const DROGUE_SEED_HOSTS: readonly string[] = Object.freeze([
   "youtube.com",
   "chess.com",
 ]);
+
+export interface HostBlockSeedInput {
+  readonly serves: DistalRef;
+  readonly returnsTo: readonly AreaId[];
+  readonly unlockNote: string;
+  /** Defaults to the browser — the surface migration step 5 flips. */
+  readonly enforcement?: CooldownEnforcement;
+  readonly hosts?: readonly string[];
+}
+
+/**
+ * The seed blocklist as fences, ready to be written.
+ *
+ * ── Why the id is derived and not random ────────────────────────────────
+ *
+ * Every other rule in this domain takes its id from the caller, because every
+ * other rule is one the principal declared once. A seed is different: it is the
+ * *same* commitment re-expressed whenever the collection is (re)seeded, and a
+ * fresh uuid each time would leave three fences per host after three runs, each
+ * with its own crossing tally, each firing on the same navigation. Deriving the
+ * id from the host and the enforcement point makes re-seeding a replace.
+ *
+ * The enforcement point is in the id on purpose. A host blocked at the resolver
+ * and at the browser is two rules — see `HostBlockInput.enforcement` — and two
+ * rules need two ids or the second silently overwrites the first.
+ *
+ * ── Why it defaults to the browser ──────────────────────────────────────
+ *
+ * A resolver-enforced rule reaches the phone and is enforced by a DNS profile
+ * nothing in this system writes; the rule *describes* it. A browser-enforced one
+ * is actuated here and now, by the extension, from the armed record. Step 5's
+ * job is the second of those, so that is the default, and the first stays one
+ * argument away.
+ */
+export function hostBlockSeedRules(
+  input: HostBlockSeedInput,
+): readonly RuleSpec[] {
+  const enforcement: CooldownEnforcement = input.enforcement ?? {
+    at: "browser",
+  };
+  const at =
+    enforcement.at === "resolver"
+      ? `resolver-${enforcement.profile}`
+      : enforcement.at;
+
+  return (input.hosts ?? DROGUE_SEED_HOSTS).map((host) =>
+    hostBlockRule({
+      id: `seed-block-${at}-${host}`,
+      host,
+      name: host,
+      description: `The seed blocklist, carried forward as a fence rather than as a list.`,
+      serves: input.serves,
+      returnsTo: input.returnsTo,
+      unlockNote: input.unlockNote,
+      enforcement,
+    }),
+  );
+}
