@@ -1,8 +1,5 @@
-import { describe, it, expect } from "vitest";
-import {
-  createCyclePlan,
-  isCyclePlanError,
-} from "@/domain/entities/CyclePlan";
+import { describe, expect, it } from "vitest";
+import { createCyclePlan, isCyclePlanError } from "@/domain/entities/CyclePlan";
 import type { Rhythm } from "@/domain/value-objects/Rhythm";
 
 describe("CyclePlan rhythmOverride", () => {

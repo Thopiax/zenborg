@@ -84,8 +84,8 @@ export const specimenAreas: Area[] = [
 
 export const specimenCycles: Cycle[] = [
   {
-    id: "barcelona",
-    name: "barcelona — winter",
+    id: "dev",
+    name: "dev — winter",
     startDate: shiftDays(TODAY, -55),
     endDate: shiftDays(TODAY, -36),
     intention: null,

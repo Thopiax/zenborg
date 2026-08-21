@@ -42,7 +42,7 @@ export const PhaseSettingsModal = observer(function PhaseSettingsModal({
 
   // Get all phases in their natural order (Morning, Afternoon, Evening, Night)
   const phaseConfigs = Object.values(phaseConfigs$.get() || {}).sort(
-    (a, b) => a.order - b.order
+    (a, b) => a.order - b.order,
   );
 
   const handleStartEdit = (config: PhaseConfig) => {

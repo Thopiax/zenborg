@@ -26,7 +26,8 @@ export function HamburgerMenuButton({
         "p-1.5 rounded-md text-stone-500 dark:text-stone-400 transition-colors duration-150",
         "hover:text-stone-700 dark:hover:text-stone-300",
         "hover:bg-stone-100 dark:hover:bg-stone-800",
-        isOpen && "text-stone-900 dark:text-stone-100 bg-stone-100 dark:bg-stone-800"
+        isOpen &&
+          "text-stone-900 dark:text-stone-100 bg-stone-100 dark:bg-stone-800",
       )}
       aria-label={isOpen ? "Close settings" : "Open settings"}
       aria-expanded={isOpen}

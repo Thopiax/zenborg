@@ -8,7 +8,10 @@ export { defaultMeta } from "@/domain/entities/Meta";
 export function readMeta(): Meta {
   if (cached) return cached;
   try {
-    const raw = typeof localStorage === "undefined" ? null : localStorage.getItem(STORAGE_KEY);
+    const raw =
+      typeof localStorage === "undefined"
+        ? null
+        : localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
     cached = {
       migrations: {

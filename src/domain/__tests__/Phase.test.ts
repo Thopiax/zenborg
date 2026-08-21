@@ -137,13 +137,13 @@ describe("Phase", () => {
     describe("edge cases", () => {
       it("should throw error for invalid hour < 0", () => {
         expect(() => isHourInPhase(-1, morningConfig)).toThrow(
-          "Hour must be between 0 and 23"
+          "Hour must be between 0 and 23",
         );
       });
 
       it("should throw error for invalid hour > 23", () => {
         expect(() => isHourInPhase(24, morningConfig)).toThrow(
-          "Hour must be between 0 and 23"
+          "Hour must be between 0 and 23",
         );
       });
     });
@@ -217,13 +217,13 @@ describe("Phase", () => {
     describe("edge cases", () => {
       it("should throw error for invalid hour < 0", () => {
         expect(() => getCurrentPhase(-1, configs)).toThrow(
-          "Hour must be between 0 and 23"
+          "Hour must be between 0 and 23",
         );
       });
 
       it("should throw error for invalid hour > 23", () => {
         expect(() => getCurrentPhase(24, configs)).toThrow(
-          "Hour must be between 0 and 23"
+          "Hour must be between 0 and 23",
         );
       });
     });

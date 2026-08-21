@@ -9,7 +9,7 @@ import {
 const makeCycle = (
   id: string,
   startDate: string,
-  endDate: string | null = null
+  endDate: string | null = null,
 ): Cycle => ({
   id,
   name: `Cycle ${id}`,
@@ -62,49 +62,74 @@ describe("generateCycleName", () => {
 describe("doDateRangesOverlap", () => {
   it("touching endpoints (A ends day X, B starts day X) do NOT overlap", () => {
     expect(
-      doDateRangesOverlap("2026-03-12", "2026-03-31", "2026-03-31", "2026-04-19")
+      doDateRangesOverlap(
+        "2026-03-12",
+        "2026-03-31",
+        "2026-03-31",
+        "2026-04-19",
+      ),
     ).toBe(false);
   });
 
   it("touching endpoints reversed (B ends day X, A starts day X) do NOT overlap", () => {
     expect(
-      doDateRangesOverlap("2026-03-31", "2026-04-19", "2026-03-12", "2026-03-31")
+      doDateRangesOverlap(
+        "2026-03-31",
+        "2026-04-19",
+        "2026-03-12",
+        "2026-03-31",
+      ),
     ).toBe(false);
   });
 
   it("interior overlap returns true", () => {
     expect(
-      doDateRangesOverlap("2026-03-01", "2026-03-15", "2026-03-10", "2026-03-20")
+      doDateRangesOverlap(
+        "2026-03-01",
+        "2026-03-15",
+        "2026-03-10",
+        "2026-03-20",
+      ),
     ).toBe(true);
   });
 
   it("fully-contained range returns true", () => {
     expect(
-      doDateRangesOverlap("2026-03-01", "2026-03-31", "2026-03-10", "2026-03-20")
+      doDateRangesOverlap(
+        "2026-03-01",
+        "2026-03-31",
+        "2026-03-10",
+        "2026-03-20",
+      ),
     ).toBe(true);
   });
 
   it("fully-separate ranges return false", () => {
     expect(
-      doDateRangesOverlap("2026-01-01", "2026-01-31", "2026-03-01", "2026-03-15")
+      doDateRangesOverlap(
+        "2026-01-01",
+        "2026-01-31",
+        "2026-03-01",
+        "2026-03-15",
+      ),
     ).toBe(false);
   });
 
   it("finite range preceding ongoing cycle does not overlap", () => {
     expect(
-      doDateRangesOverlap("2026-01-01", "2026-01-31", "2026-03-31", null)
+      doDateRangesOverlap("2026-01-01", "2026-01-31", "2026-03-31", null),
     ).toBe(false);
   });
 
   it("two ongoing ranges with same start date overlap", () => {
     expect(doDateRangesOverlap("2026-03-31", null, "2026-03-31", null)).toBe(
-      true
+      true,
     );
   });
 
   it("two ongoing ranges with different start dates do not overlap", () => {
     expect(doDateRangesOverlap("2026-03-31", null, "2026-04-16", null)).toBe(
-      false
+      false,
     );
   });
 });
@@ -128,7 +153,7 @@ describe("calculateDefaultEndDate", () => {
     const cycle = makeCycle("a", "2026-03-31");
     const nextCycle = makeCycle("b", "2026-05-01", "2026-05-15");
     expect(calculateDefaultEndDate(cycle, [cycle, nextCycle])).toBe(
-      "2026-04-19"
+      "2026-04-19",
     );
   });
 
@@ -136,7 +161,7 @@ describe("calculateDefaultEndDate", () => {
     const cycle = makeCycle("a", "2026-03-31");
     const nextCycle = makeCycle("b", "2026-04-11", "2026-04-16");
     expect(calculateDefaultEndDate(cycle, [cycle, nextCycle])).toBe(
-      "2026-04-10"
+      "2026-04-10",
     );
   });
 
@@ -145,7 +170,7 @@ describe("calculateDefaultEndDate", () => {
     const next1 = makeCycle("b", "2026-04-11", "2026-04-16");
     const next2 = makeCycle("c", "2026-05-01", "2026-05-15");
     expect(calculateDefaultEndDate(cycle, [cycle, next1, next2])).toBe(
-      "2026-04-10"
+      "2026-04-10",
     );
   });
 

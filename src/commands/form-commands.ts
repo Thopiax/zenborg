@@ -1,5 +1,5 @@
-import { Command } from "./types";
 import { momentFormState$ } from "@/infrastructure/state/ui-store";
+import type { Command } from "./types";
 
 /**
  * Form-specific commands
@@ -18,7 +18,7 @@ export const formCommands: Command[] = [
       // Opens area selector when form is active
       // Implementation delegated to MomentFormDialog component
       console.log("[Command] Open area selector");
-    }
+    },
   },
   {
     id: "form.openPhaseSelector",
@@ -30,7 +30,7 @@ export const formCommands: Command[] = [
       // Opens phase selector when form is active
       // Implementation delegated to MomentFormDialog component
       console.log("[Command] Open phase selector");
-    }
+    },
   },
   {
     id: "form.cycleFieldForward",
@@ -42,7 +42,7 @@ export const formCommands: Command[] = [
       // Cycles to next form field
       // Implementation delegated to MomentFormDialog component
       console.log("[Command] Next form field");
-    }
+    },
   },
   {
     id: "form.cycleFieldBackward",
@@ -54,7 +54,7 @@ export const formCommands: Command[] = [
       // Cycles to previous form field
       // Implementation delegated to MomentFormDialog component
       console.log("[Command] Previous form field");
-    }
+    },
   },
   {
     id: "form.save",
@@ -66,7 +66,7 @@ export const formCommands: Command[] = [
       // Saves the moment form
       // Implementation delegated to MomentFormDialog component
       console.log("[Command] Save moment");
-    }
+    },
   },
   {
     id: "form.cancel",
@@ -81,6 +81,6 @@ export const formCommands: Command[] = [
       if (isOpen) {
         closeMomentForm();
       }
-    }
+    },
   },
 ];

@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from "vitest";
-import { deriveBandedHeatmapViewModel } from "../state/bandedHeatmapViewModel";
 import type { Area } from "@/domain/entities/Area";
 import type { Cycle } from "@/domain/entities/Cycle";
 import type { Moment } from "@/domain/entities/Moment";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
+import { deriveBandedHeatmapViewModel } from "../state/bandedHeatmapViewModel";
 
 const area = (id: string, order = 0): Area => ({
   id,
@@ -25,7 +25,7 @@ const cycle = (
   id: string,
   startDate: string,
   endDate: string | null,
-  name = `cycle-${id}`
+  name = `cycle-${id}`,
 ): Cycle => ({
   id,
   name,
@@ -43,7 +43,7 @@ const moment = (
   phase: Phase,
   areaId: string,
   cycleId: string | null = null,
-  updatedAt = "2026-01-01T00:00:00.000Z"
+  updatedAt = "2026-01-01T00:00:00.000Z",
 ): Moment => ({
   id,
   name: `m-${id}`,
@@ -63,7 +63,7 @@ const moment = (
 const phaseConfig = (
   phase: Phase,
   order: number,
-  isVisible = true
+  isVisible = true,
 ): PhaseConfig => ({
   id: `pc-${phase}`,
   phase,
@@ -299,7 +299,7 @@ describe("deriveBandedHeatmapViewModel", () => {
           Phase.MORNING,
           "wellness",
           "a",
-          "2026-04-30T10:00:00.000Z"
+          "2026-04-30T10:00:00.000Z",
         ),
         moment(
           "m2",
@@ -307,7 +307,7 @@ describe("deriveBandedHeatmapViewModel", () => {
           Phase.MORNING,
           "craft",
           "a",
-          "2026-04-30T11:00:00.000Z"
+          "2026-04-30T11:00:00.000Z",
         ),
       ];
 

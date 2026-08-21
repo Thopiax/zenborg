@@ -1,6 +1,6 @@
-/** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
-/** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
+/** biome-ignore-all lint/a11y/noSvgWithoutTitle: the svg is the control's rendering, not a separate image; the wrapper carries the label */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: pointer handlers implement dragging; keyboard access lives on the wrapping control */
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: a fixed-length ordered list of phase bands, so the index is the identity */
 "use client";
 
 import { useCallback, useRef, useState } from "react";
@@ -109,7 +109,7 @@ export function CircularPhaseSlider({
   // Get SVG coordinates for a point on the circle
   const polarToCartesian = (
     angle: number,
-    radius: number
+    radius: number,
   ): { x: number; y: number } => {
     const radians = (angle * Math.PI) / 180;
     return {
@@ -123,7 +123,7 @@ export function CircularPhaseSlider({
     startAngle: number,
     endAngle: number,
     outerRadius: number,
-    innerRadius: number
+    innerRadius: number,
   ): string => {
     const start = startAngle;
     let end = endAngle;
@@ -204,7 +204,7 @@ export function CircularPhaseSlider({
   };
 
   // Handle pointer drag
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seeds form state when the dialog opens; re-running on every dep change would discard edits
   const handlePointerMove = useCallback(
     (event: MouseEvent | TouchEvent) => {
       if (draggingPointer === null || !svgRef.current) return;
@@ -261,7 +261,7 @@ export function CircularPhaseSlider({
       eveningPhase,
       onUpdatePhase,
       pointerHours,
-    ]
+    ],
   );
 
   const handlePointerUp = useCallback(() => {
@@ -374,7 +374,7 @@ export function CircularPhaseSlider({
                 startAngle,
                 endAngle,
                 OUTER_RADIUS,
-                INNER_RADIUS
+                INNER_RADIUS,
               )}
               fill={color}
               stroke={COLORS.ui.border}
@@ -507,7 +507,7 @@ export function CircularPhaseSlider({
                 onMouseEnter={(e) => {
                   e.currentTarget.setAttribute(
                     "fill",
-                    COLORS.pointer.fillHover
+                    COLORS.pointer.fillHover,
                   );
                 }}
                 onMouseLeave={(e) => {

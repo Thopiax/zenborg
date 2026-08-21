@@ -107,7 +107,7 @@ export function SelectorPopover<T = string>({
     const handleKeyDown = (e: KeyboardEvent) => {
       // Find option with matching hotkey
       const option = options.find(
-        (opt) => opt.hotkey?.toLowerCase() === e.key.toLowerCase()
+        (opt) => opt.hotkey?.toLowerCase() === e.key.toLowerCase(),
       );
 
       if (option) {
@@ -177,7 +177,7 @@ export function SelectorPopover<T = string>({
                     // Selected state
                     isSelected &&
                       "!bg-stone-300/60 hover:!bg-stone-200 !text-stone-900 dark:!bg-stone-100 dark:hover:!bg-stone-200 dark:!text-stone-900",
-                    option.className
+                    option.className,
                   )}
                 >
                   {/* Left accent (e.g., colored bar for areas) */}
@@ -214,7 +214,7 @@ export function SelectorPopover<T = string>({
                           "text-sm block mt-0.5",
                           isSelected
                             ? "text-stone-500 dark:text-stone-400"
-                            : "text-stone-500 dark:text-stone-400"
+                            : "text-stone-500 dark:text-stone-400",
                         )}
                       >
                         {option.description}
@@ -238,7 +238,7 @@ export function SelectorPopover<T = string>({
                             "text-sm font-mono px-2 py-1 rounded",
                             isSelected
                               ? "bg-stone-700 text-stone-100 dark:bg-stone-300 dark:text-stone-900"
-                              : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400"
+                              : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400",
                           )}
                         >
                           {option.hotkey}

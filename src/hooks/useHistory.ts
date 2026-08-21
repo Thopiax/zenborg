@@ -1,8 +1,5 @@
 import { useSelector } from "@legendapp/state/react";
-import type { HistoryEntry } from "@/domain/entities/HistoryEntry";
 import {
-  canRedo as canRedoFn,
-  canUndo as canUndoFn,
   clearHistory as clearHistoryFn,
   endBatch,
   getHistoryStats,
@@ -93,9 +90,9 @@ export function useHistory() {
    * Execute a function within a batch context
    * Automatically starts and ends batch
    */
-  const withBatch = async <T,>(
+  const withBatch = async <T>(
     fn: () => T | Promise<T>,
-    description?: string
+    description?: string,
   ): Promise<T> => {
     return withBatchFn(fn, description);
   };

@@ -48,7 +48,7 @@ export class MomentCreationService {
    * @returns Created (and possibly allocated) moment, or error if validation fails
    */
   createMomentWithWorkflow(
-    params: CreateMomentWithWorkflowParams
+    params: CreateMomentWithWorkflowParams,
   ): MomentResult {
     const {
       name,

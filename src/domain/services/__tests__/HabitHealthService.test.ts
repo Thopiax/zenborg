@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { HabitHealthService } from "../HabitHealthService";
+import { describe, expect, it } from "vitest";
+import type { CyclePlan } from "@/domain/entities/CyclePlan";
+import type { Habit } from "@/domain/entities/Habit";
+import type { Moment } from "@/domain/entities/Moment";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import { Phase } from "@/domain/value-objects/Phase";
-import type { Habit } from "@/domain/entities/Habit";
-import type { CyclePlan } from "@/domain/entities/CyclePlan";
-import type { Moment } from "@/domain/entities/Moment";
 import type { Rhythm } from "@/domain/value-objects/Rhythm";
+import { HabitHealthService } from "../HabitHealthService";
 
 const service = new HabitHealthService();
 
@@ -30,7 +30,7 @@ const baseHabit = (overrides: Partial<Habit> = {}): Habit => ({
 const allocatedMoment = (
   habitId: string,
   day: Date,
-  overrides: Partial<Moment> = {}
+  overrides: Partial<Moment> = {},
 ): Moment => ({
   id: `moment-${day.toISOString()}`,
   name: "m",
@@ -88,7 +88,9 @@ describe("HabitHealthService.computeHealth — attitude dispatch", () => {
 
   it("returns 'evergreen' for BEING regardless of history", () => {
     const habit = baseHabit({ attitude: Attitude.BEING });
-    expect(service.computeHealth(habit, null, [], new Date())).toBe("evergreen");
+    expect(service.computeHealth(habit, null, [], new Date())).toBe(
+      "evergreen",
+    );
   });
 });
 
@@ -107,7 +109,7 @@ describe("HabitHealthService — BEGINNING", () => {
     const habit = baseHabit({ attitude: Attitude.BEGINNING });
     const now = new Date("2026-04-20");
     const moments = [0, 1, 2, 3, 4].map((i) =>
-      allocatedMoment(habit.id, new Date(`2026-04-1${i}`))
+      allocatedMoment(habit.id, new Date(`2026-04-1${i}`)),
     );
     expect(service.computeHealth(habit, null, moments, now)).toBe("budding");
   });
@@ -138,7 +140,12 @@ describe("HabitHealthService — RETURNING", () => {
     const now = new Date("2026-04-20");
     const last = new Date("2026-04-01"); // 19 days ago — past KEEPING threshold, within RETURNING
     expect(
-      service.computeHealth(habit, null, [allocatedMoment(habit.id, last)], now)
+      service.computeHealth(
+        habit,
+        null,
+        [allocatedMoment(habit.id, last)],
+        now,
+      ),
     ).toBe("blooming");
   });
 
@@ -148,7 +155,11 @@ describe("HabitHealthService — RETURNING", () => {
     const last = new Date("2026-04-01"); // 19 days ago
     const moments = [allocatedMoment("habit-1", last)];
 
-    const keeping = baseHabit({ id: "habit-1", attitude: Attitude.KEEPING, rhythm });
+    const keeping = baseHabit({
+      id: "habit-1",
+      attitude: Attitude.KEEPING,
+      rhythm,
+    });
     const returning = baseHabit({
       id: "habit-1",
       attitude: Attitude.RETURNING,
@@ -156,7 +167,9 @@ describe("HabitHealthService — RETURNING", () => {
     });
 
     expect(service.computeHealth(keeping, null, moments, now)).toBe("wilting");
-    expect(service.computeHealth(returning, null, moments, now)).toBe("blooming");
+    expect(service.computeHealth(returning, null, moments, now)).toBe(
+      "blooming",
+    );
   });
 
   it("is 'wilting' when last allocation is past RETURNING's extended threshold", () => {
@@ -165,7 +178,12 @@ describe("HabitHealthService — RETURNING", () => {
     const now = new Date("2026-04-30");
     const last = new Date("2026-04-01"); // 29 days ago — past RETURNING threshold
     expect(
-      service.computeHealth(habit, null, [allocatedMoment(habit.id, last)], now)
+      service.computeHealth(
+        habit,
+        null,
+        [allocatedMoment(habit.id, last)],
+        now,
+      ),
     ).toBe("wilting");
   });
 });
@@ -186,7 +204,12 @@ describe("HabitHealthService — KEEPING", () => {
     const now = new Date("2026-04-20");
     const last = new Date("2026-04-10"); // 10 days ago
     expect(
-      service.computeHealth(habit, null, [allocatedMoment(habit.id, last)], now)
+      service.computeHealth(
+        habit,
+        null,
+        [allocatedMoment(habit.id, last)],
+        now,
+      ),
     ).toBe("blooming");
   });
 
@@ -199,7 +222,12 @@ describe("HabitHealthService — KEEPING", () => {
     const now = new Date("2026-04-20");
     const last = new Date("2026-04-01"); // 19 days ago
     expect(
-      service.computeHealth(habit, null, [allocatedMoment(habit.id, last)], now)
+      service.computeHealth(
+        habit,
+        null,
+        [allocatedMoment(habit.id, last)],
+        now,
+      ),
     ).toBe("wilting");
   });
 
@@ -322,7 +350,7 @@ describe("HabitHealthService — moments attached via personIds", () => {
 
     expect(service.computeHealth(yaya, null, [], NOW)).toBe("wilting");
     expect(service.computeHealth(yaya, null, [groupDinner], NOW)).toBe(
-      "blooming"
+      "blooming",
     );
   });
 
@@ -340,7 +368,7 @@ describe("HabitHealthService — moments attached via personIds", () => {
 
     expect(service.computeHealth(mari, null, [], NOW)).toBe("wilting");
     expect(service.computeHealth(mari, null, [groupDinner], NOW)).toBe(
-      "blooming"
+      "blooming",
     );
   });
 
@@ -362,10 +390,10 @@ describe("HabitHealthService — moments attached via personIds", () => {
     });
 
     expect(service.computeHealth(meditation, null, [otherPeople], NOW)).toBe(
-      "wilting"
+      "wilting",
     );
     expect(
-      service.computeHealth(meditation, null, [ownMoment, otherPeople], NOW)
+      service.computeHealth(meditation, null, [ownMoment, otherPeople], NOW),
     ).toBe("blooming");
   });
 
@@ -381,23 +409,25 @@ describe("HabitHealthService — moments attached via personIds", () => {
     expect(orphan.personIds).toBeUndefined();
     expect(orphan.habitId).toBeNull();
 
-    expect(() => service.computeHealth(yaya, null, [orphan], NOW)).not.toThrow();
+    expect(() =>
+      service.computeHealth(yaya, null, [orphan], NOW),
+    ).not.toThrow();
     expect(service.computeHealth(yaya, null, [orphan], NOW)).toBe("wilting");
   });
 
   it("counts personIds moments toward BEGINNING's 5-moment budding gate", () => {
-    const yanik = baseHabit({
-      id: "p-eli",
-      name: "Eli",
+    const uma = baseHabit({
+      id: "p-uma",
+      name: "Uma",
       attitude: Attitude.BEGINNING,
     });
     const five = [1, 2, 3, 4, 5].map((n) =>
-      unplanted(TWO_DAYS_AGO, { id: `m-${n}`, personIds: ["p-eli"] })
+      unplanted(TWO_DAYS_AGO, { id: `m-${n}`, personIds: ["p-uma"] }),
     );
 
-    expect(service.computeHealth(yanik, null, five.slice(0, 4), NOW)).toBe(
-      "seedling"
+    expect(service.computeHealth(uma, null, five.slice(0, 4), NOW)).toBe(
+      "seedling",
     );
-    expect(service.computeHealth(yanik, null, five, NOW)).toBe("budding");
+    expect(service.computeHealth(uma, null, five, NOW)).toBe("budding");
   });
 });

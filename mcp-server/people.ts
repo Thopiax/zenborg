@@ -15,10 +15,10 @@
  *
  * Health is NEVER stored. Recomputed on every read.
  */
-import { type Cadence, cadenceDays, overdueRatio } from './cadence.js';
-import type { Health } from './health.js';
-import { parseVaultDay } from './health.js';
-import type { Moment } from './vault.js';
+import { type Cadence, cadenceDays, overdueRatio } from "./cadence.js";
+import type { Health } from "./health.js";
+import { parseVaultDay } from "./health.js";
+import type { Moment } from "./vault.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -33,7 +33,10 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export function personMoments(personKey: string, moments: Moment[]): Moment[] {
   const found: Moment[] = [];
   for (const m of moments) {
-    if (m.habitId === personKey || (m.personIds?.includes(personKey) ?? false)) {
+    if (
+      m.habitId === personKey ||
+      (m.personIds?.includes(personKey) ?? false)
+    ) {
       found.push(m);
     }
   }
@@ -124,22 +127,22 @@ export function daysSinceLastContact(
 export function personHealth(
   personKey: string,
   cadence: Cadence | null,
-  status: 'active' | 'paused',
+  status: "active" | "paused",
   moments: Moment[],
   now: Date,
 ): Health {
-  if (status === 'paused') {
-    return 'unstated';
+  if (status === "paused") {
+    return "unstated";
   }
   if (cadence === null) {
-    return 'unstated';
+    return "unstated";
   }
   const last = latestContactDate(personKey, moments, now);
   if (last === null) {
-    return 'wilting';
+    return "wilting";
   }
   const daysSince = (now.getTime() - last.getTime()) / MS_PER_DAY;
-  return daysSince <= cadenceDays(cadence) ? 'blooming' : 'wilting';
+  return daysSince <= cadenceDays(cadence) ? "blooming" : "wilting";
 }
 
 /**
@@ -160,7 +163,7 @@ export function overdueRank(ratio: number | null): number {
 export interface RegistryPerson {
   key: string;
   cadence: Cadence | null;
-  status: 'active' | 'paused';
+  status: "active" | "paused";
   category: string | null;
   favorite: boolean;
   basePlace: string | null;
@@ -204,7 +207,7 @@ export function selectPeopleToReach(
     // Paused and cadence-less people are "unstated", never wilting.
     if (
       personHealth(person.key, person.cadence, person.status, moments, now) !==
-      'wilting'
+      "wilting"
     ) {
       continue;
     }

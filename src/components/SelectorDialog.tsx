@@ -107,7 +107,7 @@ export function SelectorDialog<T = string>({
     const handleKeyDown = (e: KeyboardEvent) => {
       // Find option with matching hotkey
       const option = options.find(
-        (opt) => opt.hotkey?.toLowerCase() === e.key.toLowerCase()
+        (opt) => opt.hotkey?.toLowerCase() === e.key.toLowerCase(),
       );
 
       if (option) {
@@ -161,7 +161,7 @@ export function SelectorDialog<T = string>({
                   isSelected &&
                     "!bg-stone-900 !text-stone-50 dark:!bg-stone-100 dark:!text-stone-900",
                   isSelected && "hover:!bg-stone-800 dark:hover:!bg-stone-200",
-                  option.className
+                  option.className,
                 )}
               >
                 {/* Selected indicator (checkmark) - appears on the far left */}
@@ -203,7 +203,7 @@ export function SelectorDialog<T = string>({
                         "text-sm block mt-0.5",
                         isSelected
                           ? "text-stone-200 dark:text-stone-700"
-                          : "text-stone-500 dark:text-stone-400"
+                          : "text-stone-500 dark:text-stone-400",
                       )}
                     >
                       {option.description}
@@ -221,7 +221,7 @@ export function SelectorDialog<T = string>({
                           "text-base font-mono px-2 py-1 rounded",
                           isSelected
                             ? "bg-stone-700 text-stone-100 dark:bg-stone-300 dark:text-stone-900"
-                            : "bg-stone-100 dark:bg-stone-800"
+                            : "bg-stone-100 dark:bg-stone-800",
                         )}
                       >
                         {option.hotkey}

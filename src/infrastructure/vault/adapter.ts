@@ -19,7 +19,7 @@ import type { CollectionName } from "@/domain/registry";
  * (e.g. first boot, collection never written).
  */
 export async function readCollection<T>(
-  collection: CollectionName
+  collection: CollectionName,
 ): Promise<Record<string, T> | null> {
   const raw = await invoke<string | null>("vault_read_collection", {
     collection,
@@ -42,7 +42,7 @@ export async function readCollection<T>(
  */
 export async function writeCollection<T>(
   collection: CollectionName,
-  value: Record<string, T>
+  value: Record<string, T>,
 ): Promise<void> {
   const json = JSON.stringify(value, null, 2);
   await invoke<void>("vault_write_collection", {
@@ -77,7 +77,7 @@ interface VaultChangeEvent {
  */
 export async function subscribeToCollection(
   collection: CollectionName,
-  onChange: () => void
+  onChange: () => void,
 ): Promise<UnlistenFn> {
   return listen<VaultChangeEvent>("vault:collection-changed", (event) => {
     if (event.payload.collection === collection) {

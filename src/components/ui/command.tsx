@@ -21,7 +21,7 @@ function Command({
       data-slot="command"
       className={cn(
         "bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 flex h-full w-full flex-col overflow-hidden rounded-md",
-        className
+        className,
       )}
       {...props}
     />
@@ -53,7 +53,9 @@ function CommandDialog({
         <DialogHeader className="px-6 pt-6 pb-0 flex-row items-start justify-between">
           <div>
             <DialogTitle>{title}</DialogTitle>
-            {description && <DialogDescription>{description}</DialogDescription>}
+            {description && (
+              <DialogDescription>{description}</DialogDescription>
+            )}
           </div>
           <div className="flex items-center gap-2">{rightHeader}</div>
         </DialogHeader>
@@ -93,7 +95,7 @@ function CommandInput({
         data-slot="command-input"
         className={cn(
           "placeholder:text-stone-400 dark:placeholder:text-stone-500 flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
-          className
+          className,
         )}
         {...props}
       />
@@ -110,7 +112,7 @@ function CommandList({
       data-slot="command-list"
       className={cn(
         "max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto",
-        className
+        className,
       )}
       {...props}
     />
@@ -138,7 +140,7 @@ function CommandGroup({
       data-slot="command-group"
       className={cn(
         "text-stone-900 dark:text-stone-100 [&_[cmdk-group-heading]]:text-stone-500 dark:[&_[cmdk-group-heading]]:text-stone-400 overflow-hidden p-1 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium",
-        className
+        className,
       )}
       {...props}
     />
@@ -167,7 +169,7 @@ function CommandItem({
       data-slot="command-item"
       className={cn(
         "data-[selected=true]:bg-stone-200 dark:data-[selected=true]:bg-stone-700 data-[selected=true]:text-stone-900 dark:data-[selected=true]:text-stone-100 [&_svg:not([class*='text-'])]:text-stone-500 dark:[&_svg:not([class*='text-'])]:text-stone-400 relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className
+        className,
       )}
       {...props}
     />
@@ -183,7 +185,7 @@ function CommandShortcut({
       data-slot="command-shortcut"
       className={cn(
         "text-stone-500 dark:text-stone-400 ml-auto text-xs tracking-widest",
-        className
+        className,
       )}
       {...props}
     />

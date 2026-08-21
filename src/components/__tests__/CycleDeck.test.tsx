@@ -75,7 +75,7 @@ const testPlan2: CyclePlan = {
 
 const testCycle = {
   id: "cycle-1",
-  name: "Barcelona Summer",
+  name: "Dev Summer",
   startDate: "2026-01-01",
   endDate: "2026-04-01",
   intention: null,
@@ -224,9 +224,7 @@ const mockStore = (state: MockStoreState) => {
     state.isEditMode ?? false,
     state.selectedCycleId ?? null,
     state.cyclesMap ??
-      (state.activeCycle
-        ? { [state.activeCycle.id]: state.activeCycle }
-        : {}),
+      (state.activeCycle ? { [state.activeCycle.id]: state.activeCycle } : {}),
     state.plansMap ?? {},
     state.habitsMap ?? {},
     state.areasMap ?? {},
@@ -443,7 +441,7 @@ describe("CycleDeck", () => {
 
       render(<CycleDeck />);
 
-      const nameInput = screen.getByDisplayValue("Barcelona Summer");
+      const nameInput = screen.getByDisplayValue("Dev Summer");
       expect(nameInput).toBeInTheDocument();
       expect(nameInput.tagName).toBe("INPUT");
     });
@@ -459,8 +457,8 @@ describe("CycleDeck", () => {
 
       render(<CycleDeck />);
 
-      expect(screen.getByText(/Barcelona Summer/)).toBeInTheDocument();
-      expect(screen.queryByDisplayValue("Barcelona Summer")).toBeNull();
+      expect(screen.getByText(/Dev Summer/)).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("Dev Summer")).toBeNull();
     });
 
     it("renders date inputs when edit mode is active", () => {
