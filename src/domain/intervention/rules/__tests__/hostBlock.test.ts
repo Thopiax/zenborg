@@ -130,11 +130,29 @@ describe("an unanswerable measure", () => {
   });
 });
 
+const browser = { at: "browser" } as const;
+const resolver = { at: "resolver", profile: "kairos" } as const;
+
 describe("seedRuleId", () => {
   it("derives a stable id from the host, so reinstalling replaces rather than duplicates", () => {
-    expect(seedRuleId("youtube.com")).toBe("host-block-youtube-com");
-    expect(seedRuleId("lichess.org")).toBe("host-block-lichess-org");
-    expect(seedRuleId("YouTube.com")).toBe(seedRuleId("youtube.com"));
+    expect(seedRuleId("youtube.com", browser)).toBe(
+      "host-block-browser-youtube-com",
+    );
+    expect(seedRuleId("lichess.org", browser)).toBe(
+      "host-block-browser-lichess-org",
+    );
+    expect(seedRuleId("YouTube.com", browser)).toBe(
+      seedRuleId("youtube.com", browser),
+    );
+  });
+
+  it("folds the enforcement point in, so one host walled at two points is two rules", () => {
+    expect(seedRuleId("youtube.com", resolver)).toBe(
+      "host-block-resolver-kairos-youtube-com",
+    );
+    expect(seedRuleId("youtube.com", resolver)).not.toBe(
+      seedRuleId("youtube.com", browser),
+    );
   });
 });
 
@@ -147,7 +165,6 @@ describe("hostBlockSeedRules", () => {
     serves,
     returnsTo,
     hosts,
-    resolverProfile: "kairos",
     unlockNote: "edit the resolver profile and wait for propagation",
   };
 
@@ -164,8 +181,39 @@ describe("hostBlockSeedRules", () => {
 
   it("ids every rule from its host, so the set is distinct and re-derivable", () => {
     const rules = hostBlockSeedRules(seed);
-    expect(rules.map((r) => r.id)).toEqual(hosts.map(seedRuleId));
+    expect(rules.map((r) => r.id)).toEqual(
+      hosts.map((host) => seedRuleId(host, browser)),
+    );
     expect(new Set(rules.map((r) => r.id)).size).toBe(rules.length);
+  });
+
+  it("gives each host a stable id, so re-seeding replaces rather than duplicates", () => {
+    expect(hostBlockSeedRules(seed).map((r) => r.id)).toEqual(
+      hostBlockSeedRules(seed).map((r) => r.id),
+    );
+  });
+
+  it("enforces in the browser by default, which is the surface this app actuates", () => {
+    for (const rule of hostBlockSeedRules(seed)) {
+      expect((rule.primitives[0] as CooldownSpec).enforcement).toEqual({
+        at: "browser",
+      });
+    }
+  });
+
+  it("can be asked for the resolver instead, the reach that covers a phone", () => {
+    const seeded = hostBlockSeedRules({ ...seed, enforcement: resolver });
+    for (const rule of seeded) {
+      expect((rule.primitives[0] as CooldownSpec).enforcement).toEqual({
+        at: "resolver",
+        profile: "kairos",
+      });
+    }
+    // A different enforcement point is a different rule, so its deliveries stay
+    // attributable to the surface that actually made them.
+    expect(seeded.map((r) => r.id)).not.toEqual(
+      hostBlockSeedRules(seed).map((r) => r.id),
+    );
   });
 
   it("carries returnsTo into every rule's measure, the whole proximal claim", () => {
@@ -179,6 +227,9 @@ describe("hostBlockSeedRules", () => {
 
   it("produces rules the validator accepts", () => {
     for (const rule of hostBlockSeedRules(seed)) {
+      expect(validateRuleSpec(rule)).toEqual([]);
+    }
+    for (const rule of hostBlockSeedRules({ ...seed, enforcement: resolver })) {
       expect(validateRuleSpec(rule)).toEqual([]);
     }
   });

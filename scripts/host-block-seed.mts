@@ -149,7 +149,10 @@ function main(): void {
     ...hostBlockSeedRules({
       serves,
       returnsTo: [...RETURNS_TO],
-      resolverProfile: arg("--profile") ?? DEFAULT_PROFILE,
+      enforcement: {
+        at: "resolver",
+        profile: arg("--profile") ?? DEFAULT_PROFILE,
+      },
       unlockNote: arg("--unlock") ?? DEFAULT_UNLOCK,
       hosts,
     }),

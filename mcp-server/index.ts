@@ -15,8 +15,11 @@ import { z } from "zod";
 import type { FenceDeps } from "../src/application/ports.ts";
 import {
   clearFences,
+  declareBrowserGate,
   declareFence,
+  declareHostBlock,
   fenceReport,
+  seedHostBlocks,
 } from "../src/application/use-cases/fences.ts";
 import { crossingTally, expandHome, fenceStore } from "./fences.js";
 import { buildRelatedHabits } from "./graph.js";
@@ -2160,6 +2163,118 @@ server.tool(
     });
     if ("problems" in result) return err(result.problems.join("; "));
     return ok({ declared: result.declared, standing: result.standing });
+  },
+);
+
+// ── Browser-scoped fences ─────────────────────────────────────────────
+//
+// `set_fence` above writes a session fence, which the plugin's PreToolUse hook
+// reads. The three below write BROWSER-scoped ones, which the extension reads
+// out of the armed record the native host pushes. Same collection, same writer,
+// same validate-before-write discipline — a different surface.
+//
+// They exist because migration step 5 could not flip the readers without them:
+// with no browser-scoped writer, a fences-only read reached no browser at all.
+
+server.tool(
+  "set_host_block",
+  "Declare a standing block on a host, as a rule that says what it is for. Browser-enforced by default — the extension actuates it from the pushed armed record; pass `resolverProfile` for a resolver-level block instead, which is the only reach that covers a phone. `unlockNote` is required and is the exit: a block that names no way out is refused, never armed.",
+  {
+    host: z
+      .string()
+      .min(1)
+      .describe('A registrable host — "chess.com", not a URL and not a path'),
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe(
+        "Areas attention should land in when the wall is met — names or ids. This is the proximal claim: blocking is not the point, not losing the next ten minutes is.",
+      ),
+    unlockNote: z
+      .string()
+      .min(1)
+      .describe(
+        "How the block is lifted, deliberately outside the running system so it cannot be taken in the moment of wanting",
+      ),
+    name: z.string().optional(),
+    description: z.string().optional(),
+    resolverProfile: z
+      .string()
+      .optional()
+      .describe(
+        "Name the resolver profile carrying the block to enforce it there instead of in the browser",
+      ),
+  },
+  async (input): Promise<ToolResult> => {
+    const result = await declareHostBlock(fenceDeps, input);
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({ declared: result.declared, standing: result.standing });
+  },
+);
+
+server.tool(
+  "set_browser_gate",
+  "Declare a recurring stopping cue on a host: every N attended minutes of dwell, the page asks a question with an exit. Friction on the duration rather than on the visit — which is the answer to a standing block on a host you have a real reason to use, since that block gets lifted and a block lifted in the moment is not a boundary. Ships below delivery probability 1, because whether a cue like this returns attention is exactly what is unknown.",
+  {
+    host: z
+      .string()
+      .min(1)
+      .describe('A registrable host — "linkedin.com", not a URL'),
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Areas attention should land in after the gate — names or ids"),
+    everyMinutes: z
+      .number()
+      .describe(
+        "Accumulated ATTENDED dwell between firings — a backgrounded tab or an idle person does not accrue it",
+      ),
+    prompt: z
+      .string()
+      .min(1)
+      .describe("What the gate asks. The question is the friction."),
+    name: z.string().optional(),
+    description: z.string().optional(),
+  },
+  async (input): Promise<ToolResult> => {
+    const result = await declareBrowserGate(fenceDeps, input);
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({ declared: result.declared, standing: result.standing });
+  },
+);
+
+server.tool(
+  "seed_host_blocks",
+  "Write the seed blocklist into fences as rules — the oldest working piece of the system, carried out of keel's own rules directory and into the collection the kernel contract registers. Idempotent: each rule's id is derived from its host and enforcement point, so re-running replaces rather than accumulating, and fences it did not write are left alone.",
+  {
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Areas attention should land in when a wall is met"),
+    unlockNote: z
+      .string()
+      .min(1)
+      .describe("How any of these blocks is lifted, out of band"),
+    hosts: z
+      .array(z.string().min(1))
+      .describe(
+        "The hosts to wall. Required: there is no default list, so a seed names its own hosts.",
+      ),
+    resolverProfile: z
+      .string()
+      .optional()
+      .describe("Enforce at the resolver instead of in the browser"),
+  },
+  async (input): Promise<ToolResult> => {
+    const result = await seedHostBlocks(fenceDeps, input);
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({
+      declared: result.declared.map((r) => ({
+        id: r.id,
+        host: (r.scope as { domain: string }).domain,
+      })),
+      standing: result.standing,
+    });
   },
 );
 

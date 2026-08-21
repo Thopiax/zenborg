@@ -48,7 +48,7 @@ before the agent commits).
 - `budget_habit_to_cycle`, `increment_habit_budget`, `decrement_habit_budget`, `remove_habit_from_deck`
 - `update_phase_config`
 - `set_active_moment`, `clear_active_moment`
-- `set_fence`, `clear_fence`
+- `set_fence`, `set_host_block`, `set_browser_gate`, `seed_host_blocks`, `clear_fence`
 
 ### Attitude-driven planning
 
@@ -175,7 +175,17 @@ pointing at the running season, validate-before-write) in
 |---|---|---|
 | `set_fence` | `label, paths, areas, description?` | Declare a fence. `paths` are absolute prefixes *inside* the fence (`~` expands); `areas` are area **names or ids** the fence encloses. `serves` resolves to the active cycle + first enclosed area — refused when no season is running. Validated with `validateRuleSpec` before the write; every rung carries an exit by type (a fence can ask, never deny). |
 | `clear_fence` | `id` \| `all` | Take a fence down (exactly one of the two). The crossing tally (`plugin/fences-state.json`) is **plugin-owned and never written here** — rule ids are never reused, so a cleared fence's count is inert by construction. |
+| `set_host_block` | `host, returnsTo, unlockNote, name?, description?, resolverProfile?` | A standing block on one host, **browser-scoped** so it reaches the extension's armed record. Browser-enforced unless `resolverProfile` is given, which moves it to the reach that covers a phone. `unlockNote` is the exit and is required — invariant 6 is checked at the writer, not only at the extension. |
+| `set_browser_gate` | `host, returnsTo, everyMinutes, prompt, name?, description?` | A recurring stopping cue: every N minutes of **attended** dwell, the page asks and offers an exit. Friction on the duration rather than on the visit. Ships at `deliveryProbability` 0.7, because whether a cue like this returns attention is the open question. |
+| `seed_host_blocks` | `returnsTo, unlockNote, hosts, resolverProfile?` | Write a seed blocklist into `fences` as rules. `hosts` is required: there is no default list to fall back to. Idempotent — ids derive from host + enforcement point, so re-running replaces; fences it did not write are untouched. One write, not one per host. |
 | `get_fence` | — | Every standing fence with its crossing tally (zero when the plugin has recorded none) and the rung the *next* crossing lands on, read off the rule's own ladder via `rungFor`. |
+
+**Two surfaces, one collection.** `set_fence` writes `scope.surface: "session"`,
+which the plugin's `PreToolUse` hook reads; the three above write
+`scope.surface: "browser"`, which the extension reads out of the armed record
+keel's native host projects and pushes. Migration step 5 (2026-08-21) made
+`fences` the *only* rule store — `~/.kairos/keel/rules/*.json` is retired, and a
+rule still sitting there is inert until it is re-declared through these tools.
 
 ### Tags — derived index (added 2026-08-14)
 
