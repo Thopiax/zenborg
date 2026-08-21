@@ -236,14 +236,29 @@ export const columnWidth = {
  * Moment Card Dimensions
  * Optimized for 3 cards to fit vertically in timeline cells
  */
+const MOMENT_CARD_HEIGHT_PX = 64;
+const MOMENT_CARD_GAP_PX = 12;
+
 export const momentCard = {
-  // Card height: 64px per card (3 cards = 192px + 2 gaps = ~220px total)
-  minHeight: "64px",
+  // Card height: 64px per card (3 cards = 192px + 2 gaps = ~216px total)
+  minHeight: `${MOMENT_CARD_HEIGHT_PX}px`,
   // Spacing between cards in a cell
-  gap: "12px", // 3 gaps of 12px = 36px
+  gap: `${MOMENT_CARD_GAP_PX}px`,
   // Padding inside card
   paddingX: "16px", // 1rem
   paddingY: "12px", // 0.75rem
+} as const;
+
+/**
+ * Timeline Cell Viewport
+ *
+ * A cell is exactly three moment slots tall, always. That height is a display
+ * affordance, not a capacity: a fourth moment scrolls inside the cell rather
+ * than stretching the row and breaking the day's alignment.
+ */
+export const timelineCell = {
+  visibleSlots: 3,
+  viewportHeight: `${MOMENT_CARD_HEIGHT_PX * 3 + MOMENT_CARD_GAP_PX * 2}px`,
 } as const;
 
 /**

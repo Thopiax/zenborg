@@ -6,6 +6,7 @@ import { GripVertical } from "lucide-react";
 import type { Habit } from "@/domain/entities/Habit";
 import { getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
+import { TagSummary } from "./TagSummary";
 
 interface SortableHabitItemProps {
   habit: Habit;
@@ -75,28 +76,15 @@ export function SortableHabitItem({
           )}
         >
           <span className={cn("mr-2", "text-lg")}>{habit.emoji}</span>
-          <span
-            className={cn("text-lg font-semibold line-clamp-1 flex-shrink-0")}
-          >
+          <span className={cn("text-lg font-semibold truncate min-w-0")}>
             {habit.name}
           </span>
         </div>
         {/* Tags under habit name */}
-        {habit.tags && habit.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {habit.tags.map((tag) => (
-              <span
-                key={tag}
-                className={cn(
-                  "text-xs font-mono opacity-60",
-                  textColors.primary,
-                )}
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
+        <TagSummary
+          tags={habit.tags}
+          className={cn("mt-1.5", textColors.primary)}
+        />
       </button>
     </div>
   );
