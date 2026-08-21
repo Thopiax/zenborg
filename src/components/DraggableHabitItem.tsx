@@ -6,6 +6,7 @@ import { Archive } from "lucide-react";
 import type { Habit } from "@/domain/entities/Habit";
 import { getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
+import { TagSummary } from "./TagSummary";
 
 interface DraggableHabitItemProps {
   habit: Habit;
@@ -62,6 +63,7 @@ export function DraggableHabitItem({
       ref={setNodeRef}
       style={style}
       className="group flex items-center justify-between gap-2 px-3 py-3 rounded-md transition-all hover:ring-2 hover:ring-offset-2 ring-offset-transparent"
+      data-habit-name={habit.name}
       {...attributes}
       {...listeners}
     >
@@ -81,23 +83,17 @@ export function DraggableHabitItem({
           )}
         >
           <span className="text-lg flex-shrink-0">{habit.emoji}</span>
-          <span className="text-lg font-semibold truncate">{habit.name}</span>
-          {/* Tags inline after name */}
-          {habit.tags && habit.tags.length > 0 && (
-            <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
-              {habit.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className={cn(
-                    "text-xs font-mono opacity-50",
-                    textColors.primary,
-                  )}
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
+          <span
+            data-habit-label
+            className="text-lg font-semibold truncate flex-1 min-w-0"
+          >
+            {habit.name}
+          </span>
+          {/* Tags trail the name and never crowd it */}
+          <TagSummary
+            tags={habit.tags}
+            className={cn("flex-shrink-0", textColors.primary)}
+          />
         </div>
       </button>
 
