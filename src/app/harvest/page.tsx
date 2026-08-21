@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import { BandedHeatmap } from "@/components/banded-heatmap/BandedHeatmap";
 import { SeasonReadback } from "@/components/harvest/SeasonReadback";
+import { tauriLibrary } from "@/infrastructure/library/adapter";
 import {
   deriveHarvestSeason,
   resolveHarvestCycle,
@@ -30,6 +31,11 @@ import { getTodayISO } from "@/lib/dates";
  * The index is the banded heatmap, not a new timeline: the seasons are
  * already drawn there, so navigating them is picking one. Harvest opens on
  * the most recently closed season until you pick another.
+ *
+ * The one exception to "no network, no model" is not one: slice C put the
+ * library in this process, so the journal is read locally, over an index on
+ * this disk. This page is the composition root that hands the readback its
+ * port, and it is the only place in the garden that names the adapter.
  */
 export default function HarvestPage() {
   const cycles = useValue(cycles$);
@@ -99,6 +105,7 @@ export default function HarvestPage() {
 
       <main className="flex-1 overflow-y-auto">
         <SeasonReadback
+          library={tauriLibrary}
           onEditReflection={handleEditReflection}
           season={season}
         />
