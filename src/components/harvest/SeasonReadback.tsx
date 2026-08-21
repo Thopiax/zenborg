@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { LibraryPort } from "@/application/ports";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { composeReflection } from "@/domain/value-objects/Reflection";
@@ -9,6 +10,7 @@ import type {
   HarvestSeason,
 } from "@/infrastructure/state/harvestViewModel";
 import { formatCycleDateRange, getDateLabel } from "@/lib/dates";
+import { SeasonNotes } from "./SeasonNotes";
 
 /**
  * SeasonReadback — one closed season, read back.
@@ -25,10 +27,15 @@ import { formatCycleDateRange, getDateLabel } from "@/lib/dates";
  *
  * There is no score here, and there is no room for one: no bar against a
  * budget, no percentage, no comparison with another season.
+ *
+ * Slice C step 4 adds a fourth thing, and only here: what the journal says
+ * about the season. It arrives through `LibraryPort`, which is optional, so a
+ * readback with no port wired cannot reach the notes at all.
  */
 export function SeasonReadback({
   season,
   onEditReflection,
+  library,
 }: {
   season: HarvestSeason | null;
   /**
@@ -36,6 +43,12 @@ export function SeasonReadback({
    * Receives the composed stored string, or null when both rungs are empty.
    */
   onEditReflection?: (reflection: string | null) => void;
+  /**
+   * Read access to the notes. Omit and the journal section does not render:
+   * the one surface in the garden that reads the library is the one that was
+   * handed a port.
+   */
+  library?: LibraryPort;
 }) {
   if (!season) {
     return (
@@ -99,6 +112,17 @@ export function SeasonReadback({
           </div>
         )}
       </section>
+
+      {library && (
+        <div className="pt-8">
+          <SeasonNotes
+            endDate={season.endDate}
+            intention={season.intention}
+            library={library}
+            startDate={season.startDate}
+          />
+        </div>
+      )}
     </article>
   );
 }
