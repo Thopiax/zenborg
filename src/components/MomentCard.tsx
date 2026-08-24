@@ -11,7 +11,6 @@ import { openMomentFormEdit } from "@/infrastructure/state/ui-store";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { healthEmojiClass } from "@/lib/health-style";
 import { cn } from "@/lib/utils";
-import { MomentTimePicker } from "./MomentTimePicker";
 import { TagSummary } from "./TagSummary";
 
 interface MomentCardProps {
@@ -165,12 +164,15 @@ export function MomentCard({
           tags={moment.tags}
           className={cn("flex-shrink-0", textColors.primary)}
         />
-        {moment.day !== null && (
-          <MomentTimePicker
-            momentId={moment.id}
-            startTime={moment.startTime}
-            textColorClass={textColors.primary}
-          />
+        {moment.startTime && (
+          <span
+            className={cn(
+              "ml-1 text-xs font-mono flex-shrink-0",
+              textColors.secondary,
+            )}
+          >
+            {moment.startTime}
+          </span>
         )}
         {isActive && (
           <span
