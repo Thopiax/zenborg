@@ -1,0 +1,826 @@
+[
+  {
+    "name": "R1 new event on selected calendar creates snapped tentative moment",
+    "moment": null,
+    "event": {
+      "eventId": "ek-1",
+      "calendarId": "foreign-cal-1",
+      "title": "Team standup",
+      "day": "2026-08-24",
+      "startTime": "10:20",
+      "durationMin": 50,
+      "lastModified": "2026-08-24T08:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "createTentativeMoment",
+      "name": "Team standup",
+      "day": "2026-08-24",
+      "startTime": "10:15",
+      "durationMin": 45,
+      "eventId": "ek-1",
+      "calendarId": "foreign-cal-1"
+    }
+  },
+  {
+    "name": "R2 new accepted timed moment publishes an event",
+    "moment": {
+      "id": "m-2",
+      "name": "standup",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:30",
+      "durationMin": 30,
+      "tags": null,
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": null,
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "publishEvent",
+      "momentId": "m-2",
+      "overwroteEventEdit": false
+    }
+  },
+  {
+    "name": "R3 zenborg event matching lastWrittenHash is our echo",
+    "moment": {
+      "id": "m-3",
+      "name": "standup",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:30",
+      "durationMin": 30,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-3",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "ff236ccaea7fb964",
+        "lastWrittenTitle": "standup",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-3",
+      "calendarId": "zenborg-cal",
+      "title": "standup",
+      "day": "2026-08-24",
+      "startTime": "10:30",
+      "durationMin": 30,
+      "lastModified": "2026-08-24T07:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "none",
+      "reason": "echo"
+    }
+  },
+  {
+    "name": "R4 dragged zenborg event updates the accepted moment",
+    "moment": {
+      "id": "m-4",
+      "name": "standup",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:30",
+      "durationMin": 30,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-4",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "ff236ccaea7fb964",
+        "lastWrittenTitle": "standup",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-4",
+      "calendarId": "zenborg-cal",
+      "title": "standup",
+      "day": "2026-08-24",
+      "startTime": "11:00",
+      "durationMin": 30,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "applyEventToMoment",
+      "momentId": "m-4",
+      "day": "2026-08-24",
+      "startTime": "11:00",
+      "durationMin": 30,
+      "overwroteMomentEdit": false
+    }
+  },
+  {
+    "name": "R5 moved ingested event updates its tentative moment",
+    "moment": {
+      "id": "m-5",
+      "name": "team call",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "status": "tentative",
+      "startTime": "09:00",
+      "durationMin": 60,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-5",
+        "calendarId": "foreign-cal-1",
+        "lastWrittenHash": "ab9f83793737d1ea",
+        "lastWrittenTitle": "team call",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-5",
+      "calendarId": "foreign-cal-1",
+      "title": "team call",
+      "day": "2026-08-24",
+      "startTime": "10:30",
+      "durationMin": 60,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "applyEventToMoment",
+      "momentId": "m-5",
+      "day": "2026-08-24",
+      "startTime": "10:30",
+      "durationMin": 60,
+      "overwroteMomentEdit": false
+    }
+  },
+  {
+    "name": "R6 moved ingested event updates its accepted moment",
+    "moment": {
+      "id": "m-6",
+      "name": "team call",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "status": "accepted",
+      "startTime": "09:00",
+      "durationMin": 60,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-6",
+        "calendarId": "foreign-cal-1",
+        "lastWrittenHash": "ab9f83793737d1ea",
+        "lastWrittenTitle": "team call",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-6",
+      "calendarId": "foreign-cal-1",
+      "title": "team call",
+      "day": "2026-08-24",
+      "startTime": "10:30",
+      "durationMin": 60,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "applyEventToMoment",
+      "momentId": "m-6",
+      "day": "2026-08-24",
+      "startTime": "10:30",
+      "durationMin": 60,
+      "overwroteMomentEdit": false
+    }
+  },
+  {
+    "name": "R7 deleted ingested event deletes its tentative moment",
+    "moment": {
+      "id": "m-7",
+      "name": "team call",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "status": "tentative",
+      "startTime": "09:00",
+      "durationMin": 60,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-7",
+        "calendarId": "foreign-cal-1",
+        "lastWrittenHash": "ab9f83793737d1ea",
+        "lastWrittenTitle": "team call",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": null,
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "deleteMoment",
+      "momentId": "m-7"
+    }
+  },
+  {
+    "name": "R8 deleted ingested event returns its accepted moment to the drawing board",
+    "moment": {
+      "id": "m-8",
+      "name": "team call",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "status": "accepted",
+      "startTime": "09:00",
+      "durationMin": 60,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-8",
+        "calendarId": "foreign-cal-1",
+        "lastWrittenHash": "ab9f83793737d1ea",
+        "lastWrittenTitle": "team call",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": null,
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "returnToDrawingBoard",
+      "momentId": "m-8"
+    }
+  },
+  {
+    "name": "R9 unallocated moment deletes its event",
+    "moment": {
+      "id": "m-9",
+      "name": "standup",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": null,
+      "day": null,
+      "order": 0,
+      "startTime": "10:30",
+      "durationMin": 30,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-9",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "ff236ccaea7fb964",
+        "lastWrittenTitle": "standup",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-9",
+      "calendarId": "zenborg-cal",
+      "title": "standup",
+      "day": "2026-08-24",
+      "startTime": "10:30",
+      "durationMin": 30,
+      "lastModified": "2026-08-24T07:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "deleteEvent",
+      "eventId": "ek-9"
+    }
+  },
+  {
+    "name": "R10 orphan zenborg event with no moment is deleted",
+    "moment": null,
+    "event": {
+      "eventId": "ek-10",
+      "calendarId": "zenborg-cal",
+      "title": "ghost",
+      "day": "2026-08-24",
+      "startTime": "14:00",
+      "durationMin": 60,
+      "lastModified": "2026-08-24T07:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "deleteEvent",
+      "eventId": "ek-10"
+    }
+  },
+  {
+    "name": "R11a accepted ingested moment with an existing event publishes nothing",
+    "moment": {
+      "id": "m-11a",
+      "name": "team call",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "status": "accepted",
+      "startTime": "09:00",
+      "durationMin": 60,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-11a",
+        "calendarId": "foreign-cal-1",
+        "lastWrittenHash": "ab9f83793737d1ea",
+        "lastWrittenTitle": "team call",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-11a",
+      "calendarId": "foreign-cal-1",
+      "title": "team call",
+      "day": "2026-08-24",
+      "startTime": "09:00",
+      "durationMin": 60,
+      "lastModified": "2026-08-24T07:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "none",
+      "reason": "inSync"
+    }
+  },
+  {
+    "name": "R11b accepted tentative moment with no event publishes",
+    "moment": {
+      "id": "m-11b",
+      "name": "deep work",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:30",
+      "durationMin": 60,
+      "tags": null,
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": null,
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "publishEvent",
+      "momentId": "m-11b",
+      "overwroteEventEdit": false
+    }
+  },
+  {
+    "name": "R12a both changed, newer event wins, moment edit loss flagged",
+    "moment": {
+      "id": "m-12a",
+      "name": "standup",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:45",
+      "durationMin": 30,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-12a",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "ff236ccaea7fb964",
+        "lastWrittenTitle": "standup",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T08:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-12a",
+      "calendarId": "zenborg-cal",
+      "title": "standup",
+      "day": "2026-08-24",
+      "startTime": "11:00",
+      "durationMin": 30,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "applyEventToMoment",
+      "momentId": "m-12a",
+      "day": "2026-08-24",
+      "startTime": "11:00",
+      "durationMin": 30,
+      "overwroteMomentEdit": true
+    }
+  },
+  {
+    "name": "R12b both changed, newer moment wins, event edit loss flagged",
+    "moment": {
+      "id": "m-12b",
+      "name": "standup",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:45",
+      "durationMin": 30,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-12b",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "ff236ccaea7fb964",
+        "lastWrittenTitle": "standup",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T10:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-12b",
+      "calendarId": "zenborg-cal",
+      "title": "standup",
+      "day": "2026-08-24",
+      "startTime": "11:00",
+      "durationMin": 30,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "publishEvent",
+      "momentId": "m-12b",
+      "overwroteEventEdit": true
+    }
+  },
+  {
+    "name": "edge: event on an unselected foreign calendar is ignored",
+    "moment": null,
+    "event": {
+      "eventId": "ek-edge-1",
+      "calendarId": "unselected-cal",
+      "title": "private",
+      "day": "2026-08-24",
+      "startTime": "14:00",
+      "durationMin": 60,
+      "lastModified": "2026-08-24T07:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "none",
+      "reason": "unselectedCalendar"
+    }
+  },
+  {
+    "name": "edge: ambient moment is never published",
+    "moment": {
+      "id": "m-ambient",
+      "name": "meditate",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "tags": null,
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": null,
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "none",
+      "reason": "ambient"
+    }
+  },
+  {
+    "name": "edge: ingested event already matching its moment yields no action",
+    "moment": {
+      "id": "m-edge-sync",
+      "name": "team call",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "09:00",
+      "durationMin": 60,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-edge-sync",
+        "calendarId": "foreign-cal-1",
+        "lastWrittenHash": "ab9f83793737d1ea",
+        "lastWrittenTitle": "team call",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-edge-sync",
+      "calendarId": "foreign-cal-1",
+      "title": "team call",
+      "day": "2026-08-24",
+      "startTime": "09:00",
+      "durationMin": 60,
+      "lastModified": "2026-08-24T07:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "none",
+      "reason": "inSync"
+    }
+  },
+  {
+    "name": "edge: moment-side edit to a zenborg event republishes",
+    "moment": {
+      "id": "m-edge-push",
+      "name": "standup",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:45",
+      "durationMin": 30,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-edge-push",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "ff236ccaea7fb964",
+        "lastWrittenTitle": "standup",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T08:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-edge-push",
+      "calendarId": "zenborg-cal",
+      "title": "standup",
+      "day": "2026-08-24",
+      "startTime": "10:30",
+      "durationMin": 30,
+      "lastModified": "2026-08-24T07:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "publishEvent",
+      "momentId": "m-edge-push",
+      "overwroteEventEdit": false
+    }
+  },
+  {
+    "name": "edge: local retime of an ingested moment is kept, foreign event untouched",
+    "moment": {
+      "id": "m-edge-local",
+      "name": "team call",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:30",
+      "durationMin": 60,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-edge-local",
+        "calendarId": "foreign-cal-1",
+        "lastWrittenHash": "ab9f83793737d1ea",
+        "lastWrittenTitle": "team call",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T08:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-edge-local",
+      "calendarId": "foreign-cal-1",
+      "title": "team call",
+      "day": "2026-08-24",
+      "startTime": "09:00",
+      "durationMin": 60,
+      "lastModified": "2026-08-24T07:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "none",
+      "reason": "localEdit"
+    }
+  },
+  {
+    "name": "edge: renamed zenborg event with unchanged timing is an echo, the rename stands",
+    "moment": {
+      "id": "m-edge-calrename",
+      "name": "standup",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:30",
+      "durationMin": 30,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-edge-calrename",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "ff236ccaea7fb964",
+        "lastWrittenTitle": "standup",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-edge-calrename",
+      "calendarId": "zenborg-cal",
+      "title": "Daily Standup Meeting",
+      "day": "2026-08-24",
+      "startTime": "10:30",
+      "durationMin": 30,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "none",
+      "reason": "echo"
+    }
+  },
+  {
+    "name": "edge: moment renamed in zenborg republishes its title",
+    "moment": {
+      "id": "m-edge-zenrename",
+      "name": "daily sync",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:30",
+      "durationMin": 30,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-edge-zenrename",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "ff236ccaea7fb964",
+        "lastWrittenTitle": "standup",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T08:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-edge-zenrename",
+      "calendarId": "zenborg-cal",
+      "title": "standup",
+      "day": "2026-08-24",
+      "startTime": "10:30",
+      "durationMin": 30,
+      "lastModified": "2026-08-24T07:00:00.000Z"
+    },
+    "context": {
+      "zenborgCalendarId": "zenborg-cal",
+      "selectedCalendarIds": ["foreign-cal-1"]
+    },
+    "expected": {
+      "kind": "publishEvent",
+      "momentId": "m-edge-zenrename",
+      "overwroteEventEdit": false
+    }
+  },
+  {
+    "name": "edge: linked moment outside the sync window is never passed as deleted",
+    "_note": "Documents that the caller, not reconcile, owns the window guard. An out-of-window moment must not reach reconcile at all. This vector exists only for documentation; it is not runnable."
+  }
+]
