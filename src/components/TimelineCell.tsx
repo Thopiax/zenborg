@@ -86,8 +86,6 @@ export function TimelineCell({
     .filter((m) => m.day === day && m.phase === phase)
     .sort((a, b) => a.order - b.order);
 
-  const isFull = cellMoments.length >= MAX_MOMENTS_PER_CELL;
-
   // Droppable configuration
   const { setNodeRef, isOver } = useDroppable({
     id: `timeline-${day}-${phase}`,
@@ -97,9 +95,6 @@ export function TimelineCell({
       targetPhase: phase,
     },
   });
-
-  // Check if current drop would be valid
-  const wouldAcceptDrop = !isFull;
 
   // Handle empty cell click - always opens modal
   const handleEmptyCellClick = () => {
@@ -125,8 +120,7 @@ export function TimelineCell({
     <div
       ref={setNodeRef}
       className={cn(
-        // Height: fixed minimum for 3 cards, does not stretch to fill container
-        "flex flex-col min-h-[240px] relative",
+        "flex flex-col min-h-[240px] h-full relative",
         "p-2 rounded-md",
         // Smooth transitions for drag hover states
         "transition-all duration-fast transition-smooth",
@@ -137,15 +131,12 @@ export function TimelineCell({
         phaseBackgrounds[phaseIndex],
         // Active phase indicator (current phase on active day)
         isActivePhase && "ring-1 ring-stone-400/50",
-        // Drag hover states with smooth ring transitions
-        isOver &&
-          wouldAcceptDrop &&
-          "ring-2 ring-slate-400 dark:ring-slate-300",
-        isOver && !wouldAcceptDrop && "ring-2 ring-red-400 dark:ring-red-500",
+        // Drag hover state
+        isOver && "ring-2 ring-slate-400 dark:ring-slate-300",
       )}
       data-cell={`${day}-${phase}`}
       aria-label={cellLabel}
-      aria-live={isFull ? "polite" : "off"}
+      aria-live="off"
       aria-atomic="true"
     >
       {/* Phase Icon - Background element at bottom with low z-index */}
@@ -163,12 +154,7 @@ export function TimelineCell({
         <div className="flex-1 flex flex-col justify-start relative z-10 min-h-0">
           <div
             className="overflow-y-auto overscroll-contain"
-            style={{
-              maxHeight:
-                cellMoments.length > MAX_MOMENTS_PER_CELL
-                  ? timelineCell.viewportHeightWithPeek
-                  : timelineCell.viewportHeight,
-            }}
+            style={{ maxHeight: timelineCell.viewportHeightWithPeek }}
           >
             <SortableContext
               items={cellMoments.map((m) => m.id)}
@@ -191,18 +177,16 @@ export function TimelineCell({
               </div>
             </SortableContext>
           </div>
-          {!isFull && (
-            <button
-              type="button"
-              onClick={handleEmptyCellClick}
-              className="flex-1 flex items-center justify-center min-h-[48px] rounded-md cursor-pointer group"
-              aria-label={`add moment to ${phaseLabel || phase}`}
-            >
-              <span className="text-slate-800 dark:text-slate-100 text-2xl opacity-0 group-hover:opacity-50 transition-opacity">
-                +
-              </span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleEmptyCellClick}
+            className="flex-1 flex items-center justify-center min-h-[48px] rounded-md cursor-pointer group"
+            aria-label={`add moment to ${phaseLabel || phase}`}
+          >
+            <span className="text-slate-800 dark:text-slate-100 text-2xl opacity-0 group-hover:opacity-50 transition-opacity">
+              +
+            </span>
+          </button>
         </div>
       )}
 
