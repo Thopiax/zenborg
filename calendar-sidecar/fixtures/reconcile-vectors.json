@@ -12,7 +12,7 @@
       "lastModified": "2026-08-24T08:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -45,7 +45,7 @@
     },
     "event": null,
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -90,7 +90,7 @@
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -134,7 +134,7 @@
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -183,7 +183,7 @@
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -232,7 +232,7 @@
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -273,7 +273,7 @@
     },
     "event": null,
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -310,7 +310,7 @@
     },
     "event": null,
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -354,7 +354,7 @@
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -375,7 +375,7 @@
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -420,7 +420,7 @@
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -448,7 +448,7 @@
     },
     "event": null,
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -493,7 +493,7 @@
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -541,7 +541,7 @@
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -563,7 +563,7 @@
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -589,7 +589,7 @@
     },
     "event": null,
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -633,7 +633,7 @@
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -677,7 +677,7 @@
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -722,7 +722,7 @@
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -766,7 +766,7 @@
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {
@@ -810,7 +810,7 @@
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
-      "zenborgCalendarId": "zenborg-cal",
+      "areaCalendarIds": ["zenborg-cal"],
       "selectedCalendarIds": ["foreign-cal-1"]
     },
     "expected": {

@@ -5,7 +5,7 @@ import Foundation
 
 private let SYNC_WINDOW_PAST_DAYS = 7
 private let SYNC_WINDOW_FUTURE_DAYS = 60
-private let ZENBORG_CALENDAR_TITLE = "Zenborg"
+private let ZENBORG_SOURCE_TITLE = "Zenborg"
 
 // MARK: - Lock
 
@@ -49,7 +49,7 @@ func printStatus() {
     let result: [String: Any] = [
         "authorization": authString,
         "calendars": calendars,
-        "zenborgCalendarId": config.zenborgCalendarId as Any,
+        "areaCalendars": config.areaCalendars,
         "selectedCalendarIds": config.selectedCalendarIds,
     ]
 
@@ -170,16 +170,49 @@ private func doReconcilePass(store: EKEventStore) {
         var config = readCalendarSyncConfig()
         var moments = try readMoments()
         let phaseConfigs = readPhaseConfigs()
+        let areas = readAreas()
+        let habits = readHabits()
 
-        // Ensure the Zenborg calendar exists
-        let zenborgCalId = ensureZenborgCalendar(store: store, config: &config)
-        guard let calId = zenborgCalId else {
-            fputs("[calendar] could not create Zenborg calendar\n", stderr)
-            return
+        // Collect the set of area IDs that have publishable moments
+        var areaIdsNeeded: Set<String> = []
+        for (_, moment) in moments {
+            if moment.day != nil && moment.startTime != nil && countsAsAllocation(moment) {
+                areaIdsNeeded.insert(moment.areaId)
+            }
         }
 
+        // Ensure area calendars exist for needed areas; update name/color if drifted
+        for areaId in areaIdsNeeded {
+            _ = ensureAreaCalendar(store: store, config: &config, areaId: areaId, areas: areas)
+        }
+
+        // Drop stale area calendar entries whose calendar no longer resolves
+        var staleAreaIds: [String] = []
+        for (areaId, calId) in config.areaCalendars {
+            if store.calendar(withIdentifier: calId) == nil {
+                staleAreaIds.append(areaId)
+            }
+        }
+        for areaId in staleAreaIds {
+            fputs("[calendar] area calendar for '\(areaId)' was deleted; dropping stale refs\n", stderr)
+            config.areaCalendars.removeValue(forKey: areaId)
+        }
+        if !staleAreaIds.isEmpty {
+            try writeCalendarSyncConfig(config)
+            // Drop externalRefs pointing at deleted area calendars
+            let staleCalIds = Set(staleAreaIds.compactMap { config.areaCalendars[$0] })
+            for (id, var moment) in moments {
+                if let ref = moment.externalRef, staleCalIds.contains(ref.calendarId) {
+                    moment.externalRef = nil
+                    moment.updatedAt = iso8601Now()
+                    moments[id] = moment
+                }
+            }
+        }
+
+        let areaCalendarIdSet = Set(config.areaCalendars.values)
         let context = ReconcileContext(
-            zenborgCalendarId: calId,
+            areaCalendarIds: areaCalendarIdSet,
             selectedCalendarIds: config.selectedCalendarIds
         )
 
@@ -193,7 +226,7 @@ private func doReconcilePass(store: EKEventStore) {
         let windowEndDay = dayString(from: windowEnd)
 
         // Fetch events in the sync window
-        let allCalendarIds = Set([calId] + config.selectedCalendarIds)
+        let allCalendarIds = areaCalendarIdSet.union(config.selectedCalendarIds)
         let allCalendars = store.calendars(for: .event).filter { allCalendarIds.contains($0.calendarIdentifier) }
 
         let predicate = store.predicateForEvents(withStart: windowStart, end: windowEnd, calendars: allCalendars.isEmpty ? nil : allCalendars)
@@ -208,12 +241,9 @@ private func doReconcilePass(store: EKEventStore) {
 
         // Partition moments by sync window
         var inWindowMoments: [String: VaultMoment] = [:]
-        var outWindowMomentIds: Set<String> = []
 
         for (id, moment) in moments {
             guard let day = moment.day else {
-                // Unallocated moments only matter if they have an externalRef
-                // whose event is in our snapshot set
                 if moment.externalRef != nil {
                     inWindowMoments[id] = moment
                 }
@@ -221,8 +251,6 @@ private func doReconcilePass(store: EKEventStore) {
             }
             if day >= windowStartDay && day <= windowEndDay {
                 inWindowMoments[id] = moment
-            } else {
-                outWindowMomentIds.insert(id)
             }
         }
 
@@ -232,20 +260,16 @@ private func doReconcilePass(store: EKEventStore) {
             guard let ref = moment.externalRef else { continue }
             if eventSnapshots[ref.eventId] != nil { continue }
 
-            // Direct lookup, ignoring the window
             if let ekEvent = store.event(withIdentifier: ref.eventId) {
-                // Event exists but outside window; treat as present and in sync
                 let snapshot = eventSnapshotFrom(ekEvent)
                 eventSnapshots[snapshot.eventId] = snapshot
             }
-            // If nil, the event is genuinely deleted; moment will pair with event=null
         }
 
         // Pair and reconcile
-        var actions: [(ReconcileAction, String?)] = [] // action + related moment id
+        var actions: [(ReconcileAction, String?)] = []
         var processedEventIds: Set<String> = []
 
-        // Moments with events (paired by externalRef.eventId)
         for (id, moment) in inWindowMoments {
             let event: EventSnapshot?
             if let ref = moment.externalRef {
@@ -260,7 +284,6 @@ private func doReconcilePass(store: EKEventStore) {
             actions.append((action, id))
         }
 
-        // Orphan events (no matching moment)
         for (eventId, event) in eventSnapshots where !processedEventIds.contains(eventId) {
             let action = reconcile(moment: nil, event: event, context: context)
             if case .none = action { continue }
@@ -274,11 +297,15 @@ private func doReconcilePass(store: EKEventStore) {
             case .publishEvent(let momentId, let overwroteEventEdit):
                 if let moment = moments[momentId],
                    let fields = eventFieldsForMoment(moment) {
+                    let calId = ensureAreaCalendar(store: store, config: &config, areaId: moment.areaId, areas: areas)
+                    guard let targetCalId = calId else { continue }
+                    let emoji = resolveEmoji(moment: moment, habits: habits, areas: areas)
+                    let title = emoji != nil ? "\(emoji!) \(fields.title)" : fields.title
                     if let ekEvent = createOrUpdateEvent(
                         store: store,
-                        calendarId: calId,
+                        calendarId: targetCalId,
                         existingEventId: moment.externalRef?.eventId,
-                        title: fields.title,
+                        title: title,
                         day: fields.day,
                         startTime: fields.startTime,
                         durationMin: fields.durationMin
@@ -288,7 +315,7 @@ private func doReconcilePass(store: EKEventStore) {
                         updated.externalRef = ExternalRef(
                             source: "eventkit",
                             eventId: ekEvent.eventIdentifier,
-                            calendarId: calId,
+                            calendarId: targetCalId,
                             lastWrittenHash: hash,
                             lastWrittenTitle: fields.title,
                             lastSyncedAt: iso8601Now()
@@ -399,7 +426,6 @@ private func doReconcilePass(store: EKEventStore) {
             }
         }
 
-        // Write once if anything changed
         if changed {
             try writeMoments(moments)
             fputs("[calendar] reconcile pass complete: \(actions.count) actions applied\n", stderr)
@@ -414,31 +440,41 @@ private func doReconcilePass(store: EKEventStore) {
 
 // MARK: - EventKit helpers
 
-private func ensureZenborgCalendar(store: EKEventStore, config: inout CalendarSyncConfig) -> String? {
+@discardableResult
+private func ensureAreaCalendar(
+    store: EKEventStore,
+    config: inout CalendarSyncConfig,
+    areaId: String,
+    areas: [String: VaultArea]
+) -> String? {
+    let area = areas[areaId]
+    let title = area.map { "\($0.emoji) \($0.name)" } ?? areaId
+
     // Check if existing calendar id still resolves
-    if let existingId = config.zenborgCalendarId {
+    if let existingId = config.areaCalendars[areaId] {
         if let cal = store.calendar(withIdentifier: existingId) {
+            // Update title/color if the area was renamed or recolored
+            if cal.title != title {
+                cal.title = title
+                try? store.saveCalendar(cal, commit: true)
+                fputs("[calendar] updated area calendar title to '\(title)'\n", stderr)
+            }
+            if let area = area, let cgColor = colorFromHex(area.color) {
+                cal.cgColor = cgColor
+            }
             return cal.calendarIdentifier
         }
-        // Calendar was deleted; clear stale refs
-        fputs("[calendar] Zenborg calendar was deleted; recreating\n", stderr)
-        config.zenborgCalendarId = nil
+        fputs("[calendar] area calendar for '\(title)' was deleted; recreating\n", stderr)
+        config.areaCalendars.removeValue(forKey: areaId)
     }
 
-    // Check if a "Zenborg" calendar already exists
-    for cal in store.calendars(for: .event) {
-        if cal.title == ZENBORG_CALENDAR_TITLE {
-            config.zenborgCalendarId = cal.calendarIdentifier
-            try? writeCalendarSyncConfig(config)
-            return cal.calendarIdentifier
-        }
-    }
-
-    // Create a new one
+    // Create a new calendar for this area
     let newCal = EKCalendar(for: .event, eventStore: store)
-    newCal.title = ZENBORG_CALENDAR_TITLE
+    newCal.title = title
+    if let area = area, let cgColor = colorFromHex(area.color) {
+        newCal.cgColor = cgColor
+    }
 
-    // Use the default source for new calendars
     if let defaultSource = store.defaultCalendarForNewEvents?.source {
         newCal.source = defaultSource
     } else if let localSource = store.sources.first(where: { $0.sourceType == .local }) {
@@ -450,14 +486,41 @@ private func ensureZenborgCalendar(store: EKEventStore, config: inout CalendarSy
 
     do {
         try store.saveCalendar(newCal, commit: true)
-        config.zenborgCalendarId = newCal.calendarIdentifier
+        config.areaCalendars[areaId] = newCal.calendarIdentifier
         try writeCalendarSyncConfig(config)
-        fputs("[calendar] created Zenborg calendar: \(newCal.calendarIdentifier)\n", stderr)
+        fputs("[calendar] created area calendar '\(title)': \(newCal.calendarIdentifier)\n", stderr)
         return newCal.calendarIdentifier
     } catch {
-        fputs("[calendar] failed to create calendar: \(error)\n", stderr)
+        fputs("[calendar] failed to create calendar for area '\(title)': \(error)\n", stderr)
         return nil
     }
+}
+
+private func resolveEmoji(moment: VaultMoment, habits: [String: (emoji: String?, areaId: String)], areas: [String: VaultArea]) -> String? {
+    if let habitId = moment.habitId, let habit = habits[habitId] {
+        if let emoji = habit.emoji, !emoji.isEmpty { return emoji }
+    }
+    if let area = areas[moment.areaId] {
+        if !area.emoji.isEmpty { return area.emoji }
+    }
+    return nil
+}
+
+private func colorFromHex(_ hex: String) -> CGColor? {
+    var h = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    if h.hasPrefix("#") { h = String(h.dropFirst()) }
+    guard h.count == 6,
+          let r = UInt8(h.prefix(2), radix: 16),
+          let g = UInt8(h.dropFirst(2).prefix(2), radix: 16),
+          let b = UInt8(h.dropFirst(4).prefix(2), radix: 16) else {
+        return nil
+    }
+    return CGColor(
+        srgbRed: CGFloat(r) / 255,
+        green: CGFloat(g) / 255,
+        blue: CGFloat(b) / 255,
+        alpha: 1
+    )
 }
 
 private func eventSnapshotFrom(_ ekEvent: EKEvent) -> EventSnapshot {
