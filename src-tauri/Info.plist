@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSCalendarsUsageDescription</key>
+  <string>Zenborg mirrors your planned moments into a dedicated Zenborg calendar and reads the calendars you select, so plans and calendar stay in step.</string>
+  <key>NSCalendarsFullAccessUsageDescription</key>
+  <string>Zenborg mirrors your planned moments into a dedicated Zenborg calendar and reads the calendars you select, so plans and calendar stay in step.</string>
+</dict>
+</plist>
