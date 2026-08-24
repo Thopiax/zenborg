@@ -11,6 +11,7 @@ import { openMomentFormEdit } from "@/infrastructure/state/ui-store";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { healthEmojiClass } from "@/lib/health-style";
 import { cn } from "@/lib/utils";
+import { MomentTimePicker } from "./MomentTimePicker";
 import { TagSummary } from "./TagSummary";
 
 interface MomentCardProps {
@@ -164,7 +165,13 @@ export function MomentCard({
           tags={moment.tags}
           className={cn("flex-shrink-0", textColors.primary)}
         />
-        {/* The intention marker — same glyph keel shows in its statusline HUD. */}
+        {moment.day !== null && (
+          <MomentTimePicker
+            momentId={moment.id}
+            startTime={moment.startTime}
+            textColorClass={textColors.primary}
+          />
+        )}
         {isActive && (
           <span
             className={cn("ml-auto text-sm flex-shrink-0", textColors.primary)}
