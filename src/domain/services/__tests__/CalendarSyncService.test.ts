@@ -4,6 +4,7 @@ import {
   isMomentError,
   type Moment,
 } from "../../entities/Moment.ts";
+import fc from "fast-check";
 import {
   type EventFields,
   applyEventToMoment,
@@ -13,6 +14,10 @@ import {
 } from "../CalendarSyncService.ts";
 import vectors from "../../../../calendar-sidecar/fixtures/reconcile-vectors.json";
 import { getDefaultPhaseConfigs, Phase } from "../../value-objects/Phase.ts";
+import {
+  CALENDAR_GRID_MINUTES,
+  snapToGrid,
+} from "../../value-objects/TimeGrid.ts";
 
 function newMoment(overrides: Partial<Moment> = {}): Moment {
   const created = createMoment({ name: "standup", areaId: "area-1" });
@@ -196,5 +201,69 @@ describe("applyEventToMoment", () => {
       configs,
     );
     expect(next.name).toBe(m.name);
+  });
+});
+
+describe("properties", () => {
+  const anyTime = fc
+    .record({
+      h: fc.integer({ min: 0, max: 23 }),
+      m: fc.integer({ min: 0, max: 59 }),
+    })
+    .map(
+      ({ h, m }) =>
+        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+    );
+
+  const isoDay = fc
+    .date({ min: new Date("2026-01-01"), max: new Date("2027-12-31") })
+    .map((d) => d.toISOString().slice(0, 10));
+
+  it("publish then ingest is identity, from ARBITRARY times not pre-aligned ones", () => {
+    fc.assert(
+      fc.property(
+        anyTime,
+        fc.integer({ min: 1, max: 300 }),
+        isoDay,
+        (raw, rawDur, day) => {
+          const settled = snapToGrid(raw, rawDur);
+          const m = newMoment({ ...settled, day, phase: null });
+          const f = eventFieldsForMoment(m);
+          expect(f).not.toBeNull();
+          const reingested = snapToGrid(f!.startTime, f!.durationMin);
+          expect(reingested).toEqual(settled);
+          expect(f!.day).toBe(day);
+        },
+      ),
+    );
+  });
+
+  it("the hash ignores title across arbitrary titles", () => {
+    fc.assert(
+      fc.property(fc.string(), fc.string(), (a, b) => {
+        const base = { day: "2026-08-24", startTime: "10:30", durationMin: 30 };
+        expect(momentHash({ ...base, title: a })).toBe(
+          momentHash({ ...base, title: b }),
+        );
+      }),
+    );
+  });
+
+  it("snapToGrid is idempotent and always lands on the grid", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 23 }),
+        fc.integer({ min: 0, max: 59 }),
+        fc.integer({ min: 1, max: 300 }),
+        (h, m, dur) => {
+          const raw = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+          const once = snapToGrid(raw, dur);
+          expect(snapToGrid(once.startTime, once.durationMin)).toEqual(once);
+          const [, mm] = once.startTime.split(":").map(Number);
+          expect(mm % CALENDAR_GRID_MINUTES).toBe(0);
+          expect(once.durationMin % CALENDAR_GRID_MINUTES).toBe(0);
+        },
+      ),
+    );
   });
 });
