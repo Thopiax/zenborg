@@ -121,7 +121,7 @@ export function TimelineCell({
       ref={setNodeRef}
       className={cn(
         "flex flex-col min-h-[240px] h-full relative",
-        "p-2 rounded-md",
+        "p-2 pb-8 rounded-md",
         // Smooth transitions for drag hover states
         "transition-all duration-fast transition-smooth",
         "focus-within:outline-none",
@@ -139,63 +139,50 @@ export function TimelineCell({
       aria-live="off"
       aria-atomic="true"
     >
-      {cellMoments.length > 0 && (
-        <div className="flex-1 flex flex-col justify-start min-h-0">
-          <div
-            className="overflow-y-auto overscroll-contain"
-            style={{ maxHeight: timelineCell.viewportHeight }}
+      <div
+        className="overflow-y-auto overscroll-contain"
+        style={{ maxHeight: timelineCell.viewportHeight }}
+      >
+        {cellMoments.length > 0 && (
+          <SortableContext
+            items={cellMoments.map((m) => m.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <SortableContext
-              items={cellMoments.map((m) => m.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="flex flex-col" style={{ gap: momentCard.gap }}>
-                {cellMoments.map((moment) => {
-                  const area = allAreas[moment.areaId];
-                  if (!area) return null;
+            <div className="flex flex-col" style={{ gap: momentCard.gap }}>
+              {cellMoments.map((moment) => {
+                const area = allAreas[moment.areaId];
+                if (!area) return null;
 
-                  return (
-                    <SortableMomentCard
-                      key={moment.id}
-                      moment={moment}
-                      area={area}
-                      contextMomentIds={cellMoments.map((m) => m.id)}
-                    />
-                  );
-                })}
-              </div>
-            </SortableContext>
-          </div>
+                return (
+                  <SortableMomentCard
+                    key={moment.id}
+                    moment={moment}
+                    area={area}
+                    contextMomentIds={cellMoments.map((m) => m.id)}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        )}
+
+        {cellMoments.length === 0 && (
           <button
             type="button"
             onClick={handleEmptyCellClick}
-            className="flex-1 flex items-center justify-center min-h-[48px] rounded-md cursor-pointer group"
+            className="flex items-center justify-center h-full w-full min-h-[120px] rounded-md cursor-pointer group"
             aria-label={`add moment to ${phaseLabel || phase}`}
           >
-            <span className="text-slate-800 dark:text-slate-100 text-2xl opacity-0 group-hover:opacity-50 transition-opacity">
+            <span className="text-slate-800 dark:text-slate-100 text-3xl opacity-70 md:opacity-0 group-hover:opacity-70 transition-opacity">
               +
             </span>
           </button>
-        </div>
-      )}
+        )}
 
-      {cellMoments.length === 0 && (
-        <div className="flex-1 flex items-center justify-center">
-          <button
-            type="button"
-            onClick={handleEmptyCellClick}
-            className="flex items-center justify-center h-full w-full rounded-md transition-all duration-fast transition-smooth cursor-pointer group"
-            aria-label={`add moment to ${phaseLabel || phase}`}
-          >
-            <span className="text-slate-800 dark:text-slate-100 text-3xl opacity-70 md:opacity-0 group-hover:opacity-70 transition-opacity gap-2 flex items-center">
-              +
-            </span>
-          </button>
-        </div>
-      )}
+      </div>
 
-      {/* Phase icon -- in flow at the bottom, never overlapping cards */}
-      <div className="mt-auto pt-2 flex items-center justify-center pointer-events-none">
+      {/* Phase icon -- fixed at the cell bottom, above the scroll content */}
+      <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center pointer-events-none z-20">
         <PhaseIcon
           phase={phase}
           className={cn(

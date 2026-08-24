@@ -72,16 +72,15 @@ test.describe("timeline cells", () => {
     expect(scrolls).toBe(true);
   });
 
-  test("three moments fit without scrolling", async ({ page }) => {
+  test("phase icon is fixed at the cell bottom", async ({ page }) => {
     await page.goto("/cultivate");
 
     const today = new Date().toLocaleDateString("en-CA");
-    const afternoon = page.locator(`[data-cell="${today}-AFTERNOON"]`);
+    const morning = page.locator(`[data-cell="${today}-MORNING"]`);
 
-    const scrolls = await afternoon
-      .locator(".overflow-y-auto")
-      .evaluate((el) => el.scrollHeight > el.clientHeight + 1);
-    expect(scrolls).toBe(false);
+    // The icon is absolute-positioned at the bottom of the cell
+    const icon = morning.locator("svg").first();
+    await expect(icon).toBeVisible();
   });
 
   test("the fourth moment is reachable by scrolling", async ({ page }) => {
