@@ -111,6 +111,7 @@ export function useGlobalKeyboard() {
     emoji?: string | null,
     tags?: string[],
     customMetric?: CustomMetric,
+    startTime?: string,
   ) => {
     // Get prefilled allocation from UI state
     const uiAllocation = momentFormState$.prefilledAllocation.peek();
@@ -130,6 +131,7 @@ export function useGlobalKeyboard() {
       prefilledAllocation,
       tags,
       customMetric,
+      startTime,
     });
 
     // Handle result
@@ -173,6 +175,7 @@ export function useGlobalKeyboard() {
     emoji?: string | null,
     tags?: string[],
     customMetric?: CustomMetric,
+    startTime?: string,
   ) => {
     const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {
@@ -192,6 +195,7 @@ export function useGlobalKeyboard() {
         tags,
         customMetric,
         phase,
+        startTime,
       });
 
       // Handle result

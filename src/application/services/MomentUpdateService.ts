@@ -13,6 +13,7 @@ export interface UpdateMomentParams {
   phase?: Phase | null;
   tags?: string[];
   customMetric?: CustomMetric; // For habit-inherited PUSHING support
+  startTime?: string;
 }
 
 /**
@@ -74,6 +75,13 @@ export class MomentUpdateService {
     }
     if ("phase" in updates) {
       updated.phase = updates.phase!;
+    }
+    if ("startTime" in updates) {
+      if (updates.startTime) {
+        updated.startTime = updates.startTime;
+      } else {
+        delete updated.startTime;
+      }
     }
 
     return updated;

@@ -37,8 +37,8 @@ export default function CultivatePage() {
     emoji?: string | null,
     tags?: string[],
     customMetric?: CustomMetric,
+    startTime?: string,
   ) => {
-    // The hook handlers will check the mode from the store
     const mode = momentFormState$.mode.peek();
     if (mode === "create") {
       handleCreateMoment(
@@ -49,9 +49,10 @@ export default function CultivatePage() {
         emoji,
         tags,
         customMetric,
+        startTime,
       );
     } else {
-      handleSaveEdit(name, areaId, phase, emoji, tags, customMetric);
+      handleSaveEdit(name, areaId, phase, emoji, tags, customMetric, startTime);
     }
   };
 
