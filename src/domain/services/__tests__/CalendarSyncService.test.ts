@@ -7,10 +7,12 @@ import {
 import fc from "fast-check";
 import {
   type EventFields,
+  type ReconcileContext,
   applyEventToMoment,
   eventFieldsForMoment,
   momentHash,
   reconcile,
+  stripEmojiPrefix,
 } from "../CalendarSyncService.ts";
 import vectors from "../../../../calendar-sidecar/fixtures/reconcile-vectors.json";
 import { getDefaultPhaseConfigs, Phase } from "../../value-objects/Phase.ts";
@@ -90,12 +92,66 @@ describe("eventFieldsForMoment", () => {
     const m = newMoment({ day: "2026-08-24", startTime: "10:30" });
     expect(eventFieldsForMoment(m)?.durationMin).toBe(60);
   });
+
+  it("prefixes title with emoji when resolveEmoji returns one", () => {
+    const m = newMoment({
+      day: "2026-08-24",
+      startTime: "10:30",
+      durationMin: 30,
+    });
+    const result = eventFieldsForMoment(m, () => "🧘");
+    expect(result?.title).toBe("🧘 standup");
+  });
+
+  it("uses bare name when resolveEmoji returns null", () => {
+    const m = newMoment({
+      day: "2026-08-24",
+      startTime: "10:30",
+      durationMin: 30,
+    });
+    const result = eventFieldsForMoment(m, () => null);
+    expect(result?.title).toBe("standup");
+  });
+
+  it("uses bare name when no resolveEmoji is provided", () => {
+    const m = newMoment({
+      day: "2026-08-24",
+      startTime: "10:30",
+      durationMin: 30,
+    });
+    expect(eventFieldsForMoment(m)?.title).toBe("standup");
+  });
+});
+
+describe("stripEmojiPrefix", () => {
+  it("strips a leading emoji and space", () => {
+    expect(stripEmojiPrefix("🧘 Meditate")).toBe("Meditate");
+  });
+
+  it("returns the string unchanged when no emoji prefix", () => {
+    expect(stripEmojiPrefix("standup")).toBe("standup");
+  });
+
+  it("strips compound emoji", () => {
+    expect(stripEmojiPrefix("💪 Workout")).toBe("Workout");
+  });
+
+  it("does not strip emoji in the middle of a title", () => {
+    expect(stripEmojiPrefix("My 🧘 moment")).toBe("My 🧘 moment");
+  });
 });
 
 // Filter out documentation-only vectors (no moment/event/context)
 const runnableVectors = vectors.filter(
   (v): v is typeof v & { context: unknown } => "context" in v,
 );
+
+function contextFromVector(raw: Record<string, unknown>): ReconcileContext {
+  return {
+    areaCalendarIds: new Set(raw.areaCalendarIds as string[]),
+    selectedCalendarIds: raw.selectedCalendarIds as string[],
+  };
+}
 
 describe("reconcile: the truth table", () => {
   for (const vector of runnableVectors) {
@@ -104,7 +160,7 @@ describe("reconcile: the truth table", () => {
         reconcile(
           vector.moment as Moment | null,
           vector.event as Parameters<typeof reconcile>[1],
-          vector.context as Parameters<typeof reconcile>[2],
+          contextFromVector(vector.context as Record<string, unknown>),
         ),
       ).toEqual(vector.expected);
     });
