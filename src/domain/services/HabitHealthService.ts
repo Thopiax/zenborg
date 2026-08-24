@@ -62,6 +62,7 @@ export class HabitHealthService {
       case Attitude.RETURNING:
         return this.computeReturning(rhythm, habitMoments, now);
       case Attitude.KEEPING:
+      case Attitude.PRUNING:
         return this.computeKeeping(rhythm, habitMoments, now);
       case Attitude.BUILDING:
       case Attitude.PUSHING:
