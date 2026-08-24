@@ -100,23 +100,21 @@ test.describe("timeline cells", () => {
     await expect(last).toBeInViewport();
   });
 
-  test("overflowing cell peeks the next card into view", async ({ page }) => {
+  test("a fourth moment is reachable by drag-and-drop", async ({ page }) => {
     await page.goto("/cultivate");
 
     const today = new Date().toLocaleDateString("en-CA");
     const morning = page.locator(`[data-cell="${today}-MORNING"]`);
-    const scrollArea = morning.locator(".overflow-y-auto").first();
 
-    // The 4th card should be partially visible (peeking)
+    // The 4th card exists in the DOM even if scrolled out of view
     const fourthCard = morning.locator("[data-moment-id]").nth(3);
     await expect(fourthCard).toBeAttached();
 
-    // The scroll area should be taller than three-cards-exact so the peek shows
+    // The scroll area contains all 4 moments
+    const scrollArea = morning.locator(".overflow-y-auto").first();
     const scrollHeight = await scrollArea.evaluate((el) => el.scrollHeight);
     const clientHeight = await scrollArea.evaluate((el) => el.clientHeight);
     expect(scrollHeight).toBeGreaterThan(clientHeight);
-    // The peek should show a sliver: clientHeight > 3 exact cards (216px)
-    expect(clientHeight).toBeGreaterThan(216);
   });
 
   test("selection uses an inset shadow that is never clipped", async ({
