@@ -23,6 +23,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { z } from "zod";
+import type { Cadence } from "./cadence.js";
 
 // ────────────────────────────────────────────────────────────────────────
 // Types — mirror src/domain (standalone; no cross-workspace imports)
@@ -213,6 +214,30 @@ export interface Moment {
   updatedAt: string;
 }
 
+export interface Person {
+  id: string;
+  name: string;
+  key: string;
+  cadence: Cadence | null;
+  status: "active" | "paused";
+  category: string | null;
+  basePlace: string | null;
+  emoji: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Place {
+  id: string;
+  name: string;
+  key: string;
+  parentKey: string | null;
+  emoji: string | null;
+  url: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PhaseConfig {
   id: string;
   phase: Phase;
@@ -248,6 +273,8 @@ export const COLLECTION_NAMES = [
   "cyclePlans",
   "phaseConfigs",
   "metricLogs",
+  "people",
+  "places",
 ] as const;
 export type CollectionName = (typeof COLLECTION_NAMES)[number];
 
@@ -259,6 +286,8 @@ export interface CollectionTypeMap {
   cyclePlans: CyclePlan;
   phaseConfigs: PhaseConfig;
   metricLogs: MetricLog;
+  people: Person;
+  places: Place;
 }
 
 // ────────────────────────────────────────────────────────────────────────

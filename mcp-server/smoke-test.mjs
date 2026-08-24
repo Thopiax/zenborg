@@ -665,6 +665,112 @@ try {
     },
   );
 
+  // ── People CRUD ──
+
+  let elias;
+  await step("create_person adds a person to the registry", async () => {
+    const res = parseOk(
+      await callTool("create_person", {
+        name: "Elias",
+        cadence: "monthly",
+        category: "friend",
+        basePlace: "sp",
+        emoji: "🧑",
+      }),
+    );
+    elias = res.created;
+    assert.equal(elias.key, "elias");
+    assert.equal(elias.cadence, "monthly");
+    assert.equal(elias.status, "active");
+    assert.equal(elias.basePlace, "sp");
+  });
+
+  await step("get_person finds by key", async () => {
+    const res = parseOk(await callTool("get_person", { idOrKey: "elias" }));
+    assert.equal(res.id, elias.id);
+  });
+
+  await step("create_person rejects duplicate key", async () => {
+    const resp = await callTool("create_person", { name: "Elias" });
+    const t = toolText(resp);
+    assert.ok(t.startsWith("Error:"), "expected error for duplicate key");
+  });
+
+  await step("update_person changes fields", async () => {
+    const res = parseOk(
+      await callTool("update_person", {
+        idOrKey: "elias",
+        cadence: "weekly",
+        category: "close friend",
+      }),
+    );
+    assert.equal(res.updated.cadence, "weekly");
+    assert.equal(res.updated.category, "close friend");
+  });
+
+  await step("list_people returns the registry", async () => {
+    const res = parseOk(await callTool("list_people", {}));
+    assert.equal(res.length, 1);
+    assert.equal(res[0].key, "elias");
+  });
+
+  await step("delete_person removes from registry", async () => {
+    const res = parseOk(
+      await callTool("delete_person", { idOrKey: "elias" }),
+    );
+    assert.equal(res.deleted.key, "elias");
+    const list = parseOk(await callTool("list_people", {}));
+    assert.equal(list.length, 0);
+  });
+
+  // ── Places CRUD ──
+
+  let sohoHouse;
+  await step("create_place adds a place to the registry", async () => {
+    const res = parseOk(
+      await callTool("create_place", {
+        name: "Soho House",
+        parentKey: "sp",
+        emoji: "🏠",
+        url: "https://maps.app.goo.gl/sohohouse",
+      }),
+    );
+    sohoHouse = res.created;
+    assert.equal(sohoHouse.key, "soho-house");
+    assert.equal(sohoHouse.parentKey, "sp");
+  });
+
+  await step("get_place finds by key", async () => {
+    const res = parseOk(
+      await callTool("get_place", { idOrKey: "soho-house" }),
+    );
+    assert.equal(res.id, sohoHouse.id);
+  });
+
+  await step("update_place changes fields", async () => {
+    const res = parseOk(
+      await callTool("update_place", {
+        idOrKey: "soho-house",
+        emoji: "🏡",
+      }),
+    );
+    assert.equal(res.updated.emoji, "🏡");
+    assert.equal(res.updated.key, "soho-house");
+  });
+
+  await step("list_places returns the registry", async () => {
+    const res = parseOk(await callTool("list_places", {}));
+    assert.equal(res.length, 1);
+    assert.equal(res[0].key, "soho-house");
+  });
+
+  await step("delete_place removes from registry", async () => {
+    const res = parseOk(
+      await callTool("delete_place", { idOrKey: "soho-house" }),
+    );
+    assert.equal(res.deleted.key, "soho-house");
+  });
+
   console.log("\n--- vault files ---");
   const files = [
     "areas.json",
@@ -672,6 +778,8 @@ try {
     "cycles.json",
     "cyclePlans.json",
     "moments.json",
+    "people.json",
+    "places.json",
   ];
   for (const f of files) {
     const p = path.join(vault, f);
