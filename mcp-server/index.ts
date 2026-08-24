@@ -29,6 +29,7 @@ import {
   parseVaultDay,
   resolveRhythm,
 } from "./health.js";
+import type { Cadence } from "./cadence.js";
 import { type RegistryPerson, selectPeopleToReach } from "./people.js";
 import { buildTagIndex, buildTagProfile } from "./tags.js";
 import {
@@ -72,9 +73,11 @@ import {
   type Habit,
   logVaultBanner,
   type Moment,
+  type Person,
   type Phase,
   type PhaseConfig,
   PhaseSchema,
+  type Place,
   type Rhythm,
   RhythmSchema,
   readActiveMoment,
@@ -178,7 +181,7 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 
 ## Vault layout
 
-\`areas.json\`, \`habits.json\`, \`cycles.json\`, \`cyclePlans.json\`, \`moments.json\`, \`phaseConfigs.json\`, \`metricLogs.json\` — each keyed by entity id.
+\`areas.json\`, \`habits.json\`, \`cycles.json\`, \`cyclePlans.json\`, \`moments.json\`, \`phaseConfigs.json\`, \`metricLogs.json\`, \`people.json\`, \`places.json\` — each keyed by entity id.
 
 ## Typical workflows
 
@@ -747,10 +750,16 @@ server.tool(
     far: z.boolean().optional(),
   },
   async ({ category, limit, far }): Promise<ToolResult> => {
-    // Registry people come from wake's knowledge graph (spec D1/D9). The
-    // key-resolve tool does not exist yet (spec C2/C4), so the list is empty
-    // and the queue returns [] — by design, never an error.
-    const registryPeople: RegistryPerson[] = [];
+    const registryPeople: RegistryPerson[] = Object.values(
+      readCollection(VAULT_ROOT, "people"),
+    ).map((p) => ({
+      key: p.key,
+      cadence: p.cadence,
+      status: p.status,
+      category: p.category,
+      favorite: false,
+      basePlace: p.basePlace,
+    }));
     const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
     return ok(
       selectPeopleToReach(registryPeople, moments, new Date(), {
@@ -762,6 +771,257 @@ server.tool(
     );
   },
 );
+
+// ────────────────────────────────────────────────────────────────────────
+// PEOPLE
+// ────────────────────────────────────────────────────────────────────────
+
+const CadenceSchema = z.enum(["weekly", "monthly", "quarterly", "yearly"]);
+const PersonStatusSchema = z.enum(["active", "paused"]);
+
+server.tool(
+  "list_people",
+  "List all people in the registry. Filter by status or category.",
+  {
+    status: PersonStatusSchema.optional(),
+    category: z.string().optional(),
+  },
+  async ({ status, category }): Promise<ToolResult> => {
+    let list = Object.values(readCollection(VAULT_ROOT, "people"));
+    if (status) list = list.filter((p) => p.status === status);
+    if (category) list = list.filter((p) => p.category === category);
+    list.sort((a, b) => a.name.localeCompare(b.name));
+    return ok(list);
+  },
+);
+
+server.tool(
+  "get_person",
+  "Get a person by id or key.",
+  { idOrKey: z.string() },
+  async ({ idOrKey }): Promise<ToolResult> => {
+    const people = readCollection(VAULT_ROOT, "people");
+    const person =
+      people[idOrKey] ??
+      Object.values(people).find((p) => p.key === idOrKey);
+    if (!person) return err(`Person not found: ${idOrKey}`);
+    return ok(person);
+  },
+);
+
+server.tool(
+  "create_person",
+  "Add a person to the registry. `name` is the display name (e.g. \"Elias\"); `key` is derived via slugify if omitted. `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.",
+  {
+    name: z.string(),
+    key: z.string().optional(),
+    cadence: CadenceSchema.nullable().optional(),
+    status: PersonStatusSchema.optional(),
+    category: z.string().nullable().optional(),
+    basePlace: z.string().nullable().optional(),
+    emoji: z.string().nullable().optional(),
+  },
+  async (params): Promise<ToolResult> => {
+    const people = readCollection(VAULT_ROOT, "people");
+    const key = params.key ? slugify(params.key) : slugify(params.name);
+    if (!key) return err("Name produces an empty key");
+    const existing = Object.values(people).find((p) => p.key === key);
+    if (existing)
+      return err(`Person with key "${key}" already exists: ${existing.id}`);
+    const id = crypto.randomUUID();
+    const now = nowIso();
+    const person: Person = {
+      id,
+      name: params.name,
+      key,
+      cadence: params.cadence ?? null,
+      status: params.status ?? "active",
+      category: params.category ?? null,
+      basePlace: params.basePlace ? slugify(params.basePlace) : null,
+      emoji: params.emoji ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    people[id] = person;
+    writeCollection(VAULT_ROOT, "people", people);
+    return ok({ created: person });
+  },
+);
+
+server.tool(
+  "update_person",
+  "Update a person by id or key. Only provided fields are changed.",
+  {
+    idOrKey: z.string(),
+    name: z.string().optional(),
+    cadence: CadenceSchema.nullable().optional(),
+    status: PersonStatusSchema.optional(),
+    category: z.string().nullable().optional(),
+    basePlace: z.string().nullable().optional(),
+    emoji: z.string().nullable().optional(),
+  },
+  async ({ idOrKey, ...updates }): Promise<ToolResult> => {
+    const people = readCollection(VAULT_ROOT, "people");
+    const id =
+      people[idOrKey]?.id ??
+      Object.values(people).find((p) => p.key === idOrKey)?.id;
+    if (!id) return err(`Person not found: ${idOrKey}`);
+    const person = { ...people[id] };
+    if ("name" in updates && updates.name !== undefined) {
+      person.name = updates.name;
+      person.key = slugify(updates.name);
+    }
+    if ("cadence" in updates) person.cadence = updates.cadence ?? null;
+    if ("status" in updates && updates.status !== undefined)
+      person.status = updates.status;
+    if ("category" in updates) person.category = updates.category ?? null;
+    if ("basePlace" in updates)
+      person.basePlace = updates.basePlace
+        ? slugify(updates.basePlace)
+        : null;
+    if ("emoji" in updates) person.emoji = updates.emoji ?? null;
+    person.updatedAt = nowIso();
+    people[id] = person;
+    writeCollection(VAULT_ROOT, "people", people);
+    return ok({ updated: person });
+  },
+);
+
+server.tool(
+  "delete_person",
+  "Remove a person from the registry. Does NOT remove their key from existing moments.",
+  { idOrKey: z.string() },
+  async ({ idOrKey }): Promise<ToolResult> => {
+    const people = readCollection(VAULT_ROOT, "people");
+    const id =
+      people[idOrKey]?.id ??
+      Object.values(people).find((p) => p.key === idOrKey)?.id;
+    if (!id) return err(`Person not found: ${idOrKey}`);
+    const removed = people[id];
+    delete people[id];
+    writeCollection(VAULT_ROOT, "people", people);
+    return ok({ deleted: removed });
+  },
+);
+
+// ────────────────────────────────────────────────────────────────────────
+// PLACES
+// ────────────────────────────────────────────────────────────────────────
+
+server.tool(
+  "list_places",
+  "List all places in the registry.",
+  {},
+  async (): Promise<ToolResult> => {
+    const list = Object.values(readCollection(VAULT_ROOT, "places"));
+    list.sort((a, b) => a.name.localeCompare(b.name));
+    return ok(list);
+  },
+);
+
+server.tool(
+  "get_place",
+  "Get a place by id or key.",
+  { idOrKey: z.string() },
+  async ({ idOrKey }): Promise<ToolResult> => {
+    const places = readCollection(VAULT_ROOT, "places");
+    const place =
+      places[idOrKey] ??
+      Object.values(places).find((p) => p.key === idOrKey);
+    if (!place) return err(`Place not found: ${idOrKey}`);
+    return ok(place);
+  },
+);
+
+server.tool(
+  "create_place",
+  "Add a place to the registry. `name` is the display name (e.g. \"Soho House\"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. \"sp\" for Sao Paulo). `url` is a map link.",
+  {
+    name: z.string(),
+    key: z.string().optional(),
+    parentKey: z.string().nullable().optional(),
+    emoji: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
+  },
+  async (params): Promise<ToolResult> => {
+    const places = readCollection(VAULT_ROOT, "places");
+    const key = params.key ? slugify(params.key) : slugify(params.name);
+    if (!key) return err("Name produces an empty key");
+    const existing = Object.values(places).find((p) => p.key === key);
+    if (existing)
+      return err(`Place with key "${key}" already exists: ${existing.id}`);
+    const id = crypto.randomUUID();
+    const now = nowIso();
+    const place: Place = {
+      id,
+      name: params.name,
+      key,
+      parentKey: params.parentKey ? slugify(params.parentKey) : null,
+      emoji: params.emoji ?? null,
+      url: params.url ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    places[id] = place;
+    writeCollection(VAULT_ROOT, "places", places);
+    return ok({ created: place });
+  },
+);
+
+server.tool(
+  "update_place",
+  "Update a place by id or key. Only provided fields are changed.",
+  {
+    idOrKey: z.string(),
+    name: z.string().optional(),
+    parentKey: z.string().nullable().optional(),
+    emoji: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
+  },
+  async ({ idOrKey, ...updates }): Promise<ToolResult> => {
+    const places = readCollection(VAULT_ROOT, "places");
+    const id =
+      places[idOrKey]?.id ??
+      Object.values(places).find((p) => p.key === idOrKey)?.id;
+    if (!id) return err(`Place not found: ${idOrKey}`);
+    const place = { ...places[id] };
+    if ("name" in updates && updates.name !== undefined) {
+      place.name = updates.name;
+      place.key = slugify(updates.name);
+    }
+    if ("parentKey" in updates)
+      place.parentKey = updates.parentKey
+        ? slugify(updates.parentKey)
+        : null;
+    if ("emoji" in updates) place.emoji = updates.emoji ?? null;
+    if ("url" in updates) place.url = updates.url ?? null;
+    place.updatedAt = nowIso();
+    places[id] = place;
+    writeCollection(VAULT_ROOT, "places", places);
+    return ok({ updated: place });
+  },
+);
+
+server.tool(
+  "delete_place",
+  "Remove a place from the registry. Does NOT remove its key from existing moments, habits, or cycles.",
+  { idOrKey: z.string() },
+  async ({ idOrKey }): Promise<ToolResult> => {
+    const places = readCollection(VAULT_ROOT, "places");
+    const id =
+      places[idOrKey]?.id ??
+      Object.values(places).find((p) => p.key === idOrKey)?.id;
+    if (!id) return err(`Place not found: ${idOrKey}`);
+    const removed = places[id];
+    delete places[id];
+    writeCollection(VAULT_ROOT, "places", places);
+    return ok({ deleted: removed });
+  },
+);
+
+// ────────────────────────────────────────────────────────────────────────
+// CYCLES
+// ────────────────────────────────────────────────────────────────────────
 
 server.tool(
   "get_cycle_planning_proposals",
