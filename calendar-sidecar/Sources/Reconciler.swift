@@ -13,7 +13,7 @@ struct EventSnapshot {
 }
 
 struct ReconcileContext {
-    var zenborgCalendarId: String
+    var areaCalendarIds: Set<String>
     var selectedCalendarIds: [String]
 }
 
@@ -102,8 +102,8 @@ func reconcile(moment: VaultMoment?, event: EventSnapshot?, context: ReconcileCo
         return .none(reason: "inSync")
     }
 
-    // Branch 2: orphan event in the Zenborg calendar (moment deleted/unallocated)
-    if moment == nil, let event = event, event.calendarId == context.zenborgCalendarId {
+    // Branch 2: orphan event in an area calendar (moment deleted/unallocated)
+    if moment == nil, let event = event, context.areaCalendarIds.contains(event.calendarId) {
         return .deleteEvent(eventId: event.eventId)
     }
 
@@ -162,8 +162,8 @@ func reconcile(moment: VaultMoment?, event: EventSnapshot?, context: ReconcileCo
         return .none(reason: "inSync")
     }
 
-    // Branch 9: Zenborg calendar event
-    if event.calendarId == context.zenborgCalendarId {
+    // Branch 9: area calendar event
+    if context.areaCalendarIds.contains(event.calendarId) {
         let eventHash = momentHash(day: event.day, startTime: event.startTime, durationMin: event.durationMin)
         let currentMomentHash = momentHash(day: fields.day, startTime: fields.startTime, durationMin: fields.durationMin)
 
@@ -269,7 +269,7 @@ func runSelfTest(vectorsPath: String) {
         let moment: VaultMoment? = momentDict.map { decodeMomentFromVector($0) }
         let event: EventSnapshot? = eventDict.map { decodeEventFromVector($0) }
         let context = ReconcileContext(
-            zenborgCalendarId: contextDict["zenborgCalendarId"] as! String,
+            areaCalendarIds: Set(contextDict["areaCalendarIds"] as! [String]),
             selectedCalendarIds: contextDict["selectedCalendarIds"] as! [String]
         )
 

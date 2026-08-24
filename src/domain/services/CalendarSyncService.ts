@@ -78,14 +78,26 @@ export function momentHash(fields: EventFields): string {
  * a start time for a moment deliberately without one would be fabricating
  * data, spec D6) and for unallocated moments (an event needs a date).
  */
-export function eventFieldsForMoment(moment: Moment): EventFields | null {
+export type EmojiResolver = (m: Moment) => string | null;
+
+export function eventFieldsForMoment(
+  moment: Moment,
+  resolveEmoji?: EmojiResolver,
+): EventFields | null {
   if (moment.day === null || moment.startTime === undefined) return null;
+  const emoji = resolveEmoji?.(moment);
+  const title = emoji ? `${emoji} ${moment.name}` : moment.name;
   return {
-    title: moment.name,
+    title,
     day: moment.day,
     startTime: moment.startTime,
     durationMin: moment.durationMin ?? DEFAULT_EVENT_DURATION_MIN,
   };
+}
+
+export function stripEmojiPrefix(title: string): string {
+  const match = title.match(/^(\p{Emoji_Presentation}|\p{Emoji}️?)\s+/u);
+  return match ? title.slice(match[0].length) : title;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -103,7 +115,7 @@ export interface CalendarEventSnapshot {
 }
 
 export interface ReconcileContext {
-  readonly zenborgCalendarId: string;
+  readonly areaCalendarIds: ReadonlySet<string>;
   readonly selectedCalendarIds: readonly string[];
 }
 
@@ -139,11 +151,11 @@ export type ReconcileAction =
   | { kind: "returnToDrawingBoard"; momentId: string }
   | { kind: "deleteEvent"; eventId: string };
 
-function isZenborgCalendar(
+function isAreaCalendar(
   calendarId: string,
   context: ReconcileContext,
 ): boolean {
-  return calendarId === context.zenborgCalendarId;
+  return context.areaCalendarIds.has(calendarId);
 }
 
 function isSelectedCalendar(
@@ -182,7 +194,7 @@ export function reconcile(
 
   // Branch 2-4: no moment, event exists
   if (moment === null && event !== null) {
-    if (isZenborgCalendar(event.calendarId, context)) {
+    if (isAreaCalendar(event.calendarId, context)) {
       return { kind: "deleteEvent", eventId: event.eventId };
     }
     if (isSelectedCalendar(event.calendarId, context)) {
@@ -239,8 +251,8 @@ export function reconcile(
     return { kind: "deleteEvent", eventId: event.eventId };
   }
 
-  // Branch 9: both present, zenborg calendar
-  if (isZenborgCalendar(event.calendarId, context)) {
+  // Branch 9: both present, area calendar
+  if (isAreaCalendar(event.calendarId, context)) {
     const eventHash = momentHash(eventFieldsFromSnapshot(event));
     const momentFields = eventFieldsForMoment(m);
     const currentMomentHash = momentFields ? momentHash(momentFields) : null;
