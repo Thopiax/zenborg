@@ -7,7 +7,7 @@ $signature:
   signedAt: 2026-08-24T20:29:29.858167Z
   signature: ed25519:bTfcJtQS93E3cRffkeGJ9IgmkAfSk4way4Ve9vI6DKI/aYjpZYixUY6rulzAFizdmZBMwGUCiuglhvQEHhcSBQ==
 appetite: small
-source: conversation 2026-08-24 — Rafa observed cycle plans are unused through the MCP
+source: conversation 2026-08-24, grounded in docs/2026-05-25-allocation-counts-feel-opaque + docs/ideas/2026-05-31-cycle-planning-mode + cycle-planning skill's "Do not compute" directive
 status: draft
 tag: pitch
 type: pitch
@@ -17,7 +17,7 @@ type: pitch
 
 **Bet:** Replace the six cycle-plan CRUD tools with one read-only `get_running_cycle` tool that orients the agent in the current season, so the MCP surface matches how cycle planning actually works.
 
-**Why it matters:** The cycle-planning skill rejected the budget model months ago ("Do not compute. Fit the days together."). Six tools still expose it, burning agent context on affordances nobody calls. One orientation tool gives agents what they actually need: where are we in the season, and which habits are getting water.
+**Why it matters:** We are moving away from allocations and budgeting. The cycle-planning skill rejected the budget model months ago ("Do not compute. Fit the days together."). The 2026-05-25 pain doc called budgets opaque ("Individual habit budgets don't map intuitively to lived experience"). Six tools still expose the dead model, burning agent context on affordances nobody calls. One orientation tool gives agents what they actually need: where are we in the season, and which habits are getting water.
 
 ---
 
@@ -48,7 +48,7 @@ type: pitch
 
 **Off-sides:**
 - Adding a "cycle dashboard" to the Tauri app. This pitch is MCP-only.
-- Rethinking the cycle-plan data model itself. The model is fine; the agent surface is what drifted.
+- Rethinking the cycle-plan data model itself. The vault data stays for now; the MCP surface is what drifted. A future pitch may retire `cyclePlans.json` entirely once the CycleDeck no longer depends on it.
 
 ## Acceptance
 
