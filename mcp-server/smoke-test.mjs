@@ -771,6 +771,34 @@ try {
     assert.equal(res.deleted.key, "soho-house");
   });
 
+  // ── Mention ──
+
+  await step("mention resolves people and places on a moment", async () => {
+    parseOk(
+      await callTool("create_person", { name: "Ada", category: "friend" }),
+    );
+    parseOk(await callTool("create_place", { name: "Cafe Lab" }));
+    const mentionMoment = parseOk(
+      await callTool("create_standalone_moment", {
+        name: "coffee",
+        areaId,
+        day: wakingDay,
+        phase: "MORNING",
+      }),
+    );
+    const res = parseOk(
+      await callTool("mention", {
+        momentId: mentionMoment.created.id,
+        entities: ["ada", "cafe-lab", "unknown-entity"],
+      }),
+    );
+    assert.deepEqual(res.addedPeople, ["ada"]);
+    assert.deepEqual(res.addedPlaces, ["cafe-lab"]);
+    assert.deepEqual(res.unresolved, ["unknown-entity"]);
+    assert.ok(res.updated.personIds.includes("ada"));
+    assert.ok(res.updated.placeIds.includes("cafe-lab"));
+  });
+
   console.log("\n--- vault files ---");
   const files = [
     "areas.json",
