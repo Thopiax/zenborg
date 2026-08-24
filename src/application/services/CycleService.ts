@@ -55,7 +55,8 @@ export type CyclePlanningProposalReason =
   | "wilting"
   | "on-rhythm"
   | "beginning"
-  | "returning";
+  | "returning"
+  | "pruning";
 
 export interface CyclePlanningProposal {
   habitId: string;
@@ -773,9 +774,9 @@ export class CycleService {
       if (currentHealth === "wilting") {
         reason = "wilting";
       } else if (habit.attitude === Attitude.RETURNING) {
-        // Surface re-engagement explicitly so the planner can see the habit
-        // is being budgeted as a return, not a steady-state on-rhythm continuation.
         reason = "returning";
+      } else if (habit.attitude === Attitude.PRUNING) {
+        reason = "pruning";
       } else {
         reason = "on-rhythm";
       }
