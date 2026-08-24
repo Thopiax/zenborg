@@ -46,21 +46,22 @@ type: pitch
 
 - **Seed a starter garden.** On first launch with an empty vault, pre-populate one area ("Try zenborg"), one habit ("Morning intention"), and one moment allocated to today/morning. The user sees a planted garden immediately, not a blank screen. `src/infrastructure/vault/` -- check for empty vault on boot, write seed data. Both vault implementations need this (`fs.rs` and `vault.ts`).
 
-- **Collapse keel's surfaces into zenborg.** Move `keel/apps/browser` (Chrome extension) and `keel/apps/agent` (Claude Code plugin) into zenborg. They're thin shells reading the same vault -- keeping them in a separate repo is the confusion, not the architecture. The domain code (`attention/`, `intervention/`, `fences`) already lives in zenborg. Rename the Claude Code plugin from "kairos" to "zenborg" in the marketplace. Archive the keel repo after the move.
+- **Restructure into kairos monorepo.** Kairos is the monorepo, zenborg is the app. Move zenborg into `kairos/apps/zenborg/`. Rebuild the Chrome extension fresh as `kairos/apps/extension/` using zenborg's domain code (`attention/`, `intervention/`, `fences`) -- do NOT migrate the old keel/apps/browser (74 files of retired shield/signal/budget architecture). The MCP server stays as zenborg's sidecar -- it already IS the agent interface, so keel/apps/agent is redundant and gets dropped. Garmin integration moves to `kairos/integrations/garmin/`. Archive the keel repo. Rename the Claude Code plugin from "kairos" to "zenborg" in the marketplace.
 
 ## Risks
 
 **Rabbit holes:**
 - Designing a full onboarding wizard with multiple screens. Don't. A seeded garden + a markdown guide is the MVP.
 - Fixing every rough edge before shipping. The testers ARE the rough-edge audit. Ship first, fix second.
-- Refactoring the browser extension during the move. Copy it in, verify it builds, ship. Refactor later.
+- Over-engineering the extension rebuild. Start with one content script that reads the vault and applies fences. The old 74-file extension is reference material, not a migration source.
 
 **Off-sides:**
 - Testers will ask about mobile. The answer is "not yet" and that's fine for the first test.
 
 **Domain knowledge:**
 - The Gatekeeper bypass (right-click > Open) works on unnotarized but Developer ID-signed builds. Verify this is true for the aarch64 .dmg from CI. If the cert has expired or the signing identity changed, the bypass won't work either.
-- The MCP server ships as a sidecar binary (`bundle.externalBin: ["binaries/zenborg-mcp"]`). Testers who use Claude Code can connect it, but it is not required for the core experience.
+- The MCP server ships as zenborg's sidecar binary (`bundle.externalBin: ["binaries/zenborg-mcp"]`). It is both the Claude Code agent interface and the tester's optional MCP endpoint -- no separate agent wrapper needed.
+- Each surface owns its own bounded context (DDD). No shared types package. The vault JSON files ARE the published language contract.
 
 ## Acceptance
 
@@ -69,7 +70,7 @@ type: pitch
 3. First launch shows a seeded garden with at least one area, one habit, and one moment -- not a blank screen.
 4. A tester can follow GETTING_STARTED.md and have a planted day within 10 minutes.
 5. The updater resolves from `equanimitech/zenborg` and notifies the tester of the next release.
-6. The keel repo is archived; browser extension and Claude Code plugin build from zenborg.
+6. Zenborg lives in kairos monorepo as `apps/zenborg/`. Extension rebuilding in `apps/extension/`. Keel repo archived.
 7. Three testers are using the app and providing feedback within one week of the release.
 
 ---
