@@ -42,4 +42,22 @@ describe("Rhythm helpers", () => {
     expect(PERIOD_DAYS.quarterly).toBe(90);
     expect(PERIOD_DAYS.annually).toBe(365);
   });
+
+  it("rhythmSilenceThresholdDays handles fractional count", () => {
+    // 0.1 per year = once every 10 years = 3650 days threshold
+    expect(rhythmSilenceThresholdDays({ period: "annually", count: 0.1 })).toBe(
+      3650,
+    );
+  });
+
+  it("rhythmPerWeek handles fractional count", () => {
+    // 0.1 per year ≈ 0.1 × 7 / 365
+    const r: Rhythm = { period: "annually", count: 0.1 };
+    expect(rhythmPerWeek(r)).toBeCloseTo((0.1 * 7) / 365);
+  });
+
+  it("rhythmToCycleBudget rounds fractional count over a cycle", () => {
+    // 0.1 per year over 21 days = round(0.1 * 21 / 365) = 0
+    expect(rhythmToCycleBudget({ period: "annually", count: 0.1 }, 21)).toBe(0);
+  });
 });
