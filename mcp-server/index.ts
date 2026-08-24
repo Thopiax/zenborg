@@ -1020,6 +1020,76 @@ server.tool(
 );
 
 // ────────────────────────────────────────────────────────────────────────
+// MENTIONS — @-mention people and places on a moment
+// ────────────────────────────────────────────────────────────────────────
+
+server.tool(
+  "mention",
+  "Mention people and/or places on a moment, like @-tagging. Each name is resolved against the people and places registries by key. Matched people go to `personIds`, matched places go to `placeIds`. Unresolved names are returned so you can create them first. Additive: existing mentions are kept.",
+  {
+    momentId: z.string(),
+    entities: z.array(z.string()),
+  },
+  async ({ momentId, entities }): Promise<ToolResult> => {
+    const moments = readCollection(VAULT_ROOT, "moments");
+    const moment = moments[momentId];
+    if (!moment) return err(`Moment not found: ${momentId}`);
+
+    const people = readCollection(VAULT_ROOT, "people");
+    const places = readCollection(VAULT_ROOT, "places");
+    const peopleByKey = new Map(
+      Object.values(people).map((p) => [p.key, p]),
+    );
+    const placesByKey = new Map(
+      Object.values(places).map((p) => [p.key, p]),
+    );
+
+    const addedPeople: string[] = [];
+    const addedPlaces: string[] = [];
+    const unresolved: string[] = [];
+
+    const currentPersonIds = new Set(moment.personIds ?? []);
+    const currentPlaceIds = new Set(moment.placeIds ?? []);
+
+    for (const raw of entities) {
+      const key = slugify(raw);
+      if (!key) continue;
+      if (peopleByKey.has(key)) {
+        if (!currentPersonIds.has(key)) {
+          currentPersonIds.add(key);
+          addedPeople.push(key);
+        }
+      } else if (placesByKey.has(key)) {
+        if (!currentPlaceIds.has(key)) {
+          currentPlaceIds.add(key);
+          addedPlaces.push(key);
+        }
+      } else {
+        unresolved.push(key);
+      }
+    }
+
+    const next = { ...moment };
+    if (currentPersonIds.size > 0) {
+      next.personIds = [...currentPersonIds];
+    }
+    if (currentPlaceIds.size > 0) {
+      next.placeIds = [...currentPlaceIds];
+    }
+    next.updatedAt = nowIso();
+    moments[momentId] = next;
+    writeCollection(VAULT_ROOT, "moments", moments);
+
+    return ok({
+      updated: next,
+      addedPeople,
+      addedPlaces,
+      unresolved,
+    });
+  },
+);
+
+// ────────────────────────────────────────────────────────────────────────
 // CYCLES
 // ────────────────────────────────────────────────────────────────────────
 
