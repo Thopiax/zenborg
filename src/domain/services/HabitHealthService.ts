@@ -1,6 +1,10 @@
 import type { CyclePlan } from "@/domain/entities/CyclePlan";
 import type { Habit } from "@/domain/entities/Habit";
-import { type Moment, momentInvolvesHabit } from "@/domain/entities/Moment";
+import {
+  countsAsAllocation,
+  type Moment,
+  momentInvolvesHabit,
+} from "@/domain/entities/Moment";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import type { Health } from "@/domain/value-objects/Health";
 import {
@@ -48,8 +52,8 @@ export class HabitHealthService {
     // health and the `daysSinceLast` emitted beside it cannot disagree.
     // The attitude gate above is untouched: person health still lives in
     // PersonService, standalone and attitude-free.
-    const habitMoments = moments.filter((m) =>
-      momentInvolvesHabit(m, habit.id),
+    const habitMoments = moments.filter(
+      (m) => countsAsAllocation(m) && momentInvolvesHabit(m, habit.id),
     );
 
     switch (attitude) {
@@ -145,6 +149,7 @@ export class HabitHealthService {
   ): Date | null {
     let latest: Date | null = null;
     for (const m of habitMoments) {
+      if (!countsAsAllocation(m)) continue;
       if (m.day === null) continue;
       const d = fromISODate(m.day);
       if (now !== null && d > now) continue;
