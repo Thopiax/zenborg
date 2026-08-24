@@ -195,7 +195,7 @@ export function useGlobalKeyboard() {
         tags,
         customMetric,
         phase,
-        startTime,
+        ...(startTime !== undefined ? { startTime } : {}),
       });
 
       // Handle result
