@@ -90,16 +90,34 @@ The price is that this is **macOS only**, and requires the user to grant calenda
 [`docs/decisions/2026-08-06-reach-via-snapshot-and-intent-queue.md`](../../decisions/2026-08-06-reach-via-snapshot-and-intent-queue.md)
 and must not drive this choice.
 
-### D3: Zenborg writes only into a dedicated "Zenborg" calendar
+### D3: Zenborg writes into one dedicated calendar per area
 
-Outbound events land in one calendar zenborg creates and owns. Zenborg never writes into
-the principal's existing calendars.
+Outbound events land in area-scoped calendars that zenborg creates and owns, one per area
+that has publishable moments. Zenborg never writes into the principal's existing calendars.
 
-This buys three things at once. The principal's real calendars stay clean. The layer can
-be toggled off in Calendar.app without uninstalling anything, which satisfies the
-sovereignty principle (`docs/principles.md:55`, the design test: can a non-technical user
-freeze the current version). And echo
-suppression collapses to a one-line rule (D4).
+Each calendar is named `{area.emoji} {area.name}` (e.g. "💪 Fitness", "⚖️ Themia") and
+carries the area's `color` as `EKCalendar.cgColor`. Calendar.app groups them under a
+single CalDAV source (or local account), so they read as one "Zenborg" group that fans out
+into the areas the principal actually uses.
+
+This buys four things at once. The principal's real calendars stay clean. Each area can be
+toggled on or off independently in Calendar.app, which is finer sovereignty than a single
+switch. The layer as a whole can be toggled off by unchecking the group. And echo
+suppression stays a one-line rule (D4), scoped per moment to whichever area calendar it
+landed in.
+
+Calendars are created lazily on first publish for a given area. Renaming or recoloring an
+area updates the corresponding `EKCalendar` on the next reconcile pass. Deleting an area
+that has a calendar drops stale `externalRef`s whose `calendarId` no longer resolves; the
+orphaned `EKCalendar` stays (the principal removes it from Calendar.app if they want;
+zenborg never deletes calendars it created).
+
+The `calendarSync.json` config stores `areaCalendars: Record<areaId, calendarIdentifier>`
+instead of a single `zenborgCalendarId`.
+
+Rejected: **a single "Zenborg" calendar.** Simpler, but loses the per-area toggle and
+forces all moments into one flat list in Calendar.app. The habit emoji prefix on event
+titles (D8) helps scanning but does not replace the ability to hide an entire area.
 
 Inbound reading still spans whichever calendars the principal selects. Read and write
 scopes are deliberately asymmetric.
@@ -115,9 +133,9 @@ inside any window we pick.
 Instead, `Moment.externalRef` carries `lastWrittenHash`: a hash of exactly the fields
 zenborg last pushed (start, duration, title). On any `EKEventStoreChanged`:
 
-- Event is in the Zenborg calendar and its hash **matches** `lastWrittenHash`: this is our
+- Event is in an area calendar and its hash **matches** `lastWrittenHash`: this is our
   own write echoing back. Ignore.
-- Event is in the Zenborg calendar and its hash **differs**: the principal dragged or
+- Event is in an area calendar and its hash **differs**: the principal dragged or
   edited our event. This is the feature working. Apply to the moment.
 - Event is in another selected calendar: inbound ingestion (D5).
 
@@ -185,6 +203,24 @@ tidier in theory, but it makes the sidecar useless whenever the app is not runni
 defeats ingestion (the principal's calendar changes all day; the app does not run all
 day). The vault is already a multi-writer store by design.
 
+### D8: Event titles carry the habit emoji
+
+Published events are titled `{emoji} {moment.name}`, where `emoji` is resolved from the
+moment's inheritance chain: `moment.emoji ?? habit.emoji ?? area.emoji`. This makes events
+scannable in any calendar view; the emoji is the identity signal, consistent with how
+zenborg already renders moments in the garden.
+
+The emoji prefix is stripped on ingest (tentative moments from external calendars use the
+raw event title as their name). It is also stripped when comparing titles for the
+`lastWrittenTitle` rename flow (D4/A1): the canonical form for comparison is the bare
+moment name, not the prefixed calendar title.
+
+`eventFieldsForMoment` gains a `resolveEmoji` parameter (a lookup from `habitId`/`areaId`
+to emoji) so the title it produces includes the prefix. The hash (D4) still excludes the
+title, so an emoji change does not trigger a timing reconciliation; instead, the
+`lastWrittenTitle` mismatch on the next pass causes a `publishEvent` that refreshes the
+calendar title.
+
 ---
 
 ## Architecture
@@ -202,9 +238,11 @@ single line of Swift exists.
   15-min snapping          endHour                         │ EventKit
   phase derived from       no per-phase cap                ▼
     startTime              area color, stone base    macOS Calendar store
-                           inline edit, no modals      ├─ Google
-  pure, testable,          tentative = unfilled        ├─ iCloud
-  no UI, no Swift                                      └─ Exchange
+  emoji in event titles    inline edit, no modals      ├─ area calendars (write)
+  (D8)                     tentative = unfilled        │   💪 Fitness, ⚖️ Themia, ...
+  pure, testable,                                      ├─ Google (read)
+  no UI, no Swift                                      ├─ iCloud (read)
+                                                       └─ Exchange (read)
         │                        │                            │
         └────────────────────────┴────── vault (atomic) ──────┘
                                               │
@@ -286,7 +324,8 @@ beside the existing `bun build --compile` one, keeping the same
 Responsibilities, and nothing else:
 
 1. Hold calendar authorization and surface its state.
-2. Publish accepted timed moments into the Zenborg calendar.
+2. Publish accepted timed moments into the area's calendar (creating the `EKCalendar` on
+   first need, named `{area.emoji} {area.name}`, colored `area.color`).
 3. Ingest events from selected calendars as tentative moments.
 4. Watch `EKEventStoreChanged` and reconcile.
 5. Write the vault atomically.
@@ -300,16 +339,16 @@ The full truth table. Every row is a unit test against `reconcile()`.
 | Trigger | Moment state | Action |
 |---|---|---|
 | New event, selected calendar | none | Create `tentative` moment, snapped |
-| New accepted timed moment | no `externalRef` | Create event in Zenborg calendar, store ref |
-| Zenborg event edited, hash matches | any | Ignore. Our own echo (D4) |
-| Zenborg event dragged, hash differs | `accepted` | Update moment time; re-derive phase |
+| New accepted timed moment | no `externalRef` | Create event in area calendar, store ref |
+| Area-calendar event edited, hash matches | any | Ignore. Our own echo (D4) |
+| Area-calendar event dragged, hash differs | `accepted` | Update moment time; re-derive phase |
 | Ingested event moved | `tentative` | Update moment time; re-derive phase |
 | Ingested event moved | `accepted` | Update moment time; re-derive phase |
 | Ingested event deleted | `tentative` | Delete the moment |
 | Ingested event deleted | `accepted` | **Unallocate to the drawing board**, drop `externalRef` |
 | Moment unallocated in zenborg | any | Delete its event |
 | Moment deleted in zenborg | any | Delete its event |
-| Moment accepted | `tentative` | Publish to Zenborg calendar if not already an event |
+| Moment accepted | `tentative` | Publish to area calendar if not already an event |
 | Both sides changed since last sync | any | Last write wins by timestamp; log the loss |
 
 **The one asymmetry worth naming**, and the reason the two delete rows differ: deleting an
@@ -326,7 +365,7 @@ that zenborg allocates intention: the calendar can inform allocation, never revo
 | Failure | Behaviour |
 |---|---|
 | Calendar access denied or revoked | Sidecar reports unauthorized; grid works, sync is dormant, never silently half-syncing |
-| Zenborg calendar deleted by the user | Recreate on next publish; drop stale `externalRef`s |
+| Area calendar deleted by the user | Recreate on next publish for that area; drop stale `externalRef`s |
 | Event id no longer resolves | Treat as deleted; apply the delete rules above |
 | Vault write fails | Atomic rename means no partial state; retry next reconcile |
 | Sidecar crashes | App keeps working. Full reconcile on next launch |
@@ -361,7 +400,7 @@ Named so a later reader does not think they were forgotten.
   not a mandatory zoom rung"*.
 - **Pinch-zoom re-rasterization** across the ladder. That is Phase 3+.
 - **CalDAV**, per D1: web-parity plumbing for the deployed Next.js version.
-- **iOS.** iCloud already propagates the Zenborg calendar to the phone read-only, which is
+- **iOS.** iCloud already propagates the area calendars to the phone read-only, which is
   most of the value at none of the cost.
 - **Behavioral graph from co-occurrence.** Phase 2, and it explicitly depends on this rung
   landing first.
