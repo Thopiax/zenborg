@@ -1,6 +1,8 @@
 "use client";
 
-import { useValue } from "@legendapp/state/react";
+import { use$, useValue } from "@legendapp/state/react";
+import { CultivateWeekView } from "@/components/CultivateWeekView";
+import { CultivateZoomToggle } from "@/components/CultivateZoomToggle";
 import { CycleDeck } from "@/components/CycleDeck";
 import { DnDProvider } from "@/components/DnDProvider";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
@@ -12,23 +14,18 @@ import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
 import { useGlobalSelection } from "@/hooks/useGlobalSelection";
 import { useSelection } from "@/hooks/useSelection";
 import { moments$ } from "@/infrastructure/state/store";
-import { momentFormState$ } from "@/infrastructure/state/ui-store";
+import {
+  cultivateZoom$,
+  momentFormState$,
+} from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 
-/**
- * Zenborg - Cultivate Tool
- *
- * Daily practice interface:
- * - Extended timeline (horizontal scroll, 5 days)
- * - Cycle Deck for habit budgeting
- * - Landscape-only mode (shows prompt in portrait)
- */
 export default function CultivatePage() {
-  // Enable global keyboard shortcuts
   const { handleCreateMoment, handleSaveEdit, handleDeleteEdit } =
     useGlobalKeyboard();
 
-  // Unified save handler that works for both create and edit modes
+  const zoom = use$(cultivateZoom$);
+
   const handleMomentFormSave = (
     name: string,
     areaId: string,
@@ -56,14 +53,11 @@ export default function CultivatePage() {
     }
   };
 
-  // Get all moments for selection
   const allMoments = useValue(moments$);
   useGlobalSelection(Object.keys(allMoments));
 
-  // Selection management
   const { clearSelection, hasAnySelected } = useSelection();
 
-  // Handle click on background to clear selection
   const handleBackgroundClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     const isClickOnMoment = target.closest("button[data-moment-id]");
@@ -78,7 +72,6 @@ export default function CultivatePage() {
 
   return (
     <DnDProvider>
-      {/* Landscape Prompt - Shows on mobile portrait mode only */}
       <LandscapePrompt />
 
       {/* biome-ignore lint/a11y/noStaticElementInteractions: Background click to clear selection */}
@@ -86,28 +79,34 @@ export default function CultivatePage() {
         className="h-full bg-background transition-colors flex flex-col overflow-hidden"
         onMouseDown={handleBackgroundClick}
       >
-        {/* Main Content */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Timeline - Takes remaining space, with safe area insets */}
-          <div
-            className={cn(
-              "flex-1 overflow-hidden",
-              "flex flex-col justify-center",
-            )}
-            style={{
-              paddingLeft: "env(safe-area-inset-left)",
-            }}
-          >
-            <Timeline />
+          <div className="flex-shrink-0 flex justify-end px-4 py-1.5">
+            <CultivateZoomToggle />
           </div>
 
-          {/* Cycle Deck */}
+          {zoom === "phase" ? (
+            <div
+              className={cn(
+                "flex-1 overflow-hidden",
+                "flex flex-col justify-center",
+              )}
+              style={{
+                paddingLeft: "env(safe-area-inset-left)",
+              }}
+            >
+              <Timeline />
+            </div>
+          ) : (
+            <div className="flex-1 overflow-hidden">
+              <CultivateWeekView />
+            </div>
+          )}
+
           <div className="flex-shrink-0">
             <CycleDeck />
           </div>
         </main>
 
-        {/* Moment Form Dialog - Reads state from UI store */}
         <MomentFormDialog
           onSave={handleMomentFormSave}
           onDelete={handleDeleteEdit}
