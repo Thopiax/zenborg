@@ -44,11 +44,15 @@ export function RhythmSelector({ value, onChange }: RhythmSelectorProps) {
         <div className="flex items-center gap-1">
           <input
             type="number"
-            min={1}
+            min={0.1}
             max={31}
+            step="any"
             value={value.count}
             onChange={(e) =>
-              onChange({ ...value, count: Math.max(1, Number(e.target.value)) })
+              onChange({
+                ...value,
+                count: Math.max(0.1, Number(e.target.value)),
+              })
             }
             className="w-14 px-2 py-1 bg-transparent border border-stone-300 dark:border-stone-700 rounded text-sm"
           />
