@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx index.ts",
+    "start": "node dist/index.js",
+    "dev": "tsx index.ts",
     "build": "bun build index.ts vault.ts --target=node --outdir dist && echo '{\"type\":\"module\"}' > dist/package.json",
     "build:compile": "bun build index.ts --compile --target=bun --outfile dist/zenborg-mcp",
     "typecheck": "tsc --noEmit",
