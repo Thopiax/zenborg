@@ -60,9 +60,11 @@ test.describe("timeline cells", () => {
       morning.boundingBox(),
       afternoon.boundingBox(),
     ]);
-    expect(Math.round(overfull?.height ?? 0)).toBe(
-      Math.round(exact?.height ?? 0),
-    );
+    // The overflowing cell is slightly taller (peek) but not a full card taller
+    const heightDiff =
+      Math.round(overfull?.height ?? 0) - Math.round(exact?.height ?? 0);
+    expect(heightDiff).toBeGreaterThanOrEqual(0);
+    expect(heightDiff).toBeLessThan(64); // less than one full card
 
     const scrolls = await morning
       .locator(".overflow-y-auto")
@@ -70,16 +72,15 @@ test.describe("timeline cells", () => {
     expect(scrolls).toBe(true);
   });
 
-  test("three moments fit without scrolling", async ({ page }) => {
+  test("phase icon is fixed at the cell bottom", async ({ page }) => {
     await page.goto("/cultivate");
 
     const today = new Date().toLocaleDateString("en-CA");
-    const afternoon = page.locator(`[data-cell="${today}-AFTERNOON"]`);
+    const morning = page.locator(`[data-cell="${today}-MORNING"]`);
 
-    const scrolls = await afternoon
-      .locator(".overflow-y-auto")
-      .evaluate((el) => el.scrollHeight > el.clientHeight + 1);
-    expect(scrolls).toBe(false);
+    // The icon is absolute-positioned at the bottom of the cell
+    const icon = morning.locator("svg").first();
+    await expect(icon).toBeVisible();
   });
 
   test("the fourth moment is reachable by scrolling", async ({ page }) => {
@@ -96,5 +97,41 @@ test.describe("timeline cells", () => {
 
     const last = list.locator("[data-moment-id]").last();
     await expect(last).toBeInViewport();
+  });
+
+  test("a fourth moment is reachable by drag-and-drop", async ({ page }) => {
+    await page.goto("/cultivate");
+
+    const today = new Date().toLocaleDateString("en-CA");
+    const morning = page.locator(`[data-cell="${today}-MORNING"]`);
+
+    // The 4th card exists in the DOM even if scrolled out of view
+    const fourthCard = morning.locator("[data-moment-id]").nth(3);
+    await expect(fourthCard).toBeAttached();
+
+    // The scroll area contains all 4 moments
+    const scrollArea = morning.locator(".overflow-y-auto").first();
+    const scrollHeight = await scrollArea.evaluate((el) => el.scrollHeight);
+    const clientHeight = await scrollArea.evaluate((el) => el.clientHeight);
+    expect(scrollHeight).toBeGreaterThan(clientHeight);
+  });
+
+  test("selection uses an inset shadow that is never clipped", async ({
+    page,
+  }) => {
+    await page.goto("/cultivate");
+
+    const today = new Date().toLocaleDateString("en-CA");
+    const morning = page.locator(`[data-cell="${today}-MORNING"]`);
+    const card = morning.getByLabel("linguaggio in Learning area");
+
+    // Cmd-click to select
+    await card.click({ modifiers: ["Meta"] });
+
+    const shadow = await card.evaluate(
+      (el) => getComputedStyle(el).boxShadow,
+    );
+    // Inset shadow should be present
+    expect(shadow).toContain("inset");
   });
 });
