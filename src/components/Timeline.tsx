@@ -82,28 +82,26 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
           <DayNoteBody day={day} isActiveDay={isActiveDay} />
         </div>
 
-        {/* Phase Sections - Horizontal Flow */}
-        <div className="flex gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide">
-          {visiblePhases.map((phaseConfig, index) => {
-            return (
-              <div
-                key={phaseConfig.phase}
-                className={cn("flex flex-col", columnWidth.scrollableClassName)}
-              >
-                <div className="p-0.5 md:p-1 flex-1">
-                  <TimelineCell
-                    day={day}
-                    phase={phaseConfig.phase}
-                    isHighlighted={isActiveDay}
-                    isActivePhase={
-                      isActiveDay && phaseConfig.phase === currentPhase
-                    }
-                    phaseIndex={index}
-                  />
-                </div>
-              </div>
-            );
-          })}
+        {/* Phase Sections - Grid so all cells in a row share height */}
+        <div
+          className="grid gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide"
+          style={{
+            gridTemplateColumns: `repeat(${visiblePhases.length}, ${columnWidth.md})`,
+          }}
+        >
+          {visiblePhases.map((phaseConfig, index) => (
+            <div key={phaseConfig.phase} className="p-0.5 md:p-1">
+              <TimelineCell
+                day={day}
+                phase={phaseConfig.phase}
+                isHighlighted={isActiveDay}
+                isActivePhase={
+                  isActiveDay && phaseConfig.phase === currentPhase
+                }
+                phaseIndex={index}
+              />
+            </div>
+          ))}
         </div>
       </div>
     );
