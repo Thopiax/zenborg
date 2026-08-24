@@ -577,12 +577,12 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                 )}
 
                 {/* Time selector - visible only when a phase is selected */}
-                {phase && (
+                {phase && startTime && (
                   <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 w-full">
                     <Clock className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
                     <input
                       type="time"
-                      value={startTime || ""}
+                      value={startTime}
                       step={900}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -593,21 +593,36 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                       }}
                       className="flex-1 bg-transparent text-sm font-mono focus:outline-none text-stone-600 dark:text-stone-400"
                     />
-                    {startTime && (
-                      <button
-                        type="button"
-                        onClick={() => momentFormState$.startTime.set("")}
-                        className="p-0.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 dark:text-stone-500"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => momentFormState$.startTime.set("")}
+                      className="p-0.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 dark:text-stone-500"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 )}
               </div>
 
               {/* Subtle wrapped row for empty selectors */}
               <div className="flex flex-wrap gap-3 items-center mt-8 mb-2">
+                {/* Add time - subtle label if phase is set but no time */}
+                {phase && !startTime && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date();
+                      const h = String(now.getHours()).padStart(2, "0");
+                      const snapped = snapToGrid(`${h}:00`, 60);
+                      momentFormState$.startTime.set(snapped.startTime);
+                    }}
+                    className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                  >
+                    <Clock className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    <span className="text-xs font-mono">add time</span>
+                  </button>
+                )}
+
                 {/* Phase - subtle label if not selected */}
                 {!phase && (
                   <PhaseSelector
