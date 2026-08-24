@@ -1,13 +1,17 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { AtSign, Clock, Trash2, X } from "lucide-react";
+import { AtSign, Clock, Timer, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
 import { AttitudeSelector } from "@/components/AttitudeSelector";
 import { PhaseSelector } from "@/components/PhaseSelector";
-import { RhythmSelector } from "@/components/RhythmSelector";
+import {
+  RhythmSelector,
+  rhythmIcon,
+  rhythmLabel,
+} from "@/components/RhythmSelector";
 import { TaggedNameInput } from "@/components/TaggedNameInput";
 import {
   Dialog,
@@ -88,6 +92,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   const [attitudeSelectorOpen, setAttitudeSelectorOpen] = useState(false);
   const [phaseSelectorOpen, setPhaseSelectorOpen] = useState(false);
   const [aliasesSelectorOpen, setAliasesSelectorOpen] = useState(false);
+  const [rhythmSelectorOpen, setRhythmSelectorOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
 
@@ -130,7 +135,8 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     !taggedField.isAutocompleteOpen &&
     !attitudeSelectorOpen &&
     !phaseSelectorOpen &&
-    !aliasesSelectorOpen;
+    !aliasesSelectorOpen &&
+    !rhythmSelectorOpen;
 
   // Reset local UI state when dialog opens
   useEffect(() => {
@@ -143,6 +149,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       setAttitudeSelectorOpen(false);
       setPhaseSelectorOpen(false);
       setAliasesSelectorOpen(false);
+      setRhythmSelectorOpen(false);
     }
   }, [open]);
 
@@ -253,6 +260,15 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     (e) => {
       e.preventDefault();
       setAreaSelectorOpen(true);
+    },
+    { enabled: formHotkeysEnabled && open },
+  );
+
+  useHotkeys(
+    "r",
+    (e) => {
+      e.preventDefault();
+      setRhythmSelectorOpen(true);
     },
     { enabled: formHotkeysEnabled && open },
   );
@@ -450,6 +466,36 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                 }
               />
             )}
+
+            {/* Rhythm Selector - Show as button if selected */}
+            {rhythm && (
+              <RhythmSelector
+                open={rhythmSelectorOpen}
+                selectedRhythm={rhythm}
+                onSelectRhythm={(newRhythm) =>
+                  habitFormState$.rhythm.set(newRhythm)
+                }
+                onClose={() => setRhythmSelectorOpen(false)}
+                onOpen={() => setRhythmSelectorOpen(true)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                  >
+                    <span className="text-base flex-shrink-0 font-mono text-stone-400 dark:text-stone-500">
+                      {rhythmIcon(rhythm)}
+                    </span>
+                    <span className="font-mono text-sm flex-1 text-left truncate">
+                      {rhythmLabel(rhythm)}
+                    </span>
+                    <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                      R
+                    </kbd>
+                  </button>
+                }
+              />
+            )}
           </div>
 
           {/* Subtle wrapped row for empty selectors */}
@@ -520,14 +566,29 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                 }
               />
             )}
-          </div>
 
-          {/* Rhythm selector */}
-          <div className="mt-4">
-            <RhythmSelector
-              value={rhythm}
-              onChange={(newRhythm) => habitFormState$.rhythm.set(newRhythm)}
-            />
+            {/* Rhythm - subtle label if not selected */}
+            {!rhythm && (
+              <RhythmSelector
+                open={rhythmSelectorOpen}
+                selectedRhythm={rhythm}
+                onSelectRhythm={(newRhythm) =>
+                  habitFormState$.rhythm.set(newRhythm)
+                }
+                onClose={() => setRhythmSelectorOpen(false)}
+                onOpen={() => setRhythmSelectorOpen(true)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                  >
+                    <Timer className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    <span className="text-xs font-mono">no rhythm</span>
+                  </button>
+                }
+              />
+            )}
           </div>
         </div>
 
