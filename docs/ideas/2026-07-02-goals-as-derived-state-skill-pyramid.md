@@ -39,7 +39,7 @@ The attitude ladder already *is* Rafa's skill pyramid. Each level implies a diff
 
 ## The live integration (see `connect-prompts-to-habits`)
 
-A habit or area declares a read-seam to the system that owns its *actuals* (`Fitness → Garmin`). Those actuals feed **both** the readiness dial (how much this week) **and** the mismatch check below.
+A habit or area declares its **sources** (systems it reads actuals from) and **surfaces** (systems it writes to). `Fitness → Garmin` is a source; composing a workout back to Garmin is a surface. Those actuals feed **both** the readiness dial (how much this week) **and** the mismatch check below.
 
 ## Attitude ↔ reality mismatch — the self-correction
 
