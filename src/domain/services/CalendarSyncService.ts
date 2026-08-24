@@ -17,24 +17,49 @@ export interface EventFields {
 /** Default event length when a timed moment carries no duration. */
 export const DEFAULT_EVENT_DURATION_MIN = 60;
 
-const FNV_OFFSET = 0xcbf29ce484222325n;
-const FNV_PRIME = 0x100000001b3n;
-const MASK_64 = 0xffffffffffffffffn;
-
 /**
- * FNV-1a 64-bit over UTF-8 bytes, hex encoded. Chosen over a crypto hash
- * because it is synchronous, dependency-free, runs identically in the
- * browser, node and bun, and ports to Swift in ten lines (Slice C mirrors
- * it byte for byte). Collision resistance is irrelevant here: the hash only
- * ever compares an event against zenborg's own last write.
+ * FNV-1a 64-bit over UTF-8 bytes, hex encoded. Split into high/low 32-bit
+ * halves so it runs under ES2017 (no BigInt). The Swift port uses native
+ * UInt64; the two produce identical digests byte for byte.
  */
 export function fnv1a64(input: string): string {
-  let hash = FNV_OFFSET;
-  for (const byte of new TextEncoder().encode(input)) {
-    hash ^= BigInt(byte);
-    hash = (hash * FNV_PRIME) & MASK_64;
+  // FNV offset basis: 0xcbf29ce484222325
+  let h0 = 0x84222325 | 0;
+  let h1 = 0xcbf29ce4 | 0;
+
+  const bytes = new TextEncoder().encode(input);
+  for (const byte of bytes) {
+    // XOR into low half
+    h0 = (h0 ^ byte) | 0;
+
+    // Multiply by FNV prime 0x100000001b3 using the identity:
+    //   (h1:h0) * 0x1_0000_0001_b3
+    // = (h1:h0) * 0x1b3  +  (h1:h0) << 40
+    // Split into 16-bit limbs to avoid losing precision.
+    const a0 = h0 & 0xffff;
+    const a1 = (h0 >>> 16) & 0xffff;
+    const a2 = h1 & 0xffff;
+    const a3 = (h1 >>> 16) & 0xffff;
+
+    const prime = 0x1b3;
+    let c0 = Math.imul(a0, prime);
+    let c1 = Math.imul(a1, prime) + (c0 >>> 16);
+    let c2 = Math.imul(a2, prime) + (c1 >>> 16);
+    let c3 = Math.imul(a3, prime) + (c2 >>> 16);
+
+    // Add the << 40 contribution: shift (h1:h0) left by 40 bits.
+    // That is (h0 << 40) which lands at limb positions 2 (bits 8..23)
+    // and 3 (bits 24..31 of h0).
+    c2 = (c2 & 0xffff) + ((h0 & 0xff) << 8);
+    c3 = (c3 & 0xffff) + (c2 >>> 16) + ((h0 >>> 8) & 0xffff);
+
+    h0 = ((c1 & 0xffff) << 16) | (c0 & 0xffff);
+    h1 = ((c3 & 0xffff) << 16) | (c2 & 0xffff);
   }
-  return hash.toString(16).padStart(16, "0");
+
+  const hi = (h1 >>> 0).toString(16).padStart(8, "0");
+  const lo = (h0 >>> 0).toString(16).padStart(8, "0");
+  return hi + lo;
 }
 
 /**
