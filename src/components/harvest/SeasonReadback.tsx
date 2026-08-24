@@ -100,7 +100,6 @@ export function SeasonReadback({
           </div>
         )}
       </section>
-
     </article>
   );
 }
