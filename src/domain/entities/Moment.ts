@@ -29,6 +29,27 @@ import { isValidStartTime } from "../value-objects/Schedule.ts";
  * Note: Attitude now lives at Habit/Area level. Moments inherit attitude via:
  * habit?.attitude ?? area?.attitude ?? null
  */
+/**
+ * Whether this moment is a proposal or a committed intention.
+ * Optional; absence means `accepted`. Every moment in the vault today was
+ * hand-planted, so absence carries exactly the right meaning and no vault
+ * migration is required. Only calendar ingestion ever writes "tentative".
+ */
+export type MomentStatus = "tentative" | "accepted";
+
+/**
+ * Provenance for a moment that mirrors an external calendar event.
+ * Absent on moments with no calendar counterpart.
+ */
+export interface ExternalRef {
+  readonly source: "eventkit";
+  readonly eventId: string;
+  readonly calendarId: string;
+  readonly lastWrittenHash: string;
+  readonly lastWrittenTitle: string;
+  readonly lastSyncedAt: string;
+}
+
 export interface Moment {
   readonly id: string;
   name: string;
@@ -44,6 +65,9 @@ export interface Moment {
   // allocation time, overridable per instance. Absent on ambient moments.
   startTime?: string; // "HH:MM", 24h
   durationMin?: number; // positive whole minutes
+
+  status?: MomentStatus;
+  externalRef?: ExternalRef;
 
   emoji?: string | null; // Optional emoji override (inherits from habit or area)
   customMetric?: CustomMetric; // Keep for PUSHING habit support
@@ -619,6 +643,33 @@ export function isMomentError(
  */
 export function isAllocated(moment: Moment): boolean {
   return moment.day !== null && moment.phase !== null;
+}
+
+/**
+ * Does this moment count as an allocation of intention?
+ *
+ * Tentative moments are proposals the calendar made; nothing uninvited is
+ * ever counted as an intention the principal made (spec D5, hard invariant).
+ * Every read that aggregates moments (health, cycle counts, heatmap density)
+ * selects with this single predicate so the filters cannot drift apart.
+ * Mirrored in mcp-server/health.ts, a separate package that deliberately
+ * does not import from src/domain.
+ */
+export function countsAsAllocation(moment: Moment): boolean {
+  return moment.status !== "tentative";
+}
+
+/**
+ * Accepting is the one gesture that turns a calendar proposal into an
+ * intention. Keeps externalRef: the moment stays linked to its event.
+ */
+export function acceptMoment(moment: Moment): Moment {
+  if (moment.status !== "tentative") return moment;
+  return {
+    ...moment,
+    status: "accepted",
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 /**
