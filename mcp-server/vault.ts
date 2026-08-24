@@ -35,6 +35,7 @@ export const ATTITUDES = [
   "KEEPING",
   "BUILDING",
   "PUSHING",
+  "PRUNING",
   "BEING",
 ] as const;
 export const AttitudeSchema = z.enum(ATTITUDES);

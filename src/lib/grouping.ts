@@ -180,6 +180,7 @@ export function groupByAttitude(
     keeping: [],
     building: [],
     pushing: [],
+    pruning: [],
     being: [],
     none: [],
   };
@@ -206,6 +207,9 @@ export function groupByAttitude(
         break;
       case Attitude.PUSHING:
         groups.pushing.push(moment);
+        break;
+      case Attitude.PRUNING:
+        groups.pruning.push(moment);
         break;
       case Attitude.BEING:
         groups.being.push(moment);
@@ -254,6 +258,12 @@ export function groupByAttitude(
       groupLabel: ATTITUDE_METADATA[Attitude.PUSHING].label,
       emoji: ATTITUDE_METADATA[Attitude.PUSHING].icon,
       moments: sortMoments(groups.pushing),
+    },
+    {
+      groupId: "attitude-pruning",
+      groupLabel: ATTITUDE_METADATA[Attitude.PRUNING].label,
+      emoji: ATTITUDE_METADATA[Attitude.PRUNING].icon,
+      moments: sortMoments(groups.pruning),
     },
     {
       groupId: "attitude-being",
