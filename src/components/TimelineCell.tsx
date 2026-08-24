@@ -139,22 +139,11 @@ export function TimelineCell({
       aria-live="off"
       aria-atomic="true"
     >
-      {/* Phase Icon - Background element at bottom with low z-index */}
-      <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center z-0 pointer-events-none">
-        <PhaseIcon
-          phase={phase}
-          className={cn(
-            "text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5",
-            isActivePhase ? "opacity-80" : "opacity-50",
-          )}
-        />
-      </div>
-
       {cellMoments.length > 0 && (
-        <div className="flex-1 flex flex-col justify-start relative z-10 min-h-0">
+        <div className="flex-1 flex flex-col justify-start min-h-0">
           <div
             className="overflow-y-auto overscroll-contain"
-            style={{ maxHeight: timelineCell.viewportHeightWithPeek }}
+            style={{ maxHeight: timelineCell.viewportHeight }}
           >
             <SortableContext
               items={cellMoments.map((m) => m.id)}
@@ -190,9 +179,8 @@ export function TimelineCell({
         </div>
       )}
 
-      {/* Empty state - only show when no moments */}
       {cellMoments.length === 0 && (
-        <div className="flex-1 flex items-center justify-center relative z-10">
+        <div className="flex-1 flex items-center justify-center">
           <button
             type="button"
             onClick={handleEmptyCellClick}
@@ -205,6 +193,17 @@ export function TimelineCell({
           </button>
         </div>
       )}
+
+      {/* Phase icon -- in flow at the bottom, never overlapping cards */}
+      <div className="mt-auto pt-2 flex items-center justify-center pointer-events-none">
+        <PhaseIcon
+          phase={phase}
+          className={cn(
+            "text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5",
+            isActivePhase ? "opacity-80" : "opacity-50",
+          )}
+        />
+      </div>
     </div>
   );
 }
