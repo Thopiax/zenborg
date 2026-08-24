@@ -431,8 +431,8 @@ protocol's input is the habit; its output is a Garmin workout.
 
 **The integration already runs one way and this is the other.**
 `src/domain/garmin/GarminHabitMap.ts` resolves an inbound Garmin *activity* to a
-habit, and the Fitness area is tagged `integrates-garmin`. Composing a workout from a
-habit is the outbound direction across the same seam — and is where a Garmin
+habit (Garmin as a **source**). Composing a workout from a habit is the outbound
+direction across the same seam (Garmin as a **surface**) — and is where a Garmin
 `category` would come from, if one is ever wanted.
 
 Two constraints the eventual abstraction must respect, both established here:
