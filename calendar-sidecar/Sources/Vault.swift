@@ -63,11 +63,54 @@ struct VaultMoment {
 
 struct CalendarSyncConfig: Codable {
     var selectedCalendarIds: [String]
-    var zenborgCalendarId: String?
+    var areaCalendars: [String: String]
     var updatedAt: String
 }
 
+struct VaultArea {
+    let id: String
+    let name: String
+    let emoji: String
+    let color: String
+}
+
 // MARK: - Read
+
+func readAreas() -> [String: VaultArea] {
+    let url = vaultRoot().appendingPathComponent("areas.json")
+    guard FileManager.default.fileExists(atPath: url.path),
+          let data = try? Data(contentsOf: url),
+          let dict = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] else {
+        return [:]
+    }
+    var result: [String: VaultArea] = [:]
+    for (id, raw) in dict {
+        result[id] = VaultArea(
+            id: id,
+            name: raw["name"] as? String ?? "",
+            emoji: raw["emoji"] as? String ?? "",
+            color: raw["color"] as? String ?? ""
+        )
+    }
+    return result
+}
+
+func readHabits() -> [String: (emoji: String?, areaId: String)] {
+    let url = vaultRoot().appendingPathComponent("habits.json")
+    guard FileManager.default.fileExists(atPath: url.path),
+          let data = try? Data(contentsOf: url),
+          let dict = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] else {
+        return [:]
+    }
+    var result: [String: (emoji: String?, areaId: String)] = [:]
+    for (id, raw) in dict {
+        result[id] = (
+            emoji: raw["emoji"] as? String,
+            areaId: raw["areaId"] as? String ?? ""
+        )
+    }
+    return result
+}
 
 func readMoments() throws -> [String: VaultMoment] {
     let url = vaultRoot().appendingPathComponent("moments.json")
@@ -92,7 +135,7 @@ func readCalendarSyncConfig() -> CalendarSyncConfig {
           let config = try? JSONDecoder().decode(CalendarSyncConfig.self, from: data) else {
         return CalendarSyncConfig(
             selectedCalendarIds: [],
-            zenborgCalendarId: nil,
+            areaCalendars: [:],
             updatedAt: iso8601Now()
         )
     }
