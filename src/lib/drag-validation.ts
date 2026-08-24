@@ -4,55 +4,27 @@
  * Business logic for validating drag operations against Zenborg's constraints.
  */
 
-import { DAY_VIEW_PHASE_CAPACITY, type Moment } from "@/domain/entities/Moment";
+import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import type { DragValidationResult } from "@/types/dnd";
 
 /**
  * Check if a moment can be dropped into a specific timeline cell.
  *
- * Enforces the day-view cell capacity (`DAY_VIEW_PHASE_CAPACITY`). This is a
- * display constraint of the coarse day view, not a data-layer invariant — the
- * zoomed-in time-blocked view holds more.
- *
- * @param targetDay - ISO date string of target cell
- * @param targetPhase - Phase of target cell
- * @param allMoments - All moments in the system
- * @param draggingMomentId - ID of moment being dragged (excluded from count)
- * @returns Validation result with isValid flag and optional reason
+ * Always valid. The day-view capacity is a display affordance (overflow
+ * scrolls), not a domain invariant.
  */
 export function canDropInCell(
-  targetDay: string,
-  targetPhase: Phase,
-  allMoments: Record<string, Moment>,
-  draggingMomentId: string,
+  _targetDay: string,
+  _targetPhase: Phase,
+  _allMoments: Record<string, Moment>,
+  _draggingMomentId: string,
 ): DragValidationResult {
-  // Count moments currently in target cell (excluding the one being dragged)
-  const momentsInCell = Object.values(allMoments).filter(
-    (m) =>
-      m.day === targetDay &&
-      m.phase === targetPhase &&
-      m.id !== draggingMomentId,
-  );
-
-  if (momentsInCell.length >= DAY_VIEW_PHASE_CAPACITY) {
-    return {
-      isValid: false,
-      reason: `Cell already shows ${DAY_VIEW_PHASE_CAPACITY} moments (day-view capacity)`,
-    };
-  }
-
   return { isValid: true };
 }
 
 /**
- * Calculate the next available order (0, 1, or 2) for a moment in a cell.
- *
- * @param targetDay - ISO date string of target cell
- * @param targetPhase - Phase of target cell
- * @param allMoments - All moments in the system
- * @param draggingMomentId - ID of moment being dragged (excluded from calculation)
- * @returns Next available order index (0-2)
+ * Calculate the next available order for a moment in a cell.
  */
 export function calculateNextOrder(
   targetDay: string,
@@ -60,23 +32,13 @@ export function calculateNextOrder(
   allMoments: Record<string, Moment>,
   draggingMomentId: string,
 ): number {
-  const momentsInCell = Object.values(allMoments)
-    .filter(
-      (m) =>
-        m.day === targetDay &&
-        m.phase === targetPhase &&
-        m.id !== draggingMomentId,
-    )
-    .sort((a, b) => a.order - b.order);
+  const momentsInCell = Object.values(allMoments).filter(
+    (m) =>
+      m.day === targetDay &&
+      m.phase === targetPhase &&
+      m.id !== draggingMomentId,
+  );
 
-  // Find first available slot (0, 1, or 2)
-  for (let i = 0; i <= 2; i++) {
-    if (!momentsInCell.some((m) => m.order === i)) {
-      return i;
-    }
-  }
-
-  // If all slots taken, return next index (should never happen due to validation)
   return momentsInCell.length;
 }
 

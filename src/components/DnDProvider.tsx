@@ -320,6 +320,20 @@ export function DnDProvider({ children }: DnDProviderProps) {
         );
         return;
       }
+
+      // Cross-cell drop: dragged onto a moment in a different cell
+      if (overMoment.day && overMoment.phase) {
+        handleDropOnTimelineCell(
+          dragData as Extract<DraggableData, { type?: undefined }>,
+          {
+            targetType: "timeline-cell",
+            targetDay: overMoment.day,
+            targetPhase: overMoment.phase,
+          },
+          wasDuplicateMode,
+        );
+        return;
+      }
     }
 
     if (!dragData || !dropData) {
