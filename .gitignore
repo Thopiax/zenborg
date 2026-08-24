@@ -53,8 +53,9 @@ feature-lab
 # scraped/local data dumps
 /data/
 
-# bun-compiled MCP sidecars (built by src-tauri/scripts/build-sidecars.sh)
+# compiled sidecars (built by src-tauri/scripts/build-sidecars.sh)
 /src-tauri/binaries/
+/calendar-sidecar/dist/
 
 # bun lockfile (we use pnpm; bun is build-time-only via `bun build --compile`)
 mcp-server/bun.lock
