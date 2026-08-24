@@ -25,6 +25,7 @@ import { crossingTally, expandHome, fenceStore } from "./fences.js";
 import { buildRelatedHabits } from "./graph.js";
 import {
   computeHealth,
+  countsAsAllocation,
   daysSinceLast,
   parseVaultDay,
   resolveRhythm,
@@ -1202,7 +1203,8 @@ server.tool(
       if (!habit) continue;
 
       const allocated = cycleMoments.filter(
-        (m) => m.habitId === habit.id && m.day !== null,
+        (m) =>
+          countsAsAllocation(m) && m.habitId === habit.id && m.day !== null,
       );
       const dates = allocated
         .map((m) => (m.day ? parseVaultDay(m.day) : null))
@@ -1664,7 +1666,10 @@ server.tool(
     const moments = readCollection(VAULT_ROOT, "moments");
     const allocated = Object.values(moments).filter(
       (m) =>
-        m.cyclePlanId === existing.id && m.day !== null && m.phase !== null,
+        countsAsAllocation(m) &&
+        m.cyclePlanId === existing.id &&
+        m.day !== null &&
+        m.phase !== null,
     ).length;
 
     if (existing.budgetedCount - 1 < allocated) {
@@ -1694,7 +1699,11 @@ server.tool(
 
     const moments = readCollection(VAULT_ROOT, "moments");
     const allocatedCount = Object.values(moments).filter(
-      (m) => m.cyclePlanId === plan.id && m.day !== null && m.phase !== null,
+      (m) =>
+        countsAsAllocation(m) &&
+        m.cyclePlanId === plan.id &&
+        m.day !== null &&
+        m.phase !== null,
     ).length;
 
     const next: CyclePlan = {
@@ -1862,6 +1871,7 @@ server.tool(
     startTime: StartTimeSchema.optional(),
     durationMin: z.number().int().positive().optional(),
     refs: z.array(z.string()).optional(),
+    status: z.enum(["tentative", "accepted"]).optional(),
   },
   async (params): Promise<ToolResult> => {
     const nameError = validateOneToThreeWords(params.name, "Moment");
@@ -1908,6 +1918,7 @@ server.tool(
     startTime: StartTimeSchema.nullable().optional(),
     durationMin: z.number().int().positive().nullable().optional(),
     refs: z.array(z.string()).optional(),
+    status: z.enum(["tentative", "accepted"]).optional(),
   },
   async (params): Promise<ToolResult> => {
     const { id, ...updates } = params;
