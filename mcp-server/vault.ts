@@ -63,7 +63,7 @@ export type RhythmPeriod = z.infer<typeof RhythmPeriodSchema>;
 
 export const RhythmSchema = z.object({
   period: RhythmPeriodSchema,
-  count: z.number().int().positive(),
+  count: z.number().positive(),
 });
 export type Rhythm = z.infer<typeof RhythmSchema>;
 
