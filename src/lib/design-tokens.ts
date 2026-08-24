@@ -256,9 +256,13 @@ export const momentCard = {
  * affordance, not a capacity: a fourth moment scrolls inside the cell rather
  * than stretching the row and breaking the day's alignment.
  */
+const PEEK_HEIGHT_PX = 10;
+
 export const timelineCell = {
   visibleSlots: 3,
   viewportHeight: `${MOMENT_CARD_HEIGHT_PX * 3 + MOMENT_CARD_GAP_PX * 2}px`,
+  /** Shows a sliver of the next card so the user sees there's more to scroll. */
+  viewportHeightWithPeek: `${MOMENT_CARD_HEIGHT_PX * 3 + MOMENT_CARD_GAP_PX * 3 + PEEK_HEIGHT_PX}px`,
 } as const;
 
 /**

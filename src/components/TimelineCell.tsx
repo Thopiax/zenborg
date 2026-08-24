@@ -161,11 +161,14 @@ export function TimelineCell({
 
       {cellMoments.length > 0 && (
         <div className="flex-1 flex flex-col justify-start relative z-10 min-h-0">
-          {/* Three slots tall, always. A fourth moment scrolls rather than
-              stretching the row out of the day's alignment. */}
           <div
             className="overflow-y-auto overscroll-contain"
-            style={{ maxHeight: timelineCell.viewportHeight }}
+            style={{
+              maxHeight:
+                cellMoments.length > MAX_MOMENTS_PER_CELL
+                  ? timelineCell.viewportHeightWithPeek
+                  : timelineCell.viewportHeight,
+            }}
           >
             <SortableContext
               items={cellMoments.map((m) => m.id)}
@@ -173,7 +176,6 @@ export function TimelineCell({
             >
               <div className="flex flex-col" style={{ gap: momentCard.gap }}>
                 {cellMoments.map((moment) => {
-                  // Get area from the extracted values (use$ already unwrapped it)
                   const area = allAreas[moment.areaId];
                   if (!area) return null;
 
