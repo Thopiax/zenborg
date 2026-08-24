@@ -10,6 +10,15 @@ export type Health =
   | "evergreen"
   | "unstated";
 
+/**
+ * Mirrors src/domain/entities/Moment.ts countsAsAllocation (spec D5).
+ * The single predicate every aggregating filter composes with, so the
+ * call sites cannot drift apart on what counts.
+ */
+export function countsAsAllocation(moment: Moment): boolean {
+  return moment.status !== "tentative";
+}
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const BUDDING_PERIOD_COUNT = 3;
 /**
@@ -53,7 +62,9 @@ export function computeHealth(
   // For an ordinary habit `personIds` can never hold its own id, so this is
   // provably inert there. Mirrors src/domain/services/HabitHealthService.ts.
   const habitMoments = moments.filter(
-    (m) => m.habitId === habit.id || (m.personIds?.includes(habit.id) ?? false),
+    (m) =>
+      countsAsAllocation(m) &&
+      (m.habitId === habit.id || (m.personIds?.includes(habit.id) ?? false)),
   );
 
   if (habit.attitude === "BEGINNING") {
@@ -105,6 +116,7 @@ export function computeHealth(
 function latestAllocationDate(moments: Moment[]): Date | null {
   let latest: Date | null = null;
   for (const m of moments) {
+    if (!countsAsAllocation(m)) continue;
     if (m.day === null) continue;
     const d = parseVaultDay(m.day);
     if (latest === null || d > latest) latest = d;
@@ -121,7 +133,9 @@ export function daysSinceLast(
   // get_habit_health / list_wilting_habits, so a narrower filter here would
   // report "90 days" next to a "blooming" derived from the very same moments.
   const habitMoments = moments.filter(
-    (m) => m.habitId === habitId || (m.personIds?.includes(habitId) ?? false),
+    (m) =>
+      countsAsAllocation(m) &&
+      (m.habitId === habitId || (m.personIds?.includes(habitId) ?? false)),
   );
   const last = latestAllocationDate(habitMoments);
   if (last === null) return null;

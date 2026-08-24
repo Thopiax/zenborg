@@ -210,6 +210,25 @@ export interface Moment {
   placeIds?: string[];
   /** The pasted map link, kept verbatim as minting evidence for wake. */
   placeUrl?: string;
+  /**
+   * Whether this moment is a proposal or a committed intention.
+   * Optional; absence means accepted. Only calendar ingestion ever
+   * writes "tentative". Mirrors src/domain/entities/Moment.ts.
+   */
+  status?: "tentative" | "accepted";
+  /**
+   * Provenance for a moment that mirrors an external calendar event.
+   * Absent on moments with no calendar counterpart. Owned by the
+   * calendar sidecar; not writable through MCP.
+   */
+  externalRef?: {
+    source: "eventkit";
+    eventId: string;
+    calendarId: string;
+    lastWrittenHash: string;
+    lastWrittenTitle: string;
+    lastSyncedAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
