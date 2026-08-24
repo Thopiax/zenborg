@@ -589,17 +589,14 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                         if (val) {
                           const snapped = snapToGrid(val, 60);
                           momentFormState$.startTime.set(snapped.startTime);
-                        } else {
-                          momentFormState$.startTime.set(undefined as unknown as string);
                         }
                       }}
                       className="flex-1 bg-transparent text-sm font-mono focus:outline-none text-stone-600 dark:text-stone-400"
-                      placeholder="no time"
                     />
                     {startTime && (
                       <button
                         type="button"
-                        onClick={() => momentFormState$.startTime.set(undefined as unknown as string)}
+                        onClick={() => momentFormState$.startTime.set("")}
                         className="p-0.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 dark:text-stone-500"
                       >
                         <X className="w-3.5 h-3.5" />
