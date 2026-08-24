@@ -86,8 +86,6 @@ export function TimelineCell({
     .filter((m) => m.day === day && m.phase === phase)
     .sort((a, b) => a.order - b.order);
 
-  const isFull = cellMoments.length >= MAX_MOMENTS_PER_CELL;
-
   // Droppable configuration
   const { setNodeRef, isOver } = useDroppable({
     id: `timeline-${day}-${phase}`,
@@ -97,9 +95,6 @@ export function TimelineCell({
       targetPhase: phase,
     },
   });
-
-  // Check if current drop would be valid
-  const wouldAcceptDrop = !isFull;
 
   // Handle empty cell click - always opens modal
   const handleEmptyCellClick = () => {
@@ -125,9 +120,8 @@ export function TimelineCell({
     <div
       ref={setNodeRef}
       className={cn(
-        // Height: fixed minimum for 3 cards, does not stretch to fill container
-        "flex flex-col min-h-[240px] relative",
-        "p-2 rounded-md",
+        "flex flex-col min-h-[240px] h-full relative",
+        "p-2 pb-8 rounded-md",
         // Smooth transitions for drag hover states
         "transition-all duration-fast transition-smooth",
         "focus-within:outline-none",
@@ -137,19 +131,58 @@ export function TimelineCell({
         phaseBackgrounds[phaseIndex],
         // Active phase indicator (current phase on active day)
         isActivePhase && "ring-1 ring-stone-400/50",
-        // Drag hover states with smooth ring transitions
-        isOver &&
-          wouldAcceptDrop &&
-          "ring-2 ring-slate-400 dark:ring-slate-300",
-        isOver && !wouldAcceptDrop && "ring-2 ring-red-400 dark:ring-red-500",
+        // Drag hover state
+        isOver && "ring-2 ring-slate-400 dark:ring-slate-300",
       )}
       data-cell={`${day}-${phase}`}
       aria-label={cellLabel}
-      aria-live={isFull ? "polite" : "off"}
+      aria-live="off"
       aria-atomic="true"
     >
-      {/* Phase Icon - Background element at bottom with low z-index */}
-      <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center z-0 pointer-events-none">
+      <div
+        className="overflow-y-auto overscroll-contain"
+        style={{ maxHeight: timelineCell.viewportHeight }}
+      >
+        {cellMoments.length > 0 && (
+          <SortableContext
+            items={cellMoments.map((m) => m.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col" style={{ gap: momentCard.gap }}>
+              {cellMoments.map((moment) => {
+                const area = allAreas[moment.areaId];
+                if (!area) return null;
+
+                return (
+                  <SortableMomentCard
+                    key={moment.id}
+                    moment={moment}
+                    area={area}
+                    contextMomentIds={cellMoments.map((m) => m.id)}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        )}
+
+        {cellMoments.length === 0 && (
+          <button
+            type="button"
+            onClick={handleEmptyCellClick}
+            className="flex items-center justify-center h-full w-full min-h-[120px] rounded-md cursor-pointer group"
+            aria-label={`add moment to ${phaseLabel || phase}`}
+          >
+            <span className="text-slate-800 dark:text-slate-100 text-3xl opacity-70 md:opacity-0 group-hover:opacity-70 transition-opacity">
+              +
+            </span>
+          </button>
+        )}
+
+      </div>
+
+      {/* Phase icon -- fixed at the cell bottom, above the scroll content */}
+      <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center pointer-events-none z-20">
         <PhaseIcon
           phase={phase}
           className={cn(
@@ -158,67 +191,6 @@ export function TimelineCell({
           )}
         />
       </div>
-
-      {cellMoments.length > 0 && (
-        <div className="flex-1 flex flex-col justify-start relative z-10 min-h-0">
-          {/* Three slots tall, always. A fourth moment scrolls rather than
-              stretching the row out of the day's alignment. */}
-          <div
-            className="overflow-y-auto overscroll-contain"
-            style={{ maxHeight: timelineCell.viewportHeight }}
-          >
-            <SortableContext
-              items={cellMoments.map((m) => m.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="flex flex-col" style={{ gap: momentCard.gap }}>
-                {cellMoments.map((moment) => {
-                  // Get area from the extracted values (use$ already unwrapped it)
-                  const area = allAreas[moment.areaId];
-                  if (!area) return null;
-
-                  return (
-                    <SortableMomentCard
-                      key={moment.id}
-                      moment={moment}
-                      area={area}
-                      contextMomentIds={cellMoments.map((m) => m.id)}
-                    />
-                  );
-                })}
-              </div>
-            </SortableContext>
-          </div>
-          {!isFull && (
-            <button
-              type="button"
-              onClick={handleEmptyCellClick}
-              className="flex-1 flex items-center justify-center min-h-[48px] rounded-md cursor-pointer group"
-              aria-label={`add moment to ${phaseLabel || phase}`}
-            >
-              <span className="text-slate-800 dark:text-slate-100 text-2xl opacity-0 group-hover:opacity-50 transition-opacity">
-                +
-              </span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Empty state - only show when no moments */}
-      {cellMoments.length === 0 && (
-        <div className="flex-1 flex items-center justify-center relative z-10">
-          <button
-            type="button"
-            onClick={handleEmptyCellClick}
-            className="flex items-center justify-center h-full w-full rounded-md transition-all duration-fast transition-smooth cursor-pointer group"
-            aria-label={`add moment to ${phaseLabel || phase}`}
-          >
-            <span className="text-slate-800 dark:text-slate-100 text-3xl opacity-70 md:opacity-0 group-hover:opacity-70 transition-opacity gap-2 flex items-center">
-              +
-            </span>
-          </button>
-        </div>
-      )}
     </div>
   );
 }

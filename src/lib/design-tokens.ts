@@ -258,7 +258,8 @@ export const momentCard = {
  */
 export const timelineCell = {
   visibleSlots: 3,
-  viewportHeight: `${MOMENT_CARD_HEIGHT_PX * 3 + MOMENT_CARD_GAP_PX * 2}px`,
+  /** 3 cards + 2 gaps + 1 extra gap + 10px peek of the 4th card */
+  viewportHeight: `${MOMENT_CARD_HEIGHT_PX * 3 + MOMENT_CARD_GAP_PX * 3 + 10}px`,
 } as const;
 
 /**
