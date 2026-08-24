@@ -111,27 +111,24 @@ export function MomentCard({
       className={cn(
         "rounded-lg cursor-pointer w-full",
         "focus:outline-none relative",
-        // Elastic transitions for natural, organic feel (using design system classes)
         "transition-all duration-medium transition-elastic",
-        // Subtle ring for selection/focus - using area color
-        "ring-offset-transparent",
-        isSelected
-          ? "ring-2 ring-offset-2"
-          : "ring-0 hover:ring-2 hover:ring-offset-2",
+        "outline-none",
         // Subtle lift on hover for depth
         "hover:-translate-y-0.5",
+        // Active moment: inset left border as a strong visual anchor
+        isActive && "border-l-[3px] border-l-stone-900 dark:border-l-stone-100",
       )}
       style={{
         backgroundColor: area.color,
-        // Use design tokens for sizing
         minHeight: momentCard.minHeight,
         paddingLeft: momentCard.paddingX,
         paddingRight: momentCard.paddingX,
         paddingTop: momentCard.paddingY,
         paddingBottom: momentCard.paddingY,
-        // Use area color for ring with opacity for subtlety
-        // @ts-expect-error - CSS custom property
-        "--tw-ring-color": `${area.color}99`, // 60% opacity
+        // Inset shadow for hover/selection -- lives inside the card, never clipped
+        boxShadow: isSelected
+          ? `inset 0 0 0 2px rgba(255,255,255,0.5)`
+          : undefined,
       }}
       data-moment-id={moment.id}
       onClick={handleClick}
@@ -139,7 +136,6 @@ export function MomentCard({
       tabIndex={0}
     >
       <div className="flex flex-row items-baseline gap-2 h-full">
-        {/* Emoji - optional, no fallback */}
         {moment.emoji && (
           <span
             className={cn(
@@ -151,7 +147,6 @@ export function MomentCard({
             {moment.emoji}
           </span>
         )}
-        {/* Moment name */}
         <p
           className={cn(
             "text-lg font-semibold font-mono truncate min-w-0",
@@ -177,7 +172,7 @@ export function MomentCard({
         {isActive && (
           <span
             className={cn("ml-auto text-sm flex-shrink-0", textColors.primary)}
-            title="Active moment — the intention keel is holding"
+            title="Active moment"
           >
             ◎
           </span>

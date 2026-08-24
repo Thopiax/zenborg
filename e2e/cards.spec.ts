@@ -60,9 +60,11 @@ test.describe("timeline cells", () => {
       morning.boundingBox(),
       afternoon.boundingBox(),
     ]);
-    expect(Math.round(overfull?.height ?? 0)).toBe(
-      Math.round(exact?.height ?? 0),
-    );
+    // The overflowing cell is slightly taller (peek) but not a full card taller
+    const heightDiff =
+      Math.round(overfull?.height ?? 0) - Math.round(exact?.height ?? 0);
+    expect(heightDiff).toBeGreaterThanOrEqual(0);
+    expect(heightDiff).toBeLessThan(64); // less than one full card
 
     const scrolls = await morning
       .locator(".overflow-y-auto")
@@ -96,5 +98,43 @@ test.describe("timeline cells", () => {
 
     const last = list.locator("[data-moment-id]").last();
     await expect(last).toBeInViewport();
+  });
+
+  test("overflowing cell peeks the next card into view", async ({ page }) => {
+    await page.goto("/cultivate");
+
+    const today = new Date().toLocaleDateString("en-CA");
+    const morning = page.locator(`[data-cell="${today}-MORNING"]`);
+    const scrollArea = morning.locator(".overflow-y-auto").first();
+
+    // The 4th card should be partially visible (peeking)
+    const fourthCard = morning.locator("[data-moment-id]").nth(3);
+    await expect(fourthCard).toBeAttached();
+
+    // The scroll area should be taller than three-cards-exact so the peek shows
+    const scrollHeight = await scrollArea.evaluate((el) => el.scrollHeight);
+    const clientHeight = await scrollArea.evaluate((el) => el.clientHeight);
+    expect(scrollHeight).toBeGreaterThan(clientHeight);
+    // The peek should show a sliver: clientHeight > 3 exact cards (216px)
+    expect(clientHeight).toBeGreaterThan(216);
+  });
+
+  test("selection uses an inset shadow that is never clipped", async ({
+    page,
+  }) => {
+    await page.goto("/cultivate");
+
+    const today = new Date().toLocaleDateString("en-CA");
+    const morning = page.locator(`[data-cell="${today}-MORNING"]`);
+    const card = morning.getByLabel("linguaggio in Learning area");
+
+    // Cmd-click to select
+    await card.click({ modifiers: ["Meta"] });
+
+    const shadow = await card.evaluate(
+      (el) => getComputedStyle(el).boxShadow,
+    );
+    // Inset shadow should be present
+    expect(shadow).toContain("inset");
   });
 });
