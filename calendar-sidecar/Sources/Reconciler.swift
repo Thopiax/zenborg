@@ -255,10 +255,16 @@ func runSelfTest(vectorsPath: String) {
 
     for vector in vectors {
         let name = vector["name"] as? String ?? "unnamed"
+
+        // Skip documentation-only vectors (no context/expected fields)
+        guard let contextDict = vector["context"] as? [String: Any],
+              let expected = vector["expected"] as? [String: Any] else {
+            fputs("SKIP \(name) (documentation only)\n", stderr)
+            continue
+        }
+
         let momentDict = vector["moment"] as? [String: Any]
         let eventDict = vector["event"] as? [String: Any]
-        let contextDict = vector["context"] as! [String: Any]
-        let expected = vector["expected"] as! [String: Any]
 
         let moment: VaultMoment? = momentDict.map { decodeMomentFromVector($0) }
         let event: EventSnapshot? = eventDict.map { decodeEventFromVector($0) }
