@@ -81,7 +81,7 @@ export function computeHealth(
     return daysSince <= threshold ? "blooming" : "wilting";
   }
 
-  if (habit.attitude === "KEEPING") {
+  if (habit.attitude === "KEEPING" || habit.attitude === "PRUNING") {
     if (!rhythm) return "unstated";
     const threshold = rhythmSilenceThresholdDays(rhythm);
     const last = latestAllocationDate(habitMoments);
