@@ -26,6 +26,8 @@ paragraph would build the wrong thing.
 | A4 | **Single-instance `flock`** on `run` and `reconcile-once`, plus the app killing its child on exit. | Two concurrent watchers both do full passes; atomic rename stops a torn file but not a lost update. Task 14. |
 | A5 | **Sidecar spawns in dev behind `ZENBORG_CALENDAR_SIDECAR=1`**, not release-only. | The integrated loop (sidecar write, `vault:collection-changed`, grid updates) was otherwise unreachable without a release build. Task 14. |
 | A6 | **Two vacuous tests replaced.** `momentHash` now pins a computed literal; the publish-ingest property generates arbitrary times rather than pre-aligned ones. | Both previously held by construction and could not fail. Tasks 3, 5. |
+| A7 | **One calendar per area** replaces a single "Zenborg" calendar. `calendarSync.json` stores `areaCalendars: Record<areaId, calendarIdentifier>` instead of `zenborgCalendarId`. Calendars created lazily, named `{area.emoji} {area.name}`, colored `area.color`. | Per-area toggle in Calendar.app is finer sovereignty; the principal can hide an entire life area without affecting the others. Tasks 3, 4, 12, 14. |
+| A8 | **Habit emoji in event titles.** Published events titled `{emoji} {moment.name}`, emoji resolved via `moment.emoji ?? habit.emoji ?? area.emoji`. Stripped on ingest and for `lastWrittenTitle` comparison. | Moments (habits) almost all carry emojis; the prefix makes events scannable in any calendar view. Tasks 3, 14. |
 
 Vector count rises from 19 to 22 (three new edge cases: the two rename directions and
 the window guard). Checklist items 12 to 14 verify A2, A1 and A4 by hand.
@@ -46,7 +48,8 @@ Copied from the spec and repo conventions. Every task's requirements implicitly 
 - **Never use an em dash** (U+2014) in any prose, heading, code comment, or commit message. Use commas, colons, parentheses, semicolons or full stops.
 - **The 15-minute grid is a constant**, not configurable (spec open question 3, proposal adopted).
 - **Tentative moments never count toward any allocation read.** Hard invariant (spec D5).
-- **Zenborg writes only into the Zenborg calendar** (spec D3). Inbound reads span the selected calendars.
+- **Zenborg writes into one dedicated calendar per area** (spec D3). Each is named `{area.emoji} {area.name}` and colored `area.color`. Inbound reads span the selected calendars.
+- **Event titles carry the habit emoji** (spec D8). Published as `{emoji} {moment.name}`; emoji resolved from `moment.emoji ?? habit.emoji ?? area.emoji`.
 - **Wall-clock storage:** moments keep `day` (`YYYY-MM-DD`) plus `startTime` (`HH:MM`). Never store offsets (spec error table, DST row).
 - **No vault migration:** absence of `status` means `accepted`; absence of `externalRef` means no calendar counterpart.
 
@@ -403,7 +406,7 @@ git commit -m "feat(domain): snapToGrid on the 15 minute calendar grid"
     thing a drag can change, so a rename in Calendar.app is ignored and survives. Names
     flow one way, zenborg to calendar, via `externalRef.lastWrittenTitle` (Task 4
     branch 9). The calendar never renames a moment.
-  - `eventFieldsForMoment(moment: Moment): EventFields | null` (null when the moment is ambient, no `startTime`, or unallocated, no `day`; `durationMin` defaults to 60 when absent)
+  - `eventFieldsForMoment(moment: Moment, resolveEmoji?: (moment: Moment) => string | null): EventFields | null` (null when the moment is ambient, no `startTime`, or unallocated, no `day`; `durationMin` defaults to 60 when absent; when `resolveEmoji` is provided and returns a non-null emoji, `title` is prefixed with `{emoji} `, e.g. "🧘 Meditate"; the emoji is stripped for `lastWrittenTitle` comparison and on ingest)
 - Note: `phaseForStartTime` already exists at `src/domain/value-objects/Schedule.ts:151` (and its mcp mirror at `mcp-server/validation.ts:278`), with night-wrap tests in `Schedule.test.ts`. The spec lists it as a Slice A deliverable; it is reused, not rewritten.
 
 - [ ] **Step 1: Write the failing tests**
@@ -542,10 +545,15 @@ export function momentHash(fields: EventFields): string {
  * a start time for a moment deliberately without one would be fabricating
  * data, spec D6) and for unallocated moments (an event needs a date).
  */
-export function eventFieldsForMoment(moment: Moment): EventFields | null {
+export function eventFieldsForMoment(
+  moment: Moment,
+  resolveEmoji?: (m: Moment) => string | null,
+): EventFields | null {
   if (moment.day === null || moment.startTime === undefined) return null;
+  const emoji = resolveEmoji?.(moment);
+  const title = emoji ? `${emoji} ${moment.name}` : moment.name;
   return {
-    title: moment.name,
+    title,
     day: moment.day,
     startTime: moment.startTime,
     durationMin: moment.durationMin ?? DEFAULT_EVENT_DURATION_MIN,
@@ -591,7 +599,7 @@ export interface CalendarEventSnapshot {
 }
 
 export interface ReconcileContext {
-  readonly zenborgCalendarId: string;
+  readonly areaCalendarIds: ReadonlySet<string>; // all area-scoped calendar IDs zenborg owns
   readonly selectedCalendarIds: readonly string[];
 }
 
@@ -640,14 +648,14 @@ export function applyEventToMoment(
 **Decision logic** (implement exactly this; each branch cites its truth-table row):
 
 1. `moment === null && event === null`: `none/inSync` (degenerate guard).
-2. `moment === null`, event in the Zenborg calendar: `deleteEvent` (rows R9/R10: the moment behind our own event is gone or unallocated).
+2. `moment === null`, event in an area calendar: `deleteEvent` (rows R9/R10: the moment behind our own event is gone or unallocated).
 3. `moment === null`, event on a selected calendar: `createTentativeMoment` with `snapToGrid` applied and `name = event.title` (row R1).
 4. `moment === null`, event elsewhere: `none/unselectedCalendar`.
 5. Moment ambient (`startTime === undefined`): `none/ambient` (spec D6: never published).
 6. `event === null`, no `externalRef`: if allocated, timed and `countsAsAllocation(moment)`, `publishEvent` with `overwroteEventEdit: false` (rows R2 and R11 "publish if not already an event"); else `none/inSync`.
 7. `event === null`, has `externalRef`: tentative gets `deleteMoment` (row R7); accepted gets `returnToDrawingBoard` (row R8, the one asymmetry: a cancelled meeting must not destroy an intention).
 8. Both present, `moment.day === null`: `deleteEvent` (row R9: unallocated in zenborg).
-9. Both present, **Zenborg calendar**: compute `eventHash = momentHash(fields of event)` and `currentMomentHash = momentHash(eventFieldsForMoment(moment))`; compare each to `externalRef.lastWrittenHash`:
+9. Both present, **area calendar**: compute `eventHash = momentHash(fields of event)` and `currentMomentHash = momentHash(eventFieldsForMoment(moment))`; compare each to `externalRef.lastWrittenHash`:
    - neither timing changed, but `moment.name !== externalRef.lastWrittenTitle`:
      `publishEvent` (a rename made in zenborg; push the name out). A rename made in
      Calendar.app does NOT reach this branch, because `lastWrittenTitle` still equals
@@ -1662,9 +1670,9 @@ fi
 <plist version="1.0">
 <dict>
   <key>NSCalendarsUsageDescription</key>
-  <string>Zenborg mirrors your planned moments into a dedicated Zenborg calendar and reads the calendars you select, so plans and calendar stay in step.</string>
+  <string>Zenborg mirrors your planned moments into dedicated calendars (one per area) and reads the calendars you select, so plans and calendar stay in step.</string>
   <key>NSCalendarsFullAccessUsageDescription</key>
-  <string>Zenborg mirrors your planned moments into a dedicated Zenborg calendar and reads the calendars you select, so plans and calendar stay in step.</string>
+  <string>Zenborg mirrors your planned moments into dedicated calendars (one per area) and reads the calendars you select, so plans and calendar stay in step.</string>
 </dict>
 </plist>
 ```
@@ -1720,7 +1728,7 @@ struct ExternalRef: Codable {
 
 struct CalendarSyncConfig: Codable {
   var selectedCalendarIds: [String]
-  var zenborgCalendarId: String?
+  var areaCalendars: [String: String] // areaId -> EKCalendar.calendarIdentifier
   var updatedAt: String
 }
 
@@ -1809,7 +1817,7 @@ git commit -m "feat(sidecar): vault io with field preservation and fnv1a64 port"
 
 ```swift
 struct EventSnapshot: Codable { var eventId, calendarId, title, day, startTime: String; var durationMin: Int; var lastModified: String }
-struct ReconcileContext: Codable { var zenborgCalendarId: String; var selectedCalendarIds: [String] }
+struct ReconcileContext: Codable { var areaCalendarIds: Set<String>; var selectedCalendarIds: [String] }
 enum ReconcileAction { /* one case per TS kind, same associated values */ }
 func snapToGrid(startTime: String, durationMin: Int) -> (startTime: String, durationMin: Int)
 func phaseForStartTime(_ startTime: String, _ configs: [PhaseConfig]) -> String? // port of Schedule.ts:151, night wrap included
@@ -1857,12 +1865,12 @@ git commit -m "feat(sidecar): swift reconciler passes the shared truth-table vec
 **Interfaces:**
 - Consumes: everything above.
 - Produces: the five sidecar responsibilities from the spec, and nothing else:
-  1. **Authorization**: `status` prints `{"authorization": "fullAccess" | "denied" | "notDetermined", "calendars": [{id, title, source}], "zenborgCalendarId": ...}`; `run`/`reconcile-once` request access via `EKEventStore.requestFullAccessToEvents` when `notDetermined`, and when denied print a structured warning and go **dormant** (exit 0 for `reconcile-once`, idle loop for `run`): the grid works, sync sleeps, never silently half-syncing (spec error table).
-  2. **Publish**: accepted, allocated, timed moments without `externalRef` become events in the Zenborg calendar (`EKCalendar` titled "Zenborg", created on first need in the default source, id persisted to `calendarSync.json`; if the user deleted it, recreate on next publish and drop stale `externalRef`s whose `calendarId` no longer resolves).
+  1. **Authorization**: `status` prints `{"authorization": "fullAccess" | "denied" | "notDetermined", "calendars": [{id, title, source}], "areaCalendars": {...}}`; `run`/`reconcile-once` request access via `EKEventStore.requestFullAccessToEvents` when `notDetermined`, and when denied print a structured warning and go **dormant** (exit 0 for `reconcile-once`, idle loop for `run`): the grid works, sync sleeps, never silently half-syncing (spec error table).
+  2. **Publish**: accepted, allocated, timed moments without `externalRef` become events in the moment's area calendar (one `EKCalendar` per area, named `{area.emoji} {area.name}`, colored `area.color`, created lazily on first publish for that area in the default source, id persisted to `calendarSync.json` under `areaCalendars[areaId]`; if the user deleted an area calendar, recreate on next publish for that area and drop stale `externalRef`s whose `calendarId` no longer resolves). Event titles are prefixed with the habit emoji: `{emoji} {moment.name}` (emoji resolved via `moment.emoji ?? habit.emoji ?? area.emoji`).
   3. **Ingest**: events on `selectedCalendarIds` within the sync window (7 days back, 60 days forward, constants in `EventStore.swift`) become tentative moments per R1.
   4. **Watch**: subscribe to `NSNotification.Name.EKEventStoreChanged` on a `RunLoop` (`run` mode); each notification triggers a full reconcile pass. There is no incremental token to corrupt; recovery from anything is the same full pass (spec: recovery is always a full reconcile).
   5. **Write**: apply `ReconcileAction`s through `Vault.swift`; after every applied action, set `externalRef.lastWrittenHash` to the hash of the event's **current timing** (day, startTime, durationMin; never the title), `externalRef.lastWrittenTitle` to the title now on the event, and `lastSyncedAt` to now; log every `overwroteMomentEdit`/`overwroteEventEdit` loss to stderr with both timestamps (row R12: log the loss).
-- Reconcile pass structure (`reconcile-once` and each watch tick): read vault + config, fetch events (Zenborg calendar + selected calendars, window), **partition moments by the sync window**, pair by `externalRef.eventId`, call `reconcile` per pair (moments without events, events without moments, matched pairs), apply actions, write moments once (single atomic write per pass; the app's watcher then emits one `vault:collection-changed` and the running UI reloads: the path that already exists, spec D7).
+- Reconcile pass structure (`reconcile-once` and each watch tick): read vault + config + areas, fetch events (all area calendars + selected calendars, window), **partition moments by the sync window**, pair by `externalRef.eventId`, call `reconcile` per pair (moments without events, events without moments, matched pairs), apply actions, write moments once (single atomic write per pass; the app's watcher then emits one `vault:collection-changed` and the running UI reloads: the path that already exists, spec D7).
 - **Window guard, in that order, before any pairing** (amended 2026-08-21; see the
   pairing convention in Task 4). Skipping this deletes history:
   1. Partition vault moments into in-window (`day` inside 7 back to 60 forward) and
@@ -1929,19 +1937,21 @@ ZENBORG_VAULT=/tmp/zb-vault ./calendar-sidecar/dist/zenborg-calendar reconcile-o
 - [ ] **Step 3: Manual checklist (spec: Slice C gets a manual checklist against a scratch calendar rather than a mocked EventKit).** Use a scratch vault (`ZENBORG_VAULT=/tmp/zb-vault`, synthetic moments only) and a scratch calendar account. Verify each and record pass/fail in the task report:
 
 1. First run on `notDetermined` shows the TCC prompt with the Info.plist copy; denying leaves `status` reporting `denied` and `run` dormant.
-2. A "Zenborg" calendar appears in Calendar.app on first publish; toggling it off in Calendar.app hides every zenborg event (sovereignty: the layer can be switched off without uninstalling anything).
-3. An accepted timed moment in the vault appears as a Zenborg-calendar event within one reconcile.
+2. Area calendars appear in Calendar.app on first publish (e.g. "💪 Fitness", "⚖️ Themia"), grouped under the Zenborg source; toggling one off hides only that area's events; toggling the group off hides all (sovereignty: per-area and whole-layer switches).
+3. An accepted timed moment in the vault appears as an event in its area's calendar within one reconcile, titled with the habit emoji prefix (e.g. "🧘 Meditate").
 4. Dragging that event in Calendar.app moves the moment (time and, across a band boundary, phase) after the change notification; no echo loop follows (watch stderr: exactly one apply, then `echo` passes).
-5. An event created on a selected calendar arrives as a tentative moment, snapped to the grid, rendered unfilled in the week grid; accepting it in the grid does not duplicate it in the Zenborg calendar.
+5. An event created on a selected calendar arrives as a tentative moment, snapped to the grid, rendered unfilled in the week grid; accepting it in the grid does not duplicate it in an area calendar.
 6. Deleting the ingested event deletes the tentative moment; deleting an event behind an **accepted** moment returns the moment to the drawing board with `externalRef` gone.
-7. Deleting a moment in zenborg deletes its Zenborg-calendar event on the next pass.
-8. Deleting the whole Zenborg calendar in Calendar.app: next publish recreates it; no crash, stale refs dropped.
+7. Deleting a moment in zenborg deletes its area-calendar event on the next pass.
+8. Deleting an area calendar in Calendar.app: next publish for that area recreates it; no crash, stale refs dropped.
 9. Kill the sidecar mid-pass: the app keeps working; relaunching runs a clean full reconcile; `moments.json` is never partially written.
 10. Both-sides edit (drag the event while also retiming the moment in zenborg between passes): newer write wins, loss logged to stderr.
 11. With the app running, a sidecar vault write triggers `vault:collection-changed` and the week grid updates without a reload. (Runnable in dev now: launch with `ZENBORG_CALENDAR_SIDECAR=1 pnpm tauri:dev`.)
 12. **The window guard holds.** Seed the scratch vault with a linked moment dated 90 days ago and another 200 days out, both carrying an `externalRef`. Run `reconcile-once`. Expect **zero** actions: neither moment is deleted, unallocated, or stripped of its ref. Then delete a genuinely in-window ingested event and confirm its moment still goes. This is the regression guard for the amended pairing convention; without it the first pass eats your history.
-13. **Renames settle in one direction.** Rename a Zenborg-calendar event in Calendar.app, run two passes, and confirm the new title survives and the moment keeps its own name. Then rename the moment in zenborg and confirm the event title follows on the next pass. Neither should ever revert the other.
+13. **Renames settle in one direction.** Rename an area-calendar event in Calendar.app, run two passes, and confirm the new title survives and the moment keeps its own name. Then rename the moment in zenborg and confirm the event title (with emoji prefix) follows on the next pass. Neither should ever revert the other.
 14. **Two sidecars cannot both write.** With `run` already going, start a second `run`: it exits 0 immediately with the lock message. Quit the app and confirm no orphan `zenborg-calendar` remains (`pgrep zenborg-calendar` prints nothing).
+15. **Area rename propagates.** Rename an area in zenborg. Run a reconcile pass. Confirm the corresponding `EKCalendar` title and color updated in Calendar.app.
+16. **Emoji prefix is correct.** Verify that an event's title carries the habit emoji (not the area emoji) when the habit has one, and falls back to the area emoji when the habit has none.
 
 - [ ] **Step 4: Full suite, lint, commit**
 
