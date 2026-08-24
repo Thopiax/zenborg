@@ -24,6 +24,8 @@ export enum Attitude {
   BUILDING = "BUILDING",
   /** Focused progression, specific goals - shows custom metrics */
   PUSHING = "PUSHING",
+  /** Deliberately tapering — the inverse of BUILDING */
+  PRUNING = "PRUNING",
   /** Integrated, automatic, part of identity - crystallized off-timeline */
   BEING = "BEING",
 }
@@ -96,12 +98,20 @@ export const ATTITUDE_METADATA: Record<
     hotkey: "4",
     className: "font-mono text-stone-700 dark:text-stone-300",
   },
+  [Attitude.PRUNING]: {
+    label: "Pruning",
+    description: "Deliberately tapering, winding down",
+    shows: "Days since last — ceiling not floor",
+    icon: "▽",
+    hotkey: "6",
+    className: "font-mono text-stone-700 dark:text-stone-300",
+  },
   [Attitude.BEING]: {
     label: "Being",
     description: "Integrated, automatic, part of identity",
     shows: "Crystallized — lives off the timeline",
     icon: "◉",
-    hotkey: "5",
+    hotkey: "7",
     className: "font-mono text-stone-700 dark:text-stone-300",
   },
 };

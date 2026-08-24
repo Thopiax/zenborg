@@ -176,7 +176,7 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 - **Cycle** — a season (a time container with an intention)
 - **CyclePlan** — a plot's budget for the season (how many moments of this habit this cycle)
 - **Phase** — time-of-day band (MORNING / AFTERNOON / EVENING / NIGHT)
-- **Attitude** — relationship mode: BEGINNING → RETURNING → KEEPING → BUILDING → PUSHING → BEING
+- **Attitude** — relationship mode: BEGINNING → RETURNING → KEEPING → BUILDING → PUSHING → BEING, plus PRUNING (deliberate taper)
 - **Rhythm** — how often (\`{ period, count }\`)
 - **Schedule** — *when* on the clock (\`{ weekdays, startTime, durationMin }\`), optional; most habits are ambient
 
@@ -1150,11 +1150,13 @@ server.tool(
       if (!effectiveRhythm) continue;
 
       const suggestedCount = rhythmToCycleBudget(effectiveRhythm, cycleDays);
-      let reason: "wilting" | "on-rhythm" | "beginning" | "returning";
+      let reason: "wilting" | "on-rhythm" | "beginning" | "returning" | "pruning";
       if (health === "wilting") {
         reason = "wilting";
       } else if (habit.attitude === "RETURNING") {
         reason = "returning";
+      } else if (habit.attitude === "PRUNING") {
+        reason = "pruning";
       } else {
         reason = "on-rhythm";
       }
