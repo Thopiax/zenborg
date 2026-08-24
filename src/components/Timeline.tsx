@@ -90,8 +90,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
                 key={phaseConfig.phase}
                 className={cn("flex flex-col", columnWidth.scrollableClassName)}
               >
-                {/* Phase Cell - Height based on 3 cards (64px each) + 2 gaps (12px each) + padding */}
-                <div className="p-0.5 md:p-1">
+                <div className="p-0.5 md:p-1 flex-1">
                   <TimelineCell
                     day={day}
                     phase={phaseConfig.phase}
