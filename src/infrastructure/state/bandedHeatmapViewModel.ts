@@ -1,6 +1,6 @@
 import type { Area } from "@/domain/entities/Area";
 import type { Cycle } from "@/domain/entities/Cycle";
-import type { Moment } from "@/domain/entities/Moment";
+import { countsAsAllocation, type Moment } from "@/domain/entities/Moment";
 import {
   getVisiblePhases,
   type Phase,
@@ -150,7 +150,9 @@ function buildCell(
   today: string,
 ): HeatmapCell {
   const tense = tenseOf(date, today);
-  const matches = moments.filter((m) => m.day === date && m.phase === phase);
+  const matches = moments.filter(
+    (m) => countsAsAllocation(m) && m.day === date && m.phase === phase,
+  );
 
   if (matches.length === 0) {
     return {
