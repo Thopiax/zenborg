@@ -13,7 +13,7 @@ export interface UpdateMomentParams {
   phase?: Phase | null;
   tags?: string[];
   customMetric?: CustomMetric; // For habit-inherited PUSHING support
-  startTime?: string;
+  startTime?: string; // empty string clears it
 }
 
 /**
