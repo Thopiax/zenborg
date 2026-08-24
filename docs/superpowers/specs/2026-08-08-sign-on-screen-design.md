@@ -429,9 +429,9 @@ This is the same architecture as sign-on: a skill's judgment reduced to a
 deterministic rule the MCP runtime evaluates, with no model in the loop. The
 protocol's input is the habit; its output is a Garmin workout.
 
-**The trellis already runs one way and this is the other.**
+**The integration already runs one way and this is the other.**
 `src/domain/garmin/GarminHabitMap.ts` resolves an inbound Garmin *activity* to a
-habit, and the Fitness area is tagged `trellis-garmin`. Composing a workout from a
+habit, and the Fitness area is tagged `integrates-garmin`. Composing a workout from a
 habit is the outbound direction across the same seam — and is where a Garmin
 `category` would come from, if one is ever wanted.
 

@@ -1,8 +1,8 @@
-# Goals as derived state — the skill pyramid, the trellis, and attitude ↔ reality
+# Goals as derived state — the skill pyramid, live integrations, and attitude ↔ reality
 
 **Date:** 2026-07-02
 **Status:** captured (design vision — Rafa + Claude). Not built.
-**Companions:** `2026-05-31-connect-prompts-to-habits.md` (trellis), `2026-07-02-expo-mobile-client-and-device-sync.md` (reach).
+**Companions:** `2026-05-31-connect-prompts-to-habits.md` (integration), `2026-07-02-expo-mobile-client-and-device-sync.md` (reach).
 
 The through-line of a long session: fixed per-habit frequencies are the wrong primitive. Goals should be **derived**, shaped by a skill's level and flexed by real recovery — not stored numbers you hand-edit and feel guilty against.
 
@@ -14,12 +14,12 @@ A rhythm (`gym ×3`) is a **stored target**. It goes stale the moment life moves
 
 ```
 goal  =  f( attitude-policy ,  readiness )
-             ▲ skill pyramid     ▲ trellis
+             ▲ skill pyramid     ▲ integration
          (what SHAPE)           (how MUCH, this week)
 ```
 
 - **Attitude** (the skill pyramid) decides the goal's *shape*.
-- **Readiness** (the Garmin trellis) flexes the *intensity* within that shape.
+- **Readiness** (the Garmin integration) flexes the *intensity* within that shape.
 - You configure **6 attitude policies, not 47 habit numbers.** Change a habit's attitude → its goal recomputes. Edit a policy once → the whole garden re-derives.
 
 Same architecture as the rest of the stack: **intention is the source of truth; goals are a derived view** — cf. zenborg's *"information, never score"* and Torneio's *derive-by-query*. Goals stop being stored state.
@@ -37,13 +37,13 @@ The attitude ladder already *is* Rafa's skill pyramid. Each level implies a diff
 
 "Minimum standards" (floors) are the **KEEPING row** — not the whole model. The earlier "4 elements, each a weekly floor" idea is the KEEPING case of this general model.
 
-## The trellis (see `connect-prompts-to-habits`)
+## The live integration (see `connect-prompts-to-habits`)
 
 A habit or area declares a read-seam to the system that owns its *actuals* (`Fitness → Garmin`). Those actuals feed **both** the readiness dial (how much this week) **and** the mismatch check below.
 
 ## Attitude ↔ reality mismatch — the self-correction
 
-Compare the declared attitude against the trellis actuals. A mismatch means the **self-label is stale**:
+Compare the declared attitude against the integration's actuals. A mismatch means the **self-label is stale**:
 
 - **Drift-down** — PUSHING but dormant 3 weeks → *"still PUSHING, or has this become RETURNING?"*
 - **Graduated-up** — BEGINNING but consistent and strong → *"this looks internalized — promote it?"* (fade-by-design, celebrated)
