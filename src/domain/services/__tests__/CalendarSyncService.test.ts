@@ -94,7 +94,7 @@ describe("eventFieldsForMoment", () => {
 
 // Filter out documentation-only vectors (no moment/event/context)
 const runnableVectors = vectors.filter(
-  (v): v is (typeof v) & { context: unknown } => "context" in v,
+  (v): v is typeof v & { context: unknown } => "context" in v,
 );
 
 describe("reconcile: the truth table", () => {
@@ -216,8 +216,15 @@ describe("properties", () => {
     );
 
   const isoDay = fc
-    .date({ min: new Date("2026-01-01"), max: new Date("2027-12-31") })
-    .map((d) => d.toISOString().slice(0, 10));
+    .record({
+      y: fc.integer({ min: 2026, max: 2027 }),
+      m: fc.integer({ min: 1, max: 12 }),
+      d: fc.integer({ min: 1, max: 28 }),
+    })
+    .map(
+      ({ y, m, d }) =>
+        `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+    );
 
   it("publish then ingest is identity, from ARBITRARY times not pre-aligned ones", () => {
     fc.assert(
