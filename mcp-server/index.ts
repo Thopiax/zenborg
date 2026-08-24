@@ -1819,6 +1819,7 @@ function buildMoment(params: {
   startTime?: string;
   durationMin?: number;
   refs?: readonly string[];
+  status?: "tentative" | "accepted";
 }): Moment {
   const now = nowIso();
   const refs = normalizeRefs(params.refs);
@@ -1841,15 +1842,13 @@ function buildMoment(params: {
     ...(params.personIds && params.personIds.length > 0
       ? { personIds: params.personIds }
       : {}),
-    // Same absent-never-empty rule as `personIds`: one representation of
-    // "the place is unknown", which is honest where a wrong place is not.
     ...(params.placeIds && params.placeIds.length > 0
       ? { placeIds: params.placeIds.map(slugify).filter((k) => k.length > 0) }
       : {}),
     ...(params.placeUrl !== undefined ? { placeUrl: params.placeUrl } : {}),
     ...(params.customMetric ? { customMetric: params.customMetric } : {}),
-    // Absent, not empty: one representation of "refers to nothing".
     ...(refs.length > 0 ? { refs } : {}),
+    ...(params.status !== undefined ? { status: params.status } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -1957,6 +1956,7 @@ server.tool(
       ...(updates.refs !== undefined
         ? { refs: normalizeRefs(updates.refs) }
         : {}),
+      ...(updates.status !== undefined ? { status: updates.status } : {}),
       updatedAt: nowIso(),
     };
     if (updates.startTime === null) {
