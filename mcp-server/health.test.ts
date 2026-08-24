@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeHealth, daysSinceLast } from "./health.js";
+import { computeHealth, countsAsAllocation, daysSinceLast } from "./health.js";
 import type { Habit, Moment, Rhythm } from "./vault.js";
 
 const NOW = new Date("2026-08-07T12:00:00.000Z");
@@ -160,5 +160,43 @@ describe("daysSinceLast — moments attached via personIds", () => {
     const orphan = moment({ id: "m-orphan" });
     expect(() => daysSinceLast("p-ada", [orphan], NOW)).not.toThrow();
     expect(daysSinceLast("p-ada", [orphan], NOW)).toBeNull();
+  });
+});
+
+describe("tentative moments (spec D5)", () => {
+  const keeping = habit({ attitude: "KEEPING", rhythm: WEEKLY });
+
+  const allocated = (day: string, over: Partial<Moment> = {}): Moment =>
+    moment({
+      id: `m-${day}`,
+      habitId: "h-1",
+      day,
+      ...over,
+    });
+
+  it("countsAsAllocation rejects tentative, accepts absent and accepted", () => {
+    expect(countsAsAllocation(allocated(dayBefore(NOW, 0)))).toBe(true);
+    expect(
+      countsAsAllocation(allocated(dayBefore(NOW, 0), { status: "accepted" })),
+    ).toBe(true);
+    expect(
+      countsAsAllocation(allocated(dayBefore(NOW, 0), { status: "tentative" })),
+    ).toBe(false);
+  });
+
+  it("computeHealth ignores a tentative moment for a KEEPING habit", () => {
+    const moments = [
+      allocated(dayBefore(NOW, 30)),
+      allocated(dayBefore(NOW, 0), { status: "tentative" }),
+    ];
+    expect(computeHealth(keeping, null, moments, NOW)).toBe("wilting");
+  });
+
+  it("daysSinceLast ignores tentative moments", () => {
+    const moments = [
+      allocated(dayBefore(NOW, 10)),
+      allocated(dayBefore(NOW, 1), { status: "tentative" }),
+    ];
+    expect(daysSinceLast("h-1", moments, NOW)).toBe(10);
   });
 });
