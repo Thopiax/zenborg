@@ -30,7 +30,6 @@ type: pitch
 - Windows or Linux builds (macOS only, aarch64 only)
 - MCP server setup for testers (document it, don't require it)
 - Mobile anything
-- keel browser extension (ship the garden, not the observer)
 - New features -- this is about shipping what exists
 
 ## Elements
@@ -47,14 +46,16 @@ type: pitch
 
 - **Seed a starter garden.** On first launch with an empty vault, pre-populate one area ("Try zenborg"), one habit ("Morning intention"), and one moment allocated to today/morning. The user sees a planted garden immediately, not a blank screen. `src/infrastructure/vault/` -- check for empty vault on boot, write seed data. Both vault implementations need this (`fs.rs` and `vault.ts`).
 
+- **Collapse keel's surfaces into zenborg.** Move `keel/apps/browser` (Chrome extension) and `keel/apps/agent` (Claude Code plugin) into zenborg. They're thin shells reading the same vault -- keeping them in a separate repo is the confusion, not the architecture. The domain code (`attention/`, `intervention/`, `fences`) already lives in zenborg. Rename the Claude Code plugin from "kairos" to "zenborg" in the marketplace. Archive the keel repo after the move.
+
 ## Risks
 
 **Rabbit holes:**
 - Designing a full onboarding wizard with multiple screens. Don't. A seeded garden + a markdown guide is the MVP.
 - Fixing every rough edge before shipping. The testers ARE the rough-edge audit. Ship first, fix second.
+- Refactoring the browser extension during the move. Copy it in, verify it builds, ship. Refactor later.
 
 **Off-sides:**
-- Testers will want keel integration (browser extension, attention tracking). That's a separate pitch. The garden ships alone first.
 - Testers will ask about mobile. The answer is "not yet" and that's fine for the first test.
 
 **Domain knowledge:**
@@ -68,7 +69,8 @@ type: pitch
 3. First launch shows a seeded garden with at least one area, one habit, and one moment -- not a blank screen.
 4. A tester can follow GETTING_STARTED.md and have a planted day within 10 minutes.
 5. The updater resolves from `equanimitech/zenborg` and notifies the tester of the next release.
-6. Three testers are using the app and providing feedback within one week of the release.
+6. The keel repo is archived; browser extension and Claude Code plugin build from zenborg.
+7. Three testers are using the app and providing feedback within one week of the release.
 
 ---
 
