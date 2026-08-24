@@ -168,6 +168,8 @@ export interface MomentFormState {
     day?: string;
     phase?: string;
   } | null;
+  /** Clock time, shown in the form when a phase is selected */
+  startTime?: string;
   /** Attitudes & Tags (Phase 2 features) */
   emoji: string | null;
   attitude: Attitude | null;
@@ -243,6 +245,7 @@ export function openMomentFormEdit(momentId: string, moment: Moment) {
     showCreateMore: false,
     editingMomentId: momentId,
     prefilledAllocation: null,
+    startTime: moment.startTime,
     emoji: moment.emoji || null,
     attitude: null, // Will be inherited from habit/area in the component
     tags: moment.tags || [],

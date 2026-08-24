@@ -2,7 +2,7 @@
 "use client";
 
 import { use$, useSelector } from "@legendapp/state/react";
-import { Clock, Trash2 } from "lucide-react";
+import { Clock, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
@@ -30,6 +30,7 @@ import { validateMomentName } from "@/domain/entities/Moment";
 import type { CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
+import { snapToGrid } from "@/domain/value-objects/TimeGrid.ts";
 import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import {
   activeAreas$,
@@ -58,6 +59,7 @@ interface MomentFormDialogProps {
     emoji?: string | null,
     tags?: string[],
     customMetric?: CustomMetric,
+    startTime?: string,
   ) => void;
   /** For edit mode: called when user confirms deletion */
   onDelete?: () => void;
@@ -91,6 +93,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     areaId: selectedAreaId,
     phase,
     showCreateMore,
+    startTime,
     emoji,
     tags: formTags,
     customMetric,
@@ -363,6 +366,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         emoji,
         finalTags,
         customMetric,
+        startTime,
       );
 
       // If "Create more" is enabled, reset form immediately
@@ -570,6 +574,38 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                       </button>
                     }
                   />
+                )}
+
+                {/* Time selector - visible only when a phase is selected */}
+                {phase && (
+                  <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 w-full">
+                    <Clock className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                    <input
+                      type="time"
+                      value={startTime || ""}
+                      step={900}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) {
+                          const snapped = snapToGrid(val, 60);
+                          momentFormState$.startTime.set(snapped.startTime);
+                        } else {
+                          momentFormState$.startTime.set(undefined as unknown as string);
+                        }
+                      }}
+                      className="flex-1 bg-transparent text-sm font-mono focus:outline-none text-stone-600 dark:text-stone-400"
+                      placeholder="no time"
+                    />
+                    {startTime && (
+                      <button
+                        type="button"
+                        onClick={() => momentFormState$.startTime.set(undefined as unknown as string)}
+                        className="p-0.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 dark:text-stone-500"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 

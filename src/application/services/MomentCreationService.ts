@@ -21,6 +21,7 @@ export interface CreateMomentWithWorkflowParams {
   };
   tags?: string[];
   customMetric?: CustomMetric; // For habit-inherited PUSHING support
+  startTime?: string;
 }
 
 /**
@@ -58,6 +59,7 @@ export class MomentCreationService {
       prefilledAllocation,
       tags = [],
       customMetric, // For habit-inherited PUSHING support
+      startTime,
     } = params;
 
     // Step 1: Create moment (domain operation with validation)
@@ -68,6 +70,7 @@ export class MomentCreationService {
       emoji,
       tags,
       customMetric,
+      startTime,
     });
 
     // Step 2: If validation failed, return error
