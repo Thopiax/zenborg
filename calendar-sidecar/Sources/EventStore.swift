@@ -35,7 +35,7 @@ func printStatus() {
     }
 
     var calendars: [[String: String]] = []
-    if auth == .fullAccess {
+    if auth == .fullAccess || auth == .writeOnly {
         for cal in store.calendars(for: .event) {
             calendars.append([
                 "id": cal.calendarIdentifier,
@@ -120,8 +120,30 @@ func runWatchLoop() {
 
 private func requestAccess(store: EKEventStore) -> Bool {
     let status = EKEventStore.authorizationStatus(for: .event)
+    fputs("[calendar] authorization status: \(status.rawValue)\n", stderr)
     switch status {
     case .fullAccess:
+        return true
+    case .writeOnly:
+        // writeOnly can publish but not ingest. Try upgrading to full access;
+        // if the user already granted it in System Settings for the main app,
+        // the sidecar binary may still need its own TCC prompt.
+        var upgraded = false
+        let semaphore = DispatchSemaphore(value: 0)
+        store.requestFullAccessToEvents { success, error in
+            upgraded = success
+            if let error = error {
+                fputs("[calendar] full access request error: \(error)\n", stderr)
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+        if upgraded {
+            fputs("[calendar] upgraded to full access\n", stderr)
+            return true
+        }
+        // Fall back to write-only: publish works, ingest does not
+        fputs("[calendar] running with write-only access (publish only, no ingest)\n", stderr)
         return true
     case .notDetermined:
         var granted = false
@@ -136,6 +158,7 @@ private func requestAccess(store: EKEventStore) -> Bool {
         semaphore.wait()
         return granted
     default:
+        fputs("[calendar] access denied (status \(status.rawValue))\n", stderr)
         return false
     }
 }
