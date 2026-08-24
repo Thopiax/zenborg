@@ -38,8 +38,6 @@ export interface ActivityLogPort {
   read(from: Instant, to: Instant): Promise<readonly ActivityEvent[]>;
 }
 
-
-
 /** What a (day, phase) cell held. A set, because a cell plants a lane. */
 export interface Planting {
   readonly momentIds: readonly MomentId[];
