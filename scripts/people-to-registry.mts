@@ -232,6 +232,9 @@ export const buildRegistryExport = (
 
   for (const habit of habits) {
     if (habit.kind !== "person") continue;
+    // Archived people are excluded from the export: the registry is the
+    // active roster wake ingests, not a full history of everyone the garden
+    // has ever known.
     if (habit.isArchived === true) continue;
 
     const key = slugify(habit.name);
