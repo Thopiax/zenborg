@@ -48,7 +48,7 @@ type: pitch
 
 **Off-sides:**
 - Adding a "cycle dashboard" to the Tauri app. This pitch is MCP-only.
-- Rethinking the cycle-plan data model itself. The vault data stays for now; the MCP surface is what drifted. A future pitch may retire `cyclePlans.json` entirely once the CycleDeck no longer depends on it.
+- Rethinking the cycle-plan data model itself. CyclePlan is being **repurposed, not retired**: the stamped cultivars decision (2026-08-24) gives it a new role as the cultivar rotation selector ("which recipes this season"), replacing the per-habit budget role. That redesign is a separate pitch.
 
 ## Acceptance
 
