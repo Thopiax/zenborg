@@ -53,5 +53,23 @@ mkdir -p "$DEST"
 cp dist/zenborg-mcp "$DEST/zenborg-mcp-$TARGET"
 chmod +x "$DEST/zenborg-mcp-$TARGET"
 
+# ── zenborg-calendar (Swift, EventKit) ───────────────────────────────
+CAL_DIR="$WORKSPACE_ROOT/calendar-sidecar"
+if [[ -d "$CAL_DIR/Sources" ]]; then
+  echo "[sidecars] compiling zenborg-calendar (swiftc)"
+  mkdir -p "$CAL_DIR/dist"
+  xcrun swiftc -O "$CAL_DIR"/Sources/*.swift \
+    -o "$CAL_DIR/dist/zenborg-calendar" \
+    -framework EventKit -framework Foundation
+  cp "$CAL_DIR/dist/zenborg-calendar" "$DEST/zenborg-calendar-$TARGET"
+  chmod +x "$DEST/zenborg-calendar-$TARGET"
+
+  # Verify the reconciler port against the shared truth-table vectors
+  if [[ -f "$CAL_DIR/fixtures/reconcile-vectors.json" ]]; then
+    echo "[sidecars] running zenborg-calendar self-test"
+    "$CAL_DIR/dist/zenborg-calendar" self-test "$CAL_DIR/fixtures/reconcile-vectors.json"
+  fi
+fi
+
 echo "[sidecars] staged:"
 ls -lh "$DEST"

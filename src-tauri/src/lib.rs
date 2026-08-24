@@ -4,10 +4,26 @@ mod observer;
 mod scheduler;
 mod vault;
 
-
 use observer::{ObserverConfig, ObserverState};
+use std::path::PathBuf;
 use tauri::Manager;
 use vault::VaultState;
+
+fn sidecar_path(name: &str) -> Result<PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| "current exe has no parent dir".to_string())?;
+    let candidate = dir.join(name);
+    if !candidate.exists() {
+        return Err(format!(
+            "bundled {} not present next to app exe ({})",
+            name,
+            dir.display()
+        ));
+    }
+    Ok(candidate)
+}
 
 /// The window zenborg opens. Named here because background mode has to find it
 /// again to hide it.
@@ -132,8 +148,42 @@ pub fn run() {
                 });
             }
 
+            // Launch the bundled zenborg-calendar sidecar in watch mode.
+            // It owns EventKit and writes the vault directly; the watcher
+            // above picks up its writes. Failure to spawn degrades to
+            // "no sync", never to a broken app.
+            let sidecar_enabled = !cfg!(debug_assertions)
+                || std::env::var("ZENBORG_CALENDAR_SIDECAR").as_deref() == Ok("1");
+            if sidecar_enabled {
+                match sidecar_path("zenborg-calendar") {
+                    Ok(bin) => {
+                        match std::process::Command::new(bin).arg("run").spawn() {
+                            Ok(child) => {
+                                let pid = child.id();
+                                log::info!("[calendar] sidecar spawned (pid {})", pid);
+                                // Store the child so we can kill it on exit
+                                app.manage(CalendarSidecarChild(std::sync::Mutex::new(Some(child))));
+                            }
+                            Err(e) => log::warn!("[calendar] sidecar failed to spawn: {e}"),
+                        }
+                    }
+                    Err(e) => log::info!("[calendar] sidecar not present: {e}"),
+                }
+            }
+
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+struct CalendarSidecarChild(std::sync::Mutex<Option<std::process::Child>>);
+impl Drop for CalendarSidecarChild {
+    fn drop(&mut self) {
+        if let Ok(mut guard) = self.0.lock() {
+            if let Some(ref mut child) = *guard {
+                let _ = child.kill();
+            }
+        }
+    }
 }
