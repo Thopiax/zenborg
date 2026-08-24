@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 const modes = [
   { name: "Plant", path: "/plant" },
   { name: "Cultivate", path: "/cultivate" },
+  { name: "Week", path: "/week" },
   { name: "Harvest", path: "/harvest" },
 ] as const;
 
@@ -24,9 +25,11 @@ export function ModeSelector() {
 
   const currentMode = pathname.startsWith("/plan")
     ? "Plant"
-    : pathname.startsWith("/harvest")
-      ? "Harvest"
-      : "Cultivate";
+    : pathname.startsWith("/week")
+      ? "Week"
+      : pathname.startsWith("/harvest")
+        ? "Harvest"
+        : "Cultivate";
 
   return (
     <nav
