@@ -102,9 +102,11 @@ export default function CultivatePage() {
             </div>
           )}
 
-          <div className="flex-shrink-0">
-            <CycleDeck />
-          </div>
+          {zoom === "phase" && (
+            <div className="flex-shrink-0">
+              <CycleDeck />
+            </div>
+          )}
         </main>
 
         <MomentFormDialog
