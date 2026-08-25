@@ -214,19 +214,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       currentSelectedIds.includes(draggedMomentId) &&
       currentSelectedIds.length > 1;
 
-    console.log("[DnD] Drag end:", {
-      draggedMomentId,
-      selectedMomentIds: currentSelectedIds,
-      isDraggingSelection,
-      dropTargetType: dropData?.targetType,
-    });
-
     if (isDraggingSelection && dropData?.targetType === "timeline-cell") {
-      // Handle batch drop for multiple selected moments
-      console.log(
-        "[DnD] Handling batch drop on timeline cell",
-        currentSelectedIds,
-      );
       handleBatchDropOnTimelineCell(
         currentSelectedIds,
         dropData,
@@ -248,10 +236,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
           return;
         }
 
-        console.log(
-          `[DnD] Batch unallocating ${validMomentIds.length} moments to cycle deck`,
-          validMomentIds,
-        );
         handleBatchUnallocate(validMomentIds);
       }
       return;
@@ -288,9 +272,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       if (isDraggingSelection) {
         if (overMoment.day && overMoment.phase) {
           // Dropping on allocated moment -> move to its cell
-          console.log(
-            "[DnD] Multi-select dropped on allocated moment - treating as cell drop",
-          );
           const cellDropData: DroppableData = {
             targetType: "timeline-cell",
             targetDay: overMoment.day,
@@ -362,8 +343,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
-    console.log("Dropping moment", momentId, "on", dropData, "from", dragData);
-
     // Handle different drop target types
     switch (dropData.targetType) {
       case "timeline-cell":
@@ -373,7 +352,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       case "cycle-deck":
         // Unallocate moment back to cycle deck (only if coming from timeline)
         if (!wasDuplicateMode && dragData.sourceType === "timeline") {
-          console.log("Unallocating moment to cycle deck", dragData);
           handleUnallocateMoment(dragData);
         }
         break;
@@ -606,14 +584,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
     dropData: DroppableData,
     shouldDuplicate = false,
   ) {
-    console.log("[DnD] handleBatchDropOnTimelineCell called with:", {
-      momentIds,
-      count: momentIds.length,
-      targetDay: dropData.targetDay,
-      targetPhase: dropData.targetPhase,
-      shouldDuplicate,
-    });
-
     const { targetDay, targetPhase } = dropData;
 
     if (!targetDay || !targetPhase) {
@@ -661,13 +631,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
         continue;
       }
 
-      console.log("[DnD] Processing moment:", {
-        momentId,
-        name: moment.name,
-        currentOrder,
-        shouldDuplicate,
-      });
-
       if (shouldDuplicate) {
         // Duplicate each moment to the target cell
         duplicateMomentWithHistory(
@@ -684,7 +647,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
         // Skip if already in target cell
         if (sourceDay === targetDay && sourcePhase === targetPhase) {
-          console.log("[DnD] Skipping - already in target cell");
           continue;
         }
 
@@ -720,8 +682,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
         ? `Duplicated ${momentIds.length} moments to ${targetDay} ${targetPhase}`
         : `Moved ${momentIds.length} moments to ${targetDay} ${targetPhase}`,
     );
-
-    console.log("[DnD] Batch drop complete");
   }
 
   function handleDragCancel() {
