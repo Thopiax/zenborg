@@ -40,7 +40,7 @@ export function WeekGrid({
   }, [vm.totalRows, vm.startHour, vm.rowsPerHour]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Day headers (sticky) */}
       <div className="flex-shrink-0 grid grid-cols-[3.5rem_repeat(7,1fr)] border-b border-stone-200 dark:border-stone-700">
         <div className="w-14" />
@@ -68,7 +68,7 @@ export function WeekGrid({
       </div>
 
       {/* Scrollable grid area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
         <div
           className="grid grid-cols-[3.5rem_repeat(7,1fr)]"
           style={{
