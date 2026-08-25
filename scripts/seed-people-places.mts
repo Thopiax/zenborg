@@ -21,7 +21,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 const WRITE = process.argv.includes("--write");
-const VAULT = process.env.KAIROS_HOME ?? path.join(process.env.HOME!, ".kairos");
+const VAULT =
+  process.env.KAIROS_HOME ?? path.join(process.env.HOME!, ".kairos");
 const OBSERVATORY = path.resolve(
   import.meta.dirname!,
   "../../observatory/scripts",
