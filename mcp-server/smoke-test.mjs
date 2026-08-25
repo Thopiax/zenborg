@@ -715,9 +715,7 @@ try {
   });
 
   await step("delete_person removes from registry", async () => {
-    const res = parseOk(
-      await callTool("delete_person", { idOrKey: "elias" }),
-    );
+    const res = parseOk(await callTool("delete_person", { idOrKey: "elias" }));
     assert.equal(res.deleted.key, "elias");
     const list = parseOk(await callTool("list_people", {}));
     assert.equal(list.length, 0);
@@ -741,9 +739,7 @@ try {
   });
 
   await step("get_place finds by key", async () => {
-    const res = parseOk(
-      await callTool("get_place", { idOrKey: "soho-house" }),
-    );
+    const res = parseOk(await callTool("get_place", { idOrKey: "soho-house" }));
     assert.equal(res.id, sohoHouse.id);
   });
 
