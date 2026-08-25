@@ -1,6 +1,5 @@
 import { activeCycle$ } from "@/infrastructure/state/store";
 import {
-  cultivateZoom$,
   cycleDeckCollapsed$,
   isCommandPaletteOpen$,
 } from "@/infrastructure/state/ui-store";
@@ -29,16 +28,6 @@ export const viewCommands: Command[] = [
       if (cycle) {
         cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
       }
-    },
-  },
-  {
-    id: "view.zoom.toggle",
-    label: "Toggle Cultivate Zoom",
-    shortcut: "z",
-    category: "Views",
-    keywords: ["zoom", "phase", "time", "week"],
-    action: () => {
-      cultivateZoom$.set(cultivateZoom$.peek() === "phase" ? "time" : "phase");
     },
   },
   {
