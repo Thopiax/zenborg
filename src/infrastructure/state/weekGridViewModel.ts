@@ -118,7 +118,7 @@ export function deriveWeekGridViewModel(input: {
     const ambient: Moment[] = [];
 
     for (const m of dayMoments) {
-      if (m.startTime === undefined) {
+      if (!m.startTime) {
         ambient.push(m);
         continue;
       }
