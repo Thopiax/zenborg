@@ -101,6 +101,17 @@ logVaultBanner(vault);
 const VAULT_ROOT = vault.root;
 
 // ────────────────────────────────────────────────────────────────────────
+// Phase auto-derive
+// ────────────────────────────────────────────────────────────────────────
+
+function derivePhaseFromStartTime(startTime: string): Phase | null {
+  const phaseConfigs = Object.values(
+    readCollection(VAULT_ROOT, "phaseConfigs"),
+  ) as PhaseConfig[];
+  return phaseForStartTime(startTime, phaseConfigs);
+}
+
+// ────────────────────────────────────────────────────────────────────────
 // Result helpers
 // ────────────────────────────────────────────────────────────────────────
 
@@ -1904,7 +1915,7 @@ server.tool(
 
 server.tool(
   "update_moment",
-  "Partially update a moment. Does NOT change day/phase allocation — use allocate_moment / unallocate_moment for that. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, pass `[]` to clear. `personIds` replaces the whole guest list — pass null or [] to clear it, omit it to leave it alone. `placeIds` and `placeUrl` behave the same way: pass null or [] to clear, omit to leave alone.",
+  "Partially update a moment. When `startTime` is set (not null), phase is auto-derived from phase configs. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, pass `[]` to clear. `personIds` replaces the whole guest list — pass null or [] to clear it, omit it to leave it alone. `placeIds` and `placeUrl` behave the same way: pass null or [] to clear, omit to leave alone.",
   {
     id: z.string(),
     name: z.string().optional(),
@@ -1963,6 +1974,9 @@ server.tool(
     };
     if (updates.startTime === null) {
       delete next.startTime;
+    } else if (updates.startTime) {
+      const derived = derivePhaseFromStartTime(updates.startTime);
+      if (derived) next.phase = derived;
     }
     if (updates.durationMin === null) {
       delete next.durationMin;
@@ -2022,11 +2036,11 @@ server.tool(
 
 server.tool(
   "allocate_moment",
-  'Allocate a moment to a specific (day, phase). No hard cap: the "3 per phase" rule is a day-view display concern, so a slot beyond it comes back with a `dayViewOverflow` notice rather than an error. `startTime`/`durationMin` optionally pin the moment to the clock.',
+  'Allocate a moment to a specific (day, phase). No hard cap: the "3 per phase" rule is a day-view display concern, so a slot beyond it comes back with a `dayViewOverflow` notice rather than an error. `startTime`/`durationMin` optionally pin the moment to the clock. When `startTime` is provided, `phase` is auto-derived from phase configs and any explicit `phase` is ignored.',
   {
     id: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: PhaseSchema,
+    phase: PhaseSchema.optional(),
     order: z.number().int().nonnegative().optional(),
     startTime: StartTimeSchema.optional(),
     durationMin: z.number().int().positive().optional(),
@@ -2034,7 +2048,7 @@ server.tool(
   async ({
     id,
     day,
-    phase,
+    phase: explicitPhase,
     order,
     startTime,
     durationMin,
@@ -2045,6 +2059,13 @@ server.tool(
 
     const timingError = validateMomentTiming(startTime, durationMin);
     if (timingError) return err(timingError);
+
+    let phase = explicitPhase ?? null;
+    if (startTime) {
+      const derived = derivePhaseFromStartTime(startTime);
+      if (derived) phase = derived;
+    }
+    if (!phase) return err("phase is required when no startTime is provided");
 
     const allMoments = Object.values(moments);
     const slotCount = countMomentsInPhase(allMoments, day, phase, id);
@@ -2088,14 +2109,14 @@ server.tool(
 
 server.tool(
   "allocate_from_plan",
-  "Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan, inheriting the habit's schedule timing when it has one. Errors if no plan exists, budget is exhausted, habit is archived, or day is outside cycle range. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
+  "Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan, inheriting the habit's schedule timing when it has one. When the habit has a scheduled startTime, phase is auto-derived from phase configs and any explicit phase is ignored. Errors if no plan exists, budget is exhausted, habit is archived, or day is outside cycle range. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
   {
     cycleId: z.string(),
     habitId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]),
+    phase: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]).optional(),
   },
-  async ({ cycleId, habitId, day, phase }): Promise<ToolResult> => {
+  async ({ cycleId, habitId, day, phase: explicitPhase }): Promise<ToolResult> => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[cycleId];
     if (!cycle) return err(`Cycle ${cycleId} not found`);
@@ -2132,8 +2153,14 @@ server.tool(
       return err(`Day ${day} before cycle start ${cycle.startDate}`);
     }
 
-    // No slot cap: the "3 per (day, phase)" rule is a day-view display
-    // concern, reported below rather than enforced.
+    const timing = habit.schedule ? timingFromSchedule(habit.schedule) : null;
+    let phase = explicitPhase ?? null;
+    if (timing) {
+      const derived = derivePhaseFromStartTime(timing.startTime);
+      if (derived) phase = derived;
+    }
+    if (!phase) return err("phase is required when habit has no schedule");
+
     const slotCount = countMomentsInPhase(
       Object.values(allMoments),
       day,
@@ -2151,7 +2178,7 @@ server.tool(
       day,
       phase,
       order: slotCount,
-      ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),
+      ...(timing ?? {}),
       emoji: habit.emoji ?? null,
       tags: habit.tags ?? [],
       createdAt: nowIsoStr,
@@ -2170,14 +2197,14 @@ server.tool(
 
 server.tool(
   "spawn_spontaneous_from_habit",
-  "Create an ad-hoc moment from a habit template and allocate it. Inherits name/area/emoji/tags, plus the habit's schedule timing when it has one. Spontaneous = no cyclePlanId. If a cycle contains the day, inherits its cycleId. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
+  "Create an ad-hoc moment from a habit template and allocate it. Inherits name/area/emoji/tags, plus the habit's schedule timing when it has one. When the habit has a scheduled startTime, phase is auto-derived from phase configs and any explicit phase is ignored. Spontaneous = no cyclePlanId. If a cycle contains the day, inherits its cycleId. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
   {
     habitId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: PhaseSchema,
+    phase: PhaseSchema.optional(),
     order: z.number().int().nonnegative().optional(),
   },
-  async ({ habitId, day, phase, order }): Promise<ToolResult> => {
+  async ({ habitId, day, phase: explicitPhase, order }): Promise<ToolResult> => {
     const habits = readCollection(VAULT_ROOT, "habits");
     const habitCheck = requireActiveHabit(habits, habitId);
     if (typeof habitCheck === "string") return err(habitCheck);
@@ -2186,6 +2213,14 @@ server.tool(
     const areas = readCollection(VAULT_ROOT, "areas");
     const areaCheck = requireActiveArea(areas, habit.areaId);
     if (typeof areaCheck === "string") return err(areaCheck);
+
+    const timing = habit.schedule ? timingFromSchedule(habit.schedule) : null;
+    let phase = explicitPhase ?? null;
+    if (timing) {
+      const derived = derivePhaseFromStartTime(timing.startTime);
+      if (derived) phase = derived;
+    }
+    if (!phase) return err("phase is required when habit has no schedule");
 
     const moments = readCollection(VAULT_ROOT, "moments");
     const slotCount = countMomentsInPhase(Object.values(moments), day, phase);
@@ -2217,7 +2252,7 @@ server.tool(
       order: order ?? slotCount,
       emoji: habit.emoji,
       tags: habit.tags,
-      ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),
+      ...(timing ?? {}),
     });
     moments[moment.id] = moment;
     writeCollection(VAULT_ROOT, "moments", moments);
@@ -2231,12 +2266,12 @@ server.tool(
 
 server.tool(
   "create_standalone_moment",
-  "Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
+  "Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. When `startTime` is provided, `phase` is auto-derived from phase configs and any explicit `phase` is ignored. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
   {
     name: z.string(),
     areaId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: PhaseSchema,
+    phase: PhaseSchema.optional(),
     order: z.number().int().nonnegative().optional(),
     emoji: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
@@ -2263,6 +2298,13 @@ server.tool(
     const placeUrlError = validatePlaceUrl(params.placeUrl);
     if (placeUrlError) return err(placeUrlError);
 
+    let phase = params.phase ?? null;
+    if (params.startTime) {
+      const derived = derivePhaseFromStartTime(params.startTime);
+      if (derived) phase = derived;
+    }
+    if (!phase) return err("phase is required when no startTime is provided");
+
     const areas = readCollection(VAULT_ROOT, "areas");
     const areaCheck = requireActiveArea(areas, params.areaId);
     if (typeof areaCheck === "string") return err(areaCheck);
@@ -2271,13 +2313,13 @@ server.tool(
     const slotCount = countMomentsInPhase(
       Object.values(moments),
       params.day,
-      params.phase,
+      phase,
     );
 
     const moment = buildMoment({
       name: params.name,
       areaId: params.areaId,
-      phase: params.phase,
+      phase,
       day: params.day,
       order: params.order ?? slotCount,
       emoji: params.emoji ?? null,
