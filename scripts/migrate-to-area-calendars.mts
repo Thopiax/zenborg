@@ -20,8 +20,7 @@ import * as path from "node:path";
 
 const write = process.argv.includes("--write");
 const vaultRoot =
-  process.env.ZENBORG_VAULT ??
-  path.join(os.homedir(), ".kairos");
+  process.env.ZENBORG_VAULT ?? path.join(os.homedir(), ".kairos");
 
 const momentsPath = path.join(vaultRoot, "moments.json");
 const configPath = path.join(vaultRoot, "calendarSync.json");
@@ -62,7 +61,9 @@ for (const [id, moment] of Object.entries(moments)) {
   cleared++;
 }
 
-console.log(`\n${cleared} externalRefs cleared, ${skipped} already on area calendars`);
+console.log(
+  `\n${cleared} externalRefs cleared, ${skipped} already on area calendars`,
+);
 
 if (legacyId) {
   console.log(`\nLegacy zenborgCalendarId found: ${legacyId}`);

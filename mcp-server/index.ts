@@ -811,8 +811,7 @@ server.tool(
   async ({ idOrKey }): Promise<ToolResult> => {
     const people = readCollection(VAULT_ROOT, "people");
     const person =
-      people[idOrKey] ??
-      Object.values(people).find((p) => p.key === idOrKey);
+      people[idOrKey] ?? Object.values(people).find((p) => p.key === idOrKey);
     if (!person) return err(`Person not found: ${idOrKey}`);
     return ok(person);
   },
@@ -820,7 +819,7 @@ server.tool(
 
 server.tool(
   "create_person",
-  "Add a person to the registry. `name` is the display name (e.g. \"Elias\"); `key` is derived via slugify if omitted. `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.",
+  'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.',
   {
     name: z.string(),
     key: z.string().optional(),
@@ -885,9 +884,7 @@ server.tool(
       person.status = updates.status;
     if ("category" in updates) person.category = updates.category ?? null;
     if ("basePlace" in updates)
-      person.basePlace = updates.basePlace
-        ? slugify(updates.basePlace)
-        : null;
+      person.basePlace = updates.basePlace ? slugify(updates.basePlace) : null;
     if ("emoji" in updates) person.emoji = updates.emoji ?? null;
     person.updatedAt = nowIso();
     people[id] = person;
@@ -935,8 +932,7 @@ server.tool(
   async ({ idOrKey }): Promise<ToolResult> => {
     const places = readCollection(VAULT_ROOT, "places");
     const place =
-      places[idOrKey] ??
-      Object.values(places).find((p) => p.key === idOrKey);
+      places[idOrKey] ?? Object.values(places).find((p) => p.key === idOrKey);
     if (!place) return err(`Place not found: ${idOrKey}`);
     return ok(place);
   },
@@ -944,7 +940,7 @@ server.tool(
 
 server.tool(
   "create_place",
-  "Add a place to the registry. `name` is the display name (e.g. \"Soho House\"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. \"sp\" for Sao Paulo). `url` is a map link.",
+  'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `url` is a map link.',
   {
     name: z.string(),
     key: z.string().optional(),
@@ -999,9 +995,7 @@ server.tool(
       place.key = slugify(updates.name);
     }
     if ("parentKey" in updates)
-      place.parentKey = updates.parentKey
-        ? slugify(updates.parentKey)
-        : null;
+      place.parentKey = updates.parentKey ? slugify(updates.parentKey) : null;
     if ("emoji" in updates) place.emoji = updates.emoji ?? null;
     if ("url" in updates) place.url = updates.url ?? null;
     place.updatedAt = nowIso();
@@ -1046,12 +1040,8 @@ server.tool(
 
     const people = readCollection(VAULT_ROOT, "people");
     const places = readCollection(VAULT_ROOT, "places");
-    const peopleByKey = new Map(
-      Object.values(people).map((p) => [p.key, p]),
-    );
-    const placesByKey = new Map(
-      Object.values(places).map((p) => [p.key, p]),
-    );
+    const peopleByKey = new Map(Object.values(people).map((p) => [p.key, p]));
+    const placesByKey = new Map(Object.values(places).map((p) => [p.key, p]));
 
     const addedPeople: string[] = [];
     const addedPlaces: string[] = [];
@@ -1158,7 +1148,12 @@ server.tool(
       if (!effectiveRhythm) continue;
 
       const suggestedCount = rhythmToCycleBudget(effectiveRhythm, cycleDays);
-      let reason: "wilting" | "on-rhythm" | "beginning" | "returning" | "pruning";
+      let reason:
+        | "wilting"
+        | "on-rhythm"
+        | "beginning"
+        | "returning"
+        | "pruning";
       if (health === "wilting") {
         reason = "wilting";
       } else if (habit.attitude === "RETURNING") {
@@ -2113,7 +2108,12 @@ server.tool(
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     phase: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]).optional(),
   },
-  async ({ cycleId, habitId, day, phase: explicitPhase }): Promise<ToolResult> => {
+  async ({
+    cycleId,
+    habitId,
+    day,
+    phase: explicitPhase,
+  }): Promise<ToolResult> => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[cycleId];
     if (!cycle) return err(`Cycle ${cycleId} not found`);
@@ -2201,7 +2201,12 @@ server.tool(
     phase: PhaseSchema.optional(),
     order: z.number().int().nonnegative().optional(),
   },
-  async ({ habitId, day, phase: explicitPhase, order }): Promise<ToolResult> => {
+  async ({
+    habitId,
+    day,
+    phase: explicitPhase,
+    order,
+  }): Promise<ToolResult> => {
     const habits = readCollection(VAULT_ROOT, "habits");
     const habitCheck = requireActiveHabit(habits, habitId);
     if (typeof habitCheck === "string") return err(habitCheck);

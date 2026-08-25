@@ -128,9 +128,7 @@ test.describe("timeline cells", () => {
     // Cmd-click to select
     await card.click({ modifiers: ["Meta"] });
 
-    const shadow = await card.evaluate(
-      (el) => getComputedStyle(el).boxShadow,
-    );
+    const shadow = await card.evaluate((el) => getComputedStyle(el).boxShadow);
     // Inset shadow should be present
     expect(shadow).toContain("inset");
   });
