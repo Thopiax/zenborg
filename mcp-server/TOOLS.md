@@ -26,8 +26,9 @@ before the agent commits).
 
 ### Read-side (propose freely)
 
-- `list_areas`, `list_habits`, `list_cycles`, `list_moments`, `list_cycle_plans`, `list_phase_configs`
-- `get_area`, `get_habit`, `get_cycle`, `get_moment`, `get_cycle_plan`
+- `list_areas`, `list_habits`, `list_cycles`, `list_moments`, `list_phase_configs`
+- `get_area`, `get_habit`, `get_cycle`, `get_moment`
+- `get_running_cycle`
 - `get_habit_health`
 - `list_tags`, `get_tag_profile`
 - `get_active_moment`
@@ -45,7 +46,6 @@ before the agent commits).
 - `allocate_moment`, `unallocate_moment`, `allocate_from_plan`
 - `spawn_spontaneous_from_habit`, `create_standalone_moment`
 - `plan_cycle`, `quick_create_cycle`, `update_cycle`, `end_cycle`, `delete_cycle`
-- `budget_habit_to_cycle`, `increment_habit_budget`, `decrement_habit_budget`, `remove_habit_from_deck`
 - `update_phase_config`
 - `set_active_moment`, `clear_active_moment`
 - `set_fence`, `set_host_block`, `set_browser_gate`, `seed_host_blocks`, `clear_fence`
@@ -53,9 +53,12 @@ before the agent commits).
 ### Attitude-driven planning
 
 At cycle planning time, call `get_cycle_planning_proposals` to surface what
-rhythm + health signals suggest. Never call `budget_habit_to_cycle` or
-`plan_cycle` without the user confirming which proposals to accept. The
-agent's role is to show the garden's state; the user decides what to tend.
+rhythm + health signals suggest. Never call `plan_cycle` without the user
+confirming which proposals to accept. The agent's role is to show the
+garden's state; the user decides what to tend.
+
+For orientation, call `get_running_cycle` — it returns the active cycle with
+intention, elapsed/remaining days, and per-habit health in one call.
 
 Plan and review are distinct acts. `get_cycle_planning_proposals` does NOT
 take review context as input — review is backward-looking reflection, plan
@@ -71,12 +74,11 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 **Reads** — `list_*` + `get_*` for every collection.
 **Writes** — CRUD for Areas / Habits / Cycles / Moments / CyclePlans.
 **Archive** — archive / unarchive for Areas + Habits (cascade handled).
-**Service orchestration** — `plan_cycle`, `budget_habit_to_cycle`, `allocate_from_plan`, `allocate_moment`, `unallocate_moment`, `spawn_spontaneous_from_habit`, `create_standalone_moment`.
+**Service orchestration** — `plan_cycle`, `allocate_from_plan`, `allocate_moment`, `unallocate_moment`, `spawn_spontaneous_from_habit`, `create_standalone_moment`.
+**Orientation** — `get_running_cycle`.
 
 ### Should-have — if cheap
 - `PhaseConfig` update (the only mutating op — configs are seeded)
-- Incremental budget ops (`increment_habit_budget`, `decrement_habit_budget`)
-- `remove_habit_from_deck`
 - `quick_create_cycle` (template shortcut)
 
 ### Nice-to-have / off-sides
@@ -111,22 +113,17 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 | `archive_habit` | `id` | **Cascade:** deletes all cycle plans for this habit; allocated moments preserved as historical records (orphan via `habitId`). |
 | `unarchive_habit` | `id` | |
 
-### Cycles + plans (`cycles.json`, `cyclePlans.json`)
+### Cycles (`cycles.json`)
 | Tool | Inputs | Notes |
 |---|---|---|
 | `list_cycles` | `filter?: "active"\|"current"\|"upcoming"\|"all"` | `active` = derived from dates. |
 | `get_cycle` | `id` | |
+| `get_running_cycle` | — | Orientation snapshot: active cycle + intention + elapsed/remaining days + per-habit health + wilting list. One call replaces stitching `list_cycles` + `list_cycle_plans` + `list_wilting_habits`. Returns `{ running: null }` when no cycle is active. |
 | `plan_cycle` | `name, templateDuration?, startDate?, endDate?, intention?, placeIds?` | Mirrors `CycleService.planCycle`. `placeIds` say where the season is lived — a season is a stretch of time *somewhere*, and it is what `list_people_to_reach` reads to answer `far` and what the gap roster reads to know which practices are within reach. A list, because a season split between two cities names both. |
 | `quick_create_cycle` | `template` | Should-have. |
 | `update_cycle` | `id, updates` | Writing `reflection` stamps `reflectionSource: "machine"` — an agent writing is a machine writing, whoever asked for it. Only a hand edit in the app stamps `"human"`; harvest marks everything else as drafted. `placeIds` follow the moment contract: `null` or `[]` clears, omitting leaves alone. |
 | `end_cycle` | `id, endDate?` | Sets `endDate`; keeps cycle. |
 | `delete_cycle` | `id` | **Cascade:** plans + moments scoped to cycle. |
-| `list_cycle_plans` | `cycleId?` | |
-| `get_cycle_plan` | `id` | |
-| `budget_habit_to_cycle` | `cycleId, habitId, count` | Upserts plan; enforces one-per-(cycle, habit). |
-| `increment_habit_budget` | `cycleId, habitId` | Should-have. |
-| `decrement_habit_budget` | `cycleId, habitId` | Should-have. |
-| `remove_habit_from_deck` | `cycleId, habitId` | Should-have. |
 
 ### Moments (`moments.json`)
 | Tool | Inputs | Notes |
@@ -231,7 +228,7 @@ migration has not reached.
 Beyond entity-level validation, these are cross-entity rules currently enforced in services. MCP ports them:
 
 1. ~~**3-moments-per-(day, phase) cap**~~ — **lifted at the data layer 2026-08-07.** The rule survives as a *day-view display* capacity (`DAY_VIEW_PHASE_CAPACITY` in `Moment.ts`, mirrored in `validation.ts`). Allocation tools never refuse; they attach a `dayViewOverflow` notice past 3 so the `morning` and `cycle-planning` skills keep their anti-over-planning signal.
-2. **One `CyclePlan` per (cycleId, habitId)** — upsert semantics in `budget_habit_to_cycle`.
+2. **One `CyclePlan` per (cycleId, habitId)** — enforced by `allocate_from_plan` and internal callers.
 3. **Referential integrity on create** — `areaId` must exist and be non-archived; `habitId` likewise; `cycleId` must exist.
 4. **Habit-name 1–3 words** and **moment-name 1–3 words**.
 5. **Cascade on archive_habit / delete_cycle** — same fan-out as `HabitService.archiveHabit` / `CycleService.deleteCycle`.

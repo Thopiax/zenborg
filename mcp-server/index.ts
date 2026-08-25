@@ -41,7 +41,6 @@ import {
   deriveRhythmFromSchedule,
   findAreaByIdOrName,
   findCycleByIdOrName,
-  findCyclePlan,
   findHabitByIdOrName,
   isAllocated,
   isBudgeted,
@@ -1536,192 +1535,94 @@ server.tool(
 );
 
 // ────────────────────────────────────────────────────────────────────────
-// CYCLE PLANS
+// RUNNING CYCLE (replaces cycle plan CRUD — see pitch 2026-08-24)
 // ────────────────────────────────────────────────────────────────────────
 
 server.tool(
-  "list_cycle_plans",
-  "List cycle plans. Optionally filter by cycleId.",
-  { cycleId: z.string().optional() },
-  async ({ cycleId }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, "cyclePlans");
-    const list = Object.values(plans).filter(
-      (p) => !cycleId || p.cycleId === cycleId,
-    );
-    return ok(list);
-  },
-);
-
-server.tool(
-  "get_cycle_plan",
-  "Get a cycle plan by id.",
-  { id: z.string() },
-  async ({ id }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, "cyclePlans");
-    const plan = plans[id];
-    if (!plan) return err(`Cycle plan not found: ${id}`);
-    return ok(plan);
-  },
-);
-
-server.tool(
-  "budget_habit_to_cycle",
-  "Upsert a cycle plan: allocate N moments of a habit to a cycle. If count is omitted, derives it from rhythmOverride ?? habit.rhythm across the cycle length. If a plan for (cycleId, habitId) already exists, updates its budgetedCount.",
-  {
-    cycleId: z.string(),
-    habitId: z.string(),
-    count: z.number().int().nonnegative().optional(),
-    rhythmOverride: RhythmSchema.optional(),
-  },
-  async ({ cycleId, habitId, count, rhythmOverride }): Promise<ToolResult> => {
+  "get_running_cycle",
+  "Orientation snapshot: the active cycle with its intention, elapsed/remaining days, and per-habit health. One tool call instead of stitching list_cycles + list_cycle_plans + list_wilting_habits.",
+  {},
+  async (): Promise<ToolResult> => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
-    const cycleCheck = requireCycle(cycles, cycleId);
-    if (typeof cycleCheck === "string") return err(cycleCheck);
-    const cycle = cycleCheck;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+
+    const active = Object.values(cycles)
+      .filter((c) => isCycleActive(c, todayMs))
+      .sort((a, b) => b.startDate.localeCompare(a.startDate));
+
+    if (active.length === 0) {
+      return ok({ running: null, message: "No active cycle." });
+    }
+
+    const cycle = active[0];
+    const startMs = Date.parse(cycle.startDate);
+    const daysElapsed = Math.floor((todayMs - startMs) / 86_400_000);
+    const daysRemaining =
+      cycle.endDate !== null
+        ? Math.max(
+            0,
+            Math.floor((Date.parse(cycle.endDate) - todayMs) / 86_400_000),
+          )
+        : null;
 
     const habits = readCollection(VAULT_ROOT, "habits");
-    const habitCheck = requireActiveHabit(habits, habitId);
-    if (typeof habitCheck === "string") return err(habitCheck);
-    const habit = habitCheck;
-
-    const effectiveRhythm: Rhythm | null =
-      rhythmOverride ?? habit.rhythm ?? null;
-
-    let resolvedCount: number;
-    if (count !== undefined) {
-      resolvedCount = count;
-    } else {
-      if (!effectiveRhythm) {
-        return err(
-          "Cannot derive budget: no explicit count and no rhythm on habit or override",
-        );
-      }
-      const start = parseVaultDay(cycle.startDate);
-      const end = cycle.endDate ? parseVaultDay(cycle.endDate) : new Date();
-      const cycleDays = Math.max(
-        1,
-        Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1,
-      );
-      resolvedCount = rhythmToCycleBudget(effectiveRhythm, cycleDays);
-    }
-
-    const plans = readCollection(VAULT_ROOT, "cyclePlans");
-    const existing = findCyclePlan(plans, cycleId, habitId);
-    const now = nowIso();
-    const plan: CyclePlan = existing
-      ? { ...existing, budgetedCount: resolvedCount, updatedAt: now }
-      : {
-          id: crypto.randomUUID(),
-          cycleId,
-          habitId,
-          budgetedCount: resolvedCount,
-          createdAt: now,
-          updatedAt: now,
-        };
-    plans[plan.id] = plan;
-
-    if (rhythmOverride !== undefined) {
-      plan.rhythmOverride = rhythmOverride;
-      plan.updatedAt = nowIso();
-      plans[plan.id] = plan;
-    }
-
-    writeCollection(VAULT_ROOT, "cyclePlans", plans);
-    return ok({ upserted: plan });
-  },
-);
-
-server.tool(
-  "increment_habit_budget",
-  "Increment the budgeted count for a (cycle, habit) plan by 1. Creates the plan if absent.",
-  { cycleId: z.string(), habitId: z.string() },
-  async ({ cycleId, habitId }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, "cyclePlans");
-    const existing = findCyclePlan(plans, cycleId, habitId);
-    const now = nowIso();
-    const plan: CyclePlan = existing
-      ? {
-          ...existing,
-          budgetedCount: existing.budgetedCount + 1,
-          updatedAt: now,
-        }
-      : {
-          id: crypto.randomUUID(),
-          cycleId,
-          habitId,
-          budgetedCount: 1,
-          createdAt: now,
-          updatedAt: now,
-        };
-    plans[plan.id] = plan;
-    writeCollection(VAULT_ROOT, "cyclePlans", plans);
-    return ok({ upserted: plan });
-  },
-);
-
-server.tool(
-  "decrement_habit_budget",
-  "Decrement the budgeted count for a (cycle, habit) plan by 1, floored at the number of already-allocated moments. No-op when the floor is already reached — allocated work is sunk cost and survives.",
-  { cycleId: z.string(), habitId: z.string() },
-  async ({ cycleId, habitId }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, "cyclePlans");
-    const existing = findCyclePlan(plans, cycleId, habitId);
-    if (!existing) return err("No plan to decrement");
-
+    const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
     const moments = readCollection(VAULT_ROOT, "moments");
-    const allocated = Object.values(moments).filter(
-      (m) =>
-        countsAsAllocation(m) &&
-        m.cyclePlanId === existing.id &&
-        m.day !== null &&
-        m.phase !== null,
-    ).length;
+    const momentsArr = Object.values(moments);
+    const areas = readCollection(VAULT_ROOT, "areas");
+    const isoToday = today.toISOString().slice(0, 10);
 
-    if (existing.budgetedCount - 1 < allocated) {
-      // Floor reached — return current plan unchanged.
-      return ok({ updated: existing, flooredAt: allocated });
+    const wilting: Array<Record<string, unknown>> = [];
+    const habitSnapshots: Array<Record<string, unknown>> = [];
+
+    for (const habit of Object.values(habits)) {
+      if (habit.isArchived) continue;
+      if (habit.attitude === null) continue;
+
+      const activePlan =
+        Object.values(cyclePlans).find((p) => {
+          if (p.habitId !== habit.id) return false;
+          const c = cycles[p.cycleId];
+          if (!c) return false;
+          return (
+            c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday)
+          );
+        }) ?? null;
+
+      const health = computeHealth(habit, activePlan, momentsArr, today);
+      const dsl = daysSinceLast(habit.id, momentsArr, today);
+      const area = areas[habit.areaId];
+
+      const snapshot = {
+        habitId: habit.id,
+        habitName: habit.name,
+        areaId: habit.areaId,
+        areaName: area?.name ?? null,
+        attitude: habit.attitude,
+        health,
+        daysSinceLast: dsl,
+        rhythm: resolveRhythm(habit, activePlan),
+      };
+
+      habitSnapshots.push(snapshot);
+      if (health === "wilting") wilting.push(snapshot);
     }
-
-    const next: CyclePlan = {
-      ...existing,
-      budgetedCount: existing.budgetedCount - 1,
-      updatedAt: nowIso(),
-    };
-    plans[next.id] = next;
-    writeCollection(VAULT_ROOT, "cyclePlans", plans);
-    return ok({ updated: next });
-  },
-);
-
-server.tool(
-  "remove_habit_from_deck",
-  "Clears the deck-side of a (cycle, habit) plan: sets budgetedCount to the number of already-allocated moments. Plan is preserved; no moments are deleted. Mirrors CycleService.removeHabitFromDeck.",
-  { cycleId: z.string(), habitId: z.string() },
-  async ({ cycleId, habitId }): Promise<ToolResult> => {
-    const plans = readCollection(VAULT_ROOT, "cyclePlans");
-    const plan = findCyclePlan(plans, cycleId, habitId);
-    if (!plan) return err("No plan to remove");
-
-    const moments = readCollection(VAULT_ROOT, "moments");
-    const allocatedCount = Object.values(moments).filter(
-      (m) =>
-        countsAsAllocation(m) &&
-        m.cyclePlanId === plan.id &&
-        m.day !== null &&
-        m.phase !== null,
-    ).length;
-
-    const next: CyclePlan = {
-      ...plan,
-      budgetedCount: allocatedCount,
-      updatedAt: nowIso(),
-    };
-    plans[next.id] = next;
-    writeCollection(VAULT_ROOT, "cyclePlans", plans);
 
     return ok({
-      updated: next,
-      allocatedCount,
+      running: {
+        id: cycle.id,
+        name: cycle.name,
+        intention: cycle.intention ?? null,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
+        daysElapsed,
+        daysRemaining,
+        placeIds: cycle.placeIds ?? [],
+      },
+      habits: habitSnapshots,
+      wilting,
     });
   },
 );
