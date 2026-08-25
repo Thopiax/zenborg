@@ -54,7 +54,7 @@ export function CultivateWeekView() {
   if (!hydrated || !vm) return null;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden">
       <div className="flex-shrink-0 flex items-center px-4 py-2 border-b border-stone-200 dark:border-stone-700">
         <div className="flex items-center gap-2">
           <button
