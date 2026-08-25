@@ -26,7 +26,6 @@ import {
   momentCard,
   momentConstraints,
   phaseBackgrounds,
-  timelineCell,
   zIndex,
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
@@ -139,10 +138,7 @@ export function TimelineCell({
       aria-live="off"
       aria-atomic="true"
     >
-      <div
-        className="overflow-y-auto overscroll-contain"
-        style={{ maxHeight: timelineCell.viewportHeight }}
-      >
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {cellMoments.length > 0 && (
           <SortableContext
             items={cellMoments.map((m) => m.id)}
