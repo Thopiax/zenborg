@@ -79,7 +79,7 @@ export default function CultivatePage() {
         className="h-full bg-background transition-colors flex flex-col overflow-hidden"
         onMouseDown={handleBackgroundClick}
       >
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex-shrink-0 flex justify-end px-4 py-1.5">
             <CultivateZoomToggle />
           </div>
@@ -87,7 +87,7 @@ export default function CultivatePage() {
           {zoom === "phase" ? (
             <div
               className={cn(
-                "flex-1 overflow-hidden",
+                "flex-1 min-h-0 overflow-hidden",
                 "flex flex-col justify-center",
               )}
               style={{
@@ -97,7 +97,7 @@ export default function CultivatePage() {
               <Timeline />
             </div>
           ) : (
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
               <CultivateWeekView />
             </div>
           )}
