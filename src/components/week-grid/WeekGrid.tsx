@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Area } from "@/domain/entities/Area";
 import type { WeekGridViewModel } from "@/infrastructure/state/weekGridViewModel";
 import { WeekGridDayColumn } from "./WeekGridDayColumn";
@@ -26,6 +27,17 @@ export function WeekGrid({
   onSelect,
 }: WeekGridProps) {
   const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const rowHeight = el.scrollHeight / vm.totalRows;
+    const targetRow = (currentHour - vm.startHour) * vm.rowsPerHour;
+    el.scrollTop = Math.max(0, targetRow * rowHeight - 60);
+  }, [vm.totalRows, vm.startHour, vm.rowsPerHour]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -56,7 +68,7 @@ export function WeekGrid({
       </div>
 
       {/* Scrollable grid area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden">
         <div
           className="grid grid-cols-[3.5rem_repeat(7,1fr)]"
           style={{
