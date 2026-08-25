@@ -68,7 +68,10 @@ export function WeekGrid({
       </div>
 
       {/* Scrollable grid area */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+      <div
+        ref={scrollRef}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+      >
         <div
           className="grid grid-cols-[3.5rem_repeat(7,1fr)]"
           style={{

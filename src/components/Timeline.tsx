@@ -39,11 +39,6 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
     const { dayOfWeek, monthDay } = formatDateShort(day);
     const label = getDateLabel(day);
 
-    useEffect(() => {
-      console.log(`Rendering DayRow for ${day} (${label})`);
-      console.debug("visiblePhases:", visiblePhases);
-    }, [day, label, visiblePhases]);
-
     return (
       <div
         ref={ref}
