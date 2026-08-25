@@ -23,6 +23,8 @@ case "self-test":
         exit(2)
     }
     runSelfTest(vectorsPath: arguments[1])
+case "dedup":
+    dedup()
 case "reconcile-once":
     reconcileOnce()
 case "run":
