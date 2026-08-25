@@ -26,6 +26,7 @@ import {
   momentCard,
   momentConstraints,
   phaseBackgrounds,
+  timelineCell,
   zIndex,
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
@@ -121,8 +122,8 @@ export function TimelineCell({
       className={cn(
         "flex flex-col min-h-[240px] h-full relative",
         "p-2 pb-8 rounded-md",
-        // Smooth transitions for drag hover states
-        "transition-all duration-fast transition-smooth",
+        // Only transition visual cues — never layout/transform (which fights dnd-kit)
+        "transition-colors transition-shadow duration-fast transition-smooth",
         "focus-within:outline-none",
         // Flat at rest: depth is the tonal step below, never blur or shadow.
         // Phase-based tonal background
@@ -138,7 +139,10 @@ export function TimelineCell({
       aria-live="off"
       aria-atomic="true"
     >
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+      <div
+        className="overflow-y-auto overscroll-contain"
+        style={{ maxHeight: timelineCell.viewportHeight }}
+      >
         {cellMoments.length > 0 && (
           <SortableContext
             items={cellMoments.map((m) => m.id)}
