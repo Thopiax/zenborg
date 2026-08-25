@@ -185,7 +185,6 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 - **Habit** — a perennial (a recurring moment template, lives inside an area)
 - **Moment** — what you plant today (a 1–3 word intention)
 - **Cycle** — a season (a time container with an intention)
-- **CyclePlan** — a plot's budget for the season (how many moments of this habit this cycle)
 - **Phase** — time-of-day band (MORNING / AFTERNOON / EVENING / NIGHT)
 - **Attitude** — relationship mode: BEGINNING → RETURNING → KEEPING → BUILDING → PUSHING → BEING, plus PRUNING (deliberate taper)
 - **Rhythm** — how often (\`{ period, count }\`)
@@ -198,9 +197,8 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 ## Typical workflows
 
 1. \`list_areas\` to orient yourself, then \`list_habits\` in an area.
-2. \`plan_cycle\` to open a season, \`budget_habit_to_cycle\` to allocate perennial slots.
-3. \`allocate_from_plan\` to place a budgeted moment on a day/phase.
-4. \`spawn_spontaneous_from_habit\` for ad-hoc moments; \`create_standalone_moment\` for one-offs.
+2. \`plan_cycle\` to open a season, \`spawn_spontaneous_from_habit\` to place moments.
+3. \`create_standalone_moment\` for one-offs not tied to a habit.
 
 ## Invariants the MCP enforces
 
@@ -208,9 +206,8 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 - **No cap on moments per (day, phase).** The "3 per phase" rule is a *day-view display* limit, not a data invariant — a zoomed-in, time-blocked phase holds more. Allocation tools return a \`dayViewOverflow\` notice past 3 so you can still flag over-planning; they never refuse.
 - A habit's \`schedule\` (optional) fills \`rhythm\` and \`phase\` when they're absent, and is **rejected** when they contradict it: a weekly rhythm's \`count\` must equal \`weekdays.length\`, and \`phase\` must match the band \`startTime\` falls in. Longer rhythm periods are unconstrained (weekdays are candidate days).
 - Moments inherit \`startTime\`/\`durationMin\` from their habit's schedule at allocation, and may override either per instance.
-- One \`CyclePlan\` per (cycleId, habitId) — \`budget_habit_to_cycle\` upserts.
-- \`archive_habit\` cascade: deletes all cycle plans for that habit; allocated moments preserved as historical records (orphan via habitId).
-- \`delete_cycle\` cascades: deletes all moments + plans scoped to the cycle.
+- \`archive_habit\` cascade: allocated moments preserved as historical records (orphan via habitId).
+- \`delete_cycle\` cascades: deletes all moments scoped to the cycle.
 - Active cycle is **derived from dates**, not a mutation. To activate a cycle, move its dates.
 `,
   },
