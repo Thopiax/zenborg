@@ -169,7 +169,7 @@ export function TimelineCell({
               className="flex-1 flex items-center justify-center min-h-[48px] rounded-md cursor-pointer group"
               aria-label={`add moment to ${phaseLabel || phase}`}
             >
-              <span className="text-slate-800 dark:text-slate-100 text-2xl opacity-0 group-hover:opacity-50 transition-opacity">
+              <span className="text-slate-800 dark:text-slate-100 text-2xl opacity-70 md:opacity-0 group-hover:opacity-70 transition-opacity">
                 +
               </span>
             </button>
