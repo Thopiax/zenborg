@@ -5,7 +5,7 @@ import Foundation
 
 private let SYNC_WINDOW_PAST_DAYS = 7
 private let SYNC_WINDOW_FUTURE_DAYS = 60
-private let ZENBORG_SOURCE_TITLE = "Zenborg"
+private let LEGACY_CALENDAR_TITLE = "Zenborg"
 
 // MARK: - Lock
 
@@ -464,8 +464,20 @@ private func ensureAreaCalendar(
             }
             return cal.calendarIdentifier
         }
-        fputs("[calendar] area calendar for '\(title)' was deleted; recreating\n", stderr)
+        fputs("[calendar] area calendar for '\(title)' was deleted; will recover or recreate\n", stderr)
         config.areaCalendars.removeValue(forKey: areaId)
+    }
+
+    // Before creating, search for an existing calendar with the same title.
+    // Prevents duplication when the config mapping is lost.
+    let activeCalIds = Set(config.areaCalendars.values)
+    if let existing = store.calendars(for: .event).first(where: {
+        $0.title == title && !activeCalIds.contains($0.calendarIdentifier)
+    }) {
+        config.areaCalendars[areaId] = existing.calendarIdentifier
+        try? writeCalendarSyncConfig(config)
+        fputs("[calendar] adopted existing calendar '\(title)': \(existing.calendarIdentifier)\n", stderr)
+        return existing.calendarIdentifier
     }
 
     // Create a new calendar for this area
@@ -590,6 +602,68 @@ private func dayString(from date: Date) -> String {
     let calendar = Calendar.current
     let components = calendar.dateComponents([.year, .month, .day], from: date)
     return String(format: "%04d-%02d-%02d", components.year!, components.month!, components.day!)
+}
+
+// MARK: - Dedup
+
+func dedup() {
+    let store = EKEventStore()
+    guard requestAccess(store: store) else {
+        fputs("[dedup] access denied\n", stderr)
+        return
+    }
+
+    let config = readCalendarSyncConfig()
+    let activeCalIds = Set(config.areaCalendars.values)
+    let areas = readAreas()
+
+    // Build the set of titles that belong to active area calendars
+    var activeTitles: [String: String] = [:]
+    for (areaId, calId) in config.areaCalendars {
+        if let cal = store.calendar(withIdentifier: calId) {
+            activeTitles[cal.title] = calId
+        } else if let area = areas[areaId] {
+            activeTitles["\(area.emoji) \(area.name)"] = calId
+        }
+    }
+
+    var removed = 0
+
+    for cal in store.calendars(for: .event) {
+        let id = cal.calendarIdentifier
+
+        // Skip active calendars
+        if activeCalIds.contains(id) { continue }
+
+        // Remove legacy "Zenborg" calendar
+        if cal.title == LEGACY_CALENDAR_TITLE {
+            do {
+                try store.removeCalendar(cal, commit: true)
+                fputs("[dedup] removed legacy calendar '\(cal.title)'\n", stderr)
+                removed += 1
+            } catch {
+                fputs("[dedup] failed to remove '\(cal.title)': \(error)\n", stderr)
+            }
+            continue
+        }
+
+        // Remove duplicates: same title as an active area calendar, different id
+        if activeTitles[cal.title] != nil {
+            do {
+                try store.removeCalendar(cal, commit: true)
+                fputs("[dedup] removed duplicate calendar '\(cal.title)' (\(id))\n", stderr)
+                removed += 1
+            } catch {
+                fputs("[dedup] failed to remove '\(cal.title)': \(error)\n", stderr)
+            }
+        }
+    }
+
+    if removed == 0 {
+        fputs("[dedup] no duplicates found\n", stderr)
+    } else {
+        fputs("[dedup] removed \(removed) calendar(s)\n", stderr)
+    }
 }
 
 // MARK: - Date extension
