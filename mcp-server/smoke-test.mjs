@@ -6,7 +6,14 @@ import assert from "node:assert/strict";
  * verifies the happy path wires up end-to-end.
  */
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import crypto from "node:crypto";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { DEFAULT_VAULT_FOLDER, resolveVault } from "./dist/vault.js";
@@ -193,14 +200,31 @@ try {
   });
   const cycleId = cycleResp.created.id;
 
-  // 5. budget_habit_to_cycle
-  await step("budget_habit_to_cycle 5x", async () => {
-    const resp = await callTool("budget_habit_to_cycle", {
-      cycleId,
-      habitId,
-      count: 5,
-    });
-    return parseOk(resp);
+  // 5. Write a cycle plan directly to the vault (simulates what the app's CycleDeck does).
+  //    budget_habit_to_cycle was removed from the MCP surface — plans are app-authored.
+  const planId = crypto.randomUUID();
+  await step("write cycle plan to vault (app-side simulation)", async () => {
+    const now = new Date().toISOString();
+    const plan = {
+      [planId]: {
+        id: planId,
+        cycleId,
+        habitId,
+        budgetedCount: 5,
+        createdAt: now,
+        updatedAt: now,
+      },
+    };
+    writeFileSync(path.join(vault, "cyclePlans.json"), JSON.stringify(plan));
+  });
+
+  // 5a. get_running_cycle — no active cycle (Sprint 1 dates are in the past)
+  await step("get_running_cycle with no active cycle", async () => {
+    const parsed = parseOk(await callTool("get_running_cycle", {}));
+    if (parsed.running !== null)
+      throw new Error(
+        `expected null running cycle, got ${JSON.stringify(parsed.running)}`,
+      );
   });
 
   // 5b. allocate_from_plan — materialize a plan-linked moment on a day/phase
@@ -443,6 +467,33 @@ try {
   await step("delete_cycle cascade", async () => {
     const resp = await callTool("delete_cycle", { id: cycleId });
     return parseOk(resp);
+  });
+
+  // 10b. get_running_cycle with an active cycle
+  await step("get_running_cycle with active cycle", async () => {
+    const today = new Date();
+    const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+    const endDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-28`;
+    const resp = await callTool("plan_cycle", {
+      name: "Active Season",
+      startDate,
+      endDate,
+      intention: "test the running cycle tool",
+    });
+    const created = parseOk(resp);
+    const parsed = parseOk(await callTool("get_running_cycle", {}));
+    if (!parsed.running) throw new Error("expected a running cycle");
+    if (parsed.running.name !== "Active Season")
+      throw new Error(`expected "Active Season", got "${parsed.running.name}"`);
+    if (parsed.running.intention !== "test the running cycle tool")
+      throw new Error("intention mismatch");
+    if (typeof parsed.running.daysElapsed !== "number")
+      throw new Error("missing daysElapsed");
+    if (!Array.isArray(parsed.habits)) throw new Error("missing habits array");
+    if (!Array.isArray(parsed.wilting))
+      throw new Error("missing wilting array");
+    // Clean up
+    await callTool("delete_cycle", { id: created.created.id });
   });
 
   // 11. Active moment — the intention pointer keel reads.
