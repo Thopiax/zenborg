@@ -8,7 +8,7 @@ $signature:
   signature: ed25519:bTfcJtQS93E3cRffkeGJ9IgmkAfSk4way4Ve9vI6DKI/aYjpZYixUY6rulzAFizdmZBMwGUCiuglhvQEHhcSBQ==
 appetite: small
 source: conversation 2026-08-24, grounded in docs/2026-05-25-allocation-counts-feel-opaque + docs/ideas/2026-05-31-cycle-planning-mode + cycle-planning skill's "Do not compute" directive
-status: draft
+status: implemented
 tag: pitch
 type: pitch
 ---
