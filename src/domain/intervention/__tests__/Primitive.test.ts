@@ -29,6 +29,7 @@ const intercept: InterceptSpec = {
 
 const transform: TransformSpec = {
   kind: "transform",
+  targets: { primary: ".feed", fallbacks: [] },
   replacement: { type: "hide" },
 };
 

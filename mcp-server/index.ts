@@ -16,6 +16,7 @@ import type { FenceDeps } from "../src/application/ports.ts";
 import {
   clearFences,
   declareBrowserGate,
+  declareBrowserTransform,
   declareFence,
   declareHostBlock,
   fenceReport,
@@ -2724,6 +2725,60 @@ server.tool(
   },
   async (input): Promise<ToolResult> => {
     const result = await declareBrowserGate(fenceDeps, input);
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({ declared: result.declared, standing: result.standing });
+  },
+);
+
+server.tool(
+  "set_browser_transform",
+  "Declare a DOM transform on a host: hide, restyle or replace a region rather than gate or block it — the LinkedIn feed, the YouTube Shorts shelf. Completes the fence trilogy: set_host_block asks whether you should reach a host at all, set_browser_gate asks whether you've been there longer than you meant to be, this asks whether a cue needs to be visible at all. No exit to name: a CSS conceal withholds nothing, the concealed content is still one direct navigation away, so invariant 6 does not apply to this primitive the way it does to a block or a gate.",
+  {
+    host: z
+      .string()
+      .min(1)
+      .describe('A registrable host — "linkedin.com", not a URL'),
+    selectors: z
+      .object({
+        primary: z
+          .string()
+          .min(1)
+          .describe("The main CSS selector for the region to transform"),
+        fallbacks: z
+          .array(z.string().min(1))
+          .optional()
+          .describe(
+            "Selectors to emit alongside the primary — all match together, not primary-then-fallback, because selectors rot on the next deploy",
+          ),
+      })
+      .describe("What gets transformed"),
+    replacement: z
+      .discriminatedUnion("type", [
+        z.object({ type: z.literal("hide") }),
+        z.object({
+          type: z.literal("restyle"),
+          style: z
+            .record(z.string(), z.string())
+            .describe('CSS properties, e.g. { "visibility": "hidden" }'),
+        }),
+        z.object({
+          type: z.literal("text"),
+          content: z.string().min(1).describe("Placeholder text"),
+        }),
+      ])
+      .optional()
+      .describe('How the target is replaced. Defaults to { type: "hide" }.'),
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe(
+        "Areas attention is free to land in with the cue gone — names or ids",
+      ),
+    name: z.string().optional(),
+    description: z.string().optional(),
+  },
+  async (input): Promise<ToolResult> => {
+    const result = await declareBrowserTransform(fenceDeps, input);
     if ("problems" in result) return err(result.problems.join("; "));
     return ok({ declared: result.declared, standing: result.standing });
   },
