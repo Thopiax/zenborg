@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { AreaRef, FenceDeps } from "@/application/ports";
 import {
   declareBrowserGate,
+  declareBrowserTransform,
   declareHostBlock,
   seedHostBlocks,
 } from "@/application/use-cases/fences";
-import { carriesExit } from "@/domain/intervention/Primitive";
+import {
+  carriesExit,
+  type TransformSpec,
+} from "@/domain/intervention/Primitive";
 import type { RuleSpec } from "@/domain/intervention/RuleSpec";
 import { validateRuleSpec } from "@/domain/intervention/RuleSpec";
 
@@ -167,6 +171,97 @@ describe("declareBrowserGate", () => {
       returnsTo: ["Craft"],
       everyMinutes: 5,
       prompt: "  ",
+    });
+    expect("problems" in result).toBe(true);
+    expect(writes()).toBe(0);
+  });
+});
+
+describe("declareBrowserTransform", () => {
+  it("writes a browser-scoped transform the extension can actuate", async () => {
+    const { d, stored } = deps();
+    const result = await declareBrowserTransform(d, {
+      host: "youtube.com",
+      returnsTo: ["Craft"],
+      selectors: {
+        primary: "ytm-shorts-lockup-view-model",
+        fallbacks: ["ytd-reel-shelf-renderer"],
+      },
+    });
+    if ("problems" in result) throw new Error(result.problems.join("; "));
+
+    expect(result.declared.scope).toEqual({
+      surface: "browser",
+      domain: "youtube.com",
+      matches: ["*://youtube.com/*", "*://*.youtube.com/*"],
+    });
+    const transform = result.declared.primitives[0] as TransformSpec;
+    expect(transform.kind).toBe("transform");
+    expect(transform.targets).toEqual({
+      primary: "ytm-shorts-lockup-view-model",
+      fallbacks: ["ytd-reel-shelf-renderer"],
+    });
+    expect(stored()[result.declared.id]).toEqual(result.declared);
+  });
+
+  it("defaults the replacement to a plain hide", async () => {
+    const { d } = deps();
+    const result = await declareBrowserTransform(d, {
+      host: "youtube.com",
+      returnsTo: ["Craft"],
+      selectors: { primary: "ytm-shorts-lockup-view-model" },
+    });
+    if ("problems" in result) throw new Error(result.problems.join("; "));
+    const transform = result.declared.primitives[0] as TransformSpec;
+    expect(transform.replacement).toEqual({ type: "hide" });
+  });
+
+  it("takes an explicit restyle replacement", async () => {
+    const { d } = deps();
+    const result = await declareBrowserTransform(d, {
+      host: "linkedin.com",
+      returnsTo: ["Craft"],
+      selectors: { primary: 'div[componentkey*="FeedType_MAIN_FEED"]' },
+      replacement: { type: "restyle", style: { visibility: "hidden" } },
+    });
+    if ("problems" in result) throw new Error(result.problems.join("; "));
+    const transform = result.declared.primitives[0] as TransformSpec;
+    expect(transform.replacement).toEqual({
+      type: "restyle",
+      style: { visibility: "hidden" },
+    });
+  });
+
+  it("declares a rule the validator accepts, carrying no exit — invariant 6 does not apply to a conceal", async () => {
+    const { d } = deps();
+    const result = await declareBrowserTransform(d, {
+      host: "youtube.com",
+      returnsTo: ["Craft"],
+      selectors: { primary: "ytm-shorts-lockup-view-model" },
+    });
+    if ("problems" in result) throw new Error(result.problems.join("; "));
+    expect(validateRuleSpec(result.declared)).toEqual([]);
+    for (const p of result.declared.primitives)
+      expect(carriesExit(p)).toBe(false);
+  });
+
+  it("refuses a transform with no primary selector", async () => {
+    const { d, writes } = deps();
+    const result = await declareBrowserTransform(d, {
+      host: "youtube.com",
+      returnsTo: ["Craft"],
+      selectors: { primary: "   " },
+    });
+    expect("problems" in result).toBe(true);
+    expect(writes()).toBe(0);
+  });
+
+  it("refuses a host with a scheme or a path — the armed record carries domains, never URLs", async () => {
+    const { d, writes } = deps();
+    const result = await declareBrowserTransform(d, {
+      host: "https://youtube.com/shorts",
+      returnsTo: ["Craft"],
+      selectors: { primary: "ytm-shorts-lockup-view-model" },
     });
     expect("problems" in result).toBe(true);
     expect(writes()).toBe(0);
