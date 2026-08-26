@@ -15,10 +15,26 @@
  * is not who armed the thing, it is that every armed thing can be got out of.
  */
 
+/**
+ * A chain of selectors for one logical target: the primary, plus fallbacks to
+ * emit alongside it. Selectors rot — a site's build-time class names change
+ * on the next deploy — so every selector in the chain is matched together
+ * rather than primary-then-fallback. The failure mode this trades for is a
+ * fallback broad enough to catch more than intended, which is an authoring
+ * error visible instantly rather than a silently-dead rule.
+ * Contract: `keel/docs/primitive-contracts.md`, "Shared types".
+ */
+export interface SelectorChain {
+  readonly primary: string;
+  readonly fallbacks: readonly string[];
+}
+
 export interface TransformSpec {
   readonly kind: "transform";
+  readonly targets: SelectorChain;
   readonly replacement:
     | { readonly type: "hide" }
+    | { readonly type: "restyle"; readonly style: Readonly<Record<string, string>> }
     | { readonly type: "text"; readonly content: string }
     | { readonly type: "template"; readonly templateId: string };
 }

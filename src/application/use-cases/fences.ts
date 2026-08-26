@@ -8,6 +8,11 @@ import {
   validateRuleSpec,
 } from "../../domain/intervention/RuleSpec.ts";
 import { browserDwellGateRule } from "../../domain/intervention/rules/browserGate.ts";
+import type {
+  BrowserTransformInput,
+  TransformReplacement,
+} from "../../domain/intervention/rules/browserTransform.ts";
+import { browserTransformRule } from "../../domain/intervention/rules/browserTransform.ts";
 import {
   hostBlockRule,
   hostBlockSeedRules,
@@ -215,6 +220,25 @@ function hostProblems(host: string): string[] {
 }
 
 /**
+ * Whether a primitive is the kind invariant 6 is about at all.
+ *
+ * `gate` and `cooldown` are the two primitives that can trap someone in a
+ * workflow requiring a click-through or an out-of-band wait — that is what an
+ * exit is for. `transform` was added to this file without one: `carriesExit`
+ * already says `false` for it (`Primitive.test.ts`, "renders without offering
+ * a way out"), and that is a true statement about a CSS conceal, not a
+ * violation. Nothing about hiding an element withholds reachability — the
+ * concealed content is still one direct navigation away — so there is no exit
+ * to check for. `schedule` reads through to whatever it wraps, same as
+ * `carriesExit` does, because a scheduled gate is still a gate and a scheduled
+ * transform is still a transform.
+ */
+function requiresExit(primitive: Primitive): boolean {
+  if (primitive.kind === "schedule") return requiresExit(primitive.wraps);
+  return primitive.kind === "gate" || primitive.kind === "cooldown";
+}
+
+/**
  * Invariant 6, enforced at the writer's door.
  *
  * The type system already carries most of it: `gate` requires a
@@ -224,10 +248,14 @@ function hostProblems(host: string): string[] {
  * primitive, or one whose exit is present but empty. A fence with no way out is
  * refused here rather than armed and refused later by the extension, because the
  * cheapest place to hold the line is the one place the record is written.
+ *
+ * Scoped by `requiresExit`, not applied to every primitive: a primitive that
+ * was never going to trap anyone has nothing here to be refused for.
  */
 function exitProblems(rule: RuleSpec): string[] {
   const problems: string[] = [];
   for (const primitive of rule.primitives) {
+    if (!requiresExit(primitive)) continue;
     if (!carriesExit(primitive)) {
       problems.push(
         `primitive "${primitive.kind}" carries no proceed affordance — a fence with no exit is refused, not armed (invariant 6)`,
@@ -422,6 +450,74 @@ export async function declareBrowserGate(
       everyMinutes: input.everyMinutes,
       prompt: input.prompt.trim(),
     }),
+  );
+}
+
+export interface BrowserTransformDeclaration {
+  readonly host: string;
+  readonly selectors: {
+    readonly primary: string;
+    readonly fallbacks?: readonly string[];
+  };
+  /** Defaults to a plain hide. */
+  readonly replacement?: TransformReplacement;
+  readonly returnsTo: readonly string[];
+  readonly name?: string;
+  readonly description?: string;
+}
+
+function selectorProblems(selectors: {
+  readonly primary: string;
+}): string[] {
+  return selectors.primary.trim() === ""
+    ? ["a transform must name a primary selector"]
+    : [];
+}
+
+/**
+ * Declare a browser-scoped DOM transform: hide, restyle or replace a region
+ * rather than gate or block it.
+ *
+ * Completes the fence trilogy `set_host_block` / `set_browser_gate` started —
+ * `declareHostBlock` answers "should I be able to reach this at all",
+ * `declareBrowserGate` answers "have I been here longer than I meant to be",
+ * and this answers "does this cue need to be visible at all". Same
+ * validate-before-write discipline (`writeFence`), same browser scope, same
+ * collection — a rule with no exit to check for, because `requiresExit`
+ * (above) does not ask a `transform` primitive for one.
+ */
+export async function declareBrowserTransform(
+  deps: FenceDeps,
+  input: BrowserTransformDeclaration,
+): Promise<DeclareFenceResult> {
+  const problems = [
+    ...hostProblems(input.host),
+    ...selectorProblems(input.selectors),
+  ];
+
+  const resolved = await resolveReturn(deps, input.returnsTo);
+  if ("problems" in resolved) problems.push(...resolved.problems);
+  if (problems.length > 0 || "problems" in resolved) return { problems };
+
+  const host = input.host.trim().toLowerCase();
+  const primary = input.selectors.primary.trim();
+  return writeFence(
+    deps,
+    browserTransformRule({
+      id: deps.newRuleId(),
+      host,
+      name: input.name?.trim() || host,
+      description:
+        input.description?.trim() ||
+        `Conceals ${primary} on ${host} — declared in conversation, in force until taken down.`,
+      serves: { cycleId: resolved.cycleId, areaId: resolved.areaIds[0] },
+      returnsTo: resolved.areaIds,
+      targets: {
+        primary,
+        fallbacks: input.selectors.fallbacks,
+      },
+      replacement: input.replacement,
+    } satisfies BrowserTransformInput),
   );
 }
 
