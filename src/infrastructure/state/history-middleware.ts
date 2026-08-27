@@ -333,6 +333,7 @@ export function duplicateMomentWithHistory(
     day: targetDay,
     phase: targetPhase,
     order: targetOrder,
+    externalRef: undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -378,9 +379,10 @@ export function bulkDuplicateMomentsWithHistory(momentIds: string[]): string[] {
     const duplicatedMoment: Moment = {
       ...originalMoment,
       id: newId,
-      day: null, // Always place duplicates in drawing board
+      day: null,
       phase: null,
       order: 0,
+      externalRef: undefined,
       createdAt: now,
       updatedAt: now,
     };
