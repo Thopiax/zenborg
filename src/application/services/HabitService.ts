@@ -7,7 +7,7 @@ import {
   unarchiveHabit,
   updateHabit,
 } from "@/domain/entities/Habit";
-import { cyclePlans$, habits$ } from "@/infrastructure/state/store";
+import { cyclePlans$, habits$, moments$ } from "@/infrastructure/state/store";
 
 /**
  * Application Service for Habit Management
@@ -123,6 +123,34 @@ export class HabitService {
     habits$[habitId].set(result);
 
     return result;
+  }
+
+  /**
+   * Permanently deletes an archived habit from the store.
+   * Only archived habits can be deleted. Cascades: removes all moments
+   * linked to this habit (they are historical orphans once the habit is gone).
+   */
+  deleteHabit(habitId: string): HabitResult {
+    const existing = habits$[habitId].get();
+
+    if (!existing) {
+      return { error: `Habit with ID ${habitId} not found` };
+    }
+
+    if (!existing.isArchived) {
+      return { error: "Only archived habits can be permanently deleted" };
+    }
+
+    const allMoments = moments$.get();
+    for (const moment of Object.values(allMoments)) {
+      if (moment.habitId === habitId) {
+        moments$[moment.id].delete();
+      }
+    }
+
+    habits$[habitId].delete();
+
+    return existing;
   }
 
   /**
