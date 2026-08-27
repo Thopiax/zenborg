@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef } from "react";
+import { MentionAutocompleteInline } from "@/components/MentionAutocompleteInline";
+import { MentionBadges } from "@/components/MentionBadges";
 import { TagAutocompleteInline } from "@/components/TagAutocompleteInline";
 import { TagBadges } from "@/components/TagBadges";
 import type { TaggedNameField } from "@/hooks/useTaggedNameField";
@@ -17,6 +19,8 @@ interface TaggedNameInputProps {
   maxSuggestions?: number;
   /** Show tag badges below input */
   showTags?: boolean;
+  /** Show mention badges below input */
+  showMentions?: boolean;
   /** Custom tag badge className */
   tagBadgesClassName?: string;
 }
@@ -43,45 +47,67 @@ export function TaggedNameInput({
   collisionBoundary,
   maxSuggestions = 8,
   showTags = true,
+  showMentions = true,
   tagBadgesClassName,
 }: TaggedNameInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const inputElement = (
+    <input
+      ref={inputRef}
+      type="text"
+      value={field.displayValue}
+      onChange={(e) =>
+        field.setDisplayValue(e.target.value, e.target.selectionStart || 0)
+      }
+      onBlur={() => field.extractRemainingTags()}
+      autoCapitalize="none"
+      placeholder={placeholder}
+      className={cn(
+        "w-full bg-transparent outline-none",
+        "text-stone-900 dark:text-stone-100",
+        "placeholder:text-stone-400 dark:placeholder:text-stone-500",
+        className,
+      )}
+    />
+  );
+
   return (
     <div className="w-full">
-      {/* Input with Tag Autocomplete */}
+      {/* Input with Tag Autocomplete (active when typing #) */}
       <TagAutocompleteInline
-        open={field.isAutocompleteOpen}
+        open={field.isAutocompleteOpen && !field.isMentionOpen}
         searchValue={field.searchValue}
         onSelectTag={field.extractTag}
         onRemoveTag={field.removeTag}
-        onClose={() => {}} // Handled internally by the hook
+        onClose={() => {}}
         existingTags={field.tags}
         maxSuggestions={maxSuggestions}
         collisionBoundary={collisionBoundary}
         trigger={
-          <input
-            ref={inputRef}
-            type="text"
-            value={field.displayValue}
-            onChange={(e) =>
-              field.setDisplayValue(
-                e.target.value,
-                e.target.selectionStart || 0,
-              )
-            }
-            onBlur={() => field.extractRemainingTags()}
-            autoCapitalize="none"
-            placeholder={placeholder}
-            className={cn(
-              "w-full bg-transparent outline-none",
-              "text-stone-900 dark:text-stone-100",
-              "placeholder:text-stone-400 dark:placeholder:text-stone-500",
-              className,
-            )}
+          <MentionAutocompleteInline
+            open={field.isMentionOpen}
+            searchValue={field.mentionSearch}
+            onSelectMention={field.selectMention}
+            onRemoveMention={field.removeMention}
+            onClose={() => {}}
+            existingMentions={field.mentionIds}
+            maxSuggestions={maxSuggestions}
+            collisionBoundary={collisionBoundary}
+            trigger={inputElement}
           />
         }
       />
+
+      {/* Mention Badges */}
+      {showMentions && field.mentionIds.length > 0 && (
+        <MentionBadges
+          personIds={field.mentionIds}
+          placeIds={[]}
+          onRemovePerson={field.removeMention}
+          className={cn("mt-3", tagBadgesClassName)}
+        />
+      )}
 
       {/* Tag Badges */}
       {showTags && field.tags.length > 0 && (
