@@ -95,7 +95,7 @@ export const borderRadius = {
   sm: "0.125rem", // 2px - inline code, focus outlines
   md: "0.25rem", // 4px - the ceiling (moment cards, buttons)
   lg: "0.25rem", // 4px - alias; nothing rounds further
-  full: "9999px", // pill shape (vim mode indicator)
+  full: "9999px", // pill shape
 } as const;
 
 /**
@@ -304,19 +304,6 @@ export const keyboardShortcuts = {
     ":": "Enter COMMAND mode",
     Esc: "Exit to NORMAL mode",
   },
-  actions: {
-    dd: "Delete moment",
-    yy: "Yank (duplicate) moment",
-    p: "Put (paste) yanked moment",
-    x: "Quick delete (unallocated only)",
-  },
-  commands: {
-    ":ty1": "Allocate to Today, phase 1 (Morning)",
-    ":wy3": "Allocate to Tomorrow, phase 3 (Evening)",
-    ":d": "Unallocate moment",
-    ":area": "Manage areas",
-    ":settings": "Configure phases",
-  },
   view: {
     "Ctrl+/": "Toggle compass view",
   },
@@ -329,8 +316,6 @@ export const keyboardShortcuts = {
 export const ariaLabels = {
   timeline: "Timeline - organize your moments",
   compass: "Compass View - current moment",
-  vimMode: "Vim mode indicator",
-  commandLine: "Command input",
   momentCard: (name: string, area: string) =>
     `${name} in ${area} area, press i to edit`,
   timelineCell: (day: string, phase: string, count: number, max: number) =>
