@@ -1,7 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { Phase } from "@/domain/value-objects/Phase";
 import {
@@ -9,10 +9,7 @@ import {
   timeTick$,
   visiblePhases$,
 } from "@/infrastructure/state/store";
-import {
-  openMomentFormCreate,
-  selectedDay$,
-} from "@/infrastructure/state/ui-store";
+import { selectedDay$ } from "@/infrastructure/state/ui-store";
 import {
   fromISODate,
   getDateLabel,
@@ -51,7 +48,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
           "scroll-ml-2 md:scroll-ml-6",
           "gap-1.5 px-2 py-2 md:px-4 md:py-4",
           // Smooth opacity transitions for past days
-          "transition-opacity duration-150 ease-out",
+          "transition-opacity duration-medium transition-smooth",
           isActiveDay
             ? "snap-start snap-always border border-slate-400/30 dark:ring-slate-300 rounded-md shadow-sm"
             : "snap-start",
@@ -59,7 +56,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
         )}
       >
         {/* Day Title Section - Above Timeline */}
-        <div className="flex flex-row items-baseline gap-2 px-1 py-0.5 group/header">
+        <div className="flex flex-row items-baseline gap-2 px-1 py-0.5">
           <DayHeaderTitle
             day={day}
             fallbackLabel={label}
@@ -73,28 +70,6 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
               {monthDay}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              const phase = currentPhase ?? visiblePhases[0]?.phase;
-              openMomentFormCreate({
-                day,
-                phase: phase ?? undefined,
-                phaseStr: phase ?? undefined,
-              });
-            }}
-            className={cn(
-              "ml-auto self-center p-1 rounded-md",
-              "text-stone-400 dark:text-stone-500",
-              "opacity-0 group-hover/header:opacity-100",
-              "hover:text-stone-600 dark:hover:text-stone-400",
-              "hover:bg-stone-200 dark:hover:bg-stone-700",
-              "transition-[opacity,color,background-color] duration-150",
-            )}
-            aria-label={`Add moment to ${label}`}
-          >
-            <Plus className="w-4 h-4" />
-          </button>
         </div>
 
         {/* The day's note — between its title and its moments, on purpose. */}
