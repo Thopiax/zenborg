@@ -147,19 +147,10 @@ UI preferences (`activeCycleId`, `lastUsedAreaId`, TRMNL settings) always go to 
 are per-device, not per-vault. `ui-store.ts` holds ephemeral form state and is deliberately not
 persisted; `store.ts` holds domain collections as `Record<uuid, Entity>`.
 
-### Two command systems, no shared code
+### Command palette
 
 `src/commands/` is the palette registry (cmdk) — flat list of `{ id, label, shortcut, category,
-action }`. `infrastructure/state/command-parser.ts` is a separate pure parser for the vim `:` mode:
-`[day][y][phase]` allocations (`:ty1` = today/morning), `:d` to unallocate. Adding a palette entry
-does not add a `:` command.
-
-Mnemonics, from `DAY_MAP` / `PHASE_MAP` in the parser — day `y` yesterday · `t` today ·
-`w` tomorrow (*will do*); phase `1` morning · `2` afternoon · `3` evening · `4` night. Navigation
-commands are `:area`, `:settings`, `:help`.
-
-There is **no grid-level vim normal mode.** An older doc listed `hjkl`/`dd`/`yy`/`p`/`x`; no global
-key handler implements them. Keyboard handling is component-local (palette, dialogs, autocompletes).
+action }`. Keyboard handling is component-local (palette, dialogs, autocompletes).
 
 ### Entity forms read the store, not props
 
