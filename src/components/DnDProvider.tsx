@@ -23,7 +23,8 @@ import {
 } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { useCallback, useMemo, useState } from "react";
+import { useValue } from "@legendapp/state/react";
+import { useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import type { Area } from "@/domain/entities/Area";
 import type { Habit } from "@/domain/entities/Habit";
@@ -48,7 +49,6 @@ import {
   reorderAfterRemoval,
 } from "@/lib/drag-validation";
 import { cn } from "@/lib/utils";
-import { dndPerfDragEnd, dndPerfDragStart, dndPerfRender } from "@/lib/dnd-perf";
 import type { DraggableData, DroppableData } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
 
@@ -95,13 +95,19 @@ function DeckCardPreview({ habit, area }: { habit: Habit; area: Area }) {
 }
 
 export function DnDProvider({ children }: DnDProviderProps) {
-  dndPerfRender("DnDProvider");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeDeckHabitId, setActiveDeckHabitId] = useState<string | null>(
     null,
   );
+  const isDuplicateMode = useValue(isDuplicateMode$);
+  const allMoments = useValue(moments$);
+  const allAreas = useValue(areas$);
+  const allHabits = useValue(habits$);
+  const selectedMomentIds = useValue(selectionState$.selectedMomentIds);
 
-  const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
+  // Custom collision detection strategy
+  // Prioritize pointer-based detection for better accuracy when dropping
+  const collisionDetectionStrategy: CollisionDetection = (args) => {
     // First try pointer-based detection
     // This works well for both mouse and touch (mobile)
     const pointerCollisions = pointerWithin(args);
@@ -134,7 +140,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     // Fallback to rect intersection for edge cases
     return rectIntersection(args);
-  }, []);
+  };
 
   // Configure sensors for mouse, touch, and keyboard interactions
   const sensors = useSensors(
@@ -155,7 +161,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
   );
 
   function handleDragStart(event: DragStartEvent) {
-    dndPerfDragStart();
     const id = event.active.id as string;
     const data = event.active.data.current as DraggableData | undefined;
 
@@ -173,7 +178,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     // MomentStack draggables use "stack-{momentId}" as their dnd-kit ID but
     // store the real moment ID in data.current.momentId. Use that for the
-    // overlay lookup so moments$.peek()[activeId] resolves correctly.
+    // overlay lookup so allMoments[activeId] resolves correctly.
     const momentId =
       (event.active.data.current as { momentId?: string } | undefined)
         ?.momentId ?? id;
@@ -187,9 +192,8 @@ export function DnDProvider({ children }: DnDProviderProps) {
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    dndPerfDragEnd();
     const { active, over } = event;
-    const wasDuplicateMode = isDuplicateMode$.peek();
+    const wasDuplicateMode = isDuplicateMode;
     setActiveId(null);
     setActiveDeckHabitId(null);
     isDuplicateMode$.set(false);
@@ -199,12 +203,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
-    console.log("[DnD] dragEnd", {
-      activeId: active.id,
-      overId: over.id,
-      activeData: active.data.current,
-      overData: over.data.current,
-    });
     const dragData = active.data.current as DraggableData | undefined;
     const dropData = over.data.current as DroppableData | undefined;
 
@@ -229,7 +227,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       // Handle batch drop on cycle deck (unallocate all)
       if (!wasDuplicateMode) {
         const validMomentIds = currentSelectedIds.filter((momentId) => {
-          const moment = moments$.peek()[momentId];
+          const moment = allMoments[momentId];
           return !!moment;
         });
 
@@ -245,8 +243,8 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     // Handle sortable reordering (when dragging over another moment, not a cell)
     if (active.id !== over.id && !dropData?.targetType) {
-      const activeMoment = moments$.peek()[active.id as string];
-      const overMoment = moments$.peek()[over.id as string];
+      const activeMoment = allMoments[active.id as string];
+      const overMoment = allMoments[over.id as string];
 
       // Bug C1: deck-card dropped on an allocated moment resolves over.id to
       // that sortable moment's id (not its droppable cell), so dropData has no
@@ -338,7 +336,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       console.warn("Missing momentId in drag data", dragData);
       return;
     }
-    const moment = moments$.peek()[momentId];
+    const moment = allMoments[momentId];
 
     if (!moment) {
       console.error("Moment not found:", momentId);
@@ -401,7 +399,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     phase: Phase,
   ) {
     // Get all moments in this cell, sorted by current order
-    const cellMoments = Object.values(moments$.peek())
+    const cellMoments = Object.values(allMoments)
       .filter((m) => m.day === day && m.phase === phase)
       .sort((a, b) => a.order - b.order);
 
@@ -438,7 +436,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return; // Already unallocated or missing id
     }
 
-    const moment = moments$.peek()[momentId];
+    const moment = allMoments[momentId];
     if (!moment) return;
 
     // Derive paradigm: plan-linked moments are deleted on unallocate
@@ -464,7 +462,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     // Reject the whole batch if any moment is spontaneous — no silent
     // fallback to an invisible null-day/null-phase state.
     const spontaneous = momentIds.filter((id) => {
-      const m = moments$.peek()[id];
+      const m = allMoments[id];
       return m?.day && m.phase && m.cyclePlanId === null;
     });
     if (spontaneous.length > 0) {
@@ -475,7 +473,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     startBatch();
 
     for (const momentId of momentIds) {
-      const moment = moments$.peek()[momentId];
+      const moment = allMoments[momentId];
       if (!moment) continue;
 
       const sourceDay = moment.day;
@@ -520,7 +518,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     const validation = canDropInCell(
       targetDay,
       targetPhase,
-      moments$.peek(),
+      allMoments,
       shouldDuplicate ? "" : momentId, // Don't exclude original if duplicating
     );
 
@@ -534,7 +532,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     const newOrder = calculateNextOrder(
       targetDay,
       targetPhase,
-      moments$.peek(),
+      allMoments,
       shouldDuplicate ? "" : momentId,
     );
 
@@ -556,11 +554,11 @@ export function DnDProvider({ children }: DnDProviderProps) {
           ? reorderAfterRemoval(
               sourceDay,
               sourcePhase,
-              moments$.peek(),
+              allMoments,
               momentId,
             ).map(({ momentId: id, newOrder: order }) => ({
               momentId: id,
-              fromOrder: moments$.peek()[id].order,
+              fromOrder: allMoments[id].order,
               toOrder: order,
             }))
           : undefined;
@@ -594,7 +592,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
     }
 
     // Check if we have enough space for all selected moments
-    const currentMomentsInCell = Object.values(moments$.peek()).filter(
+    const currentMomentsInCell = Object.values(allMoments).filter(
       (m) => m.day === targetDay && m.phase === targetPhase,
     );
 
@@ -602,7 +600,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       ? momentIds.length
       : momentIds.length -
         momentIds.filter((id) => {
-          const m = moments$.peek()[id];
+          const m = allMoments[id];
           return m && m.day === targetDay && m.phase === targetPhase;
         }).length;
 
@@ -622,12 +620,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
     let currentOrder = calculateNextOrder(
       targetDay,
       targetPhase,
-      moments$.peek(),
+      allMoments,
       shouldDuplicate ? "" : momentIds[0],
     );
 
     for (const momentId of momentIds) {
-      const moment = moments$.peek()[momentId];
+      const moment = allMoments[momentId];
       if (!moment) {
         console.warn("[DnD] Moment not found:", momentId);
         continue;
@@ -658,11 +656,11 @@ export function DnDProvider({ children }: DnDProviderProps) {
             ? reorderAfterRemoval(
                 sourceDay,
                 sourcePhase,
-                moments$.peek(),
+                allMoments,
                 momentId,
               ).map(({ momentId: id, newOrder: order }) => ({
                 momentId: id,
-                fromOrder: moments$.peek()[id].order,
+                fromOrder: allMoments[id].order,
                 toOrder: order,
               }))
             : undefined;
@@ -692,18 +690,17 @@ export function DnDProvider({ children }: DnDProviderProps) {
     isDuplicateMode$.set(false);
   }
 
-  const activeMoment = activeId ? moments$.peek()[activeId] : null;
-  const activeArea = activeMoment ? areas$.peek()[activeMoment.areaId] : null;
+  // Get active moment for drag overlay
+  const activeMoment = activeId ? allMoments[activeId] : null;
+  const activeArea = activeMoment ? allAreas[activeMoment.areaId] : null;
 
+  // Get active deck-card habit for drag overlay (moment-shaped preview)
   const activeDeckHabit = activeDeckHabitId
-    ? habits$.peek()[activeDeckHabitId]
+    ? allHabits[activeDeckHabitId]
     : null;
   const activeDeckArea = activeDeckHabit
-    ? areas$.peek()[activeDeckHabit.areaId]
+    ? allAreas[activeDeckHabit.areaId]
     : null;
-
-  const overlayIsDuplicateMode = isDuplicateMode$.peek();
-  const overlaySelectedIds = selectionState$.selectedMomentIds.peek();
 
   return (
     <DndContext
@@ -723,15 +720,18 @@ export function DnDProvider({ children }: DnDProviderProps) {
       <DragOverlay modifiers={[snapCenterToCursor]} dropAnimation={null}>
         {activeMoment && activeArea ? (
           <div
-            className={overlayIsDuplicateMode ? "cursor-copy" : "cursor-grabbing"}
+            className={isDuplicateMode ? "cursor-copy" : "cursor-grabbing"}
             style={{ width: columnWidth.md }}
           >
-            {overlaySelectedIds.includes(activeMoment.id) &&
-            overlaySelectedIds.length > 1 ? (
+            {/* Check if dragging multiple selected moments */}
+            {selectedMomentIds.includes(activeMoment.id) &&
+            selectedMomentIds.length > 1 ? (
+              // Show stacked preview for multiple items
               <div className="relative">
-                {overlaySelectedIds.slice(0, 3).map((momentId, index) => {
-                  const moment = moments$.peek()[momentId];
-                  const area = moment ? areas$.peek()[moment.areaId] : null;
+                {/* Show up to 3 cards in a stacked effect */}
+                {selectedMomentIds.slice(0, 3).map((momentId, index) => {
+                  const moment = allMoments[momentId];
+                  const area = moment ? allAreas[moment.areaId] : null;
                   if (!moment || !area) return null;
 
                   return (
@@ -749,7 +749,8 @@ export function DnDProvider({ children }: DnDProviderProps) {
                     </div>
                   );
                 })}
-                {overlaySelectedIds.length > 3 && (
+                {/* Show count badge if more than 3 selected */}
+                {selectedMomentIds.length > 3 && (
                   <div
                     className="absolute bg-stone-900 dark:bg-stone-100 text-stone-50 dark:text-stone-900 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold font-mono"
                     style={{
@@ -758,7 +759,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
                       zIndex: 4,
                     }}
                   >
-                    {overlaySelectedIds.length}
+                    {selectedMomentIds.length}
                   </div>
                 )}
               </div>
