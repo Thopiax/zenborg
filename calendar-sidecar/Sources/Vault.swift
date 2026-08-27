@@ -115,18 +115,20 @@ func readAreas() -> [String: VaultArea] {
     return result
 }
 
-func readHabits() -> [String: (emoji: String?, areaId: String)] {
+func readHabits() -> [String: (emoji: String?, areaId: String, timezone: String?)] {
     let url = vaultRoot().appendingPathComponent("habits.json")
     guard FileManager.default.fileExists(atPath: url.path),
           let data = try? Data(contentsOf: url),
           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] else {
         return [:]
     }
-    var result: [String: (emoji: String?, areaId: String)] = [:]
+    var result: [String: (emoji: String?, areaId: String, timezone: String?)] = [:]
     for (id, raw) in dict {
+        let schedule = raw["schedule"] as? [String: Any]
         result[id] = (
             emoji: raw["emoji"] as? String,
-            areaId: raw["areaId"] as? String ?? ""
+            areaId: raw["areaId"] as? String ?? "",
+            timezone: schedule?["timezone"] as? String
         )
     }
     return result
