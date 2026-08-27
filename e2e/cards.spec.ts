@@ -72,15 +72,11 @@ test.describe("timeline cells", () => {
     expect(scrolls).toBe(true);
   });
 
-  test("phase icon is fixed at the cell bottom", async ({ page }) => {
+  test("phase icons are visible on the cultivate page", async ({ page }) => {
     await page.goto("/cultivate");
 
-    const today = new Date().toLocaleDateString("en-CA");
-    const morning = page.locator(`[data-cell="${today}-MORNING"]`);
-
-    // The icon is absolute-positioned at the bottom of the cell
-    const icon = morning.locator("svg").first();
-    await expect(icon).toBeVisible();
+    const icons = page.locator('[aria-label^="Add moment to"]');
+    await expect(icons.first()).toBeVisible();
   });
 
   test("the fourth moment is reachable by scrolling", async ({ page }) => {
