@@ -301,6 +301,7 @@ private func doReconcilePass(store: EKEventStore) {
                     let emoji = resolveEmoji(moment: moment, habits: habits, areas: areas)
                     let title = emoji != nil ? "\(emoji!) \(fields.title)" : fields.title
                     let isAllDay = fields.startTime == nil
+                    let tz = resolveTimezone(moment: moment, habits: habits)
                     if let ekEvent = createOrUpdateEvent(
                         store: store,
                         calendarId: targetCalId,
@@ -309,7 +310,8 @@ private func doReconcilePass(store: EKEventStore) {
                         day: fields.day,
                         startTime: fields.startTime,
                         durationMin: fields.durationMin,
-                        isAllDay: isAllDay
+                        isAllDay: isAllDay,
+                        timezone: tz
                     ) {
                         var updated = moment
                         let hash = momentHash(day: fields.day, startTime: fields.startTime, durationMin: fields.durationMin)
@@ -573,7 +575,7 @@ private func ensureAreaCalendar(
     }
 }
 
-private func resolveEmoji(moment: VaultMoment, habits: [String: (emoji: String?, areaId: String)], areas: [String: VaultArea]) -> String? {
+private func resolveEmoji(moment: VaultMoment, habits: [String: (emoji: String?, areaId: String, timezone: String?)], areas: [String: VaultArea]) -> String? {
     if let momentEmoji = moment.raw["emoji"] as? String, !momentEmoji.isEmpty {
         return momentEmoji
     }
@@ -584,6 +586,13 @@ private func resolveEmoji(moment: VaultMoment, habits: [String: (emoji: String?,
         if !area.emoji.isEmpty { return area.emoji }
     }
     return nil
+}
+
+private func resolveTimezone(moment: VaultMoment, habits: [String: (emoji: String?, areaId: String, timezone: String?)]) -> TimeZone? {
+    guard let habitId = moment.habitId,
+          let habit = habits[habitId],
+          let tz = habit.timezone else { return nil }
+    return TimeZone(identifier: tz)
 }
 
 private func colorFromHex(_ hex: String) -> CGColor? {
@@ -604,8 +613,10 @@ private func colorFromHex(_ hex: String) -> CGColor? {
 }
 
 private func eventSnapshotFrom(_ ekEvent: EKEvent) -> EventSnapshot {
-    let calendar = Calendar.current
-    let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: ekEvent.startDate)
+    let tz = ekEvent.timeZone ?? Calendar.current.timeZone
+    var cal = Calendar.current
+    cal.timeZone = tz
+    let components = cal.dateComponents([.year, .month, .day, .hour, .minute], from: ekEvent.startDate)
     let day = String(format: "%04d-%02d-%02d", components.year!, components.month!, components.day!)
 
     if ekEvent.isAllDay {
@@ -644,7 +655,8 @@ private func createOrUpdateEvent(
     day: String,
     startTime: String?,
     durationMin: Int?,
-    isAllDay: Bool
+    isAllDay: Bool,
+    timezone: TimeZone? = nil
 ) -> EKEvent? {
     let ekEvent: EKEvent
     if let existingId = existingEventId, let existing = store.event(withIdentifier: existingId) {
@@ -656,18 +668,21 @@ private func createOrUpdateEvent(
     }
 
     ekEvent.title = title
+    ekEvent.timeZone = timezone
 
     let parts = day.split(separator: "-").map { Int($0)! }
     var components = DateComponents()
     components.year = parts[0]
     components.month = parts[1]
     components.day = parts[2]
+    if let tz = timezone { components.timeZone = tz }
 
-    let calendar = Calendar.current
+    var cal = Calendar.current
+    if let tz = timezone { cal.timeZone = tz }
 
     if isAllDay {
         ekEvent.isAllDay = true
-        guard let startDate = calendar.date(from: components) else { return nil }
+        guard let startDate = cal.date(from: components) else { return nil }
         ekEvent.startDate = startDate
         ekEvent.endDate = startDate
     } else {
@@ -675,7 +690,7 @@ private func createOrUpdateEvent(
         let timeParts = startTime!.split(separator: ":").map { Int($0)! }
         components.hour = timeParts[0]
         components.minute = timeParts[1]
-        guard let startDate = calendar.date(from: components) else { return nil }
+        guard let startDate = cal.date(from: components) else { return nil }
         ekEvent.startDate = startDate
         ekEvent.endDate = startDate.addingTimeInterval(Double(durationMin!) * 60)
     }
