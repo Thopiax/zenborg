@@ -8,8 +8,13 @@ import { useSelection } from "./useSelection.ts";
  * - Escape: Clear selection
  */
 export function useGlobalSelection(allMomentIds: string[]) {
-  const { selectAll, clearSelection, editingMomentId, hasAnySelected } =
-    useSelection();
+  const {
+    selectAll,
+    clearSelection,
+    deleteSelected,
+    editingMomentId,
+    hasAnySelected,
+  } = useSelection();
 
   // Cmd/Ctrl+A to select all moments
   useHotkeys(
@@ -29,10 +34,22 @@ export function useGlobalSelection(allMomentIds: string[]) {
   useHotkeys(
     "escape",
     (e) => {
-      // Only clear selection if we have something selected and we're not editing
       if (hasAnySelected && !editingMomentId) {
         e.preventDefault();
         clearSelection();
+      }
+    },
+    { enableOnFormTags: false },
+    [hasAnySelected, editingMomentId],
+  );
+
+  // Backspace / Delete to remove selected moments
+  useHotkeys(
+    "backspace,delete",
+    (e) => {
+      if (hasAnySelected && !editingMomentId) {
+        e.preventDefault();
+        deleteSelected();
       }
     },
     { enableOnFormTags: false },
