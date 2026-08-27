@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "zenborg",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "identifier": "tech.equanimi.zenborg",
   "build": {
     "frontendDist": "../out",
@@ -27,7 +27,10 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
-    "externalBin": ["binaries/zenborg-mcp", "binaries/zenborg-calendar"],
+    "externalBin": [
+      "binaries/zenborg-mcp",
+      "binaries/zenborg-calendar"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
