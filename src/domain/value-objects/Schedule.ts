@@ -38,6 +38,7 @@ export interface Schedule {
   readonly weekdays: readonly Weekday[];
   readonly startTime: string; // "HH:MM", 24h, zero-padded
   readonly durationMin: number; // positive whole minutes
+  readonly timezone?: string; // IANA timezone, e.g. "Europe/Paris"
 }
 
 export type ScheduleResult = Schedule | { error: string };
@@ -46,6 +47,7 @@ export interface CreateScheduleProps {
   weekdays: readonly Weekday[];
   startTime: string;
   durationMin: number;
+  timezone?: string;
 }
 
 const START_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -87,11 +89,13 @@ export function createSchedule(props: CreateScheduleProps): ScheduleResult {
     };
   }
 
-  return {
+  const schedule: Schedule = {
     weekdays,
     startTime: props.startTime,
     durationMin: props.durationMin,
+    ...(props.timezone ? { timezone: props.timezone } : {}),
   };
+  return schedule;
 }
 
 export function isScheduleError(
