@@ -387,7 +387,7 @@ describe("HabitService", () => {
       }
     });
 
-    it("should cascade-delete moments linked to the habit", () => {
+    it("should preserve moments linked to the deleted habit", () => {
       const habit = service.createHabit({
         name: "Running",
         areaId: "area-1",
@@ -409,21 +409,11 @@ describe("HabitService", () => {
         order: 0,
       });
 
-      const unrelated = createMoment({
-        name: "Reading",
-        areaId: "area-2",
-        habitId: "other-habit",
-      });
-      if ("error" in unrelated) throw new Error(unrelated.error);
-      moments$[unrelated.id].set(unrelated);
-
       service.archiveHabit(habit.id);
       service.deleteHabit(habit.id);
 
-      const remaining = moments$.get();
-      expect(Object.keys(remaining)).toHaveLength(1);
-      expect(remaining[unrelated.id]).toBeDefined();
-      expect(remaining[allocated.id]).toBeUndefined();
+      expect(habits$.get()[habit.id]).toBeUndefined();
+      expect(moments$.get()[allocated.id]).toBeDefined();
     });
   });
 
