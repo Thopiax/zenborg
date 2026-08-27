@@ -60,6 +60,7 @@ interface MomentFormDialogProps {
     tags?: string[],
     customMetric?: CustomMetric,
     startTime?: string,
+    mentionIds?: string[],
   ) => void;
   /** For edit mode: called when user confirms deletion */
   onDelete?: () => void;
@@ -98,9 +99,11 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     tags: formTags,
     customMetric,
     editingMomentId,
+    mentionIds: formMentionIds,
   } = formState;
 
   const tags = useMemo(() => formTags || [], [formTags]);
+  const mentionIds = useMemo(() => formMentionIds || [], [formMentionIds]);
 
   // Use activeAreas$ which filters out archived areas and sorts by order
   const areasList = useSelector(() => activeAreas$.get());
@@ -127,14 +130,14 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   const phaseSelectorRef = useRef<HTMLButtonElement>(null);
 
   // Tagged name field
-  const taggedField = useTaggedNameField(name, tags);
+  const taggedField = useTaggedNameField(name, tags, mentionIds);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: seeds form state when the dialog opens; re-running on every dep change would discard edits
   useEffect(() => {
     if (!open) return;
 
     // Reinitialize field when opening dialog (create or edit mode)
-    taggedField.reinitialize(name, tags);
+    taggedField.reinitialize(name, tags, mentionIds);
   }, [open, editingMomentId]);
 
   // Sync typed text FROM tagged field back to form store (for emoji auto-suggestion)
@@ -232,6 +235,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     !isAreaSelectorOpen &&
     !isPhaseSelectorOpen &&
     !taggedField.isAutocompleteOpen &&
+    !taggedField.isMentionOpen &&
     !emojiPickerOpen &&
     !showHabitAutocomplete;
 
@@ -357,7 +361,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       // If "Create more" is enabled, pass it to parent
       const shouldCreateMore = mode === "create" && createMore;
 
-      // Call onSave with clean name and all tags
       onSave(
         cleanName,
         selectedArea.id,
@@ -367,6 +370,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
         finalTags,
         customMetric,
         startTime,
+        taggedField.mentionIds,
       );
 
       // If "Create more" is enabled, reset form immediately

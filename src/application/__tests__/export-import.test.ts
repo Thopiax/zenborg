@@ -232,6 +232,8 @@ describe("Export/Import System", () => {
           phaseConfigs: {},
           metricLogs: {},
           dayNotes: {},
+          people: {},
+          places: {},
         },
       };
 
@@ -253,6 +255,8 @@ describe("Export/Import System", () => {
           phaseConfigs: {},
           metricLogs: {},
           dayNotes: {},
+          people: {},
+          places: {},
         },
       };
 
@@ -321,6 +325,8 @@ describe("Export/Import System", () => {
           phaseConfigs: {},
           metricLogs: {},
           dayNotes: {},
+          people: {},
+          places: {},
         },
       };
 
