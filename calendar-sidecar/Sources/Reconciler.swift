@@ -9,19 +9,22 @@ struct EventSnapshot {
     var day: String
     var startTime: String
     var durationMin: Int
+    var isAllDay: Bool
     var lastModified: String
 }
 
 struct ReconcileContext {
     var areaCalendarIds: Set<String>
     var selectedCalendarIds: [String]
+    var managedEventIds: Set<String>
 }
 
 enum ReconcileAction: Equatable {
     case none(reason: String)
-    case createTentativeMoment(name: String, day: String, startTime: String, durationMin: Int, eventId: String, calendarId: String)
+    case createTentativeMoment(name: String, day: String, startTime: String?, durationMin: Int?, eventId: String, calendarId: String)
+    case createMomentFromAreaEvent(name: String, day: String, startTime: String?, durationMin: Int?, eventId: String, calendarId: String)
     case publishEvent(momentId: String, overwroteEventEdit: Bool)
-    case applyEventToMoment(momentId: String, day: String, startTime: String, durationMin: Int, overwroteMomentEdit: Bool)
+    case applyEventToMoment(momentId: String, day: String, startTime: String?, durationMin: Int?, overwroteMomentEdit: Bool)
     case deleteMoment(momentId: String)
     case returnToDrawingBoard(momentId: String)
     case deleteEvent(eventId: String)
@@ -87,14 +90,44 @@ func countsAsAllocation(_ moment: VaultMoment) -> Bool {
 
 // MARK: - eventFieldsForMoment
 
-func eventFieldsForMoment(_ moment: VaultMoment) -> (title: String, day: String, startTime: String, durationMin: Int)? {
-    guard let day = moment.day, let startTime = moment.startTime else {
+func eventFieldsForMoment(_ moment: VaultMoment) -> (title: String, day: String, startTime: String?, durationMin: Int?)? {
+    guard let day = moment.day else {
         return nil
     }
-    return (moment.name, day, startTime, moment.durationMin ?? 60)
+    if moment.startTime == nil {
+        return (moment.name, day, nil, nil)
+    }
+    return (moment.name, day, moment.startTime, moment.durationMin ?? 60)
 }
 
-// MARK: - reconcile (the truth table, ten branches)
+// MARK: - Helpers
+
+private func snappedFieldsFromEvent(_ event: EventSnapshot) -> (startTime: String?, durationMin: Int?) {
+    if event.isAllDay { return (nil, nil) }
+    let snapped = snapToGrid(startTime: event.startTime, durationMin: event.durationMin)
+    return (snapped.startTime, snapped.durationMin)
+}
+
+private func eventFieldsHash(_ event: EventSnapshot) -> String {
+    if event.isAllDay {
+        return momentHash(day: event.day, startTime: nil, durationMin: nil)
+    }
+    return momentHash(day: event.day, startTime: event.startTime, durationMin: event.durationMin)
+}
+
+private func stripEmojiPrefix(_ title: String) -> String {
+    guard let first = title.unicodeScalars.first,
+          first.properties.isEmoji,
+          title.count > 1 else { return title }
+    var idx = title.startIndex
+    title.formIndex(after: &idx)
+    if idx < title.endIndex && title[idx] == " " {
+        title.formIndex(after: &idx)
+    }
+    return idx < title.endIndex ? String(title[idx...]) : title
+}
+
+// MARK: - reconcile (the truth table)
 
 func reconcile(moment: VaultMoment?, event: EventSnapshot?, context: ReconcileContext) -> ReconcileAction {
     // Branch 1: degenerate guard
@@ -102,41 +135,50 @@ func reconcile(moment: VaultMoment?, event: EventSnapshot?, context: ReconcileCo
         return .none(reason: "inSync")
     }
 
-    // Branch 2: orphan event in an area calendar (moment deleted/unallocated)
-    if moment == nil, let event = event, context.areaCalendarIds.contains(event.calendarId) {
-        return .deleteEvent(eventId: event.eventId)
-    }
+    // Branch 2-4: no moment, event exists
+    if moment == nil, let event = event {
+        if context.areaCalendarIds.contains(event.calendarId) {
+            if context.managedEventIds.contains(event.eventId) {
+                return .deleteEvent(eventId: event.eventId)
+            }
+            let snapped = snappedFieldsFromEvent(event)
+            return .createMomentFromAreaEvent(
+                name: stripEmojiPrefix(event.title),
+                day: event.day,
+                startTime: snapped.startTime,
+                durationMin: snapped.durationMin,
+                eventId: event.eventId,
+                calendarId: event.calendarId
+            )
+        }
 
-    // Branch 3: new event on a selected calendar
-    if moment == nil, let event = event, context.selectedCalendarIds.contains(event.calendarId) {
-        let snapped = snapToGrid(startTime: event.startTime, durationMin: event.durationMin)
-        let words = event.title.split(separator: " ").prefix(3).joined(separator: " ")
-        let name = words.isEmpty ? event.title : words
-        return .createTentativeMoment(
-            name: name,
-            day: event.day,
-            startTime: snapped.startTime,
-            durationMin: snapped.durationMin,
-            eventId: event.eventId,
-            calendarId: event.calendarId
-        )
-    }
+        if context.selectedCalendarIds.contains(event.calendarId) {
+            let snapped = snappedFieldsFromEvent(event)
+            let words = event.title.split(separator: " ").prefix(3).joined(separator: " ")
+            let name = words.isEmpty ? event.title : words
+            return .createTentativeMoment(
+                name: name,
+                day: event.day,
+                startTime: snapped.startTime,
+                durationMin: snapped.durationMin,
+                eventId: event.eventId,
+                calendarId: event.calendarId
+            )
+        }
 
-    // Branch 4: event on an unselected calendar
-    if moment == nil {
         return .none(reason: "unselectedCalendar")
     }
 
     let moment = moment!
 
-    // Branch 5: ambient moment (no startTime)
-    if moment.startTime == nil {
+    // Branch 5: unallocated ambient with no calendar link
+    if moment.startTime == nil && moment.day == nil && moment.externalRef == nil {
         return .none(reason: "ambient")
     }
 
     // Branch 6: no event, no externalRef
     if event == nil && moment.externalRef == nil {
-        if moment.day != nil && moment.startTime != nil && countsAsAllocation(moment) {
+        if moment.day != nil && countsAsAllocation(moment) {
             return .publishEvent(momentId: moment.id, overwroteEventEdit: false)
         }
         return .none(reason: "inSync")
@@ -164,7 +206,7 @@ func reconcile(moment: VaultMoment?, event: EventSnapshot?, context: ReconcileCo
 
     // Branch 9: area calendar event
     if context.areaCalendarIds.contains(event.calendarId) {
-        let eventHash = momentHash(day: event.day, startTime: event.startTime, durationMin: event.durationMin)
+        let eventHash = eventFieldsHash(event)
         let currentMomentHash = momentHash(day: fields.day, startTime: fields.startTime, durationMin: fields.durationMin)
 
         let eventTimingChanged = eventHash != ref.lastWrittenHash
@@ -182,7 +224,7 @@ func reconcile(moment: VaultMoment?, event: EventSnapshot?, context: ReconcileCo
 
         // Only event changed: drag
         if eventTimingChanged && !momentTimingChanged {
-            let snapped = snapToGrid(startTime: event.startTime, durationMin: event.durationMin)
+            let snapped = snappedFieldsFromEvent(event)
             return .applyEventToMoment(
                 momentId: moment.id,
                 day: event.day,
@@ -201,7 +243,7 @@ func reconcile(moment: VaultMoment?, event: EventSnapshot?, context: ReconcileCo
         let eventTime = event.lastModified
         let momentTime = moment.updatedAt
         if eventTime > momentTime {
-            let snapped = snapToGrid(startTime: event.startTime, durationMin: event.durationMin)
+            let snapped = snappedFieldsFromEvent(event)
             return .applyEventToMoment(
                 momentId: moment.id,
                 day: event.day,
@@ -215,18 +257,18 @@ func reconcile(moment: VaultMoment?, event: EventSnapshot?, context: ReconcileCo
     }
 
     // Branch 10: foreign (ingested) calendar
-    let snapped = snapToGrid(startTime: event.startTime, durationMin: event.durationMin)
-    let eventHash = momentHash(day: event.day, startTime: snapped.startTime, durationMin: snapped.durationMin)
+    let snapped = snappedFieldsFromEvent(event)
 
     // Idempotence guard
-    if snapped.startTime == fields.startTime
-        && snapped.durationMin == fields.durationMin
+    if snapped.startTime == moment.startTime
+        && snapped.durationMin == moment.durationMin
         && event.day == fields.day {
         return .none(reason: "inSync")
     }
 
     // Event moved on the foreign calendar
-    if eventHash != ref.lastWrittenHash {
+    let foreignEventHash = eventFieldsHash(event)
+    if foreignEventHash != ref.lastWrittenHash {
         let momentTimingChanged = momentHash(day: fields.day, startTime: fields.startTime, durationMin: fields.durationMin) != ref.lastWrittenHash
         return .applyEventToMoment(
             momentId: moment.id,
@@ -270,7 +312,8 @@ func runSelfTest(vectorsPath: String) {
         let event: EventSnapshot? = eventDict.map { decodeEventFromVector($0) }
         let context = ReconcileContext(
             areaCalendarIds: Set(contextDict["areaCalendarIds"] as! [String]),
-            selectedCalendarIds: contextDict["selectedCalendarIds"] as! [String]
+            selectedCalendarIds: contextDict["selectedCalendarIds"] as! [String],
+            managedEventIds: Set((contextDict["managedEventIds"] as? [String]) ?? [])
         )
 
         let result = reconcile(moment: moment, event: event, context: context)
@@ -329,9 +372,13 @@ private func decodeEventFromVector(_ dict: [String: Any]) -> EventSnapshot {
         day: dict["day"] as? String ?? "",
         startTime: dict["startTime"] as? String ?? "",
         durationMin: dict["durationMin"] as? Int ?? 60,
+        isAllDay: dict["isAllDay"] as? Bool ?? false,
         lastModified: dict["lastModified"] as? String ?? ""
     )
 }
+
+private func jsonValue(_ val: String?) -> Any { val ?? NSNull() }
+private func jsonValue(_ val: Int?) -> Any { val.map { $0 as Any } ?? NSNull() }
 
 private func encodeAction(_ action: ReconcileAction) -> [String: Any] {
     switch action {
@@ -342,8 +389,18 @@ private func encodeAction(_ action: ReconcileAction) -> [String: Any] {
             "kind": "createTentativeMoment",
             "name": name,
             "day": day,
-            "startTime": startTime,
-            "durationMin": durationMin,
+            "startTime": jsonValue(startTime),
+            "durationMin": jsonValue(durationMin),
+            "eventId": eventId,
+            "calendarId": calendarId,
+        ]
+    case .createMomentFromAreaEvent(let name, let day, let startTime, let durationMin, let eventId, let calendarId):
+        return [
+            "kind": "createMomentFromAreaEvent",
+            "name": name,
+            "day": day,
+            "startTime": jsonValue(startTime),
+            "durationMin": jsonValue(durationMin),
             "eventId": eventId,
             "calendarId": calendarId,
         ]
@@ -354,8 +411,8 @@ private func encodeAction(_ action: ReconcileAction) -> [String: Any] {
             "kind": "applyEventToMoment",
             "momentId": momentId,
             "day": day,
-            "startTime": startTime,
-            "durationMin": durationMin,
+            "startTime": jsonValue(startTime),
+            "durationMin": jsonValue(durationMin),
             "overwroteMomentEdit": overwroteMomentEdit,
         ]
     case .deleteMoment(let momentId):
@@ -371,6 +428,9 @@ private func dictionariesEqual(_ a: [String: Any], _ b: [String: Any]) -> Bool {
     guard a.keys.count == b.keys.count else { return false }
     for (key, aVal) in a {
         guard let bVal = b[key] else { return false }
+        // Handle NSNull (JSON null) comparison
+        if aVal is NSNull && bVal is NSNull { continue }
+        if aVal is NSNull || bVal is NSNull { return false }
         if let aStr = aVal as? String, let bStr = bVal as? String {
             if aStr != bStr { return false }
         } else if let aNum = aVal as? Int, let bNum = bVal as? Int {
