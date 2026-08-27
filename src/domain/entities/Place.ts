@@ -1,10 +1,3 @@
-/**
- * Place -- a registry entity referenced by Moment.placeIds, Habit.placeIds
- * and Cycle.placeIds.
- *
- * Hierarchical via parentKey (e.g. "paris" -> "france"). The key is a
- * stable slug, the id a UUID. url is an optional map/directions link.
- */
 export interface Place {
   id: string;
   name: string;
@@ -14,4 +7,24 @@ export interface Place {
   url: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export function createPlace(props: {
+  name: string;
+  key: string;
+  emoji?: string | null;
+  parentKey?: string | null;
+  url?: string | null;
+}): Place {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    name: props.name.trim(),
+    key: props.key,
+    parentKey: props.parentKey ?? null,
+    emoji: props.emoji ?? null,
+    url: props.url ?? null,
+    createdAt: now,
+    updatedAt: now,
+  };
 }
