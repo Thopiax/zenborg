@@ -1,12 +1,11 @@
 "use client";
 
-import { use$ } from "@legendapp/state/react";
+import { memo } from "react";
 import type { Area } from "@/domain/entities/Area";
 import type { Moment } from "@/domain/entities/Moment";
 import { useActiveMoment } from "@/hooks/useActiveMoment";
 import { useHabitHealth } from "@/hooks/useHabitHealth";
 import { useSelection } from "@/hooks/useSelection";
-import { phaseConfigs$ } from "@/infrastructure/state/store";
 import { openMomentFormEdit } from "@/infrastructure/state/ui-store";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { healthEmojiClass } from "@/lib/health-style";
@@ -46,7 +45,7 @@ interface MomentCardProps {
  * - Calm, minimalist design with color-matched rings
  * - Full accessibility with ARIA labels
  */
-export function MomentCard({
+export const MomentCard = memo(function MomentCard({
   moment,
   area,
   contextMomentIds,
@@ -56,7 +55,6 @@ export function MomentCard({
     toggleSelection,
     selectRange,
   } = useSelection();
-  const allPhaseConfigs = use$(phaseConfigs$);
   const { activeMomentId, toggleActive } = useActiveMoment();
 
   const isSelected = isSelectedMoment(moment.id);
@@ -94,11 +92,6 @@ export function MomentCard({
   // Get accessible text colors based on area color
   const textColors = getTextColorsForBackground(area.color);
 
-  // Get phase config for displaying emoji
-  const _phaseConfig = moment.phase
-    ? Object.values(allPhaseConfigs).find((pc) => pc.phase === moment.phase)
-    : null;
-
   // Descriptive ARIA label for accessibility
   const activeSuffix = isActive ? ", active moment" : "";
   const ariaLabel = isSelected
@@ -111,7 +104,7 @@ export function MomentCard({
       className={cn(
         "rounded-lg cursor-pointer w-full",
         "focus:outline-none relative",
-        "transition-all duration-medium transition-elastic",
+        "transition-[translate,box-shadow,border-color] duration-150 ease-out",
         "outline-none",
         // Subtle lift on hover for depth
         "hover:-translate-y-0.5",
@@ -180,4 +173,4 @@ export function MomentCard({
       </div>
     </button>
   );
-}
+});
