@@ -281,6 +281,14 @@ export interface MetricLog {
   updatedAt: string;
 }
 
+export interface DayNote {
+  date: string;
+  title: string;
+  body?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Collection registry (mirrors src/domain/registry.ts)
 // ────────────────────────────────────────────────────────────────────────
@@ -293,6 +301,7 @@ export const COLLECTION_NAMES = [
   "cyclePlans",
   "phaseConfigs",
   "metricLogs",
+  "dayNotes",
   "people",
   "places",
 ] as const;
@@ -306,6 +315,7 @@ export interface CollectionTypeMap {
   cyclePlans: CyclePlan;
   phaseConfigs: PhaseConfig;
   metricLogs: MetricLog;
+  dayNotes: DayNote;
   people: Person;
   places: Place;
 }

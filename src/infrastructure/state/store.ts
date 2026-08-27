@@ -6,6 +6,8 @@ import type { DayNote } from "@/domain/entities/DayNote";
 import type { Habit } from "@/domain/entities/Habit";
 import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
+import type { Person } from "@/domain/entities/Person";
+import type { Place } from "@/domain/entities/Place";
 import {
   getCurrentPhase,
   type PhaseConfig,
@@ -91,6 +93,18 @@ export const metricLogs$ = observable<Record<string, MetricLog>>({});
  * Optional per-day metadata (title now, room for intention/mood later).
  */
 export const dayNotes$ = observable<Record<string, DayNote>>({});
+
+/**
+ * People collection - keyed by person ID
+ * Registry entities referenced by Moment.personIds
+ */
+export const people$ = observable<Record<string, Person>>({});
+
+/**
+ * Places collection - keyed by place ID
+ * Registry entities referenced by moments, habits and cycles
+ */
+export const places$ = observable<Record<string, Place>>({});
 
 // ============================================================================
 // History State
@@ -684,6 +698,8 @@ export function resetDatabase() {
   cyclePlans$.set({});
   phaseConfigs$.set({});
   metricLogs$.set({});
+  people$.set({});
+  places$.set({});
 
   console.log("[resetDatabase] Database reset complete");
 
