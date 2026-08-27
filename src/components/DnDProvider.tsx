@@ -14,14 +14,13 @@ import {
   DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
-  MouseSensor,
+  PointerSensor,
   pointerWithin,
   rectIntersection,
   TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useValue } from "@legendapp/state/react";
 import { useState } from "react";
@@ -144,14 +143,14 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
   // Configure sensors for mouse, touch, and keyboard interactions
   const sensors = useSensors(
-    useSensor(MouseSensor, {
+    useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 4, // 4px drag threshold - optimized for trackpad precision on iPad
+        distance: 4,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 150, // 150ms hold for touch to prevent scroll interference
+        delay: 150,
         tolerance: 5,
       },
     }),
@@ -709,7 +708,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
-      autoScroll={{ threshold: { x: 0, y: 0.2 } }}
+      autoScroll={false}
     >
       {children}
 
@@ -717,7 +716,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
           avoids the snap-back when deck-card drops materialize a new moment —
           the source draggable disappears, so the default return animation
           looks like the card bounced away from the slot it just filled. */}
-      <DragOverlay modifiers={[snapCenterToCursor]} dropAnimation={null}>
+      <DragOverlay dropAnimation={null}>
         {activeMoment && activeArea ? (
           <div
             className={isDuplicateMode ? "cursor-copy" : "cursor-grabbing"}
