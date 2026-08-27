@@ -126,6 +126,27 @@ export class HabitService {
   }
 
   /**
+   * Permanently deletes an archived habit from the store.
+   * Only archived habits can be deleted. Moments linked to this habit
+   * are preserved as historical records (orphaned via habitId).
+   */
+  deleteHabit(habitId: string): HabitResult {
+    const existing = habits$[habitId].get();
+
+    if (!existing) {
+      return { error: `Habit with ID ${habitId} not found` };
+    }
+
+    if (!existing.isArchived) {
+      return { error: "Only archived habits can be permanently deleted" };
+    }
+
+    habits$[habitId].delete();
+
+    return existing;
+  }
+
+  /**
    * Gets a single habit by ID
    *
    * @param habitId - ID of habit to retrieve

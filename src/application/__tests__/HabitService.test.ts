@@ -343,6 +343,80 @@ describe("HabitService", () => {
     });
   });
 
+  describe("deleteHabit", () => {
+    it("should permanently remove an archived habit from the store", () => {
+      const habit = service.createHabit({
+        name: "Gone Habit",
+        areaId: "area-123",
+        order: 0,
+      });
+      if ("error" in habit) throw new Error(habit.error);
+
+      service.archiveHabit(habit.id);
+
+      const result = service.deleteHabit(habit.id);
+      if ("error" in result) throw new Error(result.error);
+
+      expect(habits$.get()[habit.id]).toBeUndefined();
+    });
+
+    it("should refuse to delete a non-archived habit", () => {
+      const habit = service.createHabit({
+        name: "Active Habit",
+        areaId: "area-123",
+        order: 0,
+      });
+      if ("error" in habit) throw new Error(habit.error);
+
+      const result = service.deleteHabit(habit.id);
+
+      expect("error" in result).toBe(true);
+      if ("error" in result) {
+        expect(result.error).toContain("archived");
+      }
+
+      expect(habits$.get()[habit.id]).toBeDefined();
+    });
+
+    it("should return error if habit not found", () => {
+      const result = service.deleteHabit("non-existent-id");
+
+      expect("error" in result).toBe(true);
+      if ("error" in result) {
+        expect(result.error).toContain("not found");
+      }
+    });
+
+    it("should preserve moments linked to the deleted habit", () => {
+      const habit = service.createHabit({
+        name: "Running",
+        areaId: "area-1",
+        order: 0,
+      });
+      if ("error" in habit) throw new Error(habit.error);
+
+      const allocated = createMoment({
+        name: "Running",
+        areaId: "area-1",
+        habitId: habit.id,
+        cycleId: "cycle-1",
+      });
+      if ("error" in allocated) throw new Error(allocated.error);
+      moments$[allocated.id].set({
+        ...allocated,
+        day: "2026-03-04",
+        phase: Phase.MORNING,
+        order: 0,
+      });
+
+      service.archiveHabit(habit.id);
+      service.deleteHabit(habit.id);
+
+      expect(habits$.get()[habit.id]).toBeUndefined();
+      expect(moments$.get()[allocated.id]).toBeDefined();
+    });
+  });
+
   describe("unarchiveHabit", () => {
     it("should unarchive habit in store", () => {
       const habit = service.createHabit({
