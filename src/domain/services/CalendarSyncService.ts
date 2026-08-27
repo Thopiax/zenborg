@@ -6,12 +6,15 @@ import { snapToGrid } from "../value-objects/TimeGrid.ts";
 /**
  * Exactly the fields zenborg pushes to (or ingests from) a calendar event.
  * The hash over these is the echo-suppression comparand (spec D4).
+ *
+ * When startTime is null the event is all-day: the moment is ambient
+ * (no clock position) and the calendar event spans the whole day.
  */
 export interface EventFields {
   readonly title: string;
   readonly day: string;
-  readonly startTime: string;
-  readonly durationMin: number;
+  readonly startTime: string | null;
+  readonly durationMin: number | null;
 }
 
 /** Default event length when a timed moment carries no duration. */
@@ -68,15 +71,19 @@ export function fnv1a64(input: string): string {
  * Title is deliberately NOT hashed (amended 2026-08-21). Hashing it made a
  * calendar-side rename revert two passes later. Timing is the only thing a
  * drag changes, so timing is the only thing the hash tracks.
+ *
+ * All-day events hash as "{day}|allDay" since they have no clock position.
  */
 export function momentHash(fields: EventFields): string {
+  if (fields.startTime === null) {
+    return fnv1a64(`${fields.day}|allDay`);
+  }
   return fnv1a64(`${fields.day}|${fields.startTime}|${fields.durationMin}`);
 }
 
 /**
- * The event a moment would publish as. Null for ambient moments (inventing
- * a start time for a moment deliberately without one would be fabricating
- * data, spec D6) and for unallocated moments (an event needs a date).
+ * The event a moment would publish as. Null only for unallocated moments
+ * (no day). Ambient moments (no startTime) publish as all-day events.
  */
 export type EmojiResolver = (m: Moment) => string | null;
 
@@ -84,9 +91,13 @@ export function eventFieldsForMoment(
   moment: Moment,
   resolveEmoji?: EmojiResolver,
 ): EventFields | null {
-  if (moment.day === null || moment.startTime === undefined) return null;
+  if (moment.day === null) return null;
   const emoji = resolveEmoji?.(moment);
   const title = emoji ? `${emoji} ${moment.name}` : moment.name;
+
+  if (moment.startTime === undefined) {
+    return { title, day: moment.day, startTime: null, durationMin: null };
+  }
   return {
     title,
     day: moment.day,
@@ -111,12 +122,14 @@ export interface CalendarEventSnapshot {
   readonly day: string;
   readonly startTime: string;
   readonly durationMin: number;
+  readonly isAllDay: boolean;
   readonly lastModified: string;
 }
 
 export interface ReconcileContext {
   readonly areaCalendarIds: ReadonlySet<string>;
   readonly selectedCalendarIds: readonly string[];
+  readonly managedEventIds: ReadonlySet<string>;
 }
 
 export type ReconcileAction =
@@ -133,8 +146,17 @@ export type ReconcileAction =
       kind: "createTentativeMoment";
       name: string;
       day: string;
-      startTime: string;
-      durationMin: number;
+      startTime: string | null;
+      durationMin: number | null;
+      eventId: string;
+      calendarId: string;
+    }
+  | {
+      kind: "createMomentFromAreaEvent";
+      name: string;
+      day: string;
+      startTime: string | null;
+      durationMin: number | null;
       eventId: string;
       calendarId: string;
     }
@@ -143,8 +165,8 @@ export type ReconcileAction =
       kind: "applyEventToMoment";
       momentId: string;
       day: string;
-      startTime: string;
-      durationMin: number;
+      startTime: string | null;
+      durationMin: number | null;
       overwroteMomentEdit: boolean;
     }
   | { kind: "deleteMoment"; momentId: string }
@@ -166,12 +188,29 @@ function isSelectedCalendar(
 }
 
 function eventFieldsFromSnapshot(event: CalendarEventSnapshot): EventFields {
+  if (event.isAllDay) {
+    return {
+      title: event.title,
+      day: event.day,
+      startTime: null,
+      durationMin: null,
+    };
+  }
   return {
     title: event.title,
     day: event.day,
     startTime: event.startTime,
     durationMin: event.durationMin,
   };
+}
+
+function snappedFieldsFromEvent(
+  event: CalendarEventSnapshot,
+): { startTime: string | null; durationMin: number | null } {
+  if (event.isAllDay) {
+    return { startTime: null, durationMin: null };
+  }
+  return snapToGrid(event.startTime, event.durationMin);
 }
 
 /**
@@ -195,10 +234,22 @@ export function reconcile(
   // Branch 2-4: no moment, event exists
   if (moment === null && event !== null) {
     if (isAreaCalendar(event.calendarId, context)) {
-      return { kind: "deleteEvent", eventId: event.eventId };
+      if (context.managedEventIds.has(event.eventId)) {
+        return { kind: "deleteEvent", eventId: event.eventId };
+      }
+      const snapped = snappedFieldsFromEvent(event);
+      return {
+        kind: "createMomentFromAreaEvent",
+        name: stripEmojiPrefix(event.title),
+        day: event.day,
+        startTime: snapped.startTime,
+        durationMin: snapped.durationMin,
+        eventId: event.eventId,
+        calendarId: event.calendarId,
+      };
     }
     if (isSelectedCalendar(event.calendarId, context)) {
-      const snapped = snapToGrid(event.startTime, event.durationMin);
+      const snapped = snappedFieldsFromEvent(event);
       return {
         kind: "createTentativeMoment",
         name: event.title,
@@ -215,8 +266,8 @@ export function reconcile(
   // From here moment is guaranteed non-null
   const m = moment!;
 
-  // Branch 5: ambient moment (no startTime)
-  if (m.startTime === undefined) {
+  // Branch 5: unallocated ambient with no calendar link: nothing to sync
+  if (m.startTime === undefined && m.day === null && !m.externalRef) {
     return { kind: "none", reason: "ambient" };
   }
 
@@ -224,11 +275,7 @@ export function reconcile(
   if (event === null) {
     if (!m.externalRef) {
       // Branch 6: no externalRef, never synced
-      if (
-        m.day !== null &&
-        m.startTime !== undefined &&
-        countsAsAllocation(m)
-      ) {
+      if (m.day !== null && countsAsAllocation(m)) {
         return {
           kind: "publishEvent",
           momentId: m.id,
@@ -273,7 +320,7 @@ export function reconcile(
       return { kind: "none", reason: "echo" };
     }
     if (eventChanged && !momentChanged) {
-      const snapped = snapToGrid(event.startTime, event.durationMin);
+      const snapped = snappedFieldsFromEvent(event);
       return {
         kind: "applyEventToMoment",
         momentId: m.id,
@@ -294,7 +341,7 @@ export function reconcile(
     const eventNewer =
       new Date(event.lastModified).getTime() >= new Date(m.updatedAt).getTime();
     if (eventNewer) {
-      const snapped = snapToGrid(event.startTime, event.durationMin);
+      const snapped = snappedFieldsFromEvent(event);
       return {
         kind: "applyEventToMoment",
         momentId: m.id,
@@ -308,10 +355,10 @@ export function reconcile(
   }
 
   // Branch 10: both present, foreign (ingested) calendar
-  const snapped = snapToGrid(event.startTime, event.durationMin);
+  const snapped = snappedFieldsFromEvent(event);
   if (
-    snapped.startTime === m.startTime &&
-    snapped.durationMin === m.durationMin &&
+    snapped.startTime === (m.startTime ?? null) &&
+    snapped.durationMin === (m.durationMin ?? null) &&
     event.day === m.day
   ) {
     return { kind: "none", reason: "inSync" };
@@ -338,17 +385,24 @@ export function reconcile(
 /**
  * Apply an event's timing to a moment. Re-derives phase from startTime
  * against PhaseConfig (spec D6). Never renames.
+ *
+ * When startTime is null, the event is all-day: the moment becomes ambient
+ * (startTime and durationMin are removed).
  */
 export function applyEventToMoment(
   moment: Moment,
   action: Extract<ReconcileAction, { kind: "applyEventToMoment" }>,
   phaseConfigs: readonly PhaseConfig[],
 ): Moment {
+  if (action.startTime === null) {
+    const { startTime: _, durationMin: __, ...rest } = moment;
+    return { ...rest, day: action.day, updatedAt: new Date().toISOString() };
+  }
   return {
     ...moment,
     day: action.day,
     startTime: action.startTime,
-    durationMin: action.durationMin,
+    durationMin: action.durationMin!,
     phase: phaseForStartTime(action.startTime, phaseConfigs) ?? moment.phase,
     updatedAt: new Date().toISOString(),
   };

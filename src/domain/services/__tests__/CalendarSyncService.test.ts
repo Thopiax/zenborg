@@ -6,10 +6,12 @@ import {
 } from "../../entities/Moment.ts";
 import fc from "fast-check";
 import {
+  type CalendarEventSnapshot,
   type EventFields,
   type ReconcileContext,
   applyEventToMoment,
   eventFieldsForMoment,
+  fnv1a64,
   momentHash,
   reconcile,
   stripEmojiPrefix,
@@ -66,6 +68,34 @@ describe("momentHash", () => {
       expect(digest).not.toBe(base);
     }
   });
+
+  it("pins the all-day digest", () => {
+    const allDayFields: EventFields = {
+      title: "meditate",
+      day: "2026-08-24",
+      startTime: null,
+      durationMin: null,
+    };
+    expect(momentHash(allDayFields)).toBe(
+      fnv1a64("2026-08-24|allDay"),
+    );
+  });
+
+  it("all-day hash differs from any timed hash on the same day", () => {
+    const allDay: EventFields = {
+      title: "x",
+      day: "2026-08-24",
+      startTime: null,
+      durationMin: null,
+    };
+    const timed: EventFields = {
+      title: "x",
+      day: "2026-08-24",
+      startTime: "00:00",
+      durationMin: 1440,
+    };
+    expect(momentHash(allDay)).not.toBe(momentHash(timed));
+  });
 });
 
 describe("eventFieldsForMoment", () => {
@@ -78,8 +108,13 @@ describe("eventFieldsForMoment", () => {
     expect(eventFieldsForMoment(m)).toEqual(fields);
   });
 
-  it("returns null for an ambient moment: no start time is never invented", () => {
-    expect(eventFieldsForMoment(newMoment({ day: "2026-08-24" }))).toBeNull();
+  it("returns all-day fields for an allocated ambient moment", () => {
+    const m = newMoment({ day: "2026-08-24" });
+    const result = eventFieldsForMoment(m);
+    expect(result).not.toBeNull();
+    expect(result!.startTime).toBeNull();
+    expect(result!.durationMin).toBeNull();
+    expect(result!.day).toBe("2026-08-24");
   });
 
   it("returns null for an unallocated moment", () => {
@@ -150,6 +185,25 @@ function contextFromVector(raw: Record<string, unknown>): ReconcileContext {
   return {
     areaCalendarIds: new Set(raw.areaCalendarIds as string[]),
     selectedCalendarIds: raw.selectedCalendarIds as string[],
+    managedEventIds: new Set(
+      (raw.managedEventIds as string[] | undefined) ?? [],
+    ),
+  };
+}
+
+function eventFromVector(
+  raw: Record<string, unknown> | null,
+): CalendarEventSnapshot | null {
+  if (raw === null) return null;
+  return {
+    eventId: raw.eventId as string,
+    calendarId: raw.calendarId as string,
+    title: raw.title as string,
+    day: raw.day as string,
+    startTime: raw.startTime as string,
+    durationMin: raw.durationMin as number,
+    isAllDay: (raw.isAllDay as boolean | undefined) ?? false,
+    lastModified: raw.lastModified as string,
   };
 }
 
@@ -159,7 +213,9 @@ describe("reconcile: the truth table", () => {
       expect(
         reconcile(
           vector.moment as Moment | null,
-          vector.event as Parameters<typeof reconcile>[1],
+          eventFromVector(
+            vector.event as Record<string, unknown> | null,
+          ),
           contextFromVector(vector.context as Record<string, unknown>),
         ),
       ).toEqual(vector.expected);
@@ -258,6 +314,31 @@ describe("applyEventToMoment", () => {
     );
     expect(next.name).toBe(m.name);
   });
+
+  it("makes a timed moment ambient when startTime is null (all-day transition)", () => {
+    const m = newMoment({
+      day: "2026-08-24",
+      phase: Phase.MORNING,
+      startTime: "10:30",
+      durationMin: 30,
+    });
+    const next = applyEventToMoment(
+      m,
+      {
+        kind: "applyEventToMoment",
+        momentId: m.id,
+        day: "2026-08-24",
+        startTime: null,
+        durationMin: null,
+        overwroteMomentEdit: false,
+      },
+      configs,
+    );
+    expect(next.startTime).toBeUndefined();
+    expect(next.durationMin).toBeUndefined();
+    expect(next.day).toBe("2026-08-24");
+    expect(next.name).toBe(m.name);
+  });
 });
 
 describe("properties", () => {
@@ -293,7 +374,8 @@ describe("properties", () => {
           const m = newMoment({ ...settled, day, phase: null });
           const f = eventFieldsForMoment(m);
           expect(f).not.toBeNull();
-          const reingested = snapToGrid(f!.startTime, f!.durationMin);
+          expect(f!.startTime).not.toBeNull();
+          const reingested = snapToGrid(f!.startTime!, f!.durationMin!);
           expect(reingested).toEqual(settled);
           expect(f!.day).toBe(day);
         },
