@@ -46,7 +46,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col group",
+          "flex flex-col",
           // Minimal padding
           "scroll-ml-2 md:scroll-ml-6",
           "gap-1.5 px-2 py-2 md:px-4 md:py-4",
@@ -59,7 +59,7 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
         )}
       >
         {/* Day Title Section - Above Timeline */}
-        <div className="flex flex-row items-baseline gap-2 px-1 py-0.5">
+        <div className="flex flex-row items-baseline gap-2 px-1 py-0.5 group/header">
           <DayHeaderTitle
             day={day}
             fallbackLabel={label}
@@ -75,11 +75,18 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
           </div>
           <button
             type="button"
-            onClick={() => openMomentFormCreate({ day })}
+            onClick={() => {
+              const phase = currentPhase ?? visiblePhases[0]?.phase;
+              openMomentFormCreate({
+                day,
+                phase: phase ?? undefined,
+                phaseStr: phase ?? undefined,
+              });
+            }}
             className={cn(
               "ml-auto self-center p-1 rounded-md",
               "text-stone-400 dark:text-stone-500",
-              "opacity-0 group-hover:opacity-100 hover:!opacity-100 focus:!opacity-100",
+              "opacity-0 group-hover/header:opacity-100",
               "hover:text-stone-600 dark:hover:text-stone-400",
               "hover:bg-stone-200 dark:hover:bg-stone-700",
               "transition-[opacity,color,background-color] duration-150",
