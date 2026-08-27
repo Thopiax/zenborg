@@ -125,9 +125,6 @@ private func requestAccess(store: EKEventStore) -> Bool {
     case .fullAccess:
         return true
     case .writeOnly:
-        // writeOnly can publish but not ingest. Try upgrading to full access;
-        // if the user already granted it in System Settings for the main app,
-        // the sidecar binary may still need its own TCC prompt.
         var upgraded = false
         let semaphore = DispatchSemaphore(value: 0)
         store.requestFullAccessToEvents { success, error in
@@ -142,7 +139,6 @@ private func requestAccess(store: EKEventStore) -> Bool {
             fputs("[calendar] upgraded to full access\n", stderr)
             return true
         }
-        // Fall back to write-only: publish works, ingest does not
         fputs("[calendar] running with write-only access (publish only, no ingest)\n", stderr)
         return true
     case .notDetermined:
@@ -174,9 +170,10 @@ private func doReconcilePass(store: EKEventStore) {
         let habits = readHabits()
 
         // Collect the set of area IDs that have publishable moments
+        // (includes ambient allocated moments for all-day events)
         var areaIdsNeeded: Set<String> = []
         for (_, moment) in moments {
-            if moment.day != nil && moment.startTime != nil && countsAsAllocation(moment) {
+            if moment.day != nil && countsAsAllocation(moment) {
                 areaIdsNeeded.insert(moment.areaId)
             }
         }
@@ -199,7 +196,6 @@ private func doReconcilePass(store: EKEventStore) {
         }
         if !staleAreaIds.isEmpty {
             try writeCalendarSyncConfig(config)
-            // Drop externalRefs pointing at deleted area calendars
             let staleCalIds = Set(staleAreaIds.compactMap { config.areaCalendars[$0] })
             for (id, var moment) in moments {
                 if let ref = moment.externalRef, staleCalIds.contains(ref.calendarId) {
@@ -211,9 +207,11 @@ private func doReconcilePass(store: EKEventStore) {
         }
 
         let areaCalendarIdSet = Set(config.areaCalendars.values)
+        let managedSet = Set(config.managedEventIds)
         let context = ReconcileContext(
             areaCalendarIds: areaCalendarIdSet,
-            selectedCalendarIds: config.selectedCalendarIds
+            selectedCalendarIds: config.selectedCalendarIds,
+            managedEventIds: managedSet
         )
 
         // Compute the sync window
@@ -292,6 +290,7 @@ private func doReconcilePass(store: EKEventStore) {
 
         // Apply actions
         var changed = false
+        var configChanged = false
         for (action, _) in actions {
             switch action {
             case .publishEvent(let momentId, let overwroteEventEdit):
@@ -301,6 +300,7 @@ private func doReconcilePass(store: EKEventStore) {
                     guard let targetCalId = calId else { continue }
                     let emoji = resolveEmoji(moment: moment, habits: habits, areas: areas)
                     let title = emoji != nil ? "\(emoji!) \(fields.title)" : fields.title
+                    let isAllDay = fields.startTime == nil
                     if let ekEvent = createOrUpdateEvent(
                         store: store,
                         calendarId: targetCalId,
@@ -308,7 +308,8 @@ private func doReconcilePass(store: EKEventStore) {
                         title: title,
                         day: fields.day,
                         startTime: fields.startTime,
-                        durationMin: fields.durationMin
+                        durationMin: fields.durationMin,
+                        isAllDay: isAllDay
                     ) {
                         var updated = moment
                         let hash = momentHash(day: fields.day, startTime: fields.startTime, durationMin: fields.durationMin)
@@ -323,6 +324,10 @@ private func doReconcilePass(store: EKEventStore) {
                         updated.updatedAt = iso8601Now()
                         moments[momentId] = updated
                         changed = true
+                        if !config.managedEventIds.contains(ekEvent.eventIdentifier) {
+                            config.managedEventIds.append(ekEvent.eventIdentifier)
+                            configChanged = true
+                        }
                         if overwroteEventEdit {
                             fputs("[calendar] overwrote event edit for moment \(momentId) (moment was newer)\n", stderr)
                         }
@@ -333,7 +338,7 @@ private func doReconcilePass(store: EKEventStore) {
                 let newId = UUID().uuidString.lowercased()
                 let hash = momentHash(day: day, startTime: startTime, durationMin: durationMin)
                 let configs = readPhaseConfigs()
-                let phase = phaseForStartTime(startTime, configs)
+                let phase: String? = startTime != nil ? phaseForStartTime(startTime!, configs) : nil
                 let newMoment = VaultMoment(
                     id: newId,
                     name: name,
@@ -363,8 +368,8 @@ private func doReconcilePass(store: EKEventStore) {
                         "phase": phase as Any,
                         "day": day,
                         "order": 0,
-                        "startTime": startTime,
-                        "durationMin": durationMin,
+                        "startTime": startTime as Any,
+                        "durationMin": durationMin as Any,
                         "status": "tentative",
                         "tags": NSNull(),
                         "createdAt": iso8601Now(),
@@ -375,12 +380,64 @@ private func doReconcilePass(store: EKEventStore) {
                 changed = true
                 fputs("[calendar] ingested tentative moment '\(name)' from \(eventCalendarId)\n", stderr)
 
+            case .createMomentFromAreaEvent(let name, let day, let startTime, let durationMin, let eventId, let eventCalendarId):
+                let areaId = config.areaCalendars.first(where: { $0.value == eventCalendarId })?.key ?? "pending"
+                let newId = UUID().uuidString.lowercased()
+                let hash = momentHash(day: day, startTime: startTime, durationMin: durationMin)
+                let configs = readPhaseConfigs()
+                let phase: String? = startTime != nil ? phaseForStartTime(startTime!, configs) : nil
+                let newMoment = VaultMoment(
+                    id: newId,
+                    name: name,
+                    areaId: areaId,
+                    habitId: nil,
+                    phase: phase,
+                    day: day,
+                    startTime: startTime,
+                    durationMin: durationMin,
+                    status: nil,
+                    externalRef: ExternalRef(
+                        source: "eventkit",
+                        eventId: eventId,
+                        calendarId: eventCalendarId,
+                        lastWrittenHash: hash,
+                        lastWrittenTitle: name,
+                        lastSyncedAt: iso8601Now()
+                    ),
+                    updatedAt: iso8601Now(),
+                    raw: [
+                        "id": newId,
+                        "name": name,
+                        "areaId": areaId,
+                        "habitId": NSNull(),
+                        "cycleId": NSNull(),
+                        "cyclePlanId": NSNull(),
+                        "phase": phase as Any,
+                        "day": day,
+                        "order": 0,
+                        "startTime": startTime as Any,
+                        "durationMin": durationMin as Any,
+                        "tags": NSNull(),
+                        "createdAt": iso8601Now(),
+                        "updatedAt": iso8601Now(),
+                    ]
+                )
+                moments[newId] = newMoment
+                changed = true
+                if !config.managedEventIds.contains(eventId) {
+                    config.managedEventIds.append(eventId)
+                    configChanged = true
+                }
+                fputs("[calendar] created moment '\(name)' from area calendar event \(eventId)\n", stderr)
+
             case .applyEventToMoment(let momentId, let day, let startTime, let durationMin, let overwroteMomentEdit):
                 if var moment = moments[momentId] {
                     moment.day = day
                     moment.startTime = startTime
                     moment.durationMin = durationMin
-                    moment.phase = phaseForStartTime(startTime, phaseConfigs)
+                    if let st = startTime {
+                        moment.phase = phaseForStartTime(st, phaseConfigs)
+                    }
                     let hash = momentHash(day: day, startTime: startTime, durationMin: durationMin)
                     if var ref = moment.externalRef {
                         ref.lastWrittenHash = hash
@@ -420,6 +477,10 @@ private func doReconcilePass(store: EKEventStore) {
                         fputs("[calendar] failed to delete event \(eventId): \(error)\n", stderr)
                     }
                 }
+                if let idx = config.managedEventIds.firstIndex(of: eventId) {
+                    config.managedEventIds.remove(at: idx)
+                    configChanged = true
+                }
 
             case .none:
                 break
@@ -431,6 +492,10 @@ private func doReconcilePass(store: EKEventStore) {
             fputs("[calendar] reconcile pass complete: \(actions.count) actions applied\n", stderr)
         } else {
             fputs("[calendar] reconcile pass complete: no changes\n", stderr)
+        }
+
+        if configChanged {
+            try writeCalendarSyncConfig(config)
         }
 
     } catch {
@@ -539,6 +604,20 @@ private func eventSnapshotFrom(_ ekEvent: EKEvent) -> EventSnapshot {
     let calendar = Calendar.current
     let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: ekEvent.startDate)
     let day = String(format: "%04d-%02d-%02d", components.year!, components.month!, components.day!)
+
+    if ekEvent.isAllDay {
+        return EventSnapshot(
+            eventId: ekEvent.eventIdentifier,
+            calendarId: ekEvent.calendar.calendarIdentifier,
+            title: ekEvent.title ?? "",
+            day: day,
+            startTime: "00:00",
+            durationMin: 1440,
+            isAllDay: true,
+            lastModified: ekEvent.lastModifiedDate?.iso8601 ?? iso8601Now()
+        )
+    }
+
     let startTime = String(format: "%02d:%02d", components.hour!, components.minute!)
     let durationMin = Int(ekEvent.endDate.timeIntervalSince(ekEvent.startDate) / 60)
 
@@ -549,6 +628,7 @@ private func eventSnapshotFrom(_ ekEvent: EKEvent) -> EventSnapshot {
         day: day,
         startTime: startTime,
         durationMin: max(durationMin, 15),
+        isAllDay: false,
         lastModified: ekEvent.lastModifiedDate?.iso8601 ?? iso8601Now()
     )
 }
@@ -559,8 +639,9 @@ private func createOrUpdateEvent(
     existingEventId: String?,
     title: String,
     day: String,
-    startTime: String,
-    durationMin: Int
+    startTime: String?,
+    durationMin: Int?,
+    isAllDay: Bool
 ) -> EKEvent? {
     let ekEvent: EKEvent
     if let existingId = existingEventId, let existing = store.event(withIdentifier: existingId) {
@@ -574,20 +655,27 @@ private func createOrUpdateEvent(
     ekEvent.title = title
 
     let parts = day.split(separator: "-").map { Int($0)! }
-    let timeParts = startTime.split(separator: ":").map { Int($0)! }
-
     var components = DateComponents()
     components.year = parts[0]
     components.month = parts[1]
     components.day = parts[2]
-    components.hour = timeParts[0]
-    components.minute = timeParts[1]
 
     let calendar = Calendar.current
-    guard let startDate = calendar.date(from: components) else { return nil }
 
-    ekEvent.startDate = startDate
-    ekEvent.endDate = startDate.addingTimeInterval(Double(durationMin) * 60)
+    if isAllDay {
+        ekEvent.isAllDay = true
+        guard let startDate = calendar.date(from: components) else { return nil }
+        ekEvent.startDate = startDate
+        ekEvent.endDate = startDate
+    } else {
+        ekEvent.isAllDay = false
+        let timeParts = startTime!.split(separator: ":").map { Int($0)! }
+        components.hour = timeParts[0]
+        components.minute = timeParts[1]
+        guard let startDate = calendar.date(from: components) else { return nil }
+        ekEvent.startDate = startDate
+        ekEvent.endDate = startDate.addingTimeInterval(Double(durationMin!) * 60)
+    }
 
     do {
         try store.save(ekEvent, span: .thisEvent)
