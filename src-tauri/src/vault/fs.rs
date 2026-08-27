@@ -17,7 +17,10 @@
 //!     ├── cycles.json
 //!     ├── cyclePlans.json
 //!     ├── phaseConfigs.json
-//!     └── metricLogs.json
+//!     ├── metricLogs.json
+//!     ├── dayNotes.json
+//!     ├── people.json
+//!     └── places.json
 //!
 //! Writes use temp-file-then-rename for atomicity on the same filesystem.
 
@@ -56,6 +59,8 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "phaseConfigs",
     "metricLogs",
     "dayNotes",
+    "people",
+    "places",
     "activeMoment",
 ];
 

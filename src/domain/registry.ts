@@ -19,6 +19,8 @@ import type { DayNote } from "./entities/DayNote";
 import type { Habit } from "./entities/Habit";
 import type { MetricLog } from "./entities/MetricLog";
 import type { Moment } from "./entities/Moment";
+import type { Person } from "./entities/Person";
+import type { Place } from "./entities/Place";
 import type { PhaseConfig } from "./value-objects/Phase";
 
 /**
@@ -40,6 +42,8 @@ export interface DomainModelRegistry {
   phaseConfigs: Record<string, PhaseConfig>;
   metricLogs: Record<string, MetricLog>;
   dayNotes: Record<string, DayNote>;
+  people: Record<string, Person>;
+  places: Record<string, Place>;
 }
 
 /**
@@ -55,6 +59,8 @@ export const EXPORTABLE_MODELS = [
   "phaseConfigs",
   "metricLogs",
   "dayNotes",
+  "people",
+  "places",
 ] as const;
 
 /**
@@ -121,5 +127,15 @@ export const COLLECTION_METADATA: Record<
     singularName: "Day Note",
     description:
       "Per-day metadata keyed by ISO date (currently a 1-3 word title)",
+  },
+  people: {
+    displayName: "People",
+    singularName: "Person",
+    description: "Registry entities referenced by moments via personIds",
+  },
+  places: {
+    displayName: "Places",
+    singularName: "Place",
+    description: "Registry entities referenced by moments, habits and cycles",
   },
 };
