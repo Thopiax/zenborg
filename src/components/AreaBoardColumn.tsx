@@ -22,6 +22,7 @@ interface AreaBoardColumnProps {
   onEditHabit: (habitId: string) => void;
   onArchiveHabit: (habitId: string) => void;
   onUnarchiveHabit?: (habitId: string) => void;
+  onDeleteHabit?: (habitId: string) => void;
   onCreateHabit: () => void;
   maxHabitsHeight?: string;
 }
@@ -35,6 +36,7 @@ export function AreaBoardColumn({
   onEditHabit,
   onArchiveHabit,
   onUnarchiveHabit,
+  onDeleteHabit,
   onCreateHabit,
   maxHabitsHeight = "calc(100vh - 16rem)",
 }: AreaBoardColumnProps) {
@@ -136,6 +138,7 @@ export function AreaBoardColumn({
         <AreaRestingHabits
           habits={archivedHabits}
           onUnarchive={onUnarchiveHabit}
+          onDelete={onDeleteHabit}
         />
       )}
     </div>

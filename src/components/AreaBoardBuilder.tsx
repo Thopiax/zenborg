@@ -108,6 +108,13 @@ export const AreaBoardBuilder = observer(() => {
     }
   };
 
+  const handleDeleteArchivedHabit = (habitId: string) => {
+    const result = habitService.deleteHabit(habitId);
+    if ("error" in result) {
+      alert(`Failed to delete habit: ${result.error}`);
+    }
+  };
+
   const handleSaveHabit = (props: CreateHabitProps | UpdateHabitProps) => {
     const formState = habitFormState$.peek();
 
@@ -157,6 +164,7 @@ export const AreaBoardBuilder = observer(() => {
               onEditHabit={handleEditHabit}
               onArchiveHabit={handleArchiveHabit}
               onUnarchiveHabit={handleUnarchiveHabit}
+              onDeleteHabit={handleDeleteArchivedHabit}
               onCreateHabit={() => handleOpenCreateHabit(area.id)}
             />
           ))}
