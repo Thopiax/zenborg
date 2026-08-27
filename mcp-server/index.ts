@@ -24,6 +24,7 @@ import {
 } from "../src/application/use-cases/fences.ts";
 import { crossingTally, expandHome, fenceStore } from "./fences.js";
 import { buildRelatedHabits } from "./graph.js";
+import { searchHabits, searchPeople, searchPlaces } from "./search.js";
 import {
   computeHealth,
   countsAsAllocation,
@@ -2475,6 +2476,84 @@ server.tool(
     const related = buildRelatedHabits(habitId, habits, moments, areas);
     if (!related) return err(`Habit not found: ${habitId}`);
     return ok(related);
+  },
+);
+
+// ────────────────────────────────────────────────────────────────────────
+// FUZZY SEARCH — entity resolution for the garden skills plugin
+// ────────────────────────────────────────────────────────────────────────
+
+server.tool(
+  "search_habits",
+  "Fuzzy-search habits by name or alias. Returns matches ranked by confidence (exact > prefix > substring > levenshtein). Use to resolve natural-language habit references before planting moments.",
+  {
+    query: z.string().describe("The habit name, alias, or approximate spelling to search for"),
+    areaId: z.string().optional().describe("Restrict results to habits in this area"),
+    includeArchived: z.boolean().optional().describe("Include archived habits in results (default false)"),
+  },
+  async ({ query, areaId, includeArchived }): Promise<ToolResult> => {
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const results = searchHabits(query, habits, { areaId, includeArchived });
+    return ok(
+      results.map((r) => ({
+        habitId: r.habit.id,
+        name: r.habit.name,
+        areaId: r.habit.areaId,
+        emoji: r.habit.emoji,
+        attitude: r.habit.attitude,
+        aliases: r.habit.aliases ?? [],
+        matchedOn: r.matchedOn,
+        matchedValue: r.matchedValue,
+        matchMethod: r.method,
+      })),
+    );
+  },
+);
+
+server.tool(
+  "search_people",
+  "Fuzzy-search people by name or key. Returns matches ranked by confidence. Use to resolve person references before tagging moments with personIds.",
+  {
+    query: z.string().describe("The person's name, key, or approximate spelling to search for"),
+  },
+  async ({ query }): Promise<ToolResult> => {
+    const people = readCollection(VAULT_ROOT, "people");
+    const results = searchPeople(query, people);
+    return ok(
+      results.map((r) => ({
+        personKey: r.person.key,
+        name: r.person.name,
+        emoji: r.person.emoji,
+        category: r.person.category,
+        status: r.person.status,
+        matchedOn: r.matchedOn,
+        matchedValue: r.matchedValue,
+        matchMethod: r.method,
+      })),
+    );
+  },
+);
+
+server.tool(
+  "search_places",
+  "Fuzzy-search places by name, key, or parent key. Returns matches ranked by confidence. Use to resolve place references before tagging moments with placeIds.",
+  {
+    query: z.string().describe("The place name, key, or approximate spelling to search for"),
+  },
+  async ({ query }): Promise<ToolResult> => {
+    const places = readCollection(VAULT_ROOT, "places");
+    const results = searchPlaces(query, places);
+    return ok(
+      results.map((r) => ({
+        placeKey: r.place.key,
+        name: r.place.name,
+        emoji: r.place.emoji,
+        parentKey: r.place.parentKey,
+        matchedOn: r.matchedOn,
+        matchedValue: r.matchedValue,
+        matchMethod: r.method,
+      })),
+    );
   },
 );
 

@@ -37,6 +37,7 @@ before the agent commits).
 - `get_cycle_planning_proposals`
 - `get_cycle_review`
 - `get_fence`
+- `search_habits`, `search_people`, `search_places`
 
 ### Write-side (commit only with explicit user consent)
 
@@ -207,6 +208,16 @@ migration has not reached.
 | `list_tags` | `prefix?` | Every tag in use with moment/habit/area counts + first/last allocated day. `prefix` reads any namespace as an index. Sorted by total usage. Not the People or Places index — see above. |
 | `get_tag_profile` | `tag` | One tag's graph neighbourhood: habits, areas, co-tags, date range, recent sample (cap 10, truncation flagged). Generic aggregation — it does not know what a person or a place is. |
 | `get_related_habits` | `habitId` | A habit's derived edges: `sharedTags` (tag signature overlap only — edges mediated by a shared person or place are not computed, since those are references now), `coOccurrence` (same-day allocation, cap 10), `areaSiblings` (active, same plot). Descriptive only — intentional relations (substitution groups, "enables") are not derivable and would be a vault shape change. |
+
+### Fuzzy search (entity resolution, read-only)
+
+Pure string-ops fuzzy matching for habits, people and places. Used by the garden skills plugin to resolve natural-language entity references before planting moments. Matching strategy: exact > prefix > substring > Levenshtein (distance <= 2) > alias.
+
+| Tool | Inputs | Notes |
+|---|---|---|
+| `search_habits` | `query, areaId?, includeArchived?` | Fuzzy-search habits by name or alias. Returns matches ranked by confidence with `matchedOn` (`name` or `alias`), `matchedValue`, and `matchMethod`. |
+| `search_people` | `query` | Fuzzy-search people by name or key. Returns matches ranked by confidence. Includes paused people. |
+| `search_places` | `query` | Fuzzy-search places by name, key, or parent key. Returns matches ranked by confidence. |
 
 ### Phases (`phaseConfigs.json`) — Should-have
 | Tool | Inputs | Notes |
