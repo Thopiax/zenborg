@@ -50,6 +50,7 @@ import {
 } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import type { DropTargetType } from "@/types/dnd";
+import { dndPerfRender } from "@/lib/dnd-perf";
 import { MomentCard } from "./MomentCard";
 
 interface TimelineCellProps {
@@ -98,6 +99,7 @@ export function TimelineCell({
   });
 
   const handleEmptyCellClick = () => {
+    console.log("[TimelineCell] + clicked", { day, phase });
     openMomentFormCreate({
       day,
       phaseStr: phase,
@@ -207,6 +209,7 @@ function SortableMomentCard({
   area,
   contextMomentIds,
 }: SortableMomentCardProps) {
+  dndPerfRender(`SortableMomentCard:${moment.name}`);
   const isDuplicateMode = use$(isDuplicateMode$);
   const selectedMomentIds = use$(selectionState$.selectedMomentIds);
   const { activeMomentId, toggleActive } = useActiveMoment();
