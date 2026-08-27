@@ -121,17 +121,12 @@ export function TimelineCell({
       ref={setNodeRef}
       className={cn(
         "flex flex-col min-h-[240px] h-full relative",
-        "p-2 pb-8 rounded-md",
-        // Only transition visual cues — never layout/transform (which fights dnd-kit)
-        "transition-colors transition-shadow duration-fast transition-smooth",
+        "rounded-md",
+        // Only transition visual cues -- never layout/transform (which fights dnd-kit)
+        "transition-colors transition-shadow duration-150 ease-out",
         "focus-within:outline-none",
-        // Flat at rest: depth is the tonal step below, never blur or shadow.
-        // Phase-based tonal background
-        "md:p-2.5",
         phaseBackgrounds[phaseIndex],
-        // Active phase indicator (current phase on active day)
         isActivePhase && "ring-1 ring-stone-400/50",
-        // Drag hover state
         isOver && "ring-2 ring-slate-400 dark:ring-slate-300",
       )}
       data-cell={`${day}-${phase}`}
@@ -139,8 +134,19 @@ export function TimelineCell({
       aria-live="off"
       aria-atomic="true"
     >
+      {/* Phase icon behind moments */}
+      <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center pointer-events-none z-0">
+        <PhaseIcon
+          phase={phase}
+          className={cn(
+            "text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5",
+            isActivePhase ? "opacity-80" : "opacity-50",
+          )}
+        />
+      </div>
+
       <div
-        className="overflow-y-auto overscroll-contain"
+        className="overflow-y-auto overscroll-contain relative z-[1] p-2 pb-8 md:p-2.5 md:pb-8"
         style={{ maxHeight: timelineCell.viewportHeight }}
       >
         {cellMoments.length > 0 && (
@@ -188,17 +194,6 @@ export function TimelineCell({
             </span>
           </button>
         )}
-      </div>
-
-      {/* Phase icon -- fixed at the cell bottom, above the scroll content */}
-      <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center pointer-events-none z-20">
-        <PhaseIcon
-          phase={phase}
-          className={cn(
-            "text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5",
-            isActivePhase ? "opacity-80" : "opacity-50",
-          )}
-        />
       </div>
     </div>
   );
@@ -253,16 +248,14 @@ function SortableMomentCard({
     transition: shouldDisableSortable ? null : undefined,
   });
 
-  const style = {
-    transform: transform ? CSS.Transform.toString(transform) : undefined,
-    transition,
-    // Kanban style: original disappears on move, stays visible on duplicate/multi-select
+  const style: React.CSSProperties = {
+    transform: transform ? CSS.Translate.toString(transform) : undefined,
+    transition: transition ?? undefined,
     opacity: isDragging && !shouldDisableSortable ? 0 : 1,
-    // Prevent browser scroll/pan interference during touch drag
-    touchAction: "none",
-    // Cursor feedback for trackpad/mouse users (iPad with trackpad)
+    touchAction: "none" as const,
     cursor: isDragging ? "grabbing" : "grab",
     zIndex: isDragging ? zIndex.dragOverlay : 1,
+    willChange: isDragging ? "transform" : undefined,
   };
 
   return (
