@@ -20,6 +20,7 @@ func vaultRoot() -> URL {
 // Cross-language digests:
 //   fnv1a64("zenborg")             == "228301fdf1d234ee"
 //   fnv1a64("2026-08-24|10:30|30") == "ff236ccaea7fb964"
+//   fnv1a64("2026-08-24|allDay")   == "be0ee2115169f33e"
 func fnv1a64(_ input: String) -> String {
     var hash: UInt64 = 0xcbf29ce484222325
     for byte in Array(input.utf8) {
@@ -29,8 +30,11 @@ func fnv1a64(_ input: String) -> String {
     return String(format: "%016llx", hash)
 }
 
-func momentHash(day: String, startTime: String, durationMin: Int) -> String {
-    return fnv1a64("\(day)|\(startTime)|\(durationMin)")
+func momentHash(day: String, startTime: String?, durationMin: Int?) -> String {
+    if startTime == nil {
+        return fnv1a64("\(day)|allDay")
+    }
+    return fnv1a64("\(day)|\(startTime!)|\(durationMin!)")
 }
 
 // MARK: - Typed views (decoded per record for reading; writes patch raw dicts)
@@ -64,7 +68,23 @@ struct VaultMoment {
 struct CalendarSyncConfig: Codable {
     var selectedCalendarIds: [String]
     var areaCalendars: [String: String]
+    var managedEventIds: [String]
     var updatedAt: String
+
+    init(selectedCalendarIds: [String] = [], areaCalendars: [String: String] = [:], managedEventIds: [String] = [], updatedAt: String) {
+        self.selectedCalendarIds = selectedCalendarIds
+        self.areaCalendars = areaCalendars
+        self.managedEventIds = managedEventIds
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        selectedCalendarIds = try container.decode([String].self, forKey: .selectedCalendarIds)
+        areaCalendars = try container.decode([String: String].self, forKey: .areaCalendars)
+        managedEventIds = try container.decodeIfPresent([String].self, forKey: .managedEventIds) ?? []
+        updatedAt = try container.decode(String.self, forKey: .updatedAt)
+    }
 }
 
 struct VaultArea {
@@ -136,6 +156,7 @@ func readCalendarSyncConfig() -> CalendarSyncConfig {
         return CalendarSyncConfig(
             selectedCalendarIds: [],
             areaCalendars: [:],
+            managedEventIds: [],
             updatedAt: iso8601Now()
         )
     }
