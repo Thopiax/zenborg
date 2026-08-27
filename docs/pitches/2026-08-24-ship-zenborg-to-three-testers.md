@@ -42,7 +42,7 @@ type: pitch
 
 - **Cut a fresh release.** Tag and push. The CI workflow (`release.yml`) builds aarch64, signs with Developer ID (cert valid to 2027-02-01), creates a GitHub release with `.dmg` and updater JSON. v0.18.0 or whatever is next.
 
-- **Write a 10-minute onboarding guide.** A `GETTING_STARTED.md` that covers: download the .dmg, first launch, create your first area (one plot), create one habit (one perennial), allocate one moment for today, the `:ty1` command syntax. Link it from the release notes. No more than 2 pages. Include one screenshot of what a planted day looks like.
+- **Write a 10-minute onboarding guide.** A `GETTING_STARTED.md` that covers: download the .dmg, first launch, create your first area (one plot), create one habit (one perennial), allocate one moment for today. Link it from the release notes. No more than 2 pages. Include one screenshot of what a planted day looks like.
 
 - **Seed a starter garden.** On first launch with an empty vault, pre-populate one area ("Try zenborg"), one habit ("Morning intention"), and one moment allocated to today/morning. The user sees a planted garden immediately, not a blank screen. `src/infrastructure/vault/` -- check for empty vault on boot, write seed data. Both vault implementations need this (`fs.rs` and `vault.ts`).
 
