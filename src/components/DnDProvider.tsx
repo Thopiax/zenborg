@@ -48,6 +48,7 @@ import {
   reorderAfterRemoval,
 } from "@/lib/drag-validation";
 import { cn } from "@/lib/utils";
+import { dndPerfDragEnd, dndPerfDragStart, dndPerfRender } from "@/lib/dnd-perf";
 import type { DraggableData, DroppableData } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
 
@@ -94,6 +95,7 @@ function DeckCardPreview({ habit, area }: { habit: Habit; area: Area }) {
 }
 
 export function DnDProvider({ children }: DnDProviderProps) {
+  dndPerfRender("DnDProvider");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeDeckHabitId, setActiveDeckHabitId] = useState<string | null>(
     null,
@@ -153,6 +155,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
   );
 
   function handleDragStart(event: DragStartEvent) {
+    dndPerfDragStart();
     const id = event.active.id as string;
     const data = event.active.data.current as DraggableData | undefined;
 
@@ -184,6 +187,7 @@ export function DnDProvider({ children }: DnDProviderProps) {
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    dndPerfDragEnd();
     const { active, over } = event;
     const wasDuplicateMode = isDuplicateMode$.peek();
     setActiveId(null);
@@ -195,6 +199,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
+    console.log("[DnD] dragEnd", {
+      activeId: active.id,
+      overId: over.id,
+      activeData: active.data.current,
+      overData: over.data.current,
+    });
     const dragData = active.data.current as DraggableData | undefined;
     const dropData = over.data.current as DroppableData | undefined;
 
