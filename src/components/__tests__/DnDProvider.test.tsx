@@ -78,15 +78,25 @@ vi.mock("@legendapp/state/react", () => ({
 }));
 
 vi.mock("@/infrastructure/state/store", () => ({
-  moments$: "moments",
-  areas$: "areas",
-  habits$: "habits",
+  moments$: {
+    peek: () => momentsStore,
+    get: () => momentsStore,
+  },
+  areas$: {
+    peek: () => areasStore,
+    get: () => areasStore,
+  },
+  habits$: {
+    peek: () => ({}),
+    get: () => ({}),
+  },
 }));
 
 vi.mock("@/infrastructure/state/selection", () => ({
   selectionState$: {
     selectedMomentIds: {
       get: () => selectedIds,
+      peek: () => selectedIds,
     },
   },
 }));
@@ -94,7 +104,10 @@ vi.mock("@/infrastructure/state/selection", () => ({
 vi.mock("@/infrastructure/state/ui-store", () => ({
   isDuplicateMode$: {
     set: vi.fn(),
+    get: vi.fn(() => false),
+    peek: vi.fn(() => false),
   },
+  openMomentFormEdit: vi.fn(),
 }));
 
 vi.mock("@/infrastructure/state/history", () => ({
