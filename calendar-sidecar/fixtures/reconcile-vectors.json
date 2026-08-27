@@ -9,11 +9,13 @@
       "day": "2026-08-24",
       "startTime": "10:20",
       "durationMin": 50,
+      "isAllDay": false,
       "lastModified": "2026-08-24T08:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "createTentativeMoment",
@@ -46,7 +48,8 @@
     "event": null,
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "publishEvent",
@@ -87,11 +90,13 @@
       "day": "2026-08-24",
       "startTime": "10:30",
       "durationMin": 30,
+      "isAllDay": false,
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "none",
@@ -131,11 +136,13 @@
       "day": "2026-08-24",
       "startTime": "11:00",
       "durationMin": 30,
+      "isAllDay": false,
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "applyEventToMoment",
@@ -180,11 +187,13 @@
       "day": "2026-08-24",
       "startTime": "10:30",
       "durationMin": 60,
+      "isAllDay": false,
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "applyEventToMoment",
@@ -229,11 +238,13 @@
       "day": "2026-08-24",
       "startTime": "10:30",
       "durationMin": 60,
+      "isAllDay": false,
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "applyEventToMoment",
@@ -274,7 +285,8 @@
     "event": null,
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "deleteMoment",
@@ -311,7 +323,8 @@
     "event": null,
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "returnToDrawingBoard",
@@ -351,11 +364,13 @@
       "day": "2026-08-24",
       "startTime": "10:30",
       "durationMin": 30,
+      "isAllDay": false,
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "deleteEvent",
@@ -363,7 +378,7 @@
     }
   },
   {
-    "name": "R10 orphan zenborg event with no moment is deleted",
+    "name": "R10 orphan managed zenborg event with no moment is deleted",
     "moment": null,
     "event": {
       "eventId": "ek-10",
@@ -372,11 +387,13 @@
       "day": "2026-08-24",
       "startTime": "14:00",
       "durationMin": 60,
+      "isAllDay": false,
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": ["ek-10"]
     },
     "expected": {
       "kind": "deleteEvent",
@@ -417,11 +434,13 @@
       "day": "2026-08-24",
       "startTime": "09:00",
       "durationMin": 60,
+      "isAllDay": false,
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "none",
@@ -449,7 +468,8 @@
     "event": null,
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "publishEvent",
@@ -490,11 +510,13 @@
       "day": "2026-08-24",
       "startTime": "11:00",
       "durationMin": 30,
+      "isAllDay": false,
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "applyEventToMoment",
@@ -538,11 +560,13 @@
       "day": "2026-08-24",
       "startTime": "11:00",
       "durationMin": 30,
+      "isAllDay": false,
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "publishEvent",
@@ -560,11 +584,13 @@
       "day": "2026-08-24",
       "startTime": "14:00",
       "durationMin": 60,
+      "isAllDay": false,
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "none",
@@ -572,16 +598,16 @@
     }
   },
   {
-    "name": "edge: ambient moment is never published",
+    "name": "edge: unallocated ambient moment is skipped",
     "moment": {
-      "id": "m-ambient",
+      "id": "m-ambient-unalloc",
       "name": "meditate",
       "areaId": "area-1",
       "habitId": null,
       "cycleId": null,
       "cyclePlanId": null,
-      "phase": "MORNING",
-      "day": "2026-08-24",
+      "phase": null,
+      "day": null,
       "order": 0,
       "tags": null,
       "createdAt": "2026-08-24T06:00:00.000Z",
@@ -590,7 +616,8 @@
     "event": null,
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "none",
@@ -630,11 +657,13 @@
       "day": "2026-08-24",
       "startTime": "09:00",
       "durationMin": 60,
+      "isAllDay": false,
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "none",
@@ -674,11 +703,13 @@
       "day": "2026-08-24",
       "startTime": "10:30",
       "durationMin": 30,
+      "isAllDay": false,
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "publishEvent",
@@ -719,11 +750,13 @@
       "day": "2026-08-24",
       "startTime": "09:00",
       "durationMin": 60,
+      "isAllDay": false,
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "none",
@@ -763,11 +796,13 @@
       "day": "2026-08-24",
       "startTime": "10:30",
       "durationMin": 30,
+      "isAllDay": false,
       "lastModified": "2026-08-24T09:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "none",
@@ -807,11 +842,13 @@
       "day": "2026-08-24",
       "startTime": "10:30",
       "durationMin": 30,
+      "isAllDay": false,
       "lastModified": "2026-08-24T07:00:00.000Z"
     },
     "context": {
       "areaCalendarIds": ["zenborg-cal"],
-      "selectedCalendarIds": ["foreign-cal-1"]
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
     },
     "expected": {
       "kind": "publishEvent",
@@ -822,5 +859,215 @@
   {
     "name": "edge: linked moment outside the sync window is never passed as deleted",
     "_note": "Documents that the caller, not reconcile, owns the window guard. An out-of-window moment must not reach reconcile at all. This vector exists only for documentation; it is not runnable."
+  },
+  {
+    "name": "allday: allocated ambient moment publishes as all-day event",
+    "moment": {
+      "id": "m-allday-pub",
+      "name": "meditate",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "tags": null,
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": null,
+    "context": {
+      "areaCalendarIds": ["zenborg-cal"],
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
+    },
+    "expected": {
+      "kind": "publishEvent",
+      "momentId": "m-allday-pub",
+      "overwroteEventEdit": false
+    }
+  },
+  {
+    "name": "allday: new all-day event on selected calendar creates ambient tentative moment",
+    "moment": null,
+    "event": {
+      "eventId": "ek-allday-foreign",
+      "calendarId": "foreign-cal-1",
+      "title": "Vacation day",
+      "day": "2026-08-25",
+      "startTime": "00:00",
+      "durationMin": 1440,
+      "isAllDay": true,
+      "lastModified": "2026-08-24T08:00:00.000Z"
+    },
+    "context": {
+      "areaCalendarIds": ["zenborg-cal"],
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
+    },
+    "expected": {
+      "kind": "createTentativeMoment",
+      "name": "Vacation day",
+      "day": "2026-08-25",
+      "startTime": null,
+      "durationMin": null,
+      "eventId": "ek-allday-foreign",
+      "calendarId": "foreign-cal-1"
+    }
+  },
+  {
+    "name": "allday: all-day area event dragged to time slot applies timing to ambient moment",
+    "moment": {
+      "id": "m-allday-drag",
+      "name": "meditate",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-allday-drag",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "be0ee2115169f33e",
+        "lastWrittenTitle": "meditate",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-allday-drag",
+      "calendarId": "zenborg-cal",
+      "title": "meditate",
+      "day": "2026-08-24",
+      "startTime": "07:00",
+      "durationMin": 30,
+      "isAllDay": false,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "areaCalendarIds": ["zenborg-cal"],
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
+    },
+    "expected": {
+      "kind": "applyEventToMoment",
+      "momentId": "m-allday-drag",
+      "day": "2026-08-24",
+      "startTime": "07:00",
+      "durationMin": 30,
+      "overwroteMomentEdit": false
+    }
+  },
+  {
+    "name": "allday: timed area event dragged to all-day makes moment ambient",
+    "moment": {
+      "id": "m-timed-to-allday",
+      "name": "standup",
+      "areaId": "area-1",
+      "habitId": null,
+      "cycleId": null,
+      "cyclePlanId": null,
+      "phase": "MORNING",
+      "day": "2026-08-24",
+      "order": 0,
+      "startTime": "10:30",
+      "durationMin": 30,
+      "tags": null,
+      "externalRef": {
+        "source": "eventkit",
+        "eventId": "ek-timed-to-allday",
+        "calendarId": "zenborg-cal",
+        "lastWrittenHash": "ff236ccaea7fb964",
+        "lastWrittenTitle": "standup",
+        "lastSyncedAt": "2026-08-24T07:00:00.000Z"
+      },
+      "createdAt": "2026-08-24T06:00:00.000Z",
+      "updatedAt": "2026-08-24T06:00:00.000Z"
+    },
+    "event": {
+      "eventId": "ek-timed-to-allday",
+      "calendarId": "zenborg-cal",
+      "title": "standup",
+      "day": "2026-08-24",
+      "startTime": "00:00",
+      "durationMin": 1440,
+      "isAllDay": true,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "areaCalendarIds": ["zenborg-cal"],
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
+    },
+    "expected": {
+      "kind": "applyEventToMoment",
+      "momentId": "m-timed-to-allday",
+      "day": "2026-08-24",
+      "startTime": null,
+      "durationMin": null,
+      "overwroteMomentEdit": false
+    }
+  },
+  {
+    "name": "dup: orphan unmanaged area event creates an accepted moment",
+    "moment": null,
+    "event": {
+      "eventId": "ek-dup-new",
+      "calendarId": "zenborg-cal",
+      "title": "🧘 meditate",
+      "day": "2026-08-24",
+      "startTime": "07:00",
+      "durationMin": 30,
+      "isAllDay": false,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "areaCalendarIds": ["zenborg-cal"],
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
+    },
+    "expected": {
+      "kind": "createMomentFromAreaEvent",
+      "name": "meditate",
+      "day": "2026-08-24",
+      "startTime": "07:00",
+      "durationMin": 30,
+      "eventId": "ek-dup-new",
+      "calendarId": "zenborg-cal"
+    }
+  },
+  {
+    "name": "dup: orphan unmanaged all-day area event creates an ambient moment",
+    "moment": null,
+    "event": {
+      "eventId": "ek-dup-allday",
+      "calendarId": "zenborg-cal",
+      "title": "🧘 rest day",
+      "day": "2026-08-25",
+      "startTime": "00:00",
+      "durationMin": 1440,
+      "isAllDay": true,
+      "lastModified": "2026-08-24T09:00:00.000Z"
+    },
+    "context": {
+      "areaCalendarIds": ["zenborg-cal"],
+      "selectedCalendarIds": ["foreign-cal-1"],
+      "managedEventIds": []
+    },
+    "expected": {
+      "kind": "createMomentFromAreaEvent",
+      "name": "rest day",
+      "day": "2026-08-25",
+      "startTime": null,
+      "durationMin": null,
+      "eventId": "ek-dup-allday",
+      "calendarId": "zenborg-cal"
+    }
   }
 ]
