@@ -28,7 +28,7 @@ import { isTauri } from "./is-tauri.ts";
  */
 const IDB_CONFIG = {
   databaseName: "zenborg",
-  version: 8,
+  version: 9,
   tableNames: [
     "moments",
     "areas",
@@ -38,6 +38,8 @@ const IDB_CONFIG = {
     "phaseConfigs",
     "metricLogs",
     "dayNotes",
+    "people",
+    "places",
   ],
 };
 
