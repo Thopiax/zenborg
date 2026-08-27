@@ -28,6 +28,7 @@ export default function CultivatePage() {
     tags?: string[],
     customMetric?: CustomMetric,
     startTime?: string,
+    mentionIds?: string[],
   ) => {
     const mode = momentFormState$.mode.peek();
     if (mode === "create") {
@@ -40,9 +41,19 @@ export default function CultivatePage() {
         tags,
         customMetric,
         startTime,
+        mentionIds,
       );
     } else {
-      handleSaveEdit(name, areaId, phase, emoji, tags, customMetric, startTime);
+      handleSaveEdit(
+        name,
+        areaId,
+        phase,
+        emoji,
+        tags,
+        customMetric,
+        startTime,
+        mentionIds,
+      );
     }
   };
 

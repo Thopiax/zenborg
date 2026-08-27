@@ -20,8 +20,9 @@ export interface CreateMomentWithWorkflowParams {
     phase: Phase;
   };
   tags?: string[];
-  customMetric?: CustomMetric; // For habit-inherited PUSHING support
+  customMetric?: CustomMetric;
   startTime?: string;
+  mentionIds?: string[];
 }
 
 /**
@@ -58,11 +59,11 @@ export class MomentCreationService {
       emoji = null,
       prefilledAllocation,
       tags = [],
-      customMetric, // For habit-inherited PUSHING support
+      customMetric,
       startTime,
+      mentionIds = [],
     } = params;
 
-    // Step 1: Create moment (domain operation with validation)
     const result = createMoment({
       name,
       areaId,
@@ -73,23 +74,22 @@ export class MomentCreationService {
       startTime,
     });
 
-    // Step 2: If validation failed, return error
     if (isMomentError(result)) {
       return result;
     }
 
-    // Step 3: Handle allocation workflow
+    if (mentionIds.length > 0) {
+      result.personIds = mentionIds;
+    }
+
     if (prefilledAllocation?.day && prefilledAllocation?.phase) {
-      // Business rule: Prefilled allocation takes precedence over horizon/phase
-      // When user clicks a timeline cell, we allocate immediately
       return allocateMoment(result, {
         day: prefilledAllocation.day,
         phase: prefilledAllocation.phase,
-        order: 0, // Will be reordered by drag-and-drop
+        order: 0,
       });
     }
 
-    // Step 4: Return unallocated moment
     return result;
   }
 }
