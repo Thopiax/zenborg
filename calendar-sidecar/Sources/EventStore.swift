@@ -574,6 +574,9 @@ private func ensureAreaCalendar(
 }
 
 private func resolveEmoji(moment: VaultMoment, habits: [String: (emoji: String?, areaId: String)], areas: [String: VaultArea]) -> String? {
+    if let momentEmoji = moment.raw["emoji"] as? String, !momentEmoji.isEmpty {
+        return momentEmoji
+    }
     if let habitId = moment.habitId, let habit = habits[habitId] {
         if let emoji = habit.emoji, !emoji.isEmpty { return emoji }
     }
