@@ -180,6 +180,7 @@ export interface MomentFormState {
   attitude: Attitude | null;
   tags?: string[];
   customMetric?: CustomMetric;
+  mentionIds?: string[];
 }
 
 export const momentFormState$ = observable<MomentFormState>({
@@ -196,6 +197,7 @@ export const momentFormState$ = observable<MomentFormState>({
   attitude: null,
   tags: [],
   customMetric: undefined,
+  mentionIds: [],
 });
 
 /**
@@ -228,6 +230,7 @@ export function openMomentFormCreate(params?: {
     attitude: params?.attitude ?? null,
     tags: [],
     customMetric: undefined,
+    mentionIds: [],
   });
 }
 
@@ -249,9 +252,10 @@ export function openMomentFormEdit(momentId: string, moment: Moment) {
     prefilledAllocation: null,
     startTime: moment.startTime,
     emoji: moment.emoji || null,
-    attitude: null, // Will be inherited from habit/area in the component
+    attitude: null,
     tags: moment.tags || [],
     customMetric: moment.customMetric,
+    mentionIds: [...(moment.personIds || []), ...(moment.placeIds || [])],
   });
 }
 
@@ -273,6 +277,7 @@ export function closeMomentForm() {
     attitude: null,
     tags: [],
     customMetric: undefined,
+    mentionIds: [],
   });
 }
 

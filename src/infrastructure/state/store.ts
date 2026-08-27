@@ -96,13 +96,11 @@ export const dayNotes$ = observable<Record<string, DayNote>>({});
 
 /**
  * People collection - keyed by person ID
- * Registry entities referenced by Moment.personIds
  */
 export const people$ = observable<Record<string, Person>>({});
 
 /**
  * Places collection - keyed by place ID
- * Registry entities referenced by moments, habits and cycles
  */
 export const places$ = observable<Record<string, Place>>({});
 
