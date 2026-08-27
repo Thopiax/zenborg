@@ -96,8 +96,16 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
               phaseConfig.phase.slice(1).toLowerCase();
             return (
               <div key={phaseConfig.phase} className="p-0.5 md:p-1">
-                {/* Phase header */}
-                <div className="flex items-center px-1 pb-1.5">
+                <TimelineCell
+                  day={day}
+                  phase={phaseConfig.phase}
+                  isHighlighted={isActiveDay}
+                  isActivePhase={isActive}
+                  phaseIndex={index}
+                />
+
+                {/* Phase footer */}
+                <div className="flex items-center px-1 pt-1.5">
                   <PhaseIcon
                     phase={phaseConfig.phase}
                     className={cn(
@@ -138,14 +146,6 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
                     <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
-
-                <TimelineCell
-                  day={day}
-                  phase={phaseConfig.phase}
-                  isHighlighted={isActiveDay}
-                  isActivePhase={isActive}
-                  phaseIndex={index}
-                />
               </div>
             );
           })}
