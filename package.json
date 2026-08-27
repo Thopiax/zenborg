@@ -39,7 +39,7 @@
     "shadow": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/shadow.mts",
     "dev:tauri": "tauri dev",
     "build:tauri": "PATH=/usr/bin:$PATH dotenv -f .env.development.local,.env tauri build",
-    "bump": "bash scripts/bump-version.sh",
+    "bump": "bash scripts/release-local.sh --bump",
     "release:local": "bash scripts/release-local.sh",
     "test:e2e": "playwright test"
   },
