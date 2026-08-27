@@ -25,6 +25,8 @@ import type { DayNote } from "@/domain/entities/DayNote";
 import type { Habit } from "@/domain/entities/Habit";
 import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
+import type { Person } from "@/domain/entities/Person";
+import type { Place } from "@/domain/entities/Place";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
 import { isTauri } from "../vault/is-tauri.ts";
 import { syncedVaultCollection } from "../vault/synced-vault.ts";
@@ -38,7 +40,9 @@ import {
   habits$,
   metricLogs$,
   moments$,
+  people$,
   phaseConfigs$,
+  places$,
 } from "./store";
 import { lastUsedAreaId$ } from "./ui-store.ts";
 
@@ -87,6 +91,8 @@ function configureVaultSync(): void {
   );
   syncObservable(metricLogs$, syncedVaultCollection<MetricLog>("metricLogs"));
   syncObservable(dayNotes$, syncedVaultCollection<DayNote>("dayNotes"));
+  syncObservable(people$, syncedVaultCollection<Person>("people"));
+  syncObservable(places$, syncedVaultCollection<Place>("places"));
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -98,7 +104,7 @@ function configureIdbOnly(): void {
     persist: {
       plugin: observablePersistIndexedDB({
         databaseName: "zenborg",
-        version: 8,
+        version: 9,
         tableNames: [
           "moments",
           "areas",
@@ -108,6 +114,8 @@ function configureIdbOnly(): void {
           "phaseConfigs",
           "metricLogs",
           "dayNotes",
+          "people",
+          "places",
         ],
       }),
     },
@@ -144,6 +152,14 @@ function configureIdbOnly(): void {
   syncObservable(
     dayNotes$,
     persistIndexedDBOptions({ persist: { name: "dayNotes" } }),
+  );
+  syncObservable(
+    people$,
+    persistIndexedDBOptions({ persist: { name: "people" } }),
+  );
+  syncObservable(
+    places$,
+    persistIndexedDBOptions({ persist: { name: "places" } }),
   );
 }
 
