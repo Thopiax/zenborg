@@ -14,7 +14,6 @@ import { use$ } from "@legendapp/state/react";
 import type { Area } from "@/domain/entities/Area";
 import { DAY_VIEW_PHASE_CAPACITY, type Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
-import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import {
@@ -121,7 +120,7 @@ export function TimelineCell({
       ref={setNodeRef}
       className={cn(
         "flex flex-col min-h-[240px] h-full relative",
-        "p-2 pb-8 rounded-md",
+        "p-2 rounded-md",
         // Only transition visual cues — never layout/transform (which fights dnd-kit)
         "transition-colors transition-shadow duration-fast transition-smooth",
         "focus-within:outline-none",
@@ -163,14 +162,6 @@ export function TimelineCell({
                 );
               })}
             </div>
-            <button
-              type="button"
-              onClick={handleEmptyCellClick}
-              className="flex-1 flex items-center justify-center min-h-[48px] rounded-md cursor-pointer text-stone-500 dark:text-stone-400 opacity-30 hover:opacity-70 transition-opacity"
-              aria-label={`add moment to ${phaseLabel || phase}`}
-            >
-              <span className="text-2xl">+</span>
-            </button>
           </SortableContext>
         )}
 
@@ -186,16 +177,6 @@ export function TimelineCell({
         )}
       </div>
 
-      {/* Phase icon -- fixed at the cell bottom, above the scroll content */}
-      <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center pointer-events-none z-20">
-        <PhaseIcon
-          phase={phase}
-          className={cn(
-            "text-stone-800 dark:text-stone-100 w-4 h-4 md:w-5 md:h-5",
-            isActivePhase ? "opacity-80" : "opacity-50",
-          )}
-        />
-      </div>
     </div>
   );
 }

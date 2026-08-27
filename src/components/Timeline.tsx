@@ -1,15 +1,19 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { Phase } from "@/domain/value-objects/Phase";
+import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
 import {
   currentPhase$,
   timeTick$,
   visiblePhases$,
 } from "@/infrastructure/state/store";
-import { selectedDay$ } from "@/infrastructure/state/ui-store";
+import {
+  openMomentFormCreate,
+  selectedDay$,
+} from "@/infrastructure/state/ui-store";
 import {
   fromISODate,
   getDateLabel,
@@ -95,6 +99,45 @@ const DayRow = forwardRef<HTMLDivElement, DayRowProps>(
                 }
                 phaseIndex={index}
               />
+            </div>
+          ))}
+        </div>
+
+        {/* Phase icons + add buttons below the cells */}
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `repeat(${visiblePhases.length}, ${columnWidth.md})`,
+          }}
+        >
+          {visiblePhases.map((phaseConfig) => (
+            <div
+              key={`label-${phaseConfig.phase}`}
+              className="flex items-center justify-center gap-2 py-1 p-0.5 md:p-1"
+            >
+              <PhaseIcon
+                phase={phaseConfig.phase}
+                className={cn(
+                  "w-4 h-4 md:w-5 md:h-5",
+                  isActiveDay && phaseConfig.phase === currentPhase
+                    ? "text-stone-800 dark:text-stone-100 opacity-80"
+                    : "text-stone-500 dark:text-stone-400 opacity-50",
+                )}
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  openMomentFormCreate({
+                    day,
+                    phase: phaseConfig.phase,
+                    phaseStr: phaseConfig.phase,
+                  })
+                }
+                className="text-stone-400 dark:text-stone-500 opacity-40 hover:opacity-80 transition-opacity p-0.5 rounded"
+                aria-label={`Add moment to ${phaseConfig.phase}`}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
             </div>
           ))}
         </div>

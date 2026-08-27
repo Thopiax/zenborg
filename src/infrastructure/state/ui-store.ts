@@ -3,6 +3,7 @@ import type { Moment } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import type { Rhythm } from "@/domain/value-objects/Rhythm";
+import { getTodayISO } from "@/lib/dates";
 
 /**
  * UI State Store - Transient application state
@@ -207,11 +208,10 @@ export function openMomentFormCreate(params?: {
   phaseStr?: string;
   attitude?: Attitude;
 }) {
-  // Use provided areaId, or fall back to last used area
   const areaId = params?.areaId || lastUsedAreaId$.peek() || "";
-
-  // If day and phase are provided, the moment is being created for a specific timeline cell
-  const isAllocated = !!(params?.day && params?.phaseStr);
+  const day = params?.day || selectedDay$.peek() || getTodayISO();
+  const phaseStr = params?.phaseStr;
+  const isAllocated = !!(day && phaseStr);
 
   momentFormState$.set({
     open: true,
@@ -223,9 +223,7 @@ export function openMomentFormCreate(params?: {
     showCreateMore: true,
     editingMomentId: null,
     prefilledAllocation:
-      params?.day && params?.phaseStr
-        ? { day: params.day, phase: params.phaseStr }
-        : null,
+      day && phaseStr ? { day, phase: phaseStr } : null,
     emoji: null,
     attitude: params?.attitude ?? null,
     tags: [],
