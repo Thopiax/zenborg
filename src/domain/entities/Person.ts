@@ -1,12 +1,5 @@
 import type { Cadence } from "../value-objects/Cadence";
 
-/**
- * Person -- a registry entity referenced by Moment.personIds.
- *
- * Zenborg holds only references: moments carry entity keys, and the person
- * record supplies cadence, status and category for the outreach queue.
- * Health is NEVER stored -- recomputed on every read by PersonService.
- */
 export interface Person {
   id: string;
   name: string;
@@ -18,4 +11,27 @@ export interface Person {
   emoji: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export function createPerson(props: {
+  name: string;
+  key: string;
+  emoji?: string | null;
+  category?: string | null;
+  cadence?: Cadence | null;
+  basePlace?: string | null;
+}): Person {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    name: props.name.trim(),
+    key: props.key,
+    cadence: props.cadence ?? null,
+    status: "active",
+    category: props.category ?? null,
+    basePlace: props.basePlace ?? null,
+    emoji: props.emoji ?? null,
+    createdAt: now,
+    updatedAt: now,
+  };
 }

@@ -112,17 +112,15 @@ export function useGlobalKeyboard() {
     tags?: string[],
     customMetric?: CustomMetric,
     startTime?: string,
+    mentionIds?: string[],
   ) => {
-    // Get prefilled allocation from UI state
     const uiAllocation = momentFormState$.prefilledAllocation.peek();
 
-    // Convert UI allocation to service allocation (validate required fields)
     const prefilledAllocation =
       uiAllocation?.day && uiAllocation?.phase
         ? { day: uiAllocation.day, phase: uiAllocation.phase as Phase }
         : undefined;
 
-    // Call application service (pure business logic)
     const result = momentCreationService.createMomentWithWorkflow({
       name,
       areaId,
@@ -132,6 +130,7 @@ export function useGlobalKeyboard() {
       tags,
       customMetric,
       startTime,
+      mentionIds,
     });
 
     // Handle result
@@ -176,10 +175,10 @@ export function useGlobalKeyboard() {
     tags?: string[],
     customMetric?: CustomMetric,
     startTime?: string,
+    mentionIds?: string[],
   ) => {
     const editingMomentId = momentFormState$.editingMomentId.peek();
     if (editingMomentId) {
-      // Get current moment
       const currentMoment = moments$[editingMomentId].peek();
       if (!currentMoment) {
         console.error("[handleSaveEdit] Moment not found:", editingMomentId);
@@ -187,7 +186,6 @@ export function useGlobalKeyboard() {
         return;
       }
 
-      // Call application service for business logic
       const result = momentUpdateService.updateMoment(currentMoment, {
         name,
         areaId,
@@ -198,10 +196,12 @@ export function useGlobalKeyboard() {
         ...(startTime !== undefined ? { startTime } : {}),
       });
 
-      // Handle result
       if (!isMomentError(result)) {
-        // Infrastructure operation: persist with history
-        // Use direct update to avoid double timestamp update
+        if (mentionIds && mentionIds.length > 0) {
+          result.personIds = mentionIds;
+        } else {
+          delete result.personIds;
+        }
         moments$[editingMomentId].set(result);
       }
     }
