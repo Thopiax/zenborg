@@ -15,6 +15,7 @@ import {
   Sun,
   Tv,
   Upload,
+  User,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -41,6 +42,7 @@ import { resetStore } from "@/infrastructure/state/initialize";
 import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
 import { isTauri } from "@/lib/tauri-utils";
 import { ConfirmableAction } from "./ConfirmableAction";
+import { PeoplePlacesSection } from "./PeoplePlacesSection";
 import { TrmnlSettingsSection } from "./TrmnlSettingsSection";
 import { VaultStatusSection } from "./VaultStatusSection";
 
@@ -217,6 +219,22 @@ export const SettingsDrawer = observer(function SettingsDrawer({
                 </div>
                 <ChevronRight className="w-4 h-4" />
               </button>
+            </AccordionItem>
+
+            {/* People & Places Section */}
+            <AccordionItem
+              value="people-places"
+              className="border-stone-200 dark:border-stone-700"
+            >
+              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  <span>People & Places</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <PeoplePlacesSection />
+              </AccordionContent>
             </AccordionItem>
 
             {/* Data Management Section */}

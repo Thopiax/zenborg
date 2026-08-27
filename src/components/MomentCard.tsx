@@ -11,6 +11,7 @@ import { openMomentFormEdit } from "@/infrastructure/state/ui-store";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { healthEmojiClass } from "@/lib/health-style";
 import { cn } from "@/lib/utils";
+import { MentionSummary } from "./MentionSummary";
 import { TagSummary } from "./TagSummary";
 
 interface MomentCardProps {
@@ -155,6 +156,11 @@ export function MomentCard({
         >
           {moment.name}
         </p>
+        <MentionSummary
+          personIds={moment.personIds}
+          placeIds={moment.placeIds}
+          className={cn("flex-shrink-0", textColors.primary)}
+        />
         <TagSummary
           tags={moment.tags}
           className={cn("flex-shrink-0", textColors.primary)}

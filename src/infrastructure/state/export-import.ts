@@ -134,7 +134,6 @@ export async function importGardenData(
     places: places$.get(),
   };
 
-  // Import with strategy
   const {
     moments,
     areas,
@@ -149,9 +148,6 @@ export async function importGardenData(
     result,
   } = importDataWithStrategy(fileData, strategy, currentData);
 
-  // Tauri: bypass Legend State entirely. A pending synced.get() from boot
-  // can resolve with an empty vault AFTER our observable.set() and wipe
-  // the import. Writing directly to vault + reload sidesteps the race.
   if (isTauri()) {
     await writeCollection("moments", moments);
     await writeCollection("areas", areas);

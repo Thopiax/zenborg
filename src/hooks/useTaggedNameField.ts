@@ -9,6 +9,7 @@
 
 import { observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
+import { normalizeMention } from "@/domain/services/MentionService";
 import {
   extractTagsFromText,
   normalizeTag,
@@ -22,13 +23,24 @@ export interface TaggedNameField {
   isAutocompleteOpen: boolean;
   searchValue: string;
 
+  // Mention state
+  isMentionOpen: boolean;
+  mentionSearch: string;
+  mentionIds: string[];
+
   // Actions
   setDisplayValue: (value: string, cursorPos: number) => void;
   extractTag: (tag: string) => void;
   removeTag: (tag: string) => void;
+  selectMention: (key: string) => void;
+  removeMention: (key: string) => void;
   extractRemainingTags: () => { name: string; tags: string[] };
   reset: () => void;
-  reinitialize: (name: string, tags: string[]) => void;
+  reinitialize: (
+    name: string,
+    tags: string[],
+    mentionIds?: string[],
+  ) => void;
 }
 
 /**
@@ -41,16 +53,22 @@ export interface TaggedNameField {
 export function useTaggedNameField(
   initialName = "",
   initialTags: string[] = [],
+  initialMentionIds: string[] = [],
 ): TaggedNameField {
   const state$ = useObservable(() =>
     observable({
       name: initialName,
       tags: initialTags,
+      mentionIds: initialMentionIds,
       displayValue: initialName,
       autocomplete: {
         isOpen: false,
         searchValue: "",
         cursorPosition: 0,
+      },
+      mention: {
+        isOpen: false,
+        searchValue: "",
       },
     }),
   );
@@ -61,6 +79,9 @@ export function useTaggedNameField(
   const tags = useValue(state$.tags);
   const isAutocompleteOpen = useValue(state$.autocomplete.isOpen);
   const searchValue = useValue(state$.autocomplete.searchValue);
+  const isMentionOpen = useValue(state$.mention.isOpen);
+  const mentionSearch = useValue(state$.mention.searchValue);
+  const mentionIds = useValue(state$.mentionIds);
 
   // Helper: Extract current tag being typed (if any)
   const extractCurrentTag = (
@@ -76,6 +97,44 @@ export function useTaggedNameField(
     if (afterHash.includes(" ")) return null;
 
     return afterHash;
+  };
+
+  // Helper: Extract current @mention being typed (if any)
+  const extractCurrentMention = (
+    text: string,
+    cursorPos: number,
+  ): string | null => {
+    const beforeCursor = text.slice(0, cursorPos);
+    const lastAtIndex = beforeCursor.lastIndexOf("@");
+
+    if (lastAtIndex === -1) return null;
+
+    const afterAt = beforeCursor.slice(lastAtIndex + 1);
+    if (afterAt.includes(" ")) return null;
+
+    return afterAt;
+  };
+
+  // Helper: Remove @mention from text at cursor position
+  const removeMentionFromText = (
+    text: string,
+    cursorPos: number,
+  ): { cleanedText: string; newCursorPos: number } => {
+    const beforeCursor = text.slice(0, cursorPos);
+    const afterCursor = text.slice(cursorPos);
+    const lastAtIndex = beforeCursor.lastIndexOf("@");
+
+    if (lastAtIndex === -1) {
+      return { cleanedText: text, newCursorPos: cursorPos };
+    }
+
+    const beforeMention = beforeCursor.slice(0, lastAtIndex);
+    const cleanedText = (beforeMention + afterCursor)
+      .replace(/\s+/g, " ")
+      .trim();
+    const newCursorPos = beforeMention.length;
+
+    return { cleanedText, newCursorPos };
   };
 
   // Helper: Check if user just completed a tag (space/comma after #tag)
@@ -112,10 +171,7 @@ export function useTaggedNameField(
     return { cleanedText, newCursorPos };
   };
 
-  const actions: Omit<
-    TaggedNameField,
-    "displayValue" | "name" | "tags" | "isAutocompleteOpen" | "searchValue"
-  > = {
+  const actions = {
     setDisplayValue: (value: string, cursorPos: number) => {
       const previousValue = state$.displayValue.peek();
       state$.displayValue.set(value);
@@ -129,6 +185,20 @@ export function useTaggedNameField(
           return;
         }
       }
+
+      // Check for active @mention being typed
+      const currentMention = extractCurrentMention(value, cursorPos);
+
+      if (currentMention !== null && currentMention.length > 0) {
+        state$.mention.searchValue.set(currentMention);
+        state$.mention.isOpen.set(true);
+        state$.autocomplete.isOpen.set(false);
+        state$.autocomplete.searchValue.set("");
+        return;
+      }
+
+      state$.mention.isOpen.set(false);
+      state$.mention.searchValue.set("");
 
       // Check for active tag being typed (for autocomplete)
       const currentTag = extractCurrentTag(value, cursorPos);
@@ -173,6 +243,32 @@ export function useTaggedNameField(
       state$.tags.set(currentTags.filter((t) => t !== normalized));
     },
 
+    selectMention: (key: string) => {
+      const normalized = normalizeMention(key);
+      const currentIds = state$.mentionIds.peek();
+
+      if (!normalized || currentIds.includes(normalized)) {
+        state$.mention.isOpen.set(false);
+        return;
+      }
+
+      state$.mentionIds.set([...currentIds, normalized]);
+
+      // Remove @mention from display value
+      const currentValue = state$.displayValue.peek();
+      const cursorPos = state$.autocomplete.cursorPosition.peek();
+      const { cleanedText } = removeMentionFromText(currentValue, cursorPos);
+      state$.displayValue.set(cleanedText);
+
+      state$.mention.isOpen.set(false);
+      state$.mention.searchValue.set("");
+    },
+
+    removeMention: (key: string) => {
+      const currentIds = state$.mentionIds.peek();
+      state$.mentionIds.set(currentIds.filter((id) => id !== key));
+    },
+
     extractRemainingTags: () => {
       const currentValue = state$.displayValue.peek();
       const currentTags = state$.tags.peek();
@@ -213,19 +309,31 @@ export function useTaggedNameField(
     reset: () => {
       state$.name.set("");
       state$.tags.set([]);
+      state$.mentionIds.set([]);
       state$.displayValue.set("");
       state$.autocomplete.isOpen.set(false);
       state$.autocomplete.searchValue.set("");
       state$.autocomplete.cursorPosition.set(0);
+      state$.mention.isOpen.set(false);
+      state$.mention.searchValue.set("");
     },
 
-    reinitialize: (newName: string, newTags: string[]) => {
+    reinitialize: (
+      newName: string,
+      newTags: string[],
+      newMentionIds?: string[],
+    ) => {
       state$.name.set(newName);
       state$.tags.set(newTags);
+      if (newMentionIds !== undefined) {
+        state$.mentionIds.set(newMentionIds);
+      }
       state$.displayValue.set(newName);
       state$.autocomplete.isOpen.set(false);
       state$.autocomplete.searchValue.set("");
       state$.autocomplete.cursorPosition.set(newName.length);
+      state$.mention.isOpen.set(false);
+      state$.mention.searchValue.set("");
     },
   };
 
@@ -235,9 +343,14 @@ export function useTaggedNameField(
     tags,
     isAutocompleteOpen,
     searchValue,
+    isMentionOpen,
+    mentionSearch,
+    mentionIds,
     setDisplayValue: actions.setDisplayValue,
     extractTag: actions.extractTag,
     removeTag: actions.removeTag,
+    selectMention: actions.selectMention,
+    removeMention: actions.removeMention,
     extractRemainingTags: actions.extractRemainingTags,
     reset: actions.reset,
     reinitialize: actions.reinitialize,
