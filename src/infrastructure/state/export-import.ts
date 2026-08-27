@@ -16,7 +16,9 @@ import {
   habits$,
   metricLogs$,
   moments$,
+  people$,
   phaseConfigs$,
+  places$,
 } from "./store";
 
 /**
@@ -37,6 +39,8 @@ export function exportGardenData(filename?: string): void {
   const phaseConfigs = phaseConfigs$.get();
   const metricLogs = metricLogs$.get();
   const dayNotes = dayNotes$.get();
+  const people = people$.get();
+  const places = places$.get();
 
   const exportedData = exportData(
     moments,
@@ -47,6 +51,8 @@ export function exportGardenData(filename?: string): void {
     phaseConfigs,
     metricLogs,
     dayNotes,
+    people,
+    places,
   );
 
   downloadExportFile(exportedData, filename);
@@ -68,7 +74,11 @@ export function exportGardenData(filename?: string): void {
     exportedData.metadata.totalMetricLogs,
     "metric logs,",
     exportedData.metadata.totalDayNotes,
-    "day notes",
+    "day notes,",
+    exportedData.metadata.totalPeople,
+    "people,",
+    exportedData.metadata.totalPlaces,
+    "places",
   );
 }
 
@@ -120,6 +130,8 @@ export async function importGardenData(
     phaseConfigs: phaseConfigs$.get(),
     metricLogs: metricLogs$.get(),
     dayNotes: dayNotes$.get(),
+    people: people$.get(),
+    places: places$.get(),
   };
 
   // Import with strategy
@@ -132,6 +144,8 @@ export async function importGardenData(
     phaseConfigs,
     metricLogs,
     dayNotes,
+    people,
+    places,
     result,
   } = importDataWithStrategy(fileData, strategy, currentData);
 
@@ -147,6 +161,8 @@ export async function importGardenData(
     await writeCollection("phaseConfigs", phaseConfigs);
     await writeCollection("metricLogs", metricLogs);
     await writeCollection("dayNotes", dayNotes);
+    await writeCollection("people", people);
+    await writeCollection("places", places);
     console.log("[importGardenData] Vault written, reloading to rehydrate");
     if (typeof window !== "undefined") {
       window.location.reload();
@@ -154,7 +170,7 @@ export async function importGardenData(
     return { success: result.success, message: result.message };
   }
 
-  // Web (IDB-only): direct observable updates are safe — no vault race.
+  // Web (IDB-only): direct observable updates are safe -- no vault race.
   moments$.set(moments);
   areas$.set(areas);
   habits$.set(habits);
@@ -163,6 +179,8 @@ export async function importGardenData(
   phaseConfigs$.set(phaseConfigs);
   metricLogs$.set(metricLogs);
   dayNotes$.set(dayNotes);
+  people$.set(people);
+  places$.set(places);
 
   console.log("[importGardenData] Import complete:", result);
 
