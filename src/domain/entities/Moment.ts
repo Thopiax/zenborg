@@ -264,16 +264,6 @@ export function validateMomentName(name: string): MomentNameValidation {
 }
 
 /**
- * How many moments the coarse **day view** shows in one (day, phase) cell.
- *
- * This is a display constraint, not a data-layer invariant. The garden's
- * "rule of 3" is an anti-over-planning guard at day-view granularity; the
- * zoomed-in (time-blocked) view holds as many blocks as the clock allows.
- * See `docs/ideas/2026-06-08-calendar-zoomed-in-mode-and-phase-cap.md`.
- */
-export const DAY_VIEW_PHASE_CAPACITY = 3;
-
-/**
  * Counts moments already sitting in a (day, phase) slot.
  *
  * @param excludeMomentId - a moment being moved, which shouldn't count itself
@@ -290,38 +280,6 @@ export function countMomentsInPhase(
     if (m.day === day && m.phase === phase) count++;
   }
   return count;
-}
-
-/**
- * True when the (day, phase) cell still has room in the coarse day view.
- *
- * Callers that render or drive the day-view grid should gate on this. Write
- * paths (allocation, spawning, planning) must NOT — the data layer accepts
- * more than three, and the excess is simply invisible until you zoom in.
- */
-export function hasDayViewCapacity(
-  moments: readonly Moment[],
-  day: string,
-  phase: Phase,
-  excludeMomentId?: string,
-): boolean {
-  return (
-    countMomentsInPhase(moments, day, phase, excludeMomentId) <
-    DAY_VIEW_PHASE_CAPACITY
-  );
-}
-
-/**
- * @deprecated Renamed to `hasDayViewCapacity` — the cap is a day-view display
- * concern, not an allocation rule. Kept so existing day-view callers keep
- * working; do not introduce new uses on write paths.
- */
-export function canAllocateToPhase(
-  moments: Moment[],
-  day: string,
-  phase: Phase,
-): boolean {
-  return hasDayViewCapacity(moments, day, phase);
 }
 
 /**

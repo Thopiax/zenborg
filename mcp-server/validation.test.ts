@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   countMomentsInPhase,
-  DAY_VIEW_PHASE_CAPACITY,
   deriveRhythmFromSchedule,
-  hasDayViewCapacity,
   normalizeRefs,
   normalizeSchedule,
   phaseForStartTime,
@@ -223,7 +221,7 @@ describe("validateMomentTiming", () => {
   });
 });
 
-describe("day-view phase capacity", () => {
+describe("countMomentsInPhase", () => {
   const day = "2026-08-10";
   const filled = [
     moment({ id: "m-1", day, phase: "MORNING" }),
@@ -231,21 +229,12 @@ describe("day-view phase capacity", () => {
     moment({ id: "m-3", day, phase: "MORNING" }),
   ];
 
-  it("is three", () => {
-    expect(DAY_VIEW_PHASE_CAPACITY).toBe(3);
-  });
-
   it("counts the moments in a slot", () => {
     expect(countMomentsInPhase(filled, day, "MORNING")).toBe(3);
   });
 
   it("excludes the moment being moved", () => {
     expect(countMomentsInPhase(filled, day, "MORNING", "m-2")).toBe(2);
-  });
-
-  it("reports the slot as beyond day-view capacity", () => {
-    expect(hasDayViewCapacity(filled, day, "MORNING")).toBe(false);
-    expect(hasDayViewCapacity(filled.slice(0, 2), day, "MORNING")).toBe(true);
   });
 });
 

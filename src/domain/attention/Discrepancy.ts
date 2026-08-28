@@ -24,9 +24,7 @@ export interface Discrepancy {
   /**
    * Every moment planted in the (day, phase) cell. A set, not a moment.
    *
-   * A cell holds however many moments are planted in it. `DAY_VIEW_PHASE_CAPACITY`
-   * is 3, but that is what the coarse day view shows, and the write paths
-   * deliberately do not enforce it. The domain carries no cardinality bound.
+   * Every moment planted in the (day, phase) cell. No cardinality bound.
    */
   readonly plantedMomentIds: readonly MomentId[];
   /** The area attention actually resolved to. Absent when nothing was observed. */
