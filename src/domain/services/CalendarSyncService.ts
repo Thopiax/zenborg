@@ -204,9 +204,10 @@ function eventFieldsFromSnapshot(event: CalendarEventSnapshot): EventFields {
   };
 }
 
-function snappedFieldsFromEvent(
-  event: CalendarEventSnapshot,
-): { startTime: string | null; durationMin: number | null } {
+function snappedFieldsFromEvent(event: CalendarEventSnapshot): {
+  startTime: string | null;
+  durationMin: number | null;
+} {
   if (event.isAllDay) {
     return { startTime: null, durationMin: null };
   }

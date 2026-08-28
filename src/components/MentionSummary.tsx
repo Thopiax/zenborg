@@ -25,7 +25,8 @@ export function MentionSummary({
 
   const resolve = (key: string): string => {
     const person = Object.values(allPeople).find((p) => p.key === key);
-    if (person) return person.emoji ? `${person.emoji} ${person.name}` : person.name;
+    if (person)
+      return person.emoji ? `${person.emoji} ${person.name}` : person.name;
     const place = Object.values(allPlaces).find((p) => p.key === key);
     if (place) return place.emoji ? `${place.emoji} ${place.name}` : place.name;
     return key;

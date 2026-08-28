@@ -129,8 +129,7 @@ export function MentionAutocompleteInline({
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-]/g, "");
     const exists = allItems.some((i) => i.key === normalized);
-    const shouldShowCreate =
-      normalized && !exists && allMatches.length < 3;
+    const shouldShowCreate = normalized && !exists && allMatches.length < 3;
 
     return {
       suggestions: allMatches,
@@ -220,9 +219,7 @@ export function MentionAutocompleteInline({
                 key={item.key}
                 type="button"
                 onClick={() =>
-                  isUsed
-                    ? onRemoveMention(item.key)
-                    : onSelectMention(item.key)
+                  isUsed ? onRemoveMention(item.key) : onSelectMention(item.key)
                 }
                 className={cn(
                   "flex items-center gap-2 px-3 py-1.5 rounded-md",
