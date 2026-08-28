@@ -40,7 +40,7 @@ export function MentionBadges({
       {resolvedPeople.map(({ key, name, emoji }) => (
         <span
           key={`person-${key}`}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs"
         >
           {emoji ? (
             <span className="text-xs">{emoji}</span>
@@ -52,7 +52,7 @@ export function MentionBadges({
             <button
               type="button"
               onClick={() => onRemovePerson(key)}
-              className="ml-0.5 hover:text-blue-900 dark:hover:text-blue-100"
+              className="ml-0.5 hover:text-stone-900 dark:hover:text-stone-100"
             >
               <X className="w-2.5 h-2.5" />
             </button>
@@ -62,7 +62,7 @@ export function MentionBadges({
       {resolvedPlaces.map(({ key, name, emoji }) => (
         <span
           key={`place-${key}`}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs border border-dashed border-stone-300 dark:border-stone-600"
         >
           {emoji ? (
             <span className="text-xs">{emoji}</span>
@@ -74,7 +74,7 @@ export function MentionBadges({
             <button
               type="button"
               onClick={() => onRemovePlace(key)}
-              className="ml-0.5 hover:text-emerald-900 dark:hover:text-emerald-100"
+              className="ml-0.5 hover:text-stone-900 dark:hover:text-stone-100"
             >
               <X className="w-2.5 h-2.5" />
             </button>
