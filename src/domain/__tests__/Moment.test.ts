@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   allocateMoment,
+  compareMoments,
   createMoment,
   isMomentError,
   isParseableRef,
@@ -436,5 +437,50 @@ describe("Moment.placeIds and Moment.placeUrl", () => {
 
   it("types placeUrl as an optional string", () => {
     expectTypeOf<Moment["placeUrl"]>().toEqualTypeOf<string | undefined>();
+  });
+});
+
+describe("compareMoments", () => {
+  const base: Moment = {
+    id: "m1",
+    name: "test",
+    areaId: "a1",
+    habitId: null,
+    cycleId: null,
+    cyclePlanId: null,
+    phase: "MORNING",
+    day: "2026-08-28",
+    order: 0,
+    tags: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+
+  it("sorts timed moments by startTime", () => {
+    const a = { ...base, id: "a", startTime: "09:00", order: 2 };
+    const b = { ...base, id: "b", startTime: "07:30", order: 1 };
+    const sorted = [a, b].sort(compareMoments);
+    expect(sorted.map((m) => m.id)).toEqual(["b", "a"]);
+  });
+
+  it("timed moments come before ambient", () => {
+    const timed = { ...base, id: "timed", startTime: "10:00", order: 5 };
+    const ambient = { ...base, id: "ambient", order: 0 };
+    const sorted = [ambient, timed].sort(compareMoments);
+    expect(sorted.map((m) => m.id)).toEqual(["timed", "ambient"]);
+  });
+
+  it("ambient moments sort by order", () => {
+    const a = { ...base, id: "a", order: 3 };
+    const b = { ...base, id: "b", order: 1 };
+    const sorted = [a, b].sort(compareMoments);
+    expect(sorted.map((m) => m.id)).toEqual(["b", "a"]);
+  });
+
+  it("same startTime falls back to order", () => {
+    const a = { ...base, id: "a", startTime: "09:00", order: 2 };
+    const b = { ...base, id: "b", startTime: "09:00", order: 1 };
+    const sorted = [a, b].sort(compareMoments);
+    expect(sorted.map((m) => m.id)).toEqual(["b", "a"]);
   });
 });

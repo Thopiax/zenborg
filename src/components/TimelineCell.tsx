@@ -12,7 +12,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
 import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import { type Moment, compareMoments } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { Plus } from "lucide-react";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
@@ -81,7 +81,7 @@ export function TimelineCell({
   // Get moments for this cell
   const cellMoments: Moment[] = Object.values(allMoments)
     .filter((m) => m.day === day && m.phase === phase)
-    .sort((a, b) => a.order - b.order);
+    .sort(compareMoments);
 
   // Droppable configuration
   const { setNodeRef, isOver } = useDroppable({
