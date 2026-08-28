@@ -3,7 +3,13 @@ import { createCyclePlan } from "@/domain/entities/CyclePlan";
 import { createMoment } from "@/domain/entities/Moment";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import { Phase } from "@/domain/value-objects/Phase";
-import { cyclePlans$, habits$, moments$ } from "@/infrastructure/state/store";
+import {
+  activeHabits$,
+  archivedHabits$,
+  cyclePlans$,
+  habits$,
+  moments$,
+} from "@/infrastructure/state/store";
 import { HabitService } from "../services/HabitService";
 
 describe("HabitService", () => {
@@ -447,6 +453,29 @@ describe("HabitService", () => {
       if ("error" in result) {
         expect(result.error).toContain("not found");
       }
+    });
+
+    it("should move habit from archivedHabits$ to activeHabits$ computed", () => {
+      const habit = service.createHabit({
+        name: "Test Computed",
+        areaId: "area-123",
+        order: 0,
+      });
+      if ("error" in habit) throw new Error(habit.error);
+
+      // Before archive: in active, not in archived
+      expect(activeHabits$.get().some((h) => h.id === habit.id)).toBe(true);
+      expect(archivedHabits$.get().some((h) => h.id === habit.id)).toBe(false);
+
+      // Archive it
+      service.archiveHabit(habit.id);
+      expect(activeHabits$.get().some((h) => h.id === habit.id)).toBe(false);
+      expect(archivedHabits$.get().some((h) => h.id === habit.id)).toBe(true);
+
+      // Unarchive it — should move back to active
+      service.unarchiveHabit(habit.id);
+      expect(activeHabits$.get().some((h) => h.id === habit.id)).toBe(true);
+      expect(archivedHabits$.get().some((h) => h.id === habit.id)).toBe(false);
     });
   });
 
