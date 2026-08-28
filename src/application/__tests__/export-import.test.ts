@@ -123,6 +123,7 @@ describe("Export/Import System", () => {
         sampleDayNotes,
         {},
         {},
+        {},
       );
 
       expect(exported.version).toBe(EXPORT_SCHEMA_VERSION);
@@ -142,6 +143,7 @@ describe("Export/Import System", () => {
         samplePhaseConfigs,
         sampleMetricLogs,
         sampleDayNotes,
+        {},
         {},
         {},
       );
@@ -166,6 +168,7 @@ describe("Export/Import System", () => {
         sampleDayNotes,
         {},
         {},
+        {},
       );
 
       expect(exported.metadata.totalMoments).toBe(2);
@@ -178,7 +181,7 @@ describe("Export/Import System", () => {
     });
 
     it("should handle empty data", () => {
-      const exported = exportData({}, {}, {}, {}, {}, {}, {}, {}, {}, {});
+      const exported = exportData({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {});
 
       expect(exported.metadata.totalMoments).toBe(0);
       expect(exported.metadata.totalAreas).toBe(0);
@@ -201,6 +204,7 @@ describe("Export/Import System", () => {
         samplePhaseConfigs,
         sampleMetricLogs,
         sampleDayNotes,
+        {},
         {},
         {},
       );
@@ -370,6 +374,7 @@ describe("Export/Import System", () => {
           totalDayNotes: 0,
           totalPeople: 0,
           totalPlaces: 0,
+          totalRelationships: 0,
         },
       };
 
@@ -413,6 +418,7 @@ describe("Export/Import System", () => {
           totalDayNotes: 0,
           totalPeople: 0,
           totalPlaces: 0,
+          totalRelationships: 0,
         },
       };
 
@@ -436,6 +442,7 @@ describe("Export/Import System", () => {
         samplePhaseConfigs,
         sampleMetricLogs,
         sampleDayNotes,
+        {},
         {},
         {},
       );
@@ -467,6 +474,7 @@ describe("Export/Import System", () => {
         dayNotes: {} as Record<string, DayNote>,
         people: {},
         places: {},
+        relationships: {},
       };
 
       const { moments, areas, cycles, phaseConfigs, result } =
@@ -492,6 +500,7 @@ describe("Export/Import System", () => {
         sampleDayNotes,
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -505,6 +514,7 @@ describe("Export/Import System", () => {
         dayNotes: {},
         people: {},
         places: {},
+        relationships: {},
       };
 
       const { result } = importDataWithStrategy(
@@ -548,6 +558,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -561,6 +572,7 @@ describe("Export/Import System", () => {
         dayNotes: {},
         people: {},
         places: {},
+        relationships: {},
       };
 
       const { moments, result } = importDataWithStrategy(
@@ -594,6 +606,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -607,6 +620,7 @@ describe("Export/Import System", () => {
         dayNotes: {},
         people: {},
         places: {},
+        relationships: {},
       };
 
       const { moments, result } = importDataWithStrategy(
@@ -623,7 +637,19 @@ describe("Export/Import System", () => {
     });
 
     it("should preserve existing data when merging", () => {
-      const exportedData = exportData({}, {}, {}, {}, {}, {}, {}, {}, {}, {});
+      const exportedData = exportData(
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+      );
 
       const existingData = {
         moments: sampleMoments,
@@ -636,6 +662,7 @@ describe("Export/Import System", () => {
         dayNotes: {},
         people: {},
         places: {},
+        relationships: {},
       };
 
       const { moments, areas, cycles, phaseConfigs } = importDataWithStrategy(
@@ -662,6 +689,7 @@ describe("Export/Import System", () => {
         sampleDayNotes,
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -675,6 +703,7 @@ describe("Export/Import System", () => {
         dayNotes: {},
         people: {},
         places: {},
+        relationships: {},
       };
 
       const { result } = importDataWithStrategy(
@@ -736,6 +765,7 @@ describe("Export/Import System", () => {
           totalDayNotes: 0,
           totalPeople: 0,
           totalPlaces: 0,
+          totalRelationships: 0,
         },
       };
 
@@ -760,6 +790,7 @@ describe("Export/Import System", () => {
         samplePhaseConfigs,
         sampleMetricLogs,
         sampleDayNotes,
+        {},
         {},
         {},
       );
@@ -797,6 +828,7 @@ describe("Export/Import System", () => {
           totalDayNotes: 0,
           totalPeople: 0,
           totalPlaces: 0,
+          totalRelationships: 0,
         },
       };
 
@@ -836,6 +868,7 @@ describe("Export/Import System", () => {
           totalDayNotes: 0,
           totalPeople: 0,
           totalPlaces: 0,
+          totalRelationships: 0,
         },
       };
 
@@ -850,6 +883,7 @@ describe("Export/Import System", () => {
         dayNotes: {},
         people: {},
         places: {},
+        relationships: {},
       };
 
       const {
@@ -922,6 +956,7 @@ describe("Export/Import System", () => {
           totalDayNotes: 0,
           totalPeople: 0,
           totalPlaces: 0,
+          totalRelationships: 0,
         },
       };
 
@@ -945,6 +980,7 @@ describe("Export/Import System", () => {
         dayNotes: {},
         people: {},
         places: {},
+        relationships: {},
       };
 
       const imported = importDataWithStrategy(
