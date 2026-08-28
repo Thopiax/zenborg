@@ -8,6 +8,7 @@ import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Person } from "@/domain/entities/Person";
 import type { Place } from "@/domain/entities/Place";
+import type { Relationship } from "@/domain/entities/Relationship";
 import {
   getCurrentPhase,
   type PhaseConfig,
@@ -103,6 +104,11 @@ export const people$ = observable<Record<string, Person>>({});
  * Places collection - keyed by place ID
  */
 export const places$ = observable<Record<string, Place>>({});
+
+/**
+ * Relationships collection - keyed by relationship ID
+ */
+export const relationships$ = observable<Record<string, Relationship>>({});
 
 // ============================================================================
 // History State
@@ -698,6 +704,7 @@ export function resetDatabase() {
   metricLogs$.set({});
   people$.set({});
   places$.set({});
+  relationships$.set({});
 
   console.log("[resetDatabase] Database reset complete");
 

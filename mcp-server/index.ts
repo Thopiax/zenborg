@@ -79,6 +79,9 @@ import {
   type PhaseConfig,
   PhaseSchema,
   type Place,
+  type Relationship,
+  RelationshipDirectionSchema,
+  EntityTypeSchema,
   type Rhythm,
   RhythmSchema,
   readActiveMoment,
@@ -828,6 +831,7 @@ server.tool(
     category: z.string().nullable().optional(),
     basePlace: z.string().nullable().optional(),
     emoji: z.string().nullable().optional(),
+    isSelf: z.boolean().optional(),
   },
   async (params): Promise<ToolResult> => {
     const people = readCollection(VAULT_ROOT, "people");
@@ -836,6 +840,13 @@ server.tool(
     const existing = Object.values(people).find((p) => p.key === key);
     if (existing)
       return err(`Person with key "${key}" already exists: ${existing.id}`);
+    if (params.isSelf) {
+      const selfExists = Object.values(people).find((p) => p.isSelf);
+      if (selfExists)
+        return err(
+          `A self person already exists: ${selfExists.name} (${selfExists.id})`,
+        );
+    }
     const id = crypto.randomUUID();
     const now = nowIso();
     const person: Person = {
@@ -847,6 +858,7 @@ server.tool(
       category: params.category ?? null,
       basePlace: params.basePlace ? slugify(params.basePlace) : null,
       emoji: params.emoji ?? null,
+      ...(params.isSelf ? { isSelf: true } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -867,6 +879,7 @@ server.tool(
     category: z.string().nullable().optional(),
     basePlace: z.string().nullable().optional(),
     emoji: z.string().nullable().optional(),
+    isSelf: z.boolean().optional(),
   },
   async ({ idOrKey, ...updates }): Promise<ToolResult> => {
     const people = readCollection(VAULT_ROOT, "people");
@@ -886,6 +899,18 @@ server.tool(
     if ("basePlace" in updates)
       person.basePlace = updates.basePlace ? slugify(updates.basePlace) : null;
     if ("emoji" in updates) person.emoji = updates.emoji ?? null;
+    if ("isSelf" in updates && updates.isSelf !== undefined) {
+      if (updates.isSelf) {
+        const selfExists = Object.values(people).find(
+          (p) => p.isSelf && p.id !== id,
+        );
+        if (selfExists)
+          return err(
+            `Another person is already self: ${selfExists.name} (${selfExists.id})`,
+          );
+      }
+      person.isSelf = updates.isSelf;
+    }
     person.updatedAt = nowIso();
     people[id] = person;
     writeCollection(VAULT_ROOT, "people", people);
@@ -1019,6 +1044,154 @@ server.tool(
     delete places[id];
     writeCollection(VAULT_ROOT, "places", places);
     return ok({ deleted: removed });
+  },
+);
+
+// ────────────────────────────────────────────────────────────────────────
+// RELATIONSHIPS — authored edges between entities
+// ────────────────────────────────────────────────────────────────────────
+
+server.tool(
+  "list_relationships",
+  'List all relationships, optionally filtered by entity type, entity id, or label. Pass `entityType` + `entityId` to find all edges touching one entity (both directions for mutual edges). Pass `label` to filter by edge label (e.g. "lives-in").',
+  {
+    entityType: EntityTypeSchema.optional(),
+    entityId: z.string().optional(),
+    label: z.string().optional(),
+  },
+  async ({ entityType, entityId, label }): Promise<ToolResult> => {
+    const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
+    const filtered = rels.filter((r) => {
+      if (label && r.label !== label) return false;
+      if (entityType && entityId) {
+        const matchesFrom = r.fromType === entityType && r.fromId === entityId;
+        const matchesTo = r.toType === entityType && r.toId === entityId;
+        if (r.direction === "mutual") return matchesFrom || matchesTo;
+        return matchesFrom || matchesTo;
+      }
+      if (entityType) {
+        return r.fromType === entityType || r.toType === entityType;
+      }
+      return true;
+    });
+    filtered.sort(
+      (a, b) =>
+        a.label.localeCompare(b.label) ||
+        a.fromType.localeCompare(b.fromType) ||
+        a.createdAt.localeCompare(b.createdAt),
+    );
+    return ok(filtered);
+  },
+);
+
+server.tool(
+  "create_relationship",
+  'Create an edge between two entities. `fromType`/`fromId` and `toType`/`toId` identify the endpoints. `label` is a freeform slug (e.g. "mother-of", "lives-in", "trains-at"). `direction` defaults to "mutual".',
+  {
+    fromType: EntityTypeSchema,
+    fromId: z.string(),
+    toType: EntityTypeSchema,
+    toId: z.string(),
+    label: z.string().min(1),
+    direction: RelationshipDirectionSchema.optional(),
+  },
+  async (params): Promise<ToolResult> => {
+    const rels = readCollection(VAULT_ROOT, "relationships");
+    const dupe = Object.values(rels).find(
+      (r) =>
+        r.fromType === params.fromType &&
+        r.fromId === params.fromId &&
+        r.toType === params.toType &&
+        r.toId === params.toId &&
+        r.label === params.label,
+    );
+    if (dupe) return err(`Duplicate relationship: ${dupe.id}`);
+
+    const id = crypto.randomUUID();
+    const now = nowIso();
+    const rel: Relationship = {
+      id,
+      fromType: params.fromType,
+      fromId: params.fromId,
+      toType: params.toType,
+      toId: params.toId,
+      label: params.label,
+      direction: params.direction ?? "mutual",
+      createdAt: now,
+      updatedAt: now,
+    };
+    rels[id] = rel;
+    writeCollection(VAULT_ROOT, "relationships", rels);
+    return ok({ created: rel });
+  },
+);
+
+server.tool(
+  "delete_relationship",
+  "Remove a relationship by id.",
+  { id: z.string() },
+  async ({ id }): Promise<ToolResult> => {
+    const rels = readCollection(VAULT_ROOT, "relationships");
+    if (!rels[id]) return err(`Relationship not found: ${id}`);
+    const removed = rels[id];
+    delete rels[id];
+    writeCollection(VAULT_ROOT, "relationships", rels);
+    return ok({ deleted: removed });
+  },
+);
+
+server.tool(
+  "get_related",
+  "Get all entities related to a given entity. Returns the relationship edges with the other endpoint resolved to its display name when possible.",
+  {
+    entityType: EntityTypeSchema,
+    entityId: z.string(),
+    label: z.string().optional(),
+  },
+  async ({ entityType, entityId, label }): Promise<ToolResult> => {
+    const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
+    const people = readCollection(VAULT_ROOT, "people");
+    const places = readCollection(VAULT_ROOT, "places");
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const areas = readCollection(VAULT_ROOT, "areas");
+
+    function resolveName(type: string, id: string): string | null {
+      switch (type) {
+        case "person":
+          return people[id]?.name ?? null;
+        case "place":
+          return places[id]?.name ?? null;
+        case "habit":
+          return habits[id]?.name ?? null;
+        case "area":
+          return areas[id]?.name ?? null;
+        default:
+          return null;
+      }
+    }
+
+    const edges = rels
+      .filter((r) => {
+        if (label && r.label !== label) return false;
+        const matchesFrom = r.fromType === entityType && r.fromId === entityId;
+        const matchesTo = r.toType === entityType && r.toId === entityId;
+        return matchesFrom || matchesTo;
+      })
+      .map((r) => {
+        const isFrom = r.fromType === entityType && r.fromId === entityId;
+        const otherType = isFrom ? r.toType : r.fromType;
+        const otherId = isFrom ? r.toId : r.fromId;
+        return {
+          relationshipId: r.id,
+          label: r.label,
+          direction: r.direction,
+          otherType,
+          otherId,
+          otherName: resolveName(otherType, otherId),
+        };
+      });
+
+    return ok({ entityType, entityId, related: edges });
   },
 );
 
@@ -2470,9 +2643,17 @@ server.tool(
   "search_habits",
   "Fuzzy-search habits by name or alias. Returns matches ranked by confidence (exact > prefix > substring > levenshtein). Use to resolve natural-language habit references before planting moments.",
   {
-    query: z.string().describe("The habit name, alias, or approximate spelling to search for"),
-    areaId: z.string().optional().describe("Restrict results to habits in this area"),
-    includeArchived: z.boolean().optional().describe("Include archived habits in results (default false)"),
+    query: z
+      .string()
+      .describe("The habit name, alias, or approximate spelling to search for"),
+    areaId: z
+      .string()
+      .optional()
+      .describe("Restrict results to habits in this area"),
+    includeArchived: z
+      .boolean()
+      .optional()
+      .describe("Include archived habits in results (default false)"),
   },
   async ({ query, areaId, includeArchived }): Promise<ToolResult> => {
     const habits = readCollection(VAULT_ROOT, "habits");
@@ -2497,7 +2678,11 @@ server.tool(
   "search_people",
   "Fuzzy-search people by name or key. Returns matches ranked by confidence. Use to resolve person references before tagging moments with personIds.",
   {
-    query: z.string().describe("The person's name, key, or approximate spelling to search for"),
+    query: z
+      .string()
+      .describe(
+        "The person's name, key, or approximate spelling to search for",
+      ),
   },
   async ({ query }): Promise<ToolResult> => {
     const people = readCollection(VAULT_ROOT, "people");
@@ -2521,7 +2706,9 @@ server.tool(
   "search_places",
   "Fuzzy-search places by name, key, or parent key. Returns matches ranked by confidence. Use to resolve place references before tagging moments with placeIds.",
   {
-    query: z.string().describe("The place name, key, or approximate spelling to search for"),
+    query: z
+      .string()
+      .describe("The place name, key, or approximate spelling to search for"),
   },
   async ({ query }): Promise<ToolResult> => {
     const places = readCollection(VAULT_ROOT, "places");
