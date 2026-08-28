@@ -171,6 +171,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "dirs 5.0.1",
+ "libc",
  "log",
  "notify",
  "observer-core",

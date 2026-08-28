@@ -71,5 +71,20 @@ if [[ -d "$CAL_DIR/Sources" ]]; then
   fi
 fi
 
+# ── kairos-daemon (Rust, observer + scheduler) ─────────────────────
+DAEMON_DIR="$WORKSPACE_ROOT/src-tauri/crates/kairos-daemon"
+if [[ -d "$DAEMON_DIR/src" ]]; then
+  echo "[sidecars] compiling kairos-daemon (cargo)"
+  cargo build --release --manifest-path "$DAEMON_DIR/Cargo.toml"
+  DAEMON_BIN="$DAEMON_DIR/target/release/kairos-daemon"
+  if [[ -f "$DAEMON_BIN" ]]; then
+    cp "$DAEMON_BIN" "$DEST/kairos-daemon-$TARGET"
+    chmod +x "$DEST/kairos-daemon-$TARGET"
+  else
+    echo "[sidecars] kairos-daemon binary not found at $DAEMON_BIN" >&2
+    exit 1
+  fi
+fi
+
 echo "[sidecars] staged:"
 ls -lh "$DEST"
