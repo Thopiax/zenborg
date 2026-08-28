@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "zenborg",
-  "version": "0.20.2",
+  "version": "0.20.3",
   "identifier": "tech.equanimi.zenborg",
   "build": {
     "frontendDist": "../out",
