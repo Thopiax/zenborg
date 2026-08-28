@@ -4,6 +4,7 @@ import {
   createMoment,
   isMomentError,
 } from "@/domain/entities/Moment";
+import { classifyMentionIds } from "@/domain/services/MentionService";
 import type { CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 
@@ -23,6 +24,7 @@ export interface CreateMomentWithWorkflowParams {
   customMetric?: CustomMetric;
   startTime?: string;
   mentionIds?: string[];
+  placeKeys?: ReadonlySet<string>;
 }
 
 /**
@@ -62,6 +64,7 @@ export class MomentCreationService {
       customMetric,
       startTime,
       mentionIds = [],
+      placeKeys = new Set(),
     } = params;
 
     const result = createMoment({
@@ -79,7 +82,13 @@ export class MomentCreationService {
     }
 
     if (mentionIds.length > 0) {
-      result.personIds = mentionIds;
+      const classified = classifyMentionIds(mentionIds, placeKeys);
+      if (classified.personIds.length > 0) {
+        result.personIds = classified.personIds;
+      }
+      if (classified.placeIds.length > 0) {
+        result.placeIds = classified.placeIds;
+      }
     }
 
     if (prefilledAllocation?.day && prefilledAllocation?.phase) {
