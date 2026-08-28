@@ -1,7 +1,7 @@
 //! Desktop observer writer — delegates to observer-core, with vault_root()
 //! resolved from the app's own vault module (which carries the debug/release split).
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub use observer_core::writer::append_line;
 
