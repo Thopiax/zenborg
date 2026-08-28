@@ -164,18 +164,6 @@ export function normalizeAliases(
   return out;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Day-view phase capacity (mirrors src/domain/entities/Moment.ts)
-//
-// Resolved 2026-08-07: the "3 moments per (day, phase)" rule is a *display*
-// constraint of the coarse day view, not a data-layer invariant. Write paths
-// no longer block on it; they report the overflow so callers (and the
-// `morning` / `cycle-planning` skills) keep the anti-over-planning signal.
-// See docs/ideas/2026-06-08-calendar-zoomed-in-mode-and-phase-cap.md.
-// ────────────────────────────────────────────────────────────────────────
-
-export const DAY_VIEW_PHASE_CAPACITY = 3;
-
 export function countMomentsInPhase(
   moments: readonly Moment[],
   day: string,
@@ -188,35 +176,6 @@ export function countMomentsInPhase(
     if (m.day === day && m.phase === phase) count++;
   }
   return count;
-}
-
-export function hasDayViewCapacity(
-  moments: readonly Moment[],
-  day: string,
-  phase: Phase,
-  excludeMomentId?: string,
-): boolean {
-  return (
-    countMomentsInPhase(moments, day, phase, excludeMomentId) <
-    DAY_VIEW_PHASE_CAPACITY
-  );
-}
-
-/**
- * Non-blocking overflow notice for allocation responses. Returns null while
- * the slot still fits in the day view.
- */
-export function dayViewOverflow(
-  count: number,
-): { count: number; capacity: number; note: string } | null {
-  if (count <= DAY_VIEW_PHASE_CAPACITY) {
-    return null;
-  }
-  return {
-    count,
-    capacity: DAY_VIEW_PHASE_CAPACITY,
-    note: `Slot now holds ${count} moments; the coarse day view shows ${DAY_VIEW_PHASE_CAPACITY}. The rest are visible only in the zoomed-in, time-blocked view.`,
-  };
 }
 
 // ────────────────────────────────────────────────────────────────────────

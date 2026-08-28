@@ -39,7 +39,6 @@ import {
   areaHasMoments,
   computeCycleCascade,
   countMomentsInPhase,
-  dayViewOverflow,
   deriveRhythmFromSchedule,
   findAreaByIdOrName,
   findCycleByIdOrName,
@@ -204,7 +203,7 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 ## Invariants the MCP enforces
 
 - Moment and habit names are **1–3 words**.
-- **No cap on moments per (day, phase).** The "3 per phase" rule is a *day-view display* limit, not a data invariant — a zoomed-in, time-blocked phase holds more. Allocation tools return a \`dayViewOverflow\` notice past 3 so you can still flag over-planning; they never refuse.
+- **No cap on moments per (day, phase).** A phase holds as many moments as you plant in it.
 - A habit's \`schedule\` (optional) fills \`rhythm\` and \`phase\` when they're absent, and is **rejected** when they contradict it: a weekly rhythm's \`count\` must equal \`weekdays.length\`, and \`phase\` must match the band \`startTime\` falls in. Longer rhythm periods are unconstrained (weekdays are candidate days).
 - Moments inherit \`startTime\`/\`durationMin\` from their habit's schedule at allocation, and may override either per instance.
 - \`archive_habit\` cascade: allocated moments preserved as historical records (orphan via habitId).
@@ -1931,7 +1930,7 @@ server.tool(
 
 server.tool(
   "allocate_moment",
-  'Allocate a moment to a specific (day, phase). No hard cap: the "3 per phase" rule is a day-view display concern, so a slot beyond it comes back with a `dayViewOverflow` notice rather than an error. `startTime`/`durationMin` optionally pin the moment to the clock. When `startTime` is provided, `phase` is auto-derived from phase configs and any explicit `phase` is ignored.',
+  "Allocate a moment to a specific (day, phase). `startTime`/`durationMin` optionally pin the moment to the clock. When `startTime` is provided, `phase` is auto-derived from phase configs and any explicit `phase` is ignored.",
   {
     id: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -1975,11 +1974,7 @@ server.tool(
     };
     moments[id] = next;
     writeCollection(VAULT_ROOT, "moments", moments);
-    const overflow = dayViewOverflow(slotCount + 1);
-    return ok({
-      allocated: next,
-      ...(overflow ? { dayViewOverflow: overflow } : {}),
-    });
+    return ok({ allocated: next });
   },
 );
 
@@ -2004,7 +1999,7 @@ server.tool(
 
 server.tool(
   "allocate_from_plan",
-  "Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan, inheriting the habit's schedule timing when it has one. When the habit has a scheduled startTime, phase is auto-derived from phase configs and any explicit phase is ignored. Errors if no plan exists, budget is exhausted, habit is archived, or day is outside cycle range. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
+  "Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan, inheriting the habit's schedule timing when it has one. When the habit has a scheduled startTime, phase is auto-derived from phase configs and any explicit phase is ignored. Errors if no plan exists, budget is exhausted, habit is archived, or day is outside cycle range.",
   {
     cycleId: z.string(),
     habitId: z.string(),
@@ -2087,17 +2082,13 @@ server.tool(
 
     allMoments[moment.id] = moment;
     writeCollection(VAULT_ROOT, "moments", allMoments);
-    const overflow = dayViewOverflow(slotCount + 1);
-    return ok({
-      allocated: moment,
-      ...(overflow ? { dayViewOverflow: overflow } : {}),
-    });
+    return ok({ allocated: moment });
   },
 );
 
 server.tool(
   "spawn_spontaneous_from_habit",
-  "Create an ad-hoc moment from a habit template and allocate it. Inherits name/area/emoji/tags, plus the habit's schedule timing when it has one. When the habit has a scheduled startTime, phase is auto-derived from phase configs and any explicit phase is ignored. Spontaneous = no cyclePlanId. If a cycle contains the day, inherits its cycleId. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
+  "Create an ad-hoc moment from a habit template and allocate it. Inherits name/area/emoji/tags, plus the habit's schedule timing when it has one. When the habit has a scheduled startTime, phase is auto-derived from phase configs and any explicit phase is ignored. Spontaneous = no cyclePlanId. If a cycle contains the day, inherits its cycleId.",
   {
     habitId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -2161,17 +2152,13 @@ server.tool(
     });
     moments[moment.id] = moment;
     writeCollection(VAULT_ROOT, "moments", moments);
-    const overflow = dayViewOverflow(slotCount + 1);
-    return ok({
-      created: moment,
-      ...(overflow ? { dayViewOverflow: overflow } : {}),
-    });
+    return ok({ created: moment });
   },
 );
 
 server.tool(
   "create_standalone_moment",
-  "Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. When `startTime` is provided, `phase` is auto-derived from phase configs and any explicit `phase` is ignored. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`. A slot past day-view capacity returns a `dayViewOverflow` notice, not an error.",
+  "Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. When `startTime` is provided, `phase` is auto-derived from phase configs and any explicit `phase` is ignored. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`.",
   {
     name: z.string(),
     areaId: z.string(),
@@ -2238,11 +2225,7 @@ server.tool(
     });
     moments[moment.id] = moment;
     writeCollection(VAULT_ROOT, "moments", moments);
-    const overflow = dayViewOverflow(slotCount + 1);
-    return ok({
-      created: moment,
-      ...(overflow ? { dayViewOverflow: overflow } : {}),
-    });
+    return ok({ created: moment });
   },
 );
 

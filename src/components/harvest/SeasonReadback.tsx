@@ -245,8 +245,7 @@ function ReflectionBlock({
 /**
  * One moment, as it was planted: when in the day, which plot, who was there.
  *
- * Every moment in the season renders. A phase holding more than three is
- * history, not overflow — the day view's capacity does not apply to a record.
+ * Every moment in the season renders.
  */
 function PlantedMoment({ moment }: { moment: HarvestMoment }) {
   return (

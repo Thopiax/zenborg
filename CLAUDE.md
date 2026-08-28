@@ -216,10 +216,6 @@ ambient chips on cards.
 
 ## Known drift — verify before trusting a doc
 
-- **The 3-moments-per-phase cap.** Recorded as removed (idea 2026-06-14, substrate.md says
-  deleted 2026-08-03) but still enforced in `TimelineCell.tsx`, `lib/design-tokens.ts`,
-  `mcp-server/validation.ts`, and `CycleService.ts`. Code is the truth until someone lands
-  the removal. The intent is that the cap is a day-view affordance, not a domain invariant.
 - **`README.md`** still describes the retired Next-on-Vercel era — a web app with a Compass
   and a three-day timeline. Do not build from it.
 - **The `docs/protection/` tree** documents shields and a rule engine that moved to keel,

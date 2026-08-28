@@ -207,7 +207,6 @@ export const elevation = {
  */
 export const momentConstraints = {
   maxWordsInName: 3,
-  maxMomentsPerCell: 3,
   minNameLength: 1,
   maxNameLength: 50, // Characters (rough estimate for 3 words)
 } as const;
@@ -318,8 +317,8 @@ export const ariaLabels = {
   compass: "Compass View - current moment",
   momentCard: (name: string, area: string) =>
     `${name} in ${area} area, press i to edit`,
-  timelineCell: (day: string, phase: string, count: number, max: number) =>
-    `${day} ${phase}, ${count} of ${max} moments allocated`,
+  timelineCell: (day: string, phase: string, count: number) =>
+    `${day} ${phase}, ${count} moments`,
   daySelector: "Day selector - navigate between days",
 } as const;
 
