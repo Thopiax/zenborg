@@ -76,7 +76,7 @@ DAEMON_DIR="$WORKSPACE_ROOT/src-tauri/crates/kairos-daemon"
 if [[ -d "$DAEMON_DIR/src" ]]; then
   echo "[sidecars] compiling kairos-daemon (cargo)"
   cargo build --release --manifest-path "$DAEMON_DIR/Cargo.toml"
-  DAEMON_BIN="$DAEMON_DIR/target/release/kairos-daemon"
+  DAEMON_BIN="$WORKSPACE_ROOT/src-tauri/target/release/kairos-daemon"
   if [[ -f "$DAEMON_BIN" ]]; then
     cp "$DAEMON_BIN" "$DEST/kairos-daemon-$TARGET"
     chmod +x "$DEST/kairos-daemon-$TARGET"
