@@ -62,22 +62,36 @@ others say "body" — their word is the right word.
 For each area, gather:
 - **name** — their word, preserved verbatim (never force lowercase or title-case)
 - **emoji** — suggest one if they don't offer; they can change it
-- **color** — suggest a hex color that feels right for the area's energy; they can override
+- **color** — pick a hex color that fits the area's energy
+
+**Colors must be visible, not hex codes in the terminal.** Use one of these approaches:
+
+1. **Publish an artifact** (preferred) — a simple HTML page showing each area as a color
+   swatch with name and emoji. The user sees the actual colors side-by-side and can ask
+   to swap any. Republish after changes.
+2. **Describe by tone** — if the user declines the artifact, describe colors by name
+   ("forest green", "warm terracotta", "slate blue") alongside the hex value. Never
+   present bare hex without a tone name.
+3. **Show in the app** — if the Zenborg desktop app is running, tell the user to check
+   the app after creation, where the colors render live. Still describe by tone in chat.
 
 Propose an order based on how they listed them (order 0, 1, 2...).
 
 ### 1c. Confirm and create
 
-Present the full list as a compact table:
+Publish an artifact showing the proposed garden:
 
 ```
 Your garden plots:
-  0. 🏃 Fitness        #4A7C59
-  1. 💼 Work           #5B6E8A
-  2. 🎨 Creative       #C47A5A
-  3. 👥 Social         #7A5BA0
-  4. 📚 Learning       #3D7A8A
+  0. 🏃 Fitness        forest green
+  1. 💼 Work           slate blue
+  2. 🎨 Creative       warm terracotta
+  3. 👥 Social         muted purple
+  4. 📚 Learning       deep teal
 ```
+
+The artifact renders actual swatches so the user can judge. In the terminal, use tone
+names, not hex.
 
 > "Look right? I'll plant these once you say go."
 
