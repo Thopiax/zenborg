@@ -36,11 +36,7 @@ export interface TaggedNameField {
   removeMention: (key: string) => void;
   extractRemainingTags: () => { name: string; tags: string[] };
   reset: () => void;
-  reinitialize: (
-    name: string,
-    tags: string[],
-    mentionIds?: string[],
-  ) => void;
+  reinitialize: (name: string, tags: string[], mentionIds?: string[]) => void;
 }
 
 /**

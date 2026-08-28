@@ -44,7 +44,6 @@ interface TimelineCellProps {
   phaseIndex?: number; // Phase row index for alternating greyscale tints (0, 1, 2)
 }
 
-
 /**
  * TimelineCell - Grid cell that holds 0-3 moments
  *

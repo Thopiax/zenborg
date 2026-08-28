@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
-  levenshtein,
   fuzzyMatch,
+  levenshtein,
   searchHabits,
   searchPeople,
   searchPlaces,
@@ -84,11 +84,7 @@ describe("fuzzyMatch", () => {
   });
 
   test("results sorted by score", () => {
-    const results = fuzzyMatch("coffee", [
-      "Toffee",
-      "Coffee",
-      "Coffeemaker",
-    ]);
+    const results = fuzzyMatch("coffee", ["Toffee", "Coffee", "Coffeemaker"]);
     expect(results[0].value).toBe("Coffee");
     expect(results[0].method).toBe("exact");
   });
@@ -245,6 +241,69 @@ describe("searchPeople", () => {
     const results = searchPeople("Cai Dunn", people);
     expect(results).toHaveLength(1);
   });
+
+  test("alias exact match", () => {
+    const withAlias: Record<string, Person> = {
+      p1: makePerson({
+        id: "p1",
+        name: "Elena Rossi",
+        key: "elena-rossi",
+        aliases: ["mom", "mama"],
+      }),
+    };
+    const results = searchPeople("mom", withAlias);
+    expect(results).toHaveLength(1);
+    expect(results[0].matchedOn).toBe("alias");
+    expect(results[0].matchedValue).toBe("mom");
+  });
+
+  test("alias prefix match", () => {
+    const withAlias: Record<string, Person> = {
+      p1: makePerson({
+        id: "p1",
+        name: "Lina Ferri",
+        key: "lina-ferri",
+        aliases: ["sasa", "sister"],
+      }),
+    };
+    const results = searchPeople("sas", withAlias);
+    expect(results).toHaveLength(1);
+    expect(results[0].matchedOn).toBe("alias");
+    expect(results[0].matchedValue).toBe("sasa");
+  });
+
+  test("name match beats alias match", () => {
+    const both: Record<string, Person> = {
+      p1: makePerson({
+        id: "p1",
+        name: "Mom",
+        key: "mom",
+      }),
+      p2: makePerson({
+        id: "p2",
+        name: "Elena Rossi",
+        key: "elena-rossi",
+        aliases: ["mom"],
+      }),
+    };
+    const results = searchPeople("Mom", both);
+    expect(results[0].matchedOn).toBe("name");
+    expect(results[0].person.key).toBe("mom");
+  });
+
+  test("alias match has penalty over name match", () => {
+    const withAlias: Record<string, Person> = {
+      p1: makePerson({
+        id: "p1",
+        name: "Elena Rossi",
+        key: "elena-rossi",
+        aliases: ["mama"],
+      }),
+    };
+    const results = searchPeople("mama", withAlias);
+    expect(results).toHaveLength(1);
+    expect(results[0].score).toBe(0.5);
+  });
 });
 
 // ── Search places ─────────────────────────────────────────────────────
@@ -254,6 +313,8 @@ function makePlace(
 ): Place {
   return {
     parentKey: null,
+    address: null,
+    coordinates: null,
     emoji: null,
     url: null,
     createdAt: "2026-01-01T00:00:00.000Z",

@@ -24,7 +24,6 @@ import {
 } from "../src/application/use-cases/fences.ts";
 import { crossingTally, expandHome, fenceStore } from "./fences.js";
 import { buildRelatedHabits } from "./graph.js";
-import { searchHabits, searchPeople, searchPlaces } from "./search.js";
 import {
   computeHealth,
   countsAsAllocation,
@@ -32,8 +31,8 @@ import {
   parseVaultDay,
   resolveRhythm,
 } from "./health.js";
-import type { Cadence } from "./cadence.js";
 import { type RegistryPerson, selectPeopleToReach } from "./people.js";
+import { searchHabits, searchPeople, searchPlaces } from "./search.js";
 import { buildTagIndex, buildTagProfile } from "./tags.js";
 import {
   areaHasMoments,
@@ -54,7 +53,6 @@ import {
   phaseForStartTime,
   requireActiveArea,
   requireActiveHabit,
-  requireCycle,
   schedulePhaseError,
   scheduleRhythmError,
   slugify,
@@ -822,10 +820,11 @@ server.tool(
 
 server.tool(
   "create_person",
-  'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.',
+  'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `aliases` are nicknames or relational terms (e.g. ["mom", "mama"]). `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.',
   {
     name: z.string(),
     key: z.string().optional(),
+    aliases: z.array(z.string()).optional(),
     cadence: CadenceSchema.nullable().optional(),
     status: PersonStatusSchema.optional(),
     category: z.string().nullable().optional(),
@@ -849,10 +848,12 @@ server.tool(
     }
     const id = crypto.randomUUID();
     const now = nowIso();
+    const normalized = normalizeAliases(params.aliases, params.name);
     const person: Person = {
       id,
       name: params.name,
       key,
+      ...(normalized.length > 0 ? { aliases: normalized } : {}),
       cadence: params.cadence ?? null,
       status: params.status ?? "active",
       category: params.category ?? null,
@@ -870,10 +871,11 @@ server.tool(
 
 server.tool(
   "update_person",
-  "Update a person by id or key. Only provided fields are changed.",
+  'Update a person by id or key. Only provided fields are changed. Pass `aliases` to set nicknames (e.g. ["mom", "mama"]); pass `[]` to clear.',
   {
     idOrKey: z.string(),
     name: z.string().optional(),
+    aliases: z.array(z.string()).optional(),
     cadence: CadenceSchema.nullable().optional(),
     status: PersonStatusSchema.optional(),
     category: z.string().nullable().optional(),
@@ -891,6 +893,21 @@ server.tool(
     if ("name" in updates && updates.name !== undefined) {
       person.name = updates.name;
       person.key = slugify(updates.name);
+    }
+    if ("aliases" in updates) {
+      const normalized = normalizeAliases(updates.aliases, person.name);
+      if (normalized.length === 0) {
+        delete person.aliases;
+      } else {
+        person.aliases = normalized;
+      }
+    } else if (person.aliases && updates.name) {
+      const renormalized = normalizeAliases(person.aliases, person.name);
+      if (renormalized.length === 0) {
+        delete person.aliases;
+      } else {
+        person.aliases = renormalized;
+      }
     }
     if ("cadence" in updates) person.cadence = updates.cadence ?? null;
     if ("status" in updates && updates.status !== undefined)
@@ -965,11 +982,16 @@ server.tool(
 
 server.tool(
   "create_place",
-  'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `url` is a map link.',
+  'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `address` is a street/postal address for calendar event locations. `coordinates` is `{ lat, lng }` for map pins. `url` is a map link.',
   {
     name: z.string(),
     key: z.string().optional(),
     parentKey: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+    coordinates: z
+      .object({ lat: z.number(), lng: z.number() })
+      .nullable()
+      .optional(),
     emoji: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
   },
@@ -987,6 +1009,8 @@ server.tool(
       name: params.name,
       key,
       parentKey: params.parentKey ? slugify(params.parentKey) : null,
+      address: params.address ?? null,
+      coordinates: params.coordinates ?? null,
       emoji: params.emoji ?? null,
       url: params.url ?? null,
       createdAt: now,
@@ -1005,6 +1029,11 @@ server.tool(
     idOrKey: z.string(),
     name: z.string().optional(),
     parentKey: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+    coordinates: z
+      .object({ lat: z.number(), lng: z.number() })
+      .nullable()
+      .optional(),
     emoji: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
   },
@@ -1021,6 +1050,9 @@ server.tool(
     }
     if ("parentKey" in updates)
       place.parentKey = updates.parentKey ? slugify(updates.parentKey) : null;
+    if ("address" in updates) place.address = updates.address ?? null;
+    if ("coordinates" in updates)
+      place.coordinates = updates.coordinates ?? null;
     if ("emoji" in updates) place.emoji = updates.emoji ?? null;
     if ("url" in updates) place.url = updates.url ?? null;
     place.updatedAt = nowIso();

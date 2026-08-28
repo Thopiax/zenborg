@@ -224,8 +224,7 @@ export function openMomentFormCreate(params?: {
     isAllocated,
     showCreateMore: true,
     editingMomentId: null,
-    prefilledAllocation:
-      day && phaseStr ? { day, phase: phaseStr } : null,
+    prefilledAllocation: day && phaseStr ? { day, phase: phaseStr } : null,
     emoji: null,
     attitude: params?.attitude ?? null,
     tags: [],
