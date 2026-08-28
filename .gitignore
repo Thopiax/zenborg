@@ -4,6 +4,10 @@
 /node_modules
 /plugin/node_modules
 /plugin/__pycache__
+
+# Rust build artifacts (crates have their own targets when built standalone)
+src-tauri/crates/*/target/
+src-tauri/crates/*/Cargo.lock
 /.pnp
 .pnp.*
 .yarn/*
