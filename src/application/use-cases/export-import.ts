@@ -24,6 +24,7 @@ import type { MetricLog } from "@/domain/entities/MetricLog";
 import type { Moment } from "@/domain/entities/Moment";
 import type { Person } from "@/domain/entities/Person";
 import type { Place } from "@/domain/entities/Place";
+import type { Relationship } from "@/domain/entities/Relationship";
 import type { DomainModelRegistry } from "@/domain/registry";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
 
@@ -51,6 +52,7 @@ export interface ZenborgExportData {
     totalDayNotes: number;
     totalPeople: number;
     totalPlaces: number;
+    totalRelationships: number;
   };
 }
 
@@ -58,7 +60,7 @@ export interface ZenborgExportData {
  * Current schema version
  * Increment when making breaking changes to the export format
  */
-export const EXPORT_SCHEMA_VERSION = "1.2.0";
+export const EXPORT_SCHEMA_VERSION = "1.3.0";
 
 /**
  * Export all data to JSON format
@@ -83,6 +85,7 @@ export function exportData(
   dayNotes: Record<string, DayNote>,
   people: Record<string, Person>,
   places: Record<string, Place>,
+  relationships: Record<string, Relationship>,
 ): ZenborgExportData {
   return {
     version: EXPORT_SCHEMA_VERSION,
@@ -98,6 +101,7 @@ export function exportData(
       dayNotes,
       people,
       places,
+      relationships,
     },
     metadata: {
       totalMoments: Object.keys(moments).length,
@@ -110,6 +114,7 @@ export function exportData(
       totalDayNotes: Object.keys(dayNotes).length,
       totalPeople: Object.keys(people).length,
       totalPlaces: Object.keys(places).length,
+      totalRelationships: Object.keys(relationships).length,
     },
   };
 }
@@ -203,18 +208,19 @@ export function validateImportData(data: unknown): ImportValidationResult {
     warnings.push("Missing dayNotes data - will import as empty");
   }
 
-  if (
-    !exportData.data.people ||
-    typeof exportData.data.people !== "object"
-  ) {
+  if (!exportData.data.people || typeof exportData.data.people !== "object") {
     warnings.push("Missing people data - will import as empty");
   }
 
-  if (
-    !exportData.data.places ||
-    typeof exportData.data.places !== "object"
-  ) {
+  if (!exportData.data.places || typeof exportData.data.places !== "object") {
     warnings.push("Missing places data - will import as empty");
+  }
+
+  if (
+    !exportData.data.relationships ||
+    typeof exportData.data.relationships !== "object"
+  ) {
+    warnings.push("Missing relationships data - will import as empty");
   }
 
   // Legacy fields — dropped silently at import, warned here for transparency.
@@ -277,6 +283,7 @@ export interface ImportResult {
     dayNotes: number;
     people: number;
     places: number;
+    relationships: number;
   };
   conflicts?: {
     moments: string[];
@@ -289,6 +296,7 @@ export interface ImportResult {
     dayNotes: string[];
     people: string[];
     places: string[];
+    relationships: string[];
   };
 }
 
@@ -319,6 +327,7 @@ export function importDataWithStrategy(
     dayNotes: importData.data.dayNotes || {},
     people: importData.data.people || {},
     places: importData.data.places || {},
+    relationships: importData.data.relationships || {},
   };
 
   if (strategy === "replace") {
@@ -339,6 +348,7 @@ export function importDataWithStrategy(
           dayNotes: Object.keys(safeImportData.dayNotes).length,
           people: Object.keys(safeImportData.people).length,
           places: Object.keys(safeImportData.places).length,
+          relationships: Object.keys(safeImportData.relationships).length,
         },
       },
     };
@@ -356,6 +366,7 @@ export function importDataWithStrategy(
     dayNotes: [] as string[],
     people: [] as string[],
     places: [] as string[],
+    relationships: [] as string[],
   };
 
   // Merge moments (imported overwrites existing on ID conflict)
@@ -448,6 +459,17 @@ export function importDataWithStrategy(
     mergedPlaces[id] = place;
   }
 
+  // Merge relationships
+  const mergedRelationships = { ...currentData.relationships };
+  for (const [id, relationship] of Object.entries(
+    safeImportData.relationships,
+  )) {
+    if (mergedRelationships[id]) {
+      conflicts.relationships.push(id);
+    }
+    mergedRelationships[id] = relationship;
+  }
+
   const totalConflicts =
     conflicts.moments.length +
     conflicts.areas.length +
@@ -458,7 +480,8 @@ export function importDataWithStrategy(
     conflicts.metricLogs.length +
     conflicts.dayNotes.length +
     conflicts.people.length +
-    conflicts.places.length;
+    conflicts.places.length +
+    conflicts.relationships.length;
 
   return {
     moments: mergedMoments,
@@ -471,6 +494,7 @@ export function importDataWithStrategy(
     dayNotes: mergedDayNotes,
     people: mergedPeople,
     places: mergedPlaces,
+    relationships: mergedRelationships,
     result: {
       success: true,
       message:
@@ -488,6 +512,7 @@ export function importDataWithStrategy(
         dayNotes: Object.keys(safeImportData.dayNotes).length,
         people: Object.keys(safeImportData.people).length,
         places: Object.keys(safeImportData.places).length,
+        relationships: Object.keys(safeImportData.relationships).length,
       },
       conflicts: totalConflicts > 0 ? conflicts : undefined,
     },

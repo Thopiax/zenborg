@@ -243,6 +243,7 @@ export interface Person {
   category: string | null;
   basePlace: string | null;
   emoji: string | null;
+  isSelf?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -254,6 +255,25 @@ export interface Place {
   parentKey: string | null;
   emoji: string | null;
   url: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const ENTITY_TYPES = ["person", "place", "habit", "area"] as const;
+export const EntityTypeSchema = z.enum(ENTITY_TYPES);
+export type EntityType = z.infer<typeof EntityTypeSchema>;
+
+export const RELATIONSHIP_DIRECTIONS = ["directed", "mutual"] as const;
+export const RelationshipDirectionSchema = z.enum(RELATIONSHIP_DIRECTIONS);
+
+export interface Relationship {
+  id: string;
+  fromType: EntityType;
+  fromId: string;
+  toType: EntityType;
+  toId: string;
+  label: string;
+  direction: "directed" | "mutual";
   createdAt: string;
   updatedAt: string;
 }
@@ -304,6 +324,7 @@ export const COLLECTION_NAMES = [
   "dayNotes",
   "people",
   "places",
+  "relationships",
 ] as const;
 export type CollectionName = (typeof COLLECTION_NAMES)[number];
 
@@ -318,6 +339,7 @@ export interface CollectionTypeMap {
   dayNotes: DayNote;
   people: Person;
   places: Place;
+  relationships: Relationship;
 }
 
 // ────────────────────────────────────────────────────────────────────────
