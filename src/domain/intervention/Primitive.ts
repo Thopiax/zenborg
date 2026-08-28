@@ -34,7 +34,10 @@ export interface TransformSpec {
   readonly targets: SelectorChain;
   readonly replacement:
     | { readonly type: "hide" }
-    | { readonly type: "restyle"; readonly style: Readonly<Record<string, string>> }
+    | {
+        readonly type: "restyle";
+        readonly style: Readonly<Record<string, string>>;
+      }
     | { readonly type: "text"; readonly content: string }
     | { readonly type: "template"; readonly templateId: string };
 }
