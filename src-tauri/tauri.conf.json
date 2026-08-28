@@ -29,7 +29,8 @@
     "createUpdaterArtifacts": true,
     "externalBin": [
       "binaries/zenborg-mcp",
-      "binaries/zenborg-calendar"
+      "binaries/zenborg-calendar",
+      "binaries/kairos-daemon"
     ],
     "icon": [
       "icons/32x32.png",
