@@ -18,6 +18,24 @@ export function validateMention(mention: string): boolean {
   return /^[a-z0-9-]{1,40}$/.test(mention);
 }
 
+export function classifyMentionIds(
+  mentionIds: readonly string[],
+  placeKeys: ReadonlySet<string>,
+): { personIds: string[]; placeIds: string[] } {
+  const personIds: string[] = [];
+  const placeIds: string[] = [];
+
+  for (const id of mentionIds) {
+    if (placeKeys.has(id)) {
+      placeIds.push(id);
+    } else {
+      personIds.push(id);
+    }
+  }
+
+  return { personIds, placeIds };
+}
+
 export function extractMentionsFromText(text: string): string[] {
   if (!text || typeof text !== "string") return [];
 
