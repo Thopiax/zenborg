@@ -19,6 +19,7 @@ import {
   people$,
   phaseConfigs$,
   places$,
+  relationships$,
 } from "./store";
 
 /**
@@ -41,6 +42,7 @@ export function exportGardenData(filename?: string): void {
   const dayNotes = dayNotes$.get();
   const people = people$.get();
   const places = places$.get();
+  const relationships = relationships$.get();
 
   const exportedData = exportData(
     moments,
@@ -53,6 +55,7 @@ export function exportGardenData(filename?: string): void {
     dayNotes,
     people,
     places,
+    relationships,
   );
 
   downloadExportFile(exportedData, filename);
@@ -78,7 +81,9 @@ export function exportGardenData(filename?: string): void {
     exportedData.metadata.totalPeople,
     "people,",
     exportedData.metadata.totalPlaces,
-    "places",
+    "places,",
+    exportedData.metadata.totalRelationships,
+    "relationships",
   );
 }
 
@@ -132,6 +137,7 @@ export async function importGardenData(
     dayNotes: dayNotes$.get(),
     people: people$.get(),
     places: places$.get(),
+    relationships: relationships$.get(),
   };
 
   const {
@@ -145,6 +151,7 @@ export async function importGardenData(
     dayNotes,
     people,
     places,
+    relationships,
     result,
   } = importDataWithStrategy(fileData, strategy, currentData);
 
@@ -159,6 +166,7 @@ export async function importGardenData(
     await writeCollection("dayNotes", dayNotes);
     await writeCollection("people", people);
     await writeCollection("places", places);
+    await writeCollection("relationships", relationships);
     console.log("[importGardenData] Vault written, reloading to rehydrate");
     if (typeof window !== "undefined") {
       window.location.reload();
@@ -177,6 +185,7 @@ export async function importGardenData(
   dayNotes$.set(dayNotes);
   people$.set(people);
   places$.set(places);
+  relationships$.set(relationships);
 
   console.log("[importGardenData] Import complete:", result);
 
