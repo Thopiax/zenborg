@@ -203,17 +203,11 @@ export function validateImportData(data: unknown): ImportValidationResult {
     warnings.push("Missing dayNotes data - will import as empty");
   }
 
-  if (
-    !exportData.data.people ||
-    typeof exportData.data.people !== "object"
-  ) {
+  if (!exportData.data.people || typeof exportData.data.people !== "object") {
     warnings.push("Missing people data - will import as empty");
   }
 
-  if (
-    !exportData.data.places ||
-    typeof exportData.data.places !== "object"
-  ) {
+  if (!exportData.data.places || typeof exportData.data.places !== "object") {
     warnings.push("Missing places data - will import as empty");
   }
 

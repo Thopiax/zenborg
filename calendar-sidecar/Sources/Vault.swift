@@ -58,6 +58,8 @@ struct VaultMoment {
     var startTime: String?
     var durationMin: Int?
     var status: String?
+    var personIds: [String]
+    var placeIds: [String]
     var externalRef: ExternalRef?
     var updatedAt: String
 
@@ -92,6 +94,22 @@ struct VaultArea {
     let name: String
     let emoji: String
     let color: String
+}
+
+struct VaultPerson {
+    let id: String
+    let name: String
+    let key: String
+    let emoji: String?
+}
+
+struct VaultPlace {
+    let id: String
+    let name: String
+    let key: String
+    let address: String?
+    let coordinates: (lat: Double, lng: Double)?
+    let emoji: String?
 }
 
 // MARK: - Read
@@ -165,6 +183,52 @@ func readCalendarSyncConfig() -> CalendarSyncConfig {
     return config
 }
 
+func readPeople() -> [String: VaultPerson] {
+    let url = vaultRoot().appendingPathComponent("people.json")
+    guard FileManager.default.fileExists(atPath: url.path),
+          let data = try? Data(contentsOf: url),
+          let dict = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] else {
+        return [:]
+    }
+    var result: [String: VaultPerson] = [:]
+    for (id, raw) in dict {
+        result[id] = VaultPerson(
+            id: id,
+            name: raw["name"] as? String ?? "",
+            key: raw["key"] as? String ?? "",
+            emoji: raw["emoji"] as? String
+        )
+    }
+    return result
+}
+
+func readPlaces() -> [String: VaultPlace] {
+    let url = vaultRoot().appendingPathComponent("places.json")
+    guard FileManager.default.fileExists(atPath: url.path),
+          let data = try? Data(contentsOf: url),
+          let dict = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] else {
+        return [:]
+    }
+    var result: [String: VaultPlace] = [:]
+    for (id, raw) in dict {
+        var coords: (lat: Double, lng: Double)? = nil
+        if let coordDict = raw["coordinates"] as? [String: Any],
+           let lat = coordDict["lat"] as? Double,
+           let lng = coordDict["lng"] as? Double {
+            coords = (lat: lat, lng: lng)
+        }
+        result[id] = VaultPlace(
+            id: id,
+            name: raw["name"] as? String ?? "",
+            key: raw["key"] as? String ?? "",
+            address: raw["address"] as? String,
+            coordinates: coords,
+            emoji: raw["emoji"] as? String
+        )
+    }
+    return result
+}
+
 func readPhaseConfigs() -> [[String: Any]] {
     let url = vaultRoot().appendingPathComponent("phaseConfigs.json")
     guard FileManager.default.fileExists(atPath: url.path),
@@ -236,6 +300,8 @@ private func decodeMoment(id: String, raw: [String: Any]) -> VaultMoment {
         startTime: raw["startTime"] as? String,
         durationMin: raw["durationMin"] as? Int,
         status: raw["status"] as? String,
+        personIds: raw["personIds"] as? [String] ?? [],
+        placeIds: raw["placeIds"] as? [String] ?? [],
         externalRef: ref,
         updatedAt: raw["updatedAt"] as? String ?? "",
         raw: raw

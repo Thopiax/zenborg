@@ -1,3 +1,4 @@
+import CoreLocation
 import EventKit
 import Foundation
 
@@ -168,6 +169,8 @@ private func doReconcilePass(store: EKEventStore) {
         let phaseConfigs = readPhaseConfigs()
         let areas = readAreas()
         let habits = readHabits()
+        let people = readPeople()
+        let places = readPlaces()
 
         // Collect the set of area IDs that have publishable moments
         // (includes ambient allocated moments for all-day events)
@@ -302,6 +305,8 @@ private func doReconcilePass(store: EKEventStore) {
                     let title = emoji != nil ? "\(emoji!) \(fields.title)" : fields.title
                     let isAllDay = fields.startTime == nil
                     let tz = resolveTimezone(moment: moment, habits: habits)
+                    let (loc, structLoc) = resolveLocation(moment: moment, places: places)
+                    let notes = resolveNotes(moment: moment, people: people)
                     if let ekEvent = createOrUpdateEvent(
                         store: store,
                         calendarId: targetCalId,
@@ -311,7 +316,10 @@ private func doReconcilePass(store: EKEventStore) {
                         startTime: fields.startTime,
                         durationMin: fields.durationMin,
                         isAllDay: isAllDay,
-                        timezone: tz
+                        timezone: tz,
+                        location: loc,
+                        structuredLocation: structLoc,
+                        notes: notes
                     ) {
                         var updated = moment
                         let hash = momentHash(day: fields.day, startTime: fields.startTime, durationMin: fields.durationMin)
@@ -595,6 +603,33 @@ private func resolveTimezone(moment: VaultMoment, habits: [String: (emoji: Strin
     return TimeZone(identifier: tz)
 }
 
+private func resolveLocation(moment: VaultMoment, places: [String: VaultPlace]) -> (location: String?, structured: EKStructuredLocation?) {
+    guard !moment.placeIds.isEmpty else { return (nil, nil) }
+    let resolved = moment.placeIds.compactMap { key in
+        places.values.first { $0.key == key }
+    }
+    guard let first = resolved.first else { return (nil, nil) }
+
+    let locationString = first.address ?? first.name
+
+    if let coords = first.coordinates {
+        let sl = EKStructuredLocation(title: locationString)
+        sl.geoLocation = CLLocation(latitude: coords.lat, longitude: coords.lng)
+        return (locationString, sl)
+    }
+
+    return (locationString, nil)
+}
+
+private func resolveNotes(moment: VaultMoment, people: [String: VaultPerson]) -> String? {
+    guard !moment.personIds.isEmpty else { return nil }
+    let names = moment.personIds.compactMap { key in
+        people.values.first(where: { $0.key == key })?.name
+    }
+    guard !names.isEmpty else { return nil }
+    return "with \(names.joined(separator: ", "))"
+}
+
 private func colorFromHex(_ hex: String) -> CGColor? {
     var h = hex.trimmingCharacters(in: .whitespacesAndNewlines)
     if h.hasPrefix("#") { h = String(h.dropFirst()) }
@@ -656,7 +691,10 @@ private func createOrUpdateEvent(
     startTime: String?,
     durationMin: Int?,
     isAllDay: Bool,
-    timezone: TimeZone? = nil
+    timezone: TimeZone? = nil,
+    location: String? = nil,
+    structuredLocation: EKStructuredLocation? = nil,
+    notes: String? = nil
 ) -> EKEvent? {
     let ekEvent: EKEvent
     if let existingId = existingEventId, let existing = store.event(withIdentifier: existingId) {
@@ -669,6 +707,11 @@ private func createOrUpdateEvent(
 
     ekEvent.title = title
     ekEvent.timeZone = timezone
+    ekEvent.location = location
+    if let sl = structuredLocation {
+        ekEvent.structuredLocation = sl
+    }
+    ekEvent.notes = notes
 
     let parts = day.split(separator: "-").map { Int($0)! }
     var components = DateComponents()

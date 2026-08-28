@@ -50,8 +50,7 @@ export function dndPerfDragEnd() {
 
 export function dndPerfRender(component: string) {
   if (!ENABLED || !dragSession) return;
-  dragSession.renders[component] =
-    (dragSession.renders[component] ?? 0) + 1;
+  dragSession.renders[component] = (dragSession.renders[component] ?? 0) + 1;
 }
 
 export function enableDndPerf() {
@@ -66,5 +65,6 @@ export function disableDndPerf() {
 
 if (typeof window !== "undefined") {
   (window as unknown as Record<string, unknown>).enableDndPerf = enableDndPerf;
-  (window as unknown as Record<string, unknown>).disableDndPerf = disableDndPerf;
+  (window as unknown as Record<string, unknown>).disableDndPerf =
+    disableDndPerf;
 }

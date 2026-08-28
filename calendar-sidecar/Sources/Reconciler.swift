@@ -358,6 +358,8 @@ private func decodeMomentFromVector(_ dict: [String: Any]) -> VaultMoment {
         startTime: dict["startTime"] as? String,
         durationMin: dict["durationMin"] as? Int,
         status: dict["status"] as? String,
+        personIds: dict["personIds"] as? [String] ?? [],
+        placeIds: dict["placeIds"] as? [String] ?? [],
         externalRef: ref,
         updatedAt: dict["updatedAt"] as? String ?? "",
         raw: dict

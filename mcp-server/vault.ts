@@ -238,6 +238,7 @@ export interface Person {
   id: string;
   name: string;
   key: string;
+  aliases?: string[];
   cadence: Cadence | null;
   status: "active" | "paused";
   category: string | null;
@@ -247,11 +248,18 @@ export interface Person {
   updatedAt: string;
 }
 
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
 export interface Place {
   id: string;
   name: string;
   key: string;
   parentKey: string | null;
+  address: string | null;
+  coordinates: Coordinates | null;
   emoji: string | null;
   url: string | null;
   createdAt: string;

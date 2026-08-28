@@ -466,9 +466,7 @@ export interface BrowserTransformDeclaration {
   readonly description?: string;
 }
 
-function selectorProblems(selectors: {
-  readonly primary: string;
-}): string[] {
+function selectorProblems(selectors: { readonly primary: string }): string[] {
   return selectors.primary.trim() === ""
     ? ["a transform must name a primary selector"]
     : [];
