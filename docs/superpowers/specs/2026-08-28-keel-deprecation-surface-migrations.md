@@ -1,7 +1,7 @@
 # Keel deprecation — surface migrations
 
 **Date:** 2026-08-28
-**Status:** in progress (Phase 0 done, Phase A starting)
+**Status:** in progress (Phase A1 + B1 done, B2-B5 next)
 
 zenborg absorbs both keel and kairos. One repo, one system. When done,
 keel and kairos are archived; zenborg is the monorepo for the garden,
