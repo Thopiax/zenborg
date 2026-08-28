@@ -678,6 +678,18 @@ export function isSpontaneous(moment: Moment): boolean {
  * can never disagree about the same person. Mirrored in `mcp-server/health.ts`,
  * a separate package that deliberately does not import from `src/domain`.
  */
+/**
+ * Sort comparator: startTime first (timed before ambient), then order.
+ */
+export function compareMoments(a: Moment, b: Moment): number {
+  const aTime = a.startTime ?? "";
+  const bTime = b.startTime ?? "";
+  if (aTime && bTime) return aTime.localeCompare(bTime) || a.order - b.order;
+  if (aTime) return -1;
+  if (bTime) return 1;
+  return a.order - b.order;
+}
+
 export function momentInvolvesHabit(moment: Moment, habitId: string): boolean {
   return (
     moment.habitId === habitId || (moment.personIds?.includes(habitId) ?? false)
