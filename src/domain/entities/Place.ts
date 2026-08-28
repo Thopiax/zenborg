@@ -1,8 +1,15 @@
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
 export interface Place {
   id: string;
   name: string;
   key: string;
   parentKey: string | null;
+  address: string | null;
+  coordinates: Coordinates | null;
   emoji: string | null;
   url: string | null;
   createdAt: string;
@@ -14,6 +21,8 @@ export function createPlace(props: {
   key: string;
   emoji?: string | null;
   parentKey?: string | null;
+  address?: string | null;
+  coordinates?: Coordinates | null;
   url?: string | null;
 }): Place {
   const now = new Date().toISOString();
@@ -22,6 +31,8 @@ export function createPlace(props: {
     name: props.name.trim(),
     key: props.key,
     parentKey: props.parentKey ?? null,
+    address: props.address ?? null,
+    coordinates: props.coordinates ?? null,
     emoji: props.emoji ?? null,
     url: props.url ?? null,
     createdAt: now,

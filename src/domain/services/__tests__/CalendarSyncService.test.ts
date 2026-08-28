@@ -76,9 +76,7 @@ describe("momentHash", () => {
       startTime: null,
       durationMin: null,
     };
-    expect(momentHash(allDayFields)).toBe(
-      fnv1a64("2026-08-24|allDay"),
-    );
+    expect(momentHash(allDayFields)).toBe(fnv1a64("2026-08-24|allDay"));
   });
 
   it("all-day hash differs from any timed hash on the same day", () => {
@@ -213,9 +211,7 @@ describe("reconcile: the truth table", () => {
       expect(
         reconcile(
           vector.moment as Moment | null,
-          eventFromVector(
-            vector.event as Record<string, unknown> | null,
-          ),
+          eventFromVector(vector.event as Record<string, unknown> | null),
           contextFromVector(vector.context as Record<string, unknown>),
         ),
       ).toEqual(vector.expected);
