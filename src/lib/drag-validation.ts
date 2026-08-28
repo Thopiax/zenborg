@@ -11,8 +11,7 @@ import type { DragValidationResult } from "@/types/dnd";
 /**
  * Check if a moment can be dropped into a specific timeline cell.
  *
- * Always valid. The day-view capacity is a display affordance (overflow
- * scrolls), not a domain invariant.
+ * Always valid. No cardinality constraint on a (day, phase) cell.
  */
 export function canDropInCell(
   _targetDay: string,

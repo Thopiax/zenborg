@@ -1,7 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   allocateMoment,
-  canAllocateToPhase,
   createMoment,
   isMomentError,
   isParseableRef,
@@ -175,7 +174,7 @@ describe("Moment", () => {
       }
     });
 
-    it("should accept an order beyond the day-view capacity", () => {
+    it("should accept any non-negative order", () => {
       const moment = createMoment({ name: "Running", areaId: "area-1" });
       expect(isMomentError(moment)).toBe(false);
 
@@ -241,115 +240,6 @@ describe("Moment", () => {
         if (isMomentError(updated)) {
           expect(updated.error).toBe("Moment name cannot exceed 3 words");
         }
-      }
-    });
-  });
-
-  describe("canAllocateToPhase", () => {
-    const day = "2025-01-15";
-    const phase = Phase.MORNING;
-
-    it("should allow allocation when phase has 0 moments", () => {
-      const moments: Moment[] = [];
-      expect(canAllocateToPhase(moments, day, phase)).toBe(true);
-    });
-
-    it("should allow allocation when phase has 1 moment", () => {
-      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
-      expect(isMomentError(moment1)).toBe(false);
-
-      if (!isMomentError(moment1)) {
-        const allocated = allocateMoment(moment1, { day, phase, order: 0 });
-        expect(canAllocateToPhase([allocated], day, phase)).toBe(true);
-      }
-    });
-
-    it("should allow allocation when phase has 2 moments", () => {
-      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
-      const moment2 = createMoment({ name: "Meditation", areaId: "area-1" });
-      expect(isMomentError(moment1)).toBe(false);
-      expect(isMomentError(moment2)).toBe(false);
-
-      if (!isMomentError(moment1) && !isMomentError(moment2)) {
-        const allocated1 = allocateMoment(moment1, { day, phase, order: 0 });
-        const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
-        expect(canAllocateToPhase([allocated1, allocated2], day, phase)).toBe(
-          true,
-        );
-      }
-    });
-
-    it("should reject allocation when phase has 3 moments", () => {
-      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
-      const moment2 = createMoment({ name: "Meditation", areaId: "area-1" });
-      const moment3 = createMoment({ name: "Breakfast", areaId: "area-1" });
-      expect(isMomentError(moment1)).toBe(false);
-      expect(isMomentError(moment2)).toBe(false);
-      expect(isMomentError(moment3)).toBe(false);
-
-      if (
-        !isMomentError(moment1) &&
-        !isMomentError(moment2) &&
-        !isMomentError(moment3)
-      ) {
-        const allocated1 = allocateMoment(moment1, { day, phase, order: 0 });
-        const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
-        const allocated3 = allocateMoment(moment3, { day, phase, order: 2 });
-        expect(
-          canAllocateToPhase([allocated1, allocated2, allocated3], day, phase),
-        ).toBe(false);
-      }
-    });
-
-    it("should not count moments from different days", () => {
-      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
-      const moment2 = createMoment({ name: "Meditation", areaId: "area-1" });
-      const moment3 = createMoment({ name: "Breakfast", areaId: "area-1" });
-      expect(isMomentError(moment1)).toBe(false);
-      expect(isMomentError(moment2)).toBe(false);
-      expect(isMomentError(moment3)).toBe(false);
-
-      if (
-        !isMomentError(moment1) &&
-        !isMomentError(moment2) &&
-        !isMomentError(moment3)
-      ) {
-        const allocated1 = allocateMoment(moment1, { day, phase, order: 0 });
-        const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
-        const allocated3 = allocateMoment(moment3, {
-          day: "2025-01-16",
-          phase,
-          order: 0,
-        });
-        expect(
-          canAllocateToPhase([allocated1, allocated2, allocated3], day, phase),
-        ).toBe(true);
-      }
-    });
-
-    it("should not count moments from different phases", () => {
-      const moment1 = createMoment({ name: "Running", areaId: "area-1" });
-      const moment2 = createMoment({ name: "Meditation", areaId: "area-1" });
-      const moment3 = createMoment({ name: "Breakfast", areaId: "area-1" });
-      expect(isMomentError(moment1)).toBe(false);
-      expect(isMomentError(moment2)).toBe(false);
-      expect(isMomentError(moment3)).toBe(false);
-
-      if (
-        !isMomentError(moment1) &&
-        !isMomentError(moment2) &&
-        !isMomentError(moment3)
-      ) {
-        const allocated1 = allocateMoment(moment1, { day, phase, order: 0 });
-        const allocated2 = allocateMoment(moment2, { day, phase, order: 1 });
-        const allocated3 = allocateMoment(moment3, {
-          day,
-          phase: Phase.AFTERNOON,
-          order: 0,
-        });
-        expect(
-          canAllocateToPhase([allocated1, allocated2, allocated3], day, phase),
-        ).toBe(true);
       }
     });
   });

@@ -12,7 +12,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
 import type { Area } from "@/domain/entities/Area";
-import { DAY_VIEW_PHASE_CAPACITY, type Moment } from "@/domain/entities/Moment";
+import type { Moment } from "@/domain/entities/Moment";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { Plus } from "lucide-react";
 import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
@@ -44,9 +44,6 @@ interface TimelineCellProps {
   phaseIndex?: number; // Phase row index for alternating greyscale tints (0, 1, 2)
 }
 
-// The day view's cell capacity. Display-only: the data layer accepts more,
-// and the excess surfaces in the zoomed-in (time-blocked) view.
-export const MAX_MOMENTS_PER_CELL = DAY_VIEW_PHASE_CAPACITY;
 
 /**
  * TimelineCell - Grid cell that holds 0-3 moments
@@ -109,13 +106,8 @@ export function TimelineCell({
   // Generate accessible label
   const cellLabel =
     dayLabel && phaseLabel
-      ? ariaLabels.timelineCell(
-          dayLabel,
-          phaseLabel,
-          cellMoments.length,
-          momentConstraints.maxMomentsPerCell,
-        )
-      : `${day} ${phase}, ${cellMoments.length} of ${momentConstraints.maxMomentsPerCell} moments`;
+      ? ariaLabels.timelineCell(dayLabel, phaseLabel, cellMoments.length)
+      : `${day} ${phase}, ${cellMoments.length} moments`;
 
   return (
     <div
