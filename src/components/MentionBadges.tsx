@@ -2,6 +2,7 @@
 
 import { use$ } from "@legendapp/state/react";
 import { MapPin, User, X } from "lucide-react";
+import { displayName } from "@/domain/entities/Person";
 import { people$, places$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,7 @@ export function MentionBadges({
 
   const resolvedPeople = personIds.map((key) => {
     const person = Object.values(allPeople).find((p) => p.key === key);
-    return { key, name: person?.name ?? key, emoji: person?.emoji };
+    return { key, name: person ? displayName(person) : key, emoji: person?.emoji };
   });
 
   const resolvedPlaces = placeIds.map((key) => {
