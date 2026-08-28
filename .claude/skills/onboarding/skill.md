@@ -1,0 +1,249 @@
+---
+name: onboarding
+description: >-
+  Walk a new gardener through planting their first garden — areas of life, habits
+  (current, aspirational, returning, pruning), key people and places, then plan the
+  next 3 days of moments. Use when the vault is empty or nearly empty and the user
+  says "onboarding", "set up my garden", "I'm new", "help me get started",
+  "let's set up zenborg", or invokes "/onboarding". Do NOT trigger for adding a
+  single moment (tend), opening the day (sunrise), or planning a cycle (season).
+---
+
+# Onboarding
+
+Walk a new gardener through planting their first garden. Four phases, each confirmed
+before writing anything. The gardener leads; you hold the trowel.
+
+## When to invoke
+
+Trigger phrases:
+- "/onboarding", "set up my garden", "I'm new"
+- "help me get started", "let's set up zenborg"
+- "create my areas and habits", "first time setup"
+
+Do NOT trigger for:
+- Single moments or batch capture (tend)
+- Day rituals (sunrise / sunset)
+- Week review (weather)
+- Cycle planning (season)
+
+## Tone
+
+Warm, unhurried, curious. You are helping someone describe their life, not fill out
+a form. Ask open questions, listen for what matters to them, and reflect it back.
+
+No gamification. No "great job!" No urgency. The garden is patient.
+
+## Before you start
+
+Check the current state:
+- `mcp__zenborg__list_areas` — if areas already exist, this is not a fresh garden.
+  Acknowledge what is already planted and ask which phases the user wants to revisit.
+- `mcp__zenborg__list_phase_configs` — to know the phase bands for later moment placement.
+
+If the garden is not empty, say so: "You already have some plots planted. Want to
+add to what's here, or start fresh?" Starting fresh means archiving existing areas
+(user confirms), not deleting.
+
+## Phase 1: Areas (plots of the garden)
+
+### 1a. Elicit areas
+
+Ask the user to describe the areas of their life. Open-ended first:
+
+> "What are the areas of your life — the big plots you tend? Work, health, relationships,
+> creativity, spirituality, learning... whatever matters to you. Just name them freely."
+
+Let them list naturally. Don't impose a taxonomy. Some people say "fitness" where
+others say "body" — their word is the right word.
+
+### 1b. Shape each area
+
+For each area, gather:
+- **name** — their word, preserved verbatim (never force lowercase or title-case)
+- **emoji** — suggest one if they don't offer; they can change it
+- **color** — suggest a hex color that feels right for the area's energy; they can override
+
+Propose an order based on how they listed them (order 0, 1, 2...).
+
+### 1c. Confirm and create
+
+Present the full list as a compact table:
+
+```
+Your garden plots:
+  0. 🏃 Fitness        #4A7C59
+  1. 💼 Work           #5B6E8A
+  2. 🎨 Creative       #C47A5A
+  3. 👥 Social         #7A5BA0
+  4. 📚 Learning       #3D7A8A
+```
+
+> "Look right? I'll plant these once you say go."
+
+On confirmation, call `mcp__zenborg__create_area` for each. Run all in parallel.
+
+## Phase 2: Habits (perennials in each plot)
+
+### 2a. Walk area by area
+
+For each area, ask about their relationship with practices in that space. Use natural
+framing that maps to attitudes:
+
+> "In **Fitness** — what do you actually do? What have you been meaning to start?
+> Anything you used to do and want to get back to? Anything you're deliberately
+> doing less of?"
+
+### 2b. Map to attitudes
+
+Translate the user's language to the attitude that fits:
+
+| What they say | Attitude |
+|---|---|
+| "I do this regularly" / "this is solid" | KEEPING |
+| "I'm ramping this up" / "I'm doubling down" | BUILDING |
+| "I want to start" / "I've never done this" | BEGINNING |
+| "I used to do this" / "I fell off" | RETURNING |
+| "I want to cut back" / "I'm weaning off" | PRUNING |
+| "I'm pushing hard" / "peak effort" | PUSHING |
+| "It's just part of me" / "effortless" | BEING |
+
+Don't lecture on the attitude model. Just use the right one silently, and name it
+in the confirmation table so they see the vocabulary.
+
+### 2c. Gather habit details
+
+For each habit:
+- **name** (1-3 words, their phrasing)
+- **attitude** (mapped from their description)
+- **rhythm** (ask "how often?" — derive `{ period, count }`)
+- **phase** (ask "when in the day?" if it matters — MORNING/AFTERNOON/EVENING/NIGHT)
+
+Don't force rhythm or phase. Many habits are ambient — "I read when I read."
+
+### 2d. Confirm per area
+
+After gathering habits for an area, confirm before moving to the next:
+
+```
+Fitness habits:
+  1. Running       KEEPING    weekly x3   MORNING
+  2. Yoga          RETURNING  weekly x1   MORNING
+  3. Stretching    BEGINNING  (ambient)
+```
+
+> "These look right for Fitness? I'll plant them and we'll move to the next plot."
+
+On confirmation, call `mcp__zenborg__create_habit` for each habit in that area.
+Use the area's id from phase 1. Run all in parallel.
+
+Repeat for each area.
+
+## Phase 3: People & Places
+
+### 3a. People
+
+> "Who are the people you want to stay close to? Family, friends, colleagues —
+> anyone whose presence matters in your life."
+
+For each person:
+- **name** — their name, verbatim
+- **category** — friend, family, colleague, lover, mentor, etc. (freeform)
+- **cadence** — how often they want to see them: weekly, monthly, quarterly, yearly
+- **emoji** — optional, suggest if natural
+
+Present a table for confirmation:
+
+```
+People:
+  Ada        friend     monthly
+  Marco      family     weekly
+  Dr. Lee    mentor     quarterly
+```
+
+On confirmation, call `mcp__zenborg__create_person` for each. Run in parallel.
+
+### 3b. Places
+
+> "Any places that anchor your routines? A gym, a café, your office, a park —
+> wherever you go to do the things that matter."
+
+For each place:
+- **name** — verbatim
+- **parentKey** — if a place belongs inside another (e.g., "Soho gym" inside "London")
+- **emoji** — optional
+
+Present for confirmation, then call `mcp__zenborg__create_place` for each. Run in parallel.
+
+People and places are optional. If the user says "let's skip this" or "I'll add them
+later," move on.
+
+## Phase 4: Plan the next 3 days
+
+### 4a. Orientation
+
+> "Your garden is planted. Now let's put something on the board for the next few days —
+> what do you want to tend tomorrow, the day after, and the day after that?"
+
+Fetch `mcp__zenborg__list_phase_configs` to know the phase bands (if not already cached).
+
+### 4b. Walk day by day
+
+For each of the next 3 days (today+1, today+2, today+3 — or today through today+2 if
+it's early in the day):
+
+> "**Friday (2026-08-29)** — what do you want to plant?"
+
+Let the user describe freely. Then resolve against the habits created in phase 2:
+
+- Use `mcp__zenborg__search_habits` to match activity names to habits
+- If matched: use `mcp__zenborg__spawn_spontaneous_from_habit` (inherits area, emoji, tags)
+- If not matched: use `mcp__zenborg__create_standalone_moment` with the appropriate area
+
+Present a resolution table per day (same format as tend):
+
+```
+Friday:
+  Morning:    Running (habit: Running)
+  Afternoon:  Deep work (habit: Deep work, area: Work)
+  Evening:    Dinner with Ada (standalone, area: Social, person: Ada)
+```
+
+### 4c. Confirm and plant
+
+> "Ready to plant these 3 days?"
+
+On confirmation, plant all moments across all 3 days. Run independent calls in parallel.
+Report any `dayViewOverflow` notices.
+
+### 4d. Close
+
+> "Your garden is planted. Here's what you have:
+> - [N] areas
+> - [M] habits across them
+> - [P] people, [Q] places
+> - [R] moments over the next 3 days
+>
+> Tomorrow morning, say 'good morning' or '/sunrise' to open the day and see
+> what's growing. '/tend' to plant more moments any time."
+
+## Rules
+
+- Never create without confirmation. Each phase has its own gate.
+- Preserve names verbatim — never force casing.
+- Habit names are 1-3 words. Help the user trim if needed: "deep focused work session" → "deep work".
+- Don't create a cycle. That's the season skill's territory. Moments here are standalone or habit-spawned.
+- No streaks, scores, completion tracking, or badges.
+- No push to be comprehensive. Five areas and ten habits is a fine garden. Two areas and three habits is also a fine garden.
+- If the user wants to skip a phase, skip it. Come back to it later via the relevant skill.
+- People and places are fully optional.
+- Attitude is the user's honest relationship with the practice. Don't judge. PRUNING is not failure. BEGINNING is not commitment. BEING is not complacency.
+
+## Edge cases
+
+- **User already has areas/habits:** acknowledge, offer to add to or revisit. Don't wipe.
+- **User describes a habit that spans areas:** pick the area it most belongs to; don't create duplicates.
+- **User lists 20+ habits:** fine. No cap. But gently ask "are these all active, or are some aspirational?" to get the attitudes right.
+- **User unsure about rhythm:** leave it unset. Ambient is legitimate.
+- **User wants to plan today:** include today in the 3-day window.
+- **No phase configs:** use sensible defaults (MORNING 5-12, AFTERNOON 12-17, EVENING 17-21, NIGHT 21-5).
