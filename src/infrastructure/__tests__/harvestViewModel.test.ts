@@ -158,10 +158,8 @@ describe("deriveHarvestSeason — the season's window", () => {
     ]);
   });
 
-  it("renders every moment in a phase past three — history is not a day view", () => {
-    // DAY_VIEW_PHASE_CAPACITY is a display capacity, never a data invariant.
-    // A historical phase can legitimately hold more; truncating drops real
-    // history on the floor.
+  it("renders every moment in a phase — no cardinality cap", () => {
+    // A phase can hold any number of moments; truncating drops real history.
     const season = derive(
       cycle("c", "2026-03-01", "2026-03-31"),
       Array.from({ length: 5 }, (_, i) =>

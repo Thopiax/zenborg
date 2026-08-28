@@ -410,7 +410,7 @@ export class CycleService {
   /**
    * Allocate a virtual deck card into a specific day/phase slot by
    * materializing a new Moment. Enforces plan existence, budget ceiling,
-   * slot capacity (max 3 per phase), and cycle date range.
+   * and cycle date range.
    */
   allocateFromPlan(props: {
     cycleId: string;
@@ -451,9 +451,6 @@ export class CycleService {
       return { error: `Day ${day} before cycle start ${cycle.startDate}` };
     }
 
-    // No slot cap here. The "3 per (day, phase)" rule is a day-view display
-    // concern (`DAY_VIEW_PHASE_CAPACITY`), not an allocation invariant — a
-    // zoomed-in, time-blocked phase can hold more.
     const slotMoments = Object.values(moments$.get()).filter(
       (m) => m.day === day && m.phase === phase,
     );

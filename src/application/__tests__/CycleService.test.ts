@@ -716,7 +716,7 @@ describe("CycleService.allocateFromPlan", () => {
     });
   });
 
-  it("allocates past the day-view capacity of 3 — the cap is a display concern", () => {
+  it("allocates any number of moments to the same (day, phase)", () => {
     const service = new CycleService();
     cyclePlans$["plan-1"].set({
       id: "plan-1",

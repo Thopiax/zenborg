@@ -97,9 +97,8 @@ function phaseRank(
  * so containment is the definition of "planted in this season". Unallocated
  * moments (`day === null`) were never planted and are left out.
  *
- * Nothing here truncates. `DAY_VIEW_PHASE_CAPACITY` is a day-view display
- * affordance; a historical phase can legitimately hold more than three
- * moments, and dropping them would silently rewrite the record.
+ * Nothing here truncates. A phase can hold any number of moments, and
+ * dropping them would silently rewrite the record.
  */
 export function deriveHarvestSeason({
   cycle,

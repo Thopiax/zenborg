@@ -3,8 +3,6 @@ import {
   allocateMoment,
   countMomentsInPhase,
   createMoment,
-  DAY_VIEW_PHASE_CAPACITY,
-  hasDayViewCapacity,
   isMomentError,
   type Moment,
   updateMomentTiming,
@@ -112,79 +110,59 @@ describe("Moment timing", () => {
   });
 });
 
-describe("Day-view phase capacity", () => {
+describe("countMomentsInPhase", () => {
   const day = "2026-08-10";
 
   function allocated(order: number): Moment {
     return newMoment({ day, phase: Phase.MORNING, order });
   }
 
-  it("is three — the day view's grid, not a data-layer limit", () => {
-    expect(DAY_VIEW_PHASE_CAPACITY).toBe(3);
-  });
+  it("counts only the moments in the given (day, phase)", () => {
+    const elsewhere = newMoment({ day, phase: Phase.EVENING, order: 0 });
 
-  describe("countMomentsInPhase", () => {
-    it("counts only the moments in the given (day, phase)", () => {
-      const elsewhere = newMoment({ day, phase: Phase.EVENING, order: 0 });
-
-      expect(
-        countMomentsInPhase(
-          [allocated(0), allocated(1), elsewhere],
-          day,
-          Phase.MORNING,
-        ),
-      ).toBe(2);
-    });
-
-    it("can exclude a moment being moved", () => {
-      const moving = allocated(0);
-
-      expect(
-        countMomentsInPhase(
-          [moving, allocated(1)],
-          day,
-          Phase.MORNING,
-          moving.id,
-        ),
-      ).toBe(1);
-    });
-  });
-
-  describe("hasDayViewCapacity", () => {
-    it("is true below capacity", () => {
-      expect(hasDayViewCapacity([allocated(0)], day, Phase.MORNING)).toBe(true);
-    });
-
-    it("is false at capacity", () => {
-      expect(
-        hasDayViewCapacity(
-          [allocated(0), allocated(1), allocated(2)],
-          day,
-          Phase.MORNING,
-        ),
-      ).toBe(false);
-    });
-  });
-
-  describe("allocateMoment", () => {
-    it("accepts an order beyond the day-view capacity — zoomed-in time-blocking", () => {
-      const moment = newMoment();
-
-      const result = allocateMoment(moment, {
+    expect(
+      countMomentsInPhase(
+        [allocated(0), allocated(1), elsewhere],
         day,
-        phase: Phase.MORNING,
-        order: 4,
-      });
+        Phase.MORNING,
+      ),
+    ).toBe(2);
+  });
 
-      expect(result.order).toBe(4);
+  it("can exclude a moment being moved", () => {
+    const moving = allocated(0);
+
+    expect(
+      countMomentsInPhase(
+        [moving, allocated(1)],
+        day,
+        Phase.MORNING,
+        moving.id,
+      ),
+    ).toBe(1);
+  });
+});
+
+describe("allocateMoment order", () => {
+  const day = "2026-08-10";
+
+  it("accepts any non-negative order", () => {
+    const moment = newMoment();
+
+    const result = allocateMoment(moment, {
+      day,
+      phase: Phase.MORNING,
+      order: 10,
     });
 
-    it("still rejects a negative order", () => {
-      const moment = newMoment();
+    expect(result.order).toBe(10);
+  });
 
-      expect(() =>
-        allocateMoment(moment, { day, phase: Phase.MORNING, order: -1 }),
-      ).toThrow("Order must be non-negative");
-    });
+  it("rejects a negative order", () => {
+    const moment = newMoment();
+
+    expect(() =>
+      allocateMoment(moment, { day, phase: Phase.MORNING, order: -1 }),
+    ).toThrow("Order must be non-negative");
   });
 });
