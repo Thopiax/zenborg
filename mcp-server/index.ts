@@ -1897,6 +1897,16 @@ server.tool(
       }
       return true;
     });
+    list.sort((a, b) => {
+      const dayComp = (a.day ?? "").localeCompare(b.day ?? "");
+      if (dayComp !== 0) return dayComp;
+      const aTime = a.startTime ?? "";
+      const bTime = b.startTime ?? "";
+      if (aTime && bTime) return aTime.localeCompare(bTime) || a.order - b.order;
+      if (aTime) return -1;
+      if (bTime) return 1;
+      return a.order - b.order;
+    });
     return ok(list);
   },
 );
