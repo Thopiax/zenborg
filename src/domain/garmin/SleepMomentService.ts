@@ -6,16 +6,15 @@
  * `get_activities_by_date`. Sleep comes from a different API
  * (`get_sleep_summary`) with a different shape, so it gets its own path.
  *
+ * The binding (which area + habit) comes from IntegrationBinding, the
+ * shared contract all integrations follow (issue #59).
+ *
  * Pure. No filesystem, no network, no clock.
  */
 
+import type { IntegrationBinding } from "../integration/IntegrationBinding.ts";
 import { Phase } from "../value-objects/Phase.ts";
 import { localHourOf, type SleepNight } from "./SleepPhaseService.ts";
-
-export interface SleepMomentConfig {
-  readonly habitId: string;
-  readonly areaId: string;
-}
 
 export interface SleepMomentFields {
   readonly name: string;
@@ -66,7 +65,7 @@ function localDate(epochMs: number, timeZone?: string): string {
  */
 export function sleepToMomentFields(
   night: SleepNight,
-  config: SleepMomentConfig,
+  binding: IntegrationBinding,
   timeZone?: string,
 ): SleepMomentFields | null {
   if (
@@ -93,12 +92,26 @@ export function sleepToMomentFields(
 
   return {
     name: "sleep",
-    areaId: config.areaId,
-    habitId: config.habitId,
+    areaId: binding.areaId,
+    habitId: binding.habitId,
     day,
     startTime: formatTime(snappedStartMin),
     durationMin: snappedDuration,
     phase: Phase.NIGHT,
     tags,
   };
+}
+
+/**
+ * Whether a sleep moment for this day already exists.
+ *
+ * The single dedup predicate the use case and any future caller compose
+ * with, so the rule cannot drift between call sites. Same pattern as
+ * `countsAsAllocation` — one predicate, one truth.
+ */
+export function isSleepAlreadyPlanted(
+  day: string,
+  plantedDays: ReadonlySet<string>,
+): boolean {
+  return plantedDays.has(day);
 }

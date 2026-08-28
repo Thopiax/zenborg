@@ -48,6 +48,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { plantSleep } from "../../src/application/use-cases/plantSleep.ts";
 import {
   checkMapIntegrity,
   coverage,
@@ -55,10 +56,6 @@ import {
   parseHabitMap,
   resolveActivities,
 } from "../../src/domain/garmin/GarminHabitMap.ts";
-import {
-  type SleepMomentConfig,
-  sleepToMomentFields,
-} from "../../src/domain/garmin/SleepMomentService.ts";
 import {
   DEFAULT_DRIFT_THRESHOLD_MINUTES,
   DEFAULT_MIN_NIGHTS,
@@ -69,6 +66,10 @@ import {
   type SleepNight,
   summarizeNights,
 } from "../../src/domain/garmin/SleepPhaseService.ts";
+import {
+  findBinding,
+  parseIntegrationConfig,
+} from "../../src/domain/integration/IntegrationBinding.ts";
 
 // ---------------------------------------------------------------- args
 
@@ -264,64 +265,35 @@ function applyProposal(
   return backup;
 }
 
-// ---------------------------------------------------------------- sleep config
+// ---------------------------------------------------------------- integrations config
 
-/** Config for sleep -> moment binding, stored in the vault alongside the
- * habit map. Shape: `{ habitId, areaId }`. The sleep habit must exist and
- * be active — the same integrity check the habit map gets. */
-function readSleepConfig(vault: string): SleepMomentConfig | null {
-  const configPath = join(vault, "integrations", "garmin", "sleep-config.json");
-  if (!existsSync(configPath)) return null;
+const GARMIN_SLEEP_SOURCE = "garmin.sleep";
+
+function readIntegrationsConfig(vault: string) {
+  const configPath = join(vault, "integrations.json");
+  if (!existsSync(configPath)) return parseIntegrationConfig(null);
   try {
-    const raw = JSON.parse(readFileSync(configPath, "utf8"));
-    if (
-      typeof raw === "object" &&
-      raw !== null &&
-      typeof raw.habitId === "string" &&
-      typeof raw.areaId === "string"
-    ) {
-      return { habitId: raw.habitId, areaId: raw.areaId };
-    }
-    return null;
+    return parseIntegrationConfig(JSON.parse(readFileSync(configPath, "utf8")));
   } catch {
-    return null;
+    return parseIntegrationConfig(null);
   }
 }
 
-// ---------------------------------------------------------------- plant sleep
+// ---------------------------------------------------------------- write seeds
 
-/**
- * Create moments in the vault for each sleep night that doesn't already have one.
- *
- * Dedup: a moment with the same habitId and day already in `moments.json` is
- * skipped. The calendar sidecar picks up new moments on its next pass.
- *
- * Same vault obligations as `applyProposal`: preserve unknown fields, atomic
- * write, refuse while zenborg is running.
- */
-function plantSleepMoments(
-  vault: string,
-  nights: readonly SleepNight[],
-  config: SleepMomentConfig,
-  tz?: string,
-): { planted: number; skipped: number; total: number } {
-  let running = false;
+function isZenborgRunning(): boolean {
   try {
     execFileSync("pgrep", ["-x", "zenborg"], { stdio: "pipe" });
-    running = true;
+    return true;
   } catch {
-    running = false;
+    return false;
   }
-  if (running) {
-    throw new Error(
-      "zenborg is running and is the writer for moments — quit it first.",
-    );
-  }
+}
 
-  const momentsPath = join(vault, "moments.json");
+function readMoments(vault: string): Record<string, Record<string, unknown>> {
   const moments: Record<string, Record<string, unknown>> = {};
   try {
-    const raw = JSON.parse(readFileSync(momentsPath, "utf8"));
+    const raw = JSON.parse(readFileSync(join(vault, "moments.json"), "utf8"));
     if (typeof raw === "object" && raw !== null) {
       for (const [id, val] of Object.entries(raw)) {
         if (typeof val === "object" && val !== null) {
@@ -332,57 +304,58 @@ function plantSleepMoments(
   } catch {
     // empty collection
   }
+  return moments;
+}
 
-  const existingDays = new Set<string>();
+function plantedDaysForHabit(
+  moments: Record<string, Record<string, unknown>>,
+  habitId: string,
+): Set<string> {
+  const days = new Set<string>();
   for (const m of Object.values(moments)) {
-    if (m.habitId === config.habitId && typeof m.day === "string") {
-      existingDays.add(m.day);
+    if (m.habitId === habitId && typeof m.day === "string") {
+      days.add(m.day);
     }
   }
+  return days;
+}
 
-  let planted = 0;
-  let skipped = 0;
-  for (const night of nights) {
-    const fields = sleepToMomentFields(night, config, tz);
-    if (fields === null) {
-      skipped++;
-      continue;
-    }
-    if (existingDays.has(fields.day)) {
-      skipped++;
-      continue;
-    }
-
+/**
+ * Stamp seeds with ids and timestamps and write atomically.
+ *
+ * Same vault obligations as `applyProposal`: preserve unknown fields, atomic
+ * write via tmp + rename, refuse while zenborg is running.
+ */
+function writeSeedsToVault(
+  vault: string,
+  moments: Record<string, Record<string, unknown>>,
+  seeds: readonly import("../../src/domain/garmin/SleepMomentService.ts").SleepMomentFields[],
+): void {
+  const now = new Date().toISOString();
+  for (const seed of seeds) {
     const id = crypto.randomUUID();
-    const now = new Date().toISOString();
     moments[id] = {
       id,
-      name: fields.name,
-      areaId: fields.areaId,
-      habitId: fields.habitId,
+      name: seed.name,
+      areaId: seed.areaId,
+      habitId: seed.habitId,
       cycleId: null,
       cyclePlanId: null,
-      phase: fields.phase,
-      day: fields.day,
+      phase: seed.phase,
+      day: seed.day,
       order: 0,
-      startTime: fields.startTime,
-      durationMin: fields.durationMin,
-      tags: fields.tags.length > 0 ? fields.tags : null,
+      startTime: seed.startTime,
+      durationMin: seed.durationMin,
+      tags: seed.tags.length > 0 ? seed.tags : null,
       createdAt: now,
       updatedAt: now,
     };
-    existingDays.add(fields.day);
-    planted++;
   }
-
-  if (planted > 0) {
-    const tmp = `${momentsPath}.tmp`;
-    mkdirSync(dirname(momentsPath), { recursive: true });
-    writeFileSync(tmp, `${JSON.stringify(moments, null, 2)}\n`, "utf8");
-    renameSync(tmp, momentsPath);
-  }
-
-  return { planted, skipped, total: nights.length };
+  const momentsPath = join(vault, "moments.json");
+  const tmp = `${momentsPath}.tmp`;
+  mkdirSync(dirname(momentsPath), { recursive: true });
+  writeFileSync(tmp, `${JSON.stringify(moments, null, 2)}\n`, "utf8");
+  renameSync(tmp, momentsPath);
 }
 
 // ---------------------------------------------------------------- report
@@ -563,28 +536,43 @@ function main(): number {
   if (args.plantSleep) {
     out.push("");
     out.push("  ── sleep → moments (calendar) ────────────────────────");
-    const sleepConfig = readSleepConfig(args.vault);
-    if (sleepConfig === null) {
+    const integrations = readIntegrationsConfig(args.vault);
+    const sleepBinding = findBinding(integrations, GARMIN_SLEEP_SOURCE);
+    if (sleepBinding === null) {
       out.push(
-        `${BULLET}SKIPPED — no sleep config found at $KAIROS_HOME/integrations/garmin/sleep-config.json`,
+        `${BULLET}SKIPPED — no "${GARMIN_SLEEP_SOURCE}" binding in $KAIROS_HOME/integrations.json`,
       );
       out.push(
-        `${BULLET}Create it with: { "habitId": "<your-sleep-habit-uuid>", "areaId": "<your-rest-area-uuid>" }`,
+        `${BULLET}Add: { "version": 1, "bindings": [{ "source": "garmin.sleep", "areaId": "...", "habitId": "..." }] }`,
       );
     } else if (nights.length === 0) {
       out.push(`${BULLET}SKIPPED — no sleep data (pass --sleep <file>)`);
     } else {
       try {
-        const result = plantSleepMoments(
-          args.vault,
+        if (isZenborgRunning()) {
+          throw new Error(
+            "zenborg is running and is the writer for moments — quit it first.",
+          );
+        }
+        const moments = readMoments(args.vault);
+        const planted = plantedDaysForHabit(moments, sleepBinding.habitId);
+        const result = plantSleep({
           nights,
-          sleepConfig,
-          args.tz,
-        );
+          binding: sleepBinding,
+          plantedDays: planted,
+          timeZone: args.tz,
+        });
+        if (result.seeds.length > 0) {
+          writeSeedsToVault(args.vault, moments, result.seeds);
+        }
         out.push(
-          `${BULLET}${result.planted} moments planted, ${result.skipped} skipped (${result.total} nights)`,
+          `${BULLET}${result.seeds.length} moments planted, ${result.skipped} skipped (${nights.length} nights)`,
         );
-        json.sleepPlant = result;
+        json.sleepPlant = {
+          planted: result.seeds.length,
+          skipped: result.skipped,
+          total: nights.length,
+        };
       } catch (e) {
         out.push(`${BULLET}FAILED — ${(e as Error).message}`);
         out.push("");
