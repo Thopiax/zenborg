@@ -20,7 +20,8 @@
 //!     ├── metricLogs.json
 //!     ├── dayNotes.json
 //!     ├── people.json
-//!     └── places.json
+//!     ├── places.json
+//!     └── relationships.json
 //!
 //! Writes use temp-file-then-rename for atomicity on the same filesystem.
 
@@ -61,6 +62,7 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "dayNotes",
     "people",
     "places",
+    "relationships",
     "activeMoment",
 ];
 

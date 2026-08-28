@@ -9,6 +9,7 @@ export interface Person {
   category: string | null;
   basePlace: string | null;
   emoji: string | null;
+  isSelf?: boolean;
   createdAt: string;
   updatedAt: string;
 }
