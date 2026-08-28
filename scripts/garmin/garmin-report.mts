@@ -2,9 +2,11 @@
 /**
  * garmin-report — read-only by default.
  *
- * Two questions, one command:
+ * Three questions, one command:
  *   1. Which Garmin activities does the garden already have a habit for?
  *   2. Have the phase bands drifted away from the sleep actually being slept?
+ *   3. (--plant-sleep) Plant sleep nights as moments so the calendar sidecar
+ *      publishes them to Apple Calendar.
  *
  * The domain logic is pure and lives in `src/domain/garmin/`. This file is the
  * I/O edge: it reads files, prints a report, and — only behind `--apply` —
@@ -31,6 +33,7 @@
  *   --min-nights <n>        refuse to propose below this many nights (default 7)
  *   --tz <zone>             IANA zone (default: host zone)
  *   --apply                 WRITE the proposed bands to phaseConfigs.json
+ *   --plant-sleep           WRITE sleep nights as moments to moments.json
  *   --json                  machine-readable output
  */
 
@@ -53,6 +56,10 @@ import {
   resolveActivities,
 } from "../../src/domain/garmin/GarminHabitMap.ts";
 import {
+  type SleepMomentConfig,
+  sleepToMomentFields,
+} from "../../src/domain/garmin/SleepMomentService.ts";
+import {
   DEFAULT_DRIFT_THRESHOLD_MINUTES,
   DEFAULT_MIN_NIGHTS,
   detectDrift,
@@ -74,6 +81,7 @@ interface Args {
   minNights: number;
   tz?: string;
   apply: boolean;
+  plantSleep: boolean;
   json: boolean;
 }
 
@@ -93,6 +101,7 @@ function parseArgs(argv: readonly string[]): Args {
     minNights: Number(get("--min-nights") ?? DEFAULT_MIN_NIGHTS),
     tz: get("--tz"),
     apply: argv.includes("--apply"),
+    plantSleep: argv.includes("--plant-sleep"),
     json: argv.includes("--json"),
   };
 }
@@ -253,6 +262,127 @@ function applyProposal(
   writeFileSync(tmp, `${JSON.stringify(next, null, 2)}\n`, "utf8");
   renameSync(tmp, path);
   return backup;
+}
+
+// ---------------------------------------------------------------- sleep config
+
+/** Config for sleep -> moment binding, stored in the vault alongside the
+ * habit map. Shape: `{ habitId, areaId }`. The sleep habit must exist and
+ * be active — the same integrity check the habit map gets. */
+function readSleepConfig(vault: string): SleepMomentConfig | null {
+  const configPath = join(vault, "integrations", "garmin", "sleep-config.json");
+  if (!existsSync(configPath)) return null;
+  try {
+    const raw = JSON.parse(readFileSync(configPath, "utf8"));
+    if (
+      typeof raw === "object" &&
+      raw !== null &&
+      typeof raw.habitId === "string" &&
+      typeof raw.areaId === "string"
+    ) {
+      return { habitId: raw.habitId, areaId: raw.areaId };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------- plant sleep
+
+/**
+ * Create moments in the vault for each sleep night that doesn't already have one.
+ *
+ * Dedup: a moment with the same habitId and day already in `moments.json` is
+ * skipped. The calendar sidecar picks up new moments on its next pass.
+ *
+ * Same vault obligations as `applyProposal`: preserve unknown fields, atomic
+ * write, refuse while zenborg is running.
+ */
+function plantSleepMoments(
+  vault: string,
+  nights: readonly SleepNight[],
+  config: SleepMomentConfig,
+  tz?: string,
+): { planted: number; skipped: number; total: number } {
+  let running = false;
+  try {
+    execFileSync("pgrep", ["-x", "zenborg"], { stdio: "pipe" });
+    running = true;
+  } catch {
+    running = false;
+  }
+  if (running) {
+    throw new Error(
+      "zenborg is running and is the writer for moments — quit it first.",
+    );
+  }
+
+  const momentsPath = join(vault, "moments.json");
+  const moments: Record<string, Record<string, unknown>> = {};
+  try {
+    const raw = JSON.parse(readFileSync(momentsPath, "utf8"));
+    if (typeof raw === "object" && raw !== null) {
+      for (const [id, val] of Object.entries(raw)) {
+        if (typeof val === "object" && val !== null) {
+          moments[id] = val as Record<string, unknown>;
+        }
+      }
+    }
+  } catch {
+    // empty collection
+  }
+
+  const existingDays = new Set<string>();
+  for (const m of Object.values(moments)) {
+    if (m.habitId === config.habitId && typeof m.day === "string") {
+      existingDays.add(m.day);
+    }
+  }
+
+  let planted = 0;
+  let skipped = 0;
+  for (const night of nights) {
+    const fields = sleepToMomentFields(night, config, tz);
+    if (fields === null) {
+      skipped++;
+      continue;
+    }
+    if (existingDays.has(fields.day)) {
+      skipped++;
+      continue;
+    }
+
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    moments[id] = {
+      id,
+      name: fields.name,
+      areaId: fields.areaId,
+      habitId: fields.habitId,
+      cycleId: null,
+      cyclePlanId: null,
+      phase: fields.phase,
+      day: fields.day,
+      order: 0,
+      startTime: fields.startTime,
+      durationMin: fields.durationMin,
+      tags: fields.tags.length > 0 ? fields.tags : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    existingDays.add(fields.day);
+    planted++;
+  }
+
+  if (planted > 0) {
+    const tmp = `${momentsPath}.tmp`;
+    mkdirSync(dirname(momentsPath), { recursive: true });
+    writeFileSync(tmp, `${JSON.stringify(moments, null, 2)}\n`, "utf8");
+    renameSync(tmp, momentsPath);
+  }
+
+  return { planted, skipped, total: nights.length };
 }
 
 // ---------------------------------------------------------------- report
@@ -425,6 +555,41 @@ function main(): number {
           );
         }
         break;
+      }
+    }
+  }
+
+  // ---- deliverable 3: sleep -> moments (calendar)
+  if (args.plantSleep) {
+    out.push("");
+    out.push("  ── sleep → moments (calendar) ────────────────────────");
+    const sleepConfig = readSleepConfig(args.vault);
+    if (sleepConfig === null) {
+      out.push(
+        `${BULLET}SKIPPED — no sleep config found at $KAIROS_HOME/integrations/garmin/sleep-config.json`,
+      );
+      out.push(
+        `${BULLET}Create it with: { "habitId": "<your-sleep-habit-uuid>", "areaId": "<your-rest-area-uuid>" }`,
+      );
+    } else if (nights.length === 0) {
+      out.push(`${BULLET}SKIPPED — no sleep data (pass --sleep <file>)`);
+    } else {
+      try {
+        const result = plantSleepMoments(
+          args.vault,
+          nights,
+          sleepConfig,
+          args.tz,
+        );
+        out.push(
+          `${BULLET}${result.planted} moments planted, ${result.skipped} skipped (${result.total} nights)`,
+        );
+        json.sleepPlant = result;
+      } catch (e) {
+        out.push(`${BULLET}FAILED — ${(e as Error).message}`);
+        out.push("");
+        console.log(out.join("\n"));
+        return 1;
       }
     }
   }
