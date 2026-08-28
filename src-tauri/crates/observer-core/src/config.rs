@@ -1,0 +1,405 @@
+//! Pure config parsing for the observer and scheduler.
+//!
+//! Every parser here reads one JSON document and returns a typed struct.
+//! No I/O, no environment — those are the caller's concern.
+
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::time::Duration;
+
+use serde::Serialize;
+use serde_json::Value;
+
+/// Where the observer writes while the old tray still owns `keel/log`.
+pub const PARITY_LOG_DIR: &str = "log-zenborg";
+
+/// The real collection. Naming it in the config is the act of taking over.
+pub const LIVE_LOG_DIR: &str = "log";
+
+/// What the observer was told to do.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObserverConfig {
+    pub enabled: bool,
+    /// Directory *name* under keel's subtree, never an absolute path.
+    pub log_dir_name: String,
+    /// Launch without showing the window.
+    pub start_hidden: bool,
+}
+
+impl Default for ObserverConfig {
+    fn default() -> Self {
+        ObserverConfig {
+            enabled: false,
+            log_dir_name: PARITY_LOG_DIR.to_string(),
+            start_hidden: false,
+        }
+    }
+}
+
+/// Parse `desktop.backgroundObserver` out of keel's config document.
+///
+/// Pure, so the defaults are testable without a vault. Anything malformed
+/// reads as the default, which is off — a config this writer cannot understand
+/// must never be read as consent to write.
+pub fn parse_observer_config(config_json: &str) -> ObserverConfig {
+    let node = serde_json::from_str::<Value>(config_json)
+        .ok()
+        .and_then(|c| c.get("desktop")?.get("backgroundObserver").cloned());
+
+    let Some(node) = node else {
+        return ObserverConfig::default();
+    };
+
+    let enabled = node
+        .get("enabled")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+
+    let log_dir_name = node
+        .get("logDirName")
+        .and_then(Value::as_str)
+        .filter(|name| !name.is_empty() && !name.contains('/') && *name != ".." && *name != ".")
+        .unwrap_or(PARITY_LOG_DIR)
+        .to_string();
+
+    let start_hidden = node
+        .get("startHidden")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+        && enabled;
+
+    ObserverConfig {
+        enabled,
+        log_dir_name,
+        start_hidden,
+    }
+}
+
+/// Config, then environment. The env overrides exist for the parity run and
+/// for tests; they are not the supported way to turn this on for real.
+pub fn resolve_observer_config(config_json: &str) -> ObserverConfig {
+    let mut config = parse_observer_config(config_json);
+
+    match std::env::var("ZENBORG_OBSERVER").as_deref() {
+        Ok("1") | Ok("true") => config.enabled = true,
+        Ok("0") | Ok("false") => config.enabled = false,
+        _ => {}
+    }
+    if let Ok(name) = std::env::var("ZENBORG_OBSERVER_LOG_DIR") {
+        if !name.is_empty() && !name.contains('/') {
+            config.log_dir_name = name;
+        }
+    }
+    config
+}
+
+// ── Scheduler config ──────────────────────────────────────────────
+
+/// When a job fires.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Trigger {
+    /// `StartInterval`, with `RunAtLoad` folded in as `run_at_load`.
+    Interval { seconds: u64, run_at_load: bool },
+    /// `WatchPaths`. `debounce` is the quiet period a burst has to settle for.
+    Watch {
+        paths: Vec<PathBuf>,
+        debounce: Duration,
+    },
+}
+
+/// One scheduled job.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Job {
+    pub name: String,
+    pub program: PathBuf,
+    pub args: Vec<String>,
+    pub env: HashMap<String, String>,
+    pub trigger: Trigger,
+}
+
+const MIN_INTERVAL: Duration = Duration::from_secs(60);
+const DEFAULT_DEBOUNCE: Duration = Duration::from_secs(30);
+
+/// Parse `desktop.scheduler.jobs`.
+///
+/// Pure, and forgiving in exactly one direction: a job that cannot be read is
+/// dropped, never guessed at.
+pub fn parse_jobs(config_json: &str) -> Vec<Job> {
+    let Some(array) = serde_json::from_str::<Value>(config_json)
+        .ok()
+        .and_then(|c| {
+            c.get("desktop")?
+                .get("scheduler")?
+                .get("jobs")?
+                .as_array()
+                .cloned()
+        })
+    else {
+        return Vec::new();
+    };
+
+    let mut jobs = Vec::new();
+    for node in &array {
+        if let Some(job) = parse_job(node) {
+            jobs.push(job);
+        }
+    }
+    jobs
+}
+
+fn parse_job(node: &Value) -> Option<Job> {
+    if node.get("enabled").and_then(Value::as_bool) != Some(true) {
+        return None;
+    }
+    let name = node.get("name").and_then(Value::as_str)?.to_string();
+    let program = PathBuf::from(node.get("program").and_then(Value::as_str)?);
+    if name.is_empty() || program.as_os_str().is_empty() {
+        return None;
+    }
+
+    let args = node
+        .get("args")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let env = node
+        .get("env")
+        .and_then(Value::as_object)
+        .map(|o| {
+            o.iter()
+                .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let trigger = parse_trigger(node.get("trigger")?)?;
+
+    Some(Job {
+        name,
+        program,
+        args,
+        env,
+        trigger,
+    })
+}
+
+fn parse_trigger(node: &Value) -> Option<Trigger> {
+    match node.get("kind").and_then(Value::as_str)? {
+        "interval" => {
+            let seconds = node.get("seconds").and_then(Value::as_u64)?;
+            Some(Trigger::Interval {
+                seconds: seconds.max(MIN_INTERVAL.as_secs()),
+                run_at_load: node
+                    .get("runAtLoad")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+            })
+        }
+        "watch" => {
+            let paths: Vec<PathBuf> = node
+                .get("paths")?
+                .as_array()?
+                .iter()
+                .filter_map(Value::as_str)
+                .map(PathBuf::from)
+                .collect();
+            if paths.is_empty() {
+                return None;
+            }
+            let debounce = node
+                .get("debounceSeconds")
+                .and_then(Value::as_u64)
+                .map(Duration::from_secs)
+                .unwrap_or(DEFAULT_DEBOUNCE);
+            Some(Trigger::Watch { paths, debounce })
+        }
+        _ => None,
+    }
+}
+
+/// The set of directories a watch trigger has to subscribe to.
+pub fn watch_roots(paths: &[PathBuf]) -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    for path in paths {
+        if let Some(parent) = path.parent() {
+            let parent = parent.to_path_buf();
+            if !roots.contains(&parent) {
+                roots.push(parent);
+            }
+        }
+    }
+    roots
+}
+
+/// What the UI (or the MCP surface, later) can see about the observer.
+#[derive(Debug, Clone, Serialize)]
+pub struct ObserverStatus {
+    pub enabled: bool,
+    pub running: bool,
+    pub paused: bool,
+    #[serde(rename = "permissionNeeded")]
+    pub permission_needed: bool,
+    #[serde(rename = "logDir")]
+    pub log_dir: String,
+    pub parity: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_absent_or_broken_config_leaves_the_observer_off() {
+        for input in ["", "{ not json", "{}", r#"{"desktop":{}}"#] {
+            let config = parse_observer_config(input);
+            assert!(
+                !config.enabled,
+                "input {input:?} must not enable the writer"
+            );
+            assert_eq!(config.log_dir_name, PARITY_LOG_DIR);
+        }
+    }
+
+    #[test]
+    fn enabling_alone_writes_to_the_parity_directory() {
+        let config =
+            parse_observer_config(r#"{"desktop":{"backgroundObserver":{"enabled":true}}}"#);
+        assert!(config.enabled);
+        assert_eq!(config.log_dir_name, PARITY_LOG_DIR);
+    }
+
+    #[test]
+    fn taking_over_the_real_collection_has_to_be_said_out_loud() {
+        let config = parse_observer_config(
+            r#"{"desktop":{"backgroundObserver":{"enabled":true,"logDirName":"log"}}}"#,
+        );
+        assert!(config.enabled);
+        assert_eq!(config.log_dir_name, LIVE_LOG_DIR);
+    }
+
+    #[test]
+    fn a_path_shaped_dir_name_is_refused_rather_than_sanitized() {
+        for name in ["../../etc", "log/nested", "", "."] {
+            let json = format!(
+                r#"{{"desktop":{{"backgroundObserver":{{"enabled":true,"logDirName":"{name}"}}}}}}"#
+            );
+            assert_eq!(parse_observer_config(&json).log_dir_name, PARITY_LOG_DIR);
+        }
+    }
+
+    #[test]
+    fn the_window_never_hides_while_the_observer_is_off() {
+        let config = parse_observer_config(
+            r#"{"desktop":{"backgroundObserver":{"enabled":false,"startHidden":true}}}"#,
+        );
+        assert!(!config.start_hidden);
+
+        let config = parse_observer_config(
+            r#"{"desktop":{"backgroundObserver":{"enabled":true,"startHidden":true}}}"#,
+        );
+        assert!(config.start_hidden);
+    }
+
+    // ── Scheduler tests ──
+
+    #[test]
+    fn an_absent_or_broken_config_schedules_nothing() {
+        for input in ["", "{ not json", "{}", r#"{"desktop":{"scheduler":{}}}"#] {
+            assert!(parse_jobs(input).is_empty(), "input {input:?}");
+        }
+    }
+
+    #[test]
+    fn a_job_has_to_say_enabled_out_loud() {
+        let json = r#"{"desktop":{"scheduler":{"jobs":[
+            {"name":"garmin","program":"/x","trigger":{"kind":"interval","seconds":3600}}
+        ]}}}"#;
+        assert!(parse_jobs(json).is_empty());
+    }
+
+    #[test]
+    fn the_garmin_plist_translates_to_one_interval_job() {
+        let json = r#"{"desktop":{"scheduler":{"jobs":[{
+            "name":"garmin","enabled":true,
+            "program":"/repo/integrations/garmin/garmin_sync.py",
+            "env":{"PATH":"/opt/homebrew/bin:/usr/bin:/bin"},
+            "trigger":{"kind":"interval","seconds":3600,"runAtLoad":true}
+        }]}}}"#;
+        let jobs = parse_jobs(json);
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].name, "garmin");
+        assert_eq!(
+            jobs[0].trigger,
+            Trigger::Interval {
+                seconds: 3600,
+                run_at_load: true
+            }
+        );
+    }
+
+    #[test]
+    fn the_classify_plist_translates_to_one_watch_job() {
+        let json = r#"{"desktop":{"scheduler":{"jobs":[{
+            "name":"classify","enabled":true,
+            "program":"/Users/x/Library/pnpm/node",
+            "args":["/repo/apps/agent/keel-classify.mjs"],
+            "trigger":{"kind":"watch","paths":["/db/main.sqlite","/db/main.sqlite-wal"],"debounceSeconds":10}
+        }]}}}"#;
+        let jobs = parse_jobs(json);
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(
+            jobs[0].trigger,
+            Trigger::Watch {
+                paths: vec![
+                    PathBuf::from("/db/main.sqlite"),
+                    PathBuf::from("/db/main.sqlite-wal")
+                ],
+                debounce: Duration::from_secs(10),
+            }
+        );
+    }
+
+    #[test]
+    fn a_watch_subscribes_to_the_directory_and_deduplicates_it() {
+        let roots = watch_roots(&[
+            PathBuf::from("/db/main.sqlite"),
+            PathBuf::from("/db/main.sqlite-wal"),
+            PathBuf::from("/other/x"),
+        ]);
+        assert_eq!(roots, vec![PathBuf::from("/db"), PathBuf::from("/other")]);
+    }
+
+    #[test]
+    fn a_reckless_interval_is_floored_rather_than_honoured() {
+        let json = r#"{"desktop":{"scheduler":{"jobs":[{
+            "name":"busy","enabled":true,"program":"/x",
+            "trigger":{"kind":"interval","seconds":1}
+        }]}}}"#;
+        assert_eq!(
+            parse_jobs(json)[0].trigger,
+            Trigger::Interval {
+                seconds: 60,
+                run_at_load: false
+            }
+        );
+    }
+
+    #[test]
+    fn an_unreadable_job_is_dropped_and_its_siblings_still_run() {
+        let json = r#"{"desktop":{"scheduler":{"jobs":[
+            {"name":"nameless","enabled":true,"trigger":{"kind":"interval","seconds":3600}},
+            {"name":"unknown","enabled":true,"program":"/x","trigger":{"kind":"cron","expr":"* * * * *"}},
+            {"name":"pathless-watch","enabled":true,"program":"/x","trigger":{"kind":"watch","paths":[]}},
+            {"name":"good","enabled":true,"program":"/x","trigger":{"kind":"interval","seconds":3600}}
+        ]}}}"#;
+        let jobs = parse_jobs(json);
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].name, "good");
+    }
+}
