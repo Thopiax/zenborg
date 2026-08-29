@@ -1,4 +1,4 @@
-# keel agent — Claude Code surface
+# zenborg — Claude Code surface
 
 **Keep your attention from fragmenting, yours and your agent's, locally.**
 
