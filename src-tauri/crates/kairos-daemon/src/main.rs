@@ -30,6 +30,43 @@ use anyhow::{bail, Context, Result};
 use observer_core::config;
 use observer_core::writer;
 
+/// Tell macOS this process is a background agent — no Dock icon, no Cmd+Tab entry.
+///
+/// Must run before anything touches AppKit. `x-win` initializes `NSApplication`
+/// internally; without this the default `Regular` policy applies and the daemon
+/// appears alongside real apps.
+#[cfg(target_os = "macos")]
+fn hide_from_dock() {
+    use std::ffi::c_char;
+
+    extern "C" {
+        fn objc_getClass(name: *const c_char) -> *mut std::ffi::c_void;
+        fn sel_registerName(name: *const c_char) -> *mut std::ffi::c_void;
+        fn objc_msgSend();
+    }
+
+    type MsgSendId = unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> *mut std::ffi::c_void;
+    type MsgSendBoolIsize = unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, isize) -> bool;
+
+    unsafe {
+        let cls = objc_getClass(b"NSApplication\0".as_ptr() as *const c_char);
+        if cls.is_null() {
+            return;
+        }
+        let shared_app: MsgSendId = std::mem::transmute(objc_msgSend as *const ());
+        let app = shared_app(cls, sel_registerName(b"sharedApplication\0".as_ptr() as *const c_char));
+        if app.is_null() {
+            return;
+        }
+        // NSApplicationActivationPolicyProhibited = 2
+        let set_policy: MsgSendBoolIsize = std::mem::transmute(objc_msgSend as *const ());
+        set_policy(app, sel_registerName(b"setActivationPolicy:\0".as_ptr() as *const c_char), 2);
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn hide_from_dock() {}
+
 /// Resolve the kairos vault root. The daemon has no debug/release split —
 /// it is always a release binary. Use env vars or fall back to `~/.kairos`.
 fn vault_root() -> Result<PathBuf> {
@@ -72,6 +109,8 @@ fn acquire_writer_lock(log_dir: &std::path::Path) -> Result<File> {
 }
 
 fn main() -> Result<()> {
+    hide_from_dock();
+
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .format_timestamp_millis()
         .init();
