@@ -48,10 +48,7 @@ import {
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { shouldDeliver } from "../domain/intervention/Delivery.ts";
-import type {
-  GateSpec,
-  Primitive,
-} from "../domain/intervention/Primitive.ts";
+import type { GateSpec, Primitive } from "../domain/intervention/Primitive.ts";
 import type { RuleSpec } from "../domain/intervention/RuleSpec.ts";
 import { rungFor } from "../domain/intervention/rules/sessionFence.ts";
 

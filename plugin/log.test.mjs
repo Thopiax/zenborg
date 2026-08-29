@@ -1,13 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  existsSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 import {
-  buildEvent, eventLine, logFileName, capValue, summarizeEvents, matchDispatch,
+  buildEvent,
+  eventLine,
+  logFileName,
+  capValue,
+  summarizeEvents,
+  matchDispatch,
 } from "./core.mjs";
 import { appendEvent } from "./store.mjs";
 
@@ -15,16 +26,26 @@ const execFileP = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KEEL_MJS = join(HERE, "keel.mjs");
 
-const evt = (over = {}) => buildEvent({
-  id: over.id ?? "id-1", kind: over.kind ?? "prompt", ts: over.ts ?? 1_000_000,
-  sessionId: over.sessionId ?? "s1", payload: over.payload ?? {},
-  durationMs: over.durationMs,
-});
+const evt = (over = {}) =>
+  buildEvent({
+    id: over.id ?? "id-1",
+    kind: over.kind ?? "prompt",
+    ts: over.ts ?? 1_000_000,
+    sessionId: over.sessionId ?? "s1",
+    payload: over.payload ?? {},
+    durationMs: over.durationMs,
+  });
 
 // ── pure: event shaping ───────────────────────────────────────
 
 test("buildEvent shapes an agent event with required fields", () => {
-  const e = buildEvent({ id: "abc", kind: "prompt", ts: 123, sessionId: "s1", payload: { prompt: "hi" } });
+  const e = buildEvent({
+    id: "abc",
+    kind: "prompt",
+    ts: 123,
+    sessionId: "s1",
+    payload: { prompt: "hi" },
+  });
   assert.equal(e.id, "abc");
   assert.equal(e.surface, "agent");
   assert.equal(e.kind, "prompt");
@@ -89,25 +110,70 @@ test("summarizeEvents counts kinds, sessions, and active sessions", () => {
 
 test("matchDispatch pairs a completion with the latest unmatched dispatch", () => {
   const events = [
-    evt({ id: "d1", kind: "tool_dispatched", sessionId: "s1", ts: 1000, payload: { tool_name: "Bash" } }),
-    evt({ id: "d2", kind: "tool_dispatched", sessionId: "s1", ts: 2000, payload: { tool_name: "Edit" } }),
-    evt({ id: "c2", kind: "tool_completed", sessionId: "s1", ts: 2500, payload: { tool_name: "Edit" } }),
+    evt({
+      id: "d1",
+      kind: "tool_dispatched",
+      sessionId: "s1",
+      ts: 1000,
+      payload: { tool_name: "Bash" },
+    }),
+    evt({
+      id: "d2",
+      kind: "tool_dispatched",
+      sessionId: "s1",
+      ts: 2000,
+      payload: { tool_name: "Edit" },
+    }),
+    evt({
+      id: "c2",
+      kind: "tool_completed",
+      sessionId: "s1",
+      ts: 2500,
+      payload: { tool_name: "Edit" },
+    }),
   ];
-  const m = matchDispatch(events, { sessionId: "s1", ts: 4000, payload: { tool_name: "Bash" } });
+  const m = matchDispatch(events, {
+    sessionId: "s1",
+    ts: 4000,
+    payload: { tool_name: "Bash" },
+  });
   assert.equal(m.id, "d1");
 });
 
 test("matchDispatch prefers tool_use_id correlation when present", () => {
   const events = [
-    evt({ id: "d1", kind: "tool_dispatched", sessionId: "s1", ts: 1000, payload: { tool_name: "Bash", tool_use_id: "tu-A" } }),
-    evt({ id: "d2", kind: "tool_dispatched", sessionId: "s1", ts: 2000, payload: { tool_name: "Bash", tool_use_id: "tu-B" } }),
+    evt({
+      id: "d1",
+      kind: "tool_dispatched",
+      sessionId: "s1",
+      ts: 1000,
+      payload: { tool_name: "Bash", tool_use_id: "tu-A" },
+    }),
+    evt({
+      id: "d2",
+      kind: "tool_dispatched",
+      sessionId: "s1",
+      ts: 2000,
+      payload: { tool_name: "Bash", tool_use_id: "tu-B" },
+    }),
   ];
-  const m = matchDispatch(events, { sessionId: "s1", ts: 3000, payload: { tool_name: "Bash", tool_use_id: "tu-A" } });
+  const m = matchDispatch(events, {
+    sessionId: "s1",
+    ts: 3000,
+    payload: { tool_name: "Bash", tool_use_id: "tu-A" },
+  });
   assert.equal(m.id, "d1");
 });
 
 test("matchDispatch returns null when nothing matches", () => {
-  assert.equal(matchDispatch([], { sessionId: "s1", ts: 1, payload: { tool_name: "Bash" } }), null);
+  assert.equal(
+    matchDispatch([], {
+      sessionId: "s1",
+      ts: 1,
+      payload: { tool_name: "Bash" },
+    }),
+    null,
+  );
 });
 
 // ── I/O: append-only writer, fail-open ────────────────────────
@@ -117,9 +183,14 @@ test("appendEvent creates the log dir and appends one parseable line per call", 
   const logDir = join(dir, "log");
   assert.equal(appendEvent(logDir, evt({ id: "1" })), true);
   assert.equal(appendEvent(logDir, evt({ id: "2" })), true);
-  const lines = readFileSync(join(logDir, logFileName(1_000_000)), "utf8").trim().split("\n");
+  const lines = readFileSync(join(logDir, logFileName(1_000_000)), "utf8")
+    .trim()
+    .split("\n");
   assert.equal(lines.length, 2);
-  assert.deepEqual(lines.map((l) => JSON.parse(l).id), ["1", "2"]);
+  assert.deepEqual(
+    lines.map((l) => JSON.parse(l).id),
+    ["1", "2"],
+  );
 });
 
 test("appendEvent is fail-open: unwritable destination returns false, never throws", () => {
@@ -132,7 +203,10 @@ test("appendEvent is fail-open: unwritable destination returns false, never thro
 test("concurrent appends from two processes produce no torn lines", async () => {
   const dir = mkdtempSync(join(tmpdir(), "keel-log-"));
   const logDir = join(dir, "log");
-  const child = (tag) => execFileP(process.execPath, ["-e", `
+  const child = (tag) =>
+    execFileP(process.execPath, [
+      "-e",
+      `
     import("${pathToImport(HERE)}/store.mjs").then(async ({ appendEvent }) => {
       const { buildEvent } = await import("${pathToImport(HERE)}/core.mjs");
       for (let i = 0; i < 50; i++) {
@@ -142,9 +216,12 @@ test("concurrent appends from two processes produce no torn lines", async () => 
         }));
       }
     });
-  `]);
+  `,
+    ]);
   await Promise.all([child("a"), child("b")]);
-  const lines = readFileSync(join(logDir, logFileName(1_000_000)), "utf8").trim().split("\n");
+  const lines = readFileSync(join(logDir, logFileName(1_000_000)), "utf8")
+    .trim()
+    .split("\n");
   assert.equal(lines.length, 100);
   for (const l of lines) JSON.parse(l); // every line parses → no tearing
 });
@@ -164,9 +241,12 @@ function runHook(home, sub, stdinObj) {
 test("hook user-submit logs a prompt event with sessionId from stdin", async () => {
   const home = mkdtempSync(join(tmpdir(), "keel-home-"));
   runHook(home, "user-submit", { session_id: "sess-42", prompt: "hello keel" });
-  const file = join(home, ".kairos", "keel","log", logFileName(Date.now()));
+  const file = join(home, ".kairos", "keel", "log", logFileName(Date.now()));
   assert.ok(existsSync(file));
-  const events = readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const events = readFileSync(file, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
   const prompt = events.find((e) => e.kind === "prompt");
   assert.equal(prompt.sessionId, "sess-42");
   assert.equal(prompt.surface, "agent");
@@ -177,48 +257,93 @@ test("hook user-submit logs a prompt event with sessionId from stdin", async () 
 test("hook stop logs a turn_stop event", async () => {
   const home = mkdtempSync(join(tmpdir(), "keel-home-"));
   runHook(home, "stop", { session_id: "sess-43", stop_hook_active: false });
-  const file = join(home, ".kairos", "keel","log", logFileName(Date.now()));
-  const events = readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l));
-  assert.equal(events.filter((e) => e.kind === "turn_stop" && e.sessionId === "sess-43").length, 1);
+  const file = join(home, ".kairos", "keel", "log", logFileName(Date.now()));
+  const events = readFileSync(file, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
+  assert.equal(
+    events.filter((e) => e.kind === "turn_stop" && e.sessionId === "sess-43")
+      .length,
+    1,
+  );
 });
 
 test("hook pre-tool records the dispatch with its kairos band, and denies nothing", async () => {
   const home = mkdtempSync(join(tmpdir(), "keel-home-"));
   mkdirSync(join(home, ".kairos"), { recursive: true });
   // One band covering the whole clock, so the assertion holds whatever hour the suite runs at.
-  writeFileSync(join(home, ".kairos", "phaseConfigs.json"), JSON.stringify({
-    "id-1": { phase: "MORNING", startHour: 0, endHour: 24, order: 0 },
-  }));
-  const out = runHook(home, "pre-tool", { session_id: "sess-47", tool_name: "Bash", tool_input: {} });
-  assert.equal(out.trim(), "");   // no hookSpecificOutput at all — the gate is gone, not merely open
-  const file = join(home, ".kairos", "keel","log", logFileName(Date.now()));
-  const events = readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  writeFileSync(
+    join(home, ".kairos", "phaseConfigs.json"),
+    JSON.stringify({
+      "id-1": { phase: "MORNING", startHour: 0, endHour: 24, order: 0 },
+    }),
+  );
+  const out = runHook(home, "pre-tool", {
+    session_id: "sess-47",
+    tool_name: "Bash",
+    tool_input: {},
+  });
+  assert.equal(out.trim(), ""); // no hookSpecificOutput at all — the gate is gone, not merely open
+  const file = join(home, ".kairos", "keel", "log", logFileName(Date.now()));
+  const events = readFileSync(file, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
   const d = events.find((e) => e.kind === "tool_dispatched");
   assert.equal(d.payload.keel_band, "MORNING");
   // The retired vocabulary must not reappear under a new writer.
-  for (const dead of ["keel_denied", "keel_friction", "keel_phase", "keel_rule_notch",
-                      "keel_focus_block", "keel_signon_block"]) {
-    assert.equal(dead in d.payload, false, `${dead} should be gone from the payload`);
+  for (const dead of [
+    "keel_denied",
+    "keel_friction",
+    "keel_phase",
+    "keel_rule_notch",
+    "keel_focus_block",
+    "keel_signon_block",
+  ]) {
+    assert.equal(
+      dead in d.payload,
+      false,
+      `${dead} should be gone from the payload`,
+    );
   }
 });
 
 test("hook pre-tool still records the dispatch when the kernel's bands are unreadable", async () => {
   const home = mkdtempSync(join(tmpdir(), "keel-home-"));
-  const out = runHook(home, "pre-tool", { session_id: "sess-48", tool_name: "Bash", tool_input: {} });
+  const out = runHook(home, "pre-tool", {
+    session_id: "sess-48",
+    tool_name: "Bash",
+    tool_input: {},
+  });
   assert.equal(out.trim(), "");
-  const file = join(home, ".kairos", "keel","log", logFileName(Date.now()));
-  const events = readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const file = join(home, ".kairos", "keel", "log", logFileName(Date.now()));
+  const events = readFileSync(file, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
   const d = events.find((e) => e.kind === "tool_dispatched");
-  assert.ok(d);                                  // the event lands regardless
+  assert.ok(d); // the event lands regardless
   assert.equal("keel_band" in d.payload, false); // untagged rather than guessed
 });
 
 test("hook post-tool derives durationMs from the matching dispatch", async () => {
   const home = mkdtempSync(join(tmpdir(), "keel-home-"));
-  runHook(home, "pre-tool", { session_id: "sess-44", tool_name: "Glob", tool_input: { pattern: "*" } });
-  runHook(home, "post-tool", { session_id: "sess-44", tool_name: "Glob", tool_response: { ok: true } });
-  const file = join(home, ".kairos", "keel","log", logFileName(Date.now()));
-  const events = readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  runHook(home, "pre-tool", {
+    session_id: "sess-44",
+    tool_name: "Glob",
+    tool_input: { pattern: "*" },
+  });
+  runHook(home, "post-tool", {
+    session_id: "sess-44",
+    tool_name: "Glob",
+    tool_response: { ok: true },
+  });
+  const file = join(home, ".kairos", "keel", "log", logFileName(Date.now()));
+  const events = readFileSync(file, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
   const done = events.find((e) => e.kind === "tool_completed");
   assert.equal(done.payload.tool_name, "Glob");
   assert.equal(typeof done.durationMs, "number");
@@ -228,16 +353,25 @@ test("hook post-tool derives durationMs from the matching dispatch", async () =>
 test("hook session-end logs session_end (full-capture hook set)", async () => {
   const home = mkdtempSync(join(tmpdir(), "keel-home-"));
   runHook(home, "session-end", { session_id: "sess-45", reason: "exit" });
-  const file = join(home, ".kairos", "keel","log", logFileName(Date.now()));
-  const events = readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const file = join(home, ".kairos", "keel", "log", logFileName(Date.now()));
+  const events = readFileSync(file, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
   assert.equal(events.filter((e) => e.kind === "session_end").length, 1);
 });
 
 test("oversized stdin fields are capped in the logged payload", async () => {
   const home = mkdtempSync(join(tmpdir(), "keel-home-"));
-  runHook(home, "user-submit", { session_id: "sess-46", prompt: "z".repeat(40_000) });
-  const file = join(home, ".kairos", "keel","log", logFileName(Date.now()));
-  const events = readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  runHook(home, "user-submit", {
+    session_id: "sess-46",
+    prompt: "z".repeat(40_000),
+  });
+  const file = join(home, ".kairos", "keel", "log", logFileName(Date.now()));
+  const events = readFileSync(file, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
   const prompt = events.find((e) => e.kind === "prompt");
   assert.equal(prompt.payload.prompt.truncated, true);
   assert.equal(prompt.payload.prompt.bytes, 40_000);
@@ -258,26 +392,50 @@ test("first session-start shows the consent contract once, then never again", as
 test("session-start logs rule_changed when the effective rules hash moves", async () => {
   const home = mkdtempSync(join(tmpdir(), "keel-home-"));
   runHook(home, "session-start", { session_id: "s-r1" });
-  const cfgPath = join(home, ".kairos", "keel","config.json");
-  writeFileSync(cfgPath, JSON.stringify({ targets: { "claude-code": { orient: { bellAfterMin: 60, sessionGapMin: 30 } } } }));
+  const cfgPath = join(home, ".kairos", "keel", "config.json");
+  writeFileSync(
+    cfgPath,
+    JSON.stringify({
+      targets: {
+        "claude-code": { orient: { bellAfterMin: 60, sessionGapMin: 30 } },
+      },
+    }),
+  );
   runHook(home, "session-start", { session_id: "s-r2" });
-  const file = join(home, ".kairos", "keel","log", logFileName(Date.now()));
-  const events = readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const file = join(home, ".kairos", "keel", "log", logFileName(Date.now()));
+  const events = readFileSync(file, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
   const changes = events.filter((e) => e.kind === "rule_changed");
   assert.equal(changes.length, 2); // baseline snapshot + the edit
-  assert.notEqual(changes[0].payload.keel_rule_hash, changes[1].payload.keel_rule_hash);
-  assert.equal(changes[1].payload.keel_prev_hash, changes[0].payload.keel_rule_hash);
+  assert.notEqual(
+    changes[0].payload.keel_rule_hash,
+    changes[1].payload.keel_rule_hash,
+  );
+  assert.equal(
+    changes[1].payload.keel_prev_hash,
+    changes[0].payload.keel_rule_hash,
+  );
 });
 
 test("keel log status yesterday reads the prior day's file", async () => {
   const home = mkdtempSync(join(tmpdir(), "keel-home-"));
-  const logDir = join(home, ".kairos", "keel","log");
+  const logDir = join(home, ".kairos", "keel", "log");
   const y = Date.now() - 86_400_000;
-  appendEvent(logDir, buildEvent({ id: "y1", kind: "prompt", ts: y, sessionId: "ys" }));
-  const out = execFileSync(process.execPath, [KEEL_MJS, "log", "status", "yesterday"],
-    { env: { ...process.env, HOME: home }, encoding: "utf8" });
+  appendEvent(
+    logDir,
+    buildEvent({ id: "y1", kind: "prompt", ts: y, sessionId: "ys" }),
+  );
+  const out = execFileSync(
+    process.execPath,
+    [KEEL_MJS, "log", "status", "yesterday"],
+    { env: { ...process.env, HOME: home }, encoding: "utf8" },
+  );
   assert.match(out, /1 events.*prompt=1/s);
-  const today = execFileSync(process.execPath, [KEEL_MJS, "log", "status"],
-    { env: { ...process.env, HOME: home }, encoding: "utf8" });
+  const today = execFileSync(process.execPath, [KEEL_MJS, "log", "status"], {
+    env: { ...process.env, HOME: home },
+    encoding: "utf8",
+  });
   assert.match(today, /no events today/);
 });
