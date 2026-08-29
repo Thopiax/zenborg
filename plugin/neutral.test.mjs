@@ -3,9 +3,17 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { readFileSync, readdirSync } from "node:fs";
 import {
-  mergeTarget, emptyState, DEFAULT_TARGET,
-  focusDayKey, targetHash, renderRules, consentLines,
-  mergeWatchlist, watchlistLines, mergeDesktopSensors, desktopSensorLines,
+  mergeTarget,
+  emptyState,
+  DEFAULT_TARGET,
+  focusDayKey,
+  targetHash,
+  renderRules,
+  consentLines,
+  mergeWatchlist,
+  watchlistLines,
+  mergeDesktopSensors,
+  desktopSensorLines,
 } from "./core.mjs";
 
 const BANDS = [
@@ -26,7 +34,9 @@ test("a stale config's retired gate keys are dropped, not honoured", () => {
   // A machine that has not had its config.json cleaned still carries watches/windDown/rules.
   // mergeTarget must ignore them outright: a leftover key must never re-arm a gate.
   const t = mergeTarget({
-    watches: { night: "00:30" }, windDown: "90m", signOnGate: true,
+    watches: { night: "00:30" },
+    windDown: "90m",
+    signOnGate: true,
     rules: [{ notch: "block", engagesAt: 1, tools: ["Bash"] }],
   });
   assert.equal("watches" in t, false);
@@ -56,7 +66,8 @@ function voiceStrings(node, insideVoice = false) {
   if (typeof node === "string") return insideVoice ? [node] : [];
   if (node === null || typeof node !== "object") return [];
   const out = [];
-  for (const [k, v] of Object.entries(node)) out.push(...voiceStrings(v, insideVoice || k === "voice"));
+  for (const [k, v] of Object.entries(node))
+    out.push(...voiceStrings(v, insideVoice || k === "voice"));
   return out;
 }
 
@@ -69,7 +80,11 @@ function allStrings(node, at = "$") {
 
 test("the sample ships no one's voice — every voice string is an empty placeholder", () => {
   const spoken = voiceStrings(readSample()).filter((s) => s.trim() !== "");
-  assert.deepEqual(spoken, [], `config.sample.json ships words nobody chose: ${JSON.stringify(spoken)}`);
+  assert.deepEqual(
+    spoken,
+    [],
+    `config.sample.json ships words nobody chose: ${JSON.stringify(spoken)}`,
+  );
 });
 
 test("the sample's voice keys are exactly the ones mergeTarget honours", () => {
@@ -91,24 +106,43 @@ test("the sample carries no retired gate config — a leftover clock is one pers
 });
 
 test("the sample names no host and no path — those are the peer's to name", () => {
-  const named = allStrings(readSample())
-    .filter(([, v]) => /^~?\/|\.(com|org|net|io|dev|be|in)\b/.test(v));
-  assert.deepEqual(named, [], `config.sample.json names places nobody chose: ${JSON.stringify(named)}`);
+  const named = allStrings(readSample()).filter(([, v]) =>
+    /^~?\/|\.(com|org|net|io|dev|be|in)\b/.test(v),
+  );
+  assert.deepEqual(
+    named,
+    [],
+    `config.sample.json names places nobody chose: ${JSON.stringify(named)}`,
+  );
 });
 
 test("the sample's watchlist tiers ship empty — keel never ships a list", () => {
   const sample = readSample();
-  assert.deepEqual(mergeWatchlist(sample.watchlist), { observe: [], windowed: [] });
-  assert.deepEqual(mergeDesktopSensors(sample.desktop), { inputActivity: false });
+  assert.deepEqual(mergeWatchlist(sample.watchlist), {
+    observe: [],
+    windowed: [],
+  });
+  assert.deepEqual(mergeDesktopSensors(sample.desktop), {
+    inputActivity: false,
+  });
 });
 
 // ── rules observability: hash + render ─────────────────────────
 
 test("targetHash is stable, key-order-insensitive, value-sensitive", () => {
-  const a = mergeTarget({ orient: { bellAfterMin: 90, sessionGapMin: 20 }, voice: { identity: "x" } });
-  const b = mergeTarget({ voice: { identity: "x" }, orient: { sessionGapMin: 20, bellAfterMin: 90 } });
+  const a = mergeTarget({
+    orient: { bellAfterMin: 90, sessionGapMin: 20 },
+    voice: { identity: "x" },
+  });
+  const b = mergeTarget({
+    voice: { identity: "x" },
+    orient: { sessionGapMin: 20, bellAfterMin: 90 },
+  });
   assert.equal(targetHash(a), targetHash(b));
-  const c = mergeTarget({ orient: { bellAfterMin: 91, sessionGapMin: 20 }, voice: { identity: "x" } });
+  const c = mergeTarget({
+    orient: { bellAfterMin: 91, sessionGapMin: 20 },
+    voice: { identity: "x" },
+  });
   assert.notEqual(targetHash(a), targetHash(c));
 });
 
@@ -120,15 +154,21 @@ test("renderRules names the kernel's bands and states that nothing is gated", ()
 });
 
 test("renderRules says so when the kernel's bands cannot be read", () => {
-  assert.match(renderRules(mergeTarget({}), {}, null), /phase bands \(kairos\): \(unreadable/);
+  assert.match(
+    renderRules(mergeTarget({}), {}, null),
+    /phase bands \(kairos\): \(unreadable/,
+  );
 });
 
 test("renderRules shows effective values and marks custom vs default sections", () => {
-  const out = renderRules(mergeTarget({ orient: { bellAfterMin: 60, sessionGapMin: 30 } }),
-    { orient: { bellAfterMin: 60 } }, BANDS);
+  const out = renderRules(
+    mergeTarget({ orient: { bellAfterMin: 60, sessionGapMin: 30 } }),
+    { orient: { bellAfterMin: 60 } },
+    BANDS,
+  );
   assert.match(out, /orient.*60m/s);
-  assert.match(out, /orient.*custom/s);   // overridden section marked
-  assert.match(out, /voice.*default/s);   // untouched section marked
+  assert.match(out, /orient.*custom/s); // overridden section marked
+  assert.match(out, /voice.*default/s); // untouched section marked
 });
 
 // ── first-run consent ──────────────────────────────────────────
@@ -145,10 +185,10 @@ test("consentLines state the contract: local log, never leaves, how to stop", ()
 test("mergeWatchlist defaults to empty tiers — keel never ships a list", () => {
   assert.deepEqual(mergeWatchlist(), { observe: [], windowed: [] });
   assert.deepEqual(mergeWatchlist({}), { observe: [], windowed: [] });
-  assert.deepEqual(
-    mergeWatchlist({ observe: ["youtube.com"] }),
-    { observe: ["youtube.com"], windowed: [] }
-  );
+  assert.deepEqual(mergeWatchlist({ observe: ["youtube.com"] }), {
+    observe: ["youtube.com"],
+    windowed: [],
+  });
 });
 
 test("watchlistLines prints observe domains but only a COUNT for windowed (privacy)", () => {
@@ -169,12 +209,22 @@ test("watchlistLines says so when the list is empty", () => {
 });
 
 test("desktopSensorLines shows the input sensor toggle (default off)", () => {
-  assert.match(desktopSensorLines({ inputActivity: false }).join("\n"), /inputActivity.*off/);
-  assert.match(desktopSensorLines({ inputActivity: true }).join("\n"), /inputActivity.*ON/);
+  assert.match(
+    desktopSensorLines({ inputActivity: false }).join("\n"),
+    /inputActivity.*off/,
+  );
+  assert.match(
+    desktopSensorLines({ inputActivity: true }).join("\n"),
+    /inputActivity.*ON/,
+  );
 });
 
 test("mergeDesktopSensors defaults everything off", () => {
   assert.deepEqual(mergeDesktopSensors(), { inputActivity: false });
-  assert.deepEqual(mergeDesktopSensors({ inputActivity: true }), { inputActivity: true });
-  assert.deepEqual(mergeDesktopSensors({ inputActivity: "yes" }), { inputActivity: false });
+  assert.deepEqual(mergeDesktopSensors({ inputActivity: true }), {
+    inputActivity: true,
+  });
+  assert.deepEqual(mergeDesktopSensors({ inputActivity: "yes" }), {
+    inputActivity: false,
+  });
 });
