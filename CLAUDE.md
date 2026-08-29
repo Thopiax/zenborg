@@ -14,7 +14,8 @@ Zenborg keeps the garden metaphor and should. Plots, perennials, seasons, weeds 
 vocabulary does real work. *The substrate is unified; the metaphors are not.*
 
 Sibling instruments: **keel** (attentive tech — activity log, rules, tides) and **wake**
-(journals). They share a home on disk, not a codebase.
+(journals). They share a home on disk, not a codebase. Keel is being deprecated and
+absorbed: its Claude Code plugin now lives at `plugin/` in this repo.
 
 ## What it is
 
@@ -128,6 +129,7 @@ src/
 └── app/             routes — plant · cultivate · harvest
 src-tauri/src/       vault/{fs,watcher,write_tracker}, mcp_install
 mcp-server/          the second vault implementation + MCP tools (TOOLS.md)
+plugin/              Claude Code plugin (ex-keel): activity log, fences, gap practice
 ```
 
 Dependencies flow inward: domain ← application ← infrastructure ← UI.
