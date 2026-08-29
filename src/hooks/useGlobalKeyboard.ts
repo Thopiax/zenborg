@@ -8,9 +8,10 @@ import { MomentCreationService } from "@/application/services/MomentCreationServ
 import { MomentUpdateService } from "@/application/services/MomentUpdateService";
 import { allCommands } from "@/commands";
 import { isMomentError } from "@/domain/entities/Moment";
+import { classifyMentionIds } from "@/domain/services/MentionService";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
-import { moments$ } from "@/infrastructure/state/store";
+import { moments$, places$ } from "@/infrastructure/state/store";
 import {
   closeMomentForm,
   momentFormState$,
@@ -121,6 +122,8 @@ export function useGlobalKeyboard() {
         ? { day: uiAllocation.day, phase: uiAllocation.phase as Phase }
         : undefined;
 
+    const placeKeys = new Set(Object.values(places$.peek()).map((p) => p.key));
+
     const result = momentCreationService.createMomentWithWorkflow({
       name,
       areaId,
@@ -131,6 +134,7 @@ export function useGlobalKeyboard() {
       customMetric,
       startTime,
       mentionIds,
+      placeKeys,
     });
 
     // Handle result
@@ -198,9 +202,17 @@ export function useGlobalKeyboard() {
 
       if (!isMomentError(result)) {
         if (mentionIds && mentionIds.length > 0) {
-          result.personIds = mentionIds;
+          const placeKeys = new Set(
+            Object.values(places$.peek()).map((p) => p.key),
+          );
+          const classified = classifyMentionIds(mentionIds, placeKeys);
+          result.personIds =
+            classified.personIds.length > 0 ? classified.personIds : undefined;
+          result.placeIds =
+            classified.placeIds.length > 0 ? classified.placeIds : undefined;
         } else {
           delete result.personIds;
+          delete result.placeIds;
         }
         moments$[editingMomentId].set(result);
       }

@@ -2,9 +2,11 @@
 /**
  * garmin-report — read-only by default.
  *
- * Two questions, one command:
+ * Three questions, one command:
  *   1. Which Garmin activities does the garden already have a habit for?
  *   2. Have the phase bands drifted away from the sleep actually being slept?
+ *   3. (--plant-sleep) Plant sleep nights as moments so the calendar sidecar
+ *      publishes them to Apple Calendar.
  *
  * The domain logic is pure and lives in `src/domain/garmin/`. This file is the
  * I/O edge: it reads files, prints a report, and — only behind `--apply` —
@@ -31,6 +33,7 @@
  *   --min-nights <n>        refuse to propose below this many nights (default 7)
  *   --tz <zone>             IANA zone (default: host zone)
  *   --apply                 WRITE the proposed bands to phaseConfigs.json
+ *   --plant-sleep           WRITE sleep nights as moments to moments.json
  *   --json                  machine-readable output
  */
 
@@ -45,6 +48,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { plantSleep } from "../../src/application/use-cases/plantSleep.ts";
 import {
   checkMapIntegrity,
   coverage,
@@ -62,6 +66,10 @@ import {
   type SleepNight,
   summarizeNights,
 } from "../../src/domain/garmin/SleepPhaseService.ts";
+import {
+  findBinding,
+  parseIntegrationConfig,
+} from "../../src/domain/integration/IntegrationBinding.ts";
 
 // ---------------------------------------------------------------- args
 
@@ -74,6 +82,7 @@ interface Args {
   minNights: number;
   tz?: string;
   apply: boolean;
+  plantSleep: boolean;
   json: boolean;
 }
 
@@ -93,6 +102,7 @@ function parseArgs(argv: readonly string[]): Args {
     minNights: Number(get("--min-nights") ?? DEFAULT_MIN_NIGHTS),
     tz: get("--tz"),
     apply: argv.includes("--apply"),
+    plantSleep: argv.includes("--plant-sleep"),
     json: argv.includes("--json"),
   };
 }
@@ -253,6 +263,99 @@ function applyProposal(
   writeFileSync(tmp, `${JSON.stringify(next, null, 2)}\n`, "utf8");
   renameSync(tmp, path);
   return backup;
+}
+
+// ---------------------------------------------------------------- integrations config
+
+const GARMIN_SLEEP_SOURCE = "garmin.sleep";
+
+function readIntegrationsConfig(vault: string) {
+  const configPath = join(vault, "integrations.json");
+  if (!existsSync(configPath)) return parseIntegrationConfig(null);
+  try {
+    return parseIntegrationConfig(JSON.parse(readFileSync(configPath, "utf8")));
+  } catch {
+    return parseIntegrationConfig(null);
+  }
+}
+
+// ---------------------------------------------------------------- write seeds
+
+function isZenborgRunning(): boolean {
+  try {
+    execFileSync("pgrep", ["-x", "zenborg"], { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readMoments(vault: string): Record<string, Record<string, unknown>> {
+  const moments: Record<string, Record<string, unknown>> = {};
+  try {
+    const raw = JSON.parse(readFileSync(join(vault, "moments.json"), "utf8"));
+    if (typeof raw === "object" && raw !== null) {
+      for (const [id, val] of Object.entries(raw)) {
+        if (typeof val === "object" && val !== null) {
+          moments[id] = val as Record<string, unknown>;
+        }
+      }
+    }
+  } catch {
+    // empty collection
+  }
+  return moments;
+}
+
+function plantedDaysForHabit(
+  moments: Record<string, Record<string, unknown>>,
+  habitId: string,
+): Set<string> {
+  const days = new Set<string>();
+  for (const m of Object.values(moments)) {
+    if (m.habitId === habitId && typeof m.day === "string") {
+      days.add(m.day);
+    }
+  }
+  return days;
+}
+
+/**
+ * Stamp seeds with ids and timestamps and write atomically.
+ *
+ * Same vault obligations as `applyProposal`: preserve unknown fields, atomic
+ * write via tmp + rename, refuse while zenborg is running.
+ */
+function writeSeedsToVault(
+  vault: string,
+  moments: Record<string, Record<string, unknown>>,
+  seeds: readonly import("../../src/domain/garmin/SleepMomentService.ts").SleepMomentFields[],
+): void {
+  const now = new Date().toISOString();
+  for (const seed of seeds) {
+    const id = crypto.randomUUID();
+    moments[id] = {
+      id,
+      name: seed.name,
+      areaId: seed.areaId,
+      habitId: seed.habitId,
+      cycleId: null,
+      cyclePlanId: null,
+      phase: seed.phase,
+      day: seed.day,
+      order: 0,
+      startTime: seed.startTime,
+      durationMin: seed.durationMin,
+      tags: seed.tags.length > 0 ? seed.tags : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+  const momentsPath = join(vault, "moments.json");
+  const tmp = `${momentsPath}.tmp`;
+  mkdirSync(dirname(momentsPath), { recursive: true });
+  writeFileSync(tmp, `${JSON.stringify(moments, null, 2)}\n`, "utf8");
+  renameSync(tmp, momentsPath);
 }
 
 // ---------------------------------------------------------------- report
@@ -425,6 +528,56 @@ function main(): number {
           );
         }
         break;
+      }
+    }
+  }
+
+  // ---- deliverable 3: sleep -> moments (calendar)
+  if (args.plantSleep) {
+    out.push("");
+    out.push("  ── sleep → moments (calendar) ────────────────────────");
+    const integrations = readIntegrationsConfig(args.vault);
+    const sleepBinding = findBinding(integrations, GARMIN_SLEEP_SOURCE);
+    if (sleepBinding === null) {
+      out.push(
+        `${BULLET}SKIPPED — no "${GARMIN_SLEEP_SOURCE}" binding in $KAIROS_HOME/integrations.json`,
+      );
+      out.push(
+        `${BULLET}Add: { "version": 1, "bindings": [{ "source": "garmin.sleep", "areaId": "...", "habitId": "..." }] }`,
+      );
+    } else if (nights.length === 0) {
+      out.push(`${BULLET}SKIPPED — no sleep data (pass --sleep <file>)`);
+    } else {
+      try {
+        if (isZenborgRunning()) {
+          throw new Error(
+            "zenborg is running and is the writer for moments — quit it first.",
+          );
+        }
+        const moments = readMoments(args.vault);
+        const planted = plantedDaysForHabit(moments, sleepBinding.habitId);
+        const result = plantSleep({
+          nights,
+          binding: sleepBinding,
+          plantedDays: planted,
+          timeZone: args.tz,
+        });
+        if (result.seeds.length > 0) {
+          writeSeedsToVault(args.vault, moments, result.seeds);
+        }
+        out.push(
+          `${BULLET}${result.seeds.length} moments planted, ${result.skipped} skipped (${nights.length} nights)`,
+        );
+        json.sleepPlant = {
+          planted: result.seeds.length,
+          skipped: result.skipped,
+          total: nights.length,
+        };
+      } catch (e) {
+        out.push(`${BULLET}FAILED — ${(e as Error).message}`);
+        out.push("");
+        console.log(out.join("\n"));
+        return 1;
       }
     }
   }
