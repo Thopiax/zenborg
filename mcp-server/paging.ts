@@ -29,7 +29,11 @@ export function decodeCursor(cursor: string): {
   } catch {
     throw new Error("invalid cursor: malformed base64url or JSON");
   }
-  if (parsed.v !== 1 || typeof parsed.o !== "number" || typeof parsed.f !== "string") {
+  if (
+    parsed.v !== 1 ||
+    typeof parsed.o !== "number" ||
+    typeof parsed.f !== "string"
+  ) {
     throw new Error("invalid cursor: missing or unexpected fields");
   }
   return { offset: parsed.o, filterHash: parsed.f };

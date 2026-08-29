@@ -16,6 +16,14 @@ export type ToolRegistration = {
 
 export const TOOL_REGISTRY: ToolRegistration[] = [];
 
+/**
+ * `_payload` is `unknown`, and `stripNulls` only makes sense over an object.
+ * Arrays and primitives pass through untouched rather than being coerced.
+ */
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 const ResponseFormatSchema = z
   .enum(["concise", "full"])
   .optional()
@@ -72,7 +80,10 @@ export function defineTool<S extends z.ZodRawShape>(
       inputSchema: fullSchema,
       annotations,
     },
-    async (params: Record<string, unknown>) => {
+    // The SDK types this callback against the inferred zod shape. We erase it
+    // to one signature so every tool shares a single wrapper; the handler is
+    // still checked against `opts.schema` at the defineTool call site.
+    (async (params: Record<string, unknown>) => {
       const result = await opts.handler(params as never);
 
       if (result.isError) return result;
@@ -82,15 +93,15 @@ export function defineTool<S extends z.ZodRawShape>(
       if (format === "concise" && result._payload !== undefined) {
         const projected = opts.concise
           ? opts.concise(result._payload)
-          : stripNulls(result._payload);
+          : isPlainRecord(result._payload)
+            ? stripNulls(result._payload)
+            : result._payload;
         return {
-          content: [
-            { type: "text" as const, text: JSON.stringify(projected) },
-          ],
+          content: [{ type: "text" as const, text: JSON.stringify(projected) }],
         };
       }
 
       return { content: result.content };
-    },
+    }) as Parameters<typeof server.registerTool>[2],
   );
 }

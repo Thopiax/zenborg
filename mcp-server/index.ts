@@ -23,7 +23,6 @@ import {
   seedHostBlocks,
 } from "../src/application/use-cases/fences.ts";
 import { crossingTally, expandHome, fenceStore } from "./fences.js";
-import { resolveAddMoment } from "./moments.js";
 import { buildRelatedHabits } from "./graph.js";
 import {
   computeHealth,
@@ -32,6 +31,7 @@ import {
   parseVaultDay,
   resolveRhythm,
 } from "./health.js";
+import { resolveAddMoment } from "./moments.js";
 import { type RegistryPerson, selectPeopleToReach } from "./people.js";
 import { searchHabits, searchPeople, searchPlaces } from "./search.js";
 import { buildTagIndex, buildTagProfile } from "./tags.js";
@@ -118,7 +118,6 @@ function derivePhaseFromStartTime(startTime: string): Phase | null {
 // Result helpers + tool wrapper
 // ────────────────────────────────────────────────────────────────────────
 
-import { type ToolResult, ok, err, defineTool } from "./tooling.js";
 import { paginate } from "./paging.js";
 import {
   conciseArea,
@@ -130,6 +129,7 @@ import {
   conciseRelationship,
   stripNulls,
 } from "./serialize.js";
+import { defineTool, err, ok, type ToolResult } from "./tooling.js";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -320,8 +320,7 @@ defineTool(server, {
         areas[idOrName] ??
         Object.values(areas).find(
           (a) =>
-            a.isArchived &&
-            a.name.toLowerCase() === idOrName.toLowerCase(),
+            a.isArchived && a.name.toLowerCase() === idOrName.toLowerCase(),
         ) ??
         null;
     }
@@ -358,7 +357,10 @@ defineTool(server, {
     if (!area) return err(`Area not found or ambiguous: ${idOrName}`);
     areas[area.id] = { ...area, isArchived: true, updatedAt: nowIso() };
     writeCollection(VAULT_ROOT, "areas", areas);
-    return ok({ archived: area.id, deprecated: "use update_area { archived: true }" });
+    return ok({
+      archived: area.id,
+      deprecated: "use update_area { archived: true }",
+    });
   },
 });
 
@@ -427,12 +429,26 @@ defineTool(server, {
       .enum(["wilting"])
       .optional()
       .describe("Filter to habits with this health status."),
-    limit: z.number().int().min(1).max(200).optional().describe("Page size, default 50."),
-    cursor: z.string().optional().describe("Opaque cursor from a previous response."),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe("Page size, default 50."),
+    cursor: z
+      .string()
+      .optional()
+      .describe("Opaque cursor from a previous response."),
   },
   annotations: { readOnlyHint: true },
   concise: (p) => {
-    const env = p as { items: unknown[]; total: number; truncated: boolean; nextCursor: string | null };
+    const env = p as {
+      items: unknown[];
+      total: number;
+      truncated: boolean;
+      nextCursor: string | null;
+    };
     return { ...env, items: env.items.map((h) => conciseHabit(h as Habit)) };
   },
   handler: async ({ areaId, includeArchived, health, limit, cursor }) => {
@@ -455,15 +471,18 @@ defineTool(server, {
             const c = cycles[p.cycleId];
             if (!c) return false;
             return (
-              c.startDate <= isoToday &&
-              (!c.endDate || c.endDate >= isoToday)
+              c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday)
             );
           }) ?? null;
         return computeHealth(habit, activePlan, momentsArr, now) === "wilting";
       });
     }
     try {
-      const filter: Record<string, unknown> = { areaId, includeArchived, health };
+      const filter: Record<string, unknown> = {
+        areaId,
+        includeArchived,
+        health,
+      };
       return ok(paginate(list, filter, { limit, cursor }));
     } catch (e) {
       return err((e as Error).message);
@@ -731,8 +750,7 @@ defineTool(server, {
         }
         for (const pId of planIdsToDelete) delete plans[pId];
         deletedPlans = planIdsToDelete.length;
-        if (deletedPlans > 0)
-          writeCollection(VAULT_ROOT, "cyclePlans", plans);
+        if (deletedPlans > 0) writeCollection(VAULT_ROOT, "cyclePlans", plans);
       }
     }
 
@@ -837,9 +855,9 @@ defineTool(server, {
   description:
     'DEPRECATED — use list_habits { health: "wilting" } instead. List habits whose current health is "wilting".',
   schema: {
-      areaId: z.string().optional(),
-      attitude: AttitudeSchema.optional(),
-    },
+    areaId: z.string().optional(),
+    attitude: AttitudeSchema.optional(),
+  },
   annotations: { readOnlyHint: true },
   handler: async ({ areaId, attitude }) => {
     const habits = readCollection(VAULT_ROOT, "habits");
@@ -893,12 +911,13 @@ defineTool(server, {
 
 defineTool(server, {
   name: "list_people_to_reach",
-  description: "The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by registry `category` (friend, family, lover, colleague), or by `far` — whether they are based somewhere other than where the current cycle is being lived. Every row carries `far`; `null` means unknown, either because the registry has no base place for them or because the season states none, and nobody is ever dropped by a distance that could not be checked.",
+  description:
+    "The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by registry `category` (friend, family, lover, colleague), or by `far` — whether they are based somewhere other than where the current cycle is being lived. Every row carries `far`; `null` means unknown, either because the registry has no base place for them or because the season states none, and nobody is ever dropped by a distance that could not be checked.",
   schema: {
-      category: z.string().optional(),
-      limit: z.number().int().positive().optional(),
-      far: z.boolean().optional(),
-    },
+    category: z.string().optional(),
+    limit: z.number().int().positive().optional(),
+    far: z.boolean().optional(),
+  },
   annotations: { readOnlyHint: true },
   handler: async ({ category, limit, far }) => {
     const registryPeople: RegistryPerson[] = Object.values(
@@ -934,9 +953,9 @@ defineTool(server, {
   name: "list_people",
   description: "List all people in the registry. Filter by status or category.",
   schema: {
-      status: PersonStatusSchema.optional(),
-      category: z.string().optional(),
-    },
+    status: PersonStatusSchema.optional(),
+    category: z.string().optional(),
+  },
   annotations: { readOnlyHint: true },
   concise: (p) => (p as unknown[]).map((x) => concisePerson(x as Person)),
   handler: async ({ status, category }) => {
@@ -965,18 +984,19 @@ defineTool(server, {
 
 defineTool(server, {
   name: "create_person",
-  description: 'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `aliases` are nicknames or relational terms (e.g. ["mom", "mama"]). `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.',
+  description:
+    'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `aliases` are nicknames or relational terms (e.g. ["mom", "mama"]). `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.',
   schema: {
-      name: z.string(),
-      key: z.string().optional(),
-      aliases: z.array(z.string()).optional(),
-      cadence: CadenceSchema.nullable().optional(),
-      status: PersonStatusSchema.optional(),
-      category: z.string().nullable().optional(),
-      basePlace: z.string().nullable().optional(),
-      emoji: z.string().nullable().optional(),
-      isSelf: z.boolean().optional(),
-    },
+    name: z.string(),
+    key: z.string().optional(),
+    aliases: z.array(z.string()).optional(),
+    cadence: CadenceSchema.nullable().optional(),
+    status: PersonStatusSchema.optional(),
+    category: z.string().nullable().optional(),
+    basePlace: z.string().nullable().optional(),
+    emoji: z.string().nullable().optional(),
+    isSelf: z.boolean().optional(),
+  },
   concise: (p) => concisePerson((p as any).created),
   handler: async (params) => {
     const people = readCollection(VAULT_ROOT, "people");
@@ -1017,18 +1037,19 @@ defineTool(server, {
 
 defineTool(server, {
   name: "update_person",
-  description: 'Update a person by id or key. Only provided fields are changed. Pass `aliases` to set nicknames (e.g. ["mom", "mama"]); pass `[]` to clear.',
+  description:
+    'Update a person by id or key. Only provided fields are changed. Pass `aliases` to set nicknames (e.g. ["mom", "mama"]); pass `[]` to clear.',
   schema: {
-      idOrKey: z.string(),
-      name: z.string().optional(),
-      aliases: z.array(z.string()).optional(),
-      cadence: CadenceSchema.nullable().optional(),
-      status: PersonStatusSchema.optional(),
-      category: z.string().nullable().optional(),
-      basePlace: z.string().nullable().optional(),
-      emoji: z.string().nullable().optional(),
-      isSelf: z.boolean().optional(),
-    },
+    idOrKey: z.string(),
+    name: z.string().optional(),
+    aliases: z.array(z.string()).optional(),
+    cadence: CadenceSchema.nullable().optional(),
+    status: PersonStatusSchema.optional(),
+    category: z.string().nullable().optional(),
+    basePlace: z.string().nullable().optional(),
+    emoji: z.string().nullable().optional(),
+    isSelf: z.boolean().optional(),
+  },
   concise: (p) => concisePerson((p as any).updated),
   handler: async ({ idOrKey, ...updates }) => {
     const people = readCollection(VAULT_ROOT, "people");
@@ -1084,7 +1105,8 @@ defineTool(server, {
 
 defineTool(server, {
   name: "delete_person",
-  description: "Remove a person from the registry. Does NOT remove their key from existing moments.",
+  description:
+    "Remove a person from the registry. Does NOT remove their key from existing moments.",
   schema: { idOrKey: z.string() },
   annotations: { destructiveHint: true },
   handler: async ({ idOrKey }) => {
@@ -1134,19 +1156,20 @@ defineTool(server, {
 
 defineTool(server, {
   name: "create_place",
-  description: 'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `address` is a street/postal address for calendar event locations. `coordinates` is `{ lat, lng }` for map pins. `url` is a map link.',
+  description:
+    'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `address` is a street/postal address for calendar event locations. `coordinates` is `{ lat, lng }` for map pins. `url` is a map link.',
   schema: {
-      name: z.string(),
-      key: z.string().optional(),
-      parentKey: z.string().nullable().optional(),
-      address: z.string().nullable().optional(),
-      coordinates: z
-        .object({ lat: z.number(), lng: z.number() })
-        .nullable()
-        .optional(),
-      emoji: z.string().nullable().optional(),
-      url: z.string().nullable().optional(),
-    },
+    name: z.string(),
+    key: z.string().optional(),
+    parentKey: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+    coordinates: z
+      .object({ lat: z.number(), lng: z.number() })
+      .nullable()
+      .optional(),
+    emoji: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
+  },
   concise: (p) => concisePlace((p as any).created),
   handler: async (params) => {
     const places = readCollection(VAULT_ROOT, "places");
@@ -1179,17 +1202,17 @@ defineTool(server, {
   name: "update_place",
   description: "Update a place by id or key. Only provided fields are changed.",
   schema: {
-      idOrKey: z.string(),
-      name: z.string().optional(),
-      parentKey: z.string().nullable().optional(),
-      address: z.string().nullable().optional(),
-      coordinates: z
-        .object({ lat: z.number(), lng: z.number() })
-        .nullable()
-        .optional(),
-      emoji: z.string().nullable().optional(),
-      url: z.string().nullable().optional(),
-    },
+    idOrKey: z.string(),
+    name: z.string().optional(),
+    parentKey: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+    coordinates: z
+      .object({ lat: z.number(), lng: z.number() })
+      .nullable()
+      .optional(),
+    emoji: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
+  },
   concise: (p) => concisePlace((p as any).updated),
   handler: async ({ idOrKey, ...updates }) => {
     const places = readCollection(VAULT_ROOT, "places");
@@ -1218,7 +1241,8 @@ defineTool(server, {
 
 defineTool(server, {
   name: "delete_place",
-  description: "Remove a place from the registry. Does NOT remove its key from existing moments, habits, or cycles.",
+  description:
+    "Remove a place from the registry. Does NOT remove its key from existing moments, habits, or cycles.",
   schema: { idOrKey: z.string() },
   annotations: { destructiveHint: true },
   handler: async ({ idOrKey }) => {
@@ -1240,14 +1264,16 @@ defineTool(server, {
 
 defineTool(server, {
   name: "list_relationships",
-  description: 'List all relationships, optionally filtered by entity type, entity id, or label. Pass `entityType` + `entityId` to find all edges touching one entity (both directions for mutual edges). Pass `label` to filter by edge label (e.g. "lives-in").',
+  description:
+    'List all relationships, optionally filtered by entity type, entity id, or label. Pass `entityType` + `entityId` to find all edges touching one entity (both directions for mutual edges). Pass `label` to filter by edge label (e.g. "lives-in").',
   schema: {
-      entityType: EntityTypeSchema.optional(),
-      entityId: z.string().optional(),
-      label: z.string().optional(),
-    },
+    entityType: EntityTypeSchema.optional(),
+    entityId: z.string().optional(),
+    label: z.string().optional(),
+  },
   annotations: { readOnlyHint: true },
-  concise: (p) => (p as unknown[]).map((r) => conciseRelationship(r as Relationship)),
+  concise: (p) =>
+    (p as unknown[]).map((r) => conciseRelationship(r as Relationship)),
   handler: async ({ entityType, entityId, label }) => {
     const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
     const filtered = rels.filter((r) => {
@@ -1275,15 +1301,16 @@ defineTool(server, {
 
 defineTool(server, {
   name: "create_relationship",
-  description: 'Create an edge between two entities. `fromType`/`fromId` and `toType`/`toId` identify the endpoints. `label` is a freeform slug (e.g. "mother-of", "lives-in", "trains-at"). `direction` defaults to "mutual".',
+  description:
+    'Create an edge between two entities. `fromType`/`fromId` and `toType`/`toId` identify the endpoints. `label` is a freeform slug (e.g. "mother-of", "lives-in", "trains-at"). `direction` defaults to "mutual".',
   schema: {
-      fromType: EntityTypeSchema,
-      fromId: z.string(),
-      toType: EntityTypeSchema,
-      toId: z.string(),
-      label: z.string().min(1),
-      direction: RelationshipDirectionSchema.optional(),
-    },
+    fromType: EntityTypeSchema,
+    fromId: z.string(),
+    toType: EntityTypeSchema,
+    toId: z.string(),
+    label: z.string().min(1),
+    direction: RelationshipDirectionSchema.optional(),
+  },
   concise: (p) => conciseRelationship((p as any).created),
   handler: async (params) => {
     const rels = readCollection(VAULT_ROOT, "relationships");
@@ -1336,10 +1363,10 @@ defineTool(server, {
   description:
     "DEPRECATED — use list_relationships { entityType, entityId } instead. Get all entities related to a given entity.",
   schema: {
-      entityType: EntityTypeSchema,
-      entityId: z.string(),
-      label: z.string().optional(),
-    },
+    entityType: EntityTypeSchema,
+    entityId: z.string(),
+    label: z.string().optional(),
+  },
   annotations: { readOnlyHint: true },
   handler: async ({ entityType, entityId, label }) => {
     const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
@@ -1394,11 +1421,12 @@ defineTool(server, {
 
 defineTool(server, {
   name: "mention",
-  description: "Mention people and/or places on a moment, like @-tagging. Each name is resolved against the people and places registries by key. Matched people go to `personIds`, matched places go to `placeIds`. Unresolved names are returned so you can create them first. Additive: existing mentions are kept.",
+  description:
+    "Mention people and/or places on a moment, like @-tagging. Each name is resolved against the people and places registries by key. Matched people go to `personIds`, matched places go to `placeIds`. Unresolved names are returned so you can create them first. Additive: existing mentions are kept.",
   schema: {
-      momentId: z.string(),
-      entities: z.array(z.string()),
-    },
+    momentId: z.string(),
+    entities: z.array(z.string()),
+  },
   handler: async ({ momentId, entities }) => {
     const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[momentId];
@@ -1460,7 +1488,8 @@ defineTool(server, {
 
 defineTool(server, {
   name: "get_cycle_planning_proposals",
-  description: "Read-only: compute habit proposals for a cycle based on attitude + rhythm + health. Caller decides what to accept.",
+  description:
+    "Read-only: compute habit proposals for a cycle based on attitude + rhythm + health. Caller decides what to accept.",
   schema: { cycleId: z.string() },
   annotations: { readOnlyHint: true },
   handler: async ({ cycleId }) => {
@@ -1549,7 +1578,8 @@ defineTool(server, {
 
 defineTool(server, {
   name: "get_cycle_review",
-  description: "Read-only: descriptive review of a cycle. No aggregate scores. Observational mirror only.",
+  description:
+    "Read-only: descriptive review of a cycle. No aggregate scores. Observational mirror only.",
   schema: { cycleId: z.string() },
   annotations: { readOnlyHint: true },
   handler: async ({ cycleId }) => {
@@ -1662,10 +1692,11 @@ function currentPlaceIds(): string[] {
 
 defineTool(server, {
   name: "list_cycles",
-  description: 'List cycles. filter: "active"/"current" = contains today (derived from dates), "upcoming" = starts in future, "all" = everything. Default "all".',
+  description:
+    'List cycles. filter: "active"/"current" = contains today (derived from dates), "upcoming" = starts in future, "all" = everything. Default "all".',
   schema: {
-      filter: z.enum(["active", "upcoming", "current", "all"]).optional(),
-    },
+    filter: z.enum(["active", "upcoming", "current", "all"]).optional(),
+  },
   annotations: { readOnlyHint: true },
   concise: (p) => (p as unknown[]).map((c) => conciseCycle(c as Cycle)),
   handler: async ({ filter = "all" }) => {
@@ -1718,25 +1749,25 @@ defineTool(server, {
   description:
     'Create a new cycle (season). If startDate is omitted, defaults to today. Pass template ("week"=7d, "month"=28d, "quarter"=90d) OR endDate, not both. If neither, cycle is open-ended.',
   schema: {
-      name: z.string().min(1),
-      template: z
-        .enum(["week", "month", "quarter"])
-        .optional()
-        .describe(
-          'Computes endDate: "week"=7d, "month"=28d, "quarter"=90d from startDate.',
-        ),
-      startDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, "startDate must be YYYY-MM-DD")
-        .optional(),
-      endDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, "endDate must be YYYY-MM-DD")
-        .nullable()
-        .optional(),
-      intention: z.string().optional(),
-      placeIds: z.array(z.string()).optional(),
-    },
+    name: z.string().min(1),
+    template: z
+      .enum(["week", "month", "quarter"])
+      .optional()
+      .describe(
+        'Computes endDate: "week"=7d, "month"=28d, "quarter"=90d from startDate.',
+      ),
+    startDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "startDate must be YYYY-MM-DD")
+      .optional(),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "endDate must be YYYY-MM-DD")
+      .nullable()
+      .optional(),
+    intention: z.string().optional(),
+    placeIds: z.array(z.string()).optional(),
+  },
   concise: (p) => conciseCycle((p as any).created),
   handler: async ({
     name,
@@ -1754,8 +1785,7 @@ defineTool(server, {
     const resolvedStart = startDate ?? new Date().toISOString().slice(0, 10);
     let resolvedEnd: string | null = endDate ?? null;
     if (template) {
-      const days =
-        template === "week" ? 7 : template === "month" ? 28 : 90;
+      const days = template === "week" ? 7 : template === "month" ? 28 : 90;
       resolvedEnd = addDays(resolvedStart, days - 1);
     }
     const cycle: Cycle = {
@@ -1779,7 +1809,7 @@ defineTool(server, {
 defineTool(server, {
   name: "quick_create_cycle",
   description:
-    'DEPRECATED — use plan_cycle { template } instead. Shortcut for common cycle templates.',
+    "DEPRECATED — use plan_cycle { template } instead. Shortcut for common cycle templates.",
   schema: {
     name: z.string().min(1),
     template: z.enum(["week", "month", "quarter"]),
@@ -1816,23 +1846,24 @@ defineTool(server, {
 
 defineTool(server, {
   name: "update_cycle",
-  description: "Partially update a cycle (name, dates, intention, reflection). Writing a reflection here stamps it as a machine draft, so harvest never shows it as the human's own words.",
+  description:
+    "Partially update a cycle (name, dates, intention, reflection). Writing a reflection here stamps it as a machine draft, so harvest never shows it as the human's own words.",
   schema: {
-      id: z.string(),
-      name: z.string().min(1).optional(),
-      startDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional(),
-      endDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .nullable()
-        .optional(),
-      intention: z.string().optional(),
-      reflection: z.string().optional(),
-      placeIds: z.array(z.string()).nullable().optional(),
-    },
+    id: z.string(),
+    name: z.string().min(1).optional(),
+    startDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional(),
+    intention: z.string().optional(),
+    reflection: z.string().optional(),
+    placeIds: z.array(z.string()).nullable().optional(),
+  },
   concise: (p) => conciseCycle((p as any).updated),
   handler: async (params) => {
     const { id, ...updates } = params;
@@ -1882,12 +1913,12 @@ defineTool(server, {
   description:
     "DEPRECATED — use update_cycle { endDate } instead. Set a cycle's endDate (defaults to today).",
   schema: {
-      id: z.string(),
-      endDate: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional(),
-    },
+    id: z.string(),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+  },
   handler: async ({ id, endDate }) => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[id];
@@ -1909,7 +1940,8 @@ defineTool(server, {
 
 defineTool(server, {
   name: "delete_cycle",
-  description: "Permanently delete a cycle. Cascades: deletes all moments + cycle plans scoped to this cycle.",
+  description:
+    "Permanently delete a cycle. Cascades: deletes all moments + cycle plans scoped to this cycle.",
   schema: { id: z.string() },
   annotations: { destructiveHint: true },
   handler: async ({ id }) => {
@@ -1943,7 +1975,8 @@ defineTool(server, {
 
 defineTool(server, {
   name: "get_running_cycle",
-  description: "Orientation snapshot: the active cycle with its intention, elapsed/remaining days, and per-habit health. One tool call instead of stitching list_cycles + list_cycle_plans + list_wilting_habits.",
+  description:
+    "Orientation snapshot: the active cycle with its intention, elapsed/remaining days, and per-habit health. One tool call instead of stitching list_cycles + list_cycle_plans + list_wilting_habits.",
   schema: {},
   annotations: { readOnlyHint: true },
   handler: async () => {
@@ -2046,7 +2079,7 @@ const MomentAllocationFilter = z.enum([
 defineTool(server, {
   name: "list_moments",
   description:
-    'List moments with optional structured filters. Paginated: when `truncated` is true, pass `nextCursor` back with the same filters to continue. `tags` requires ALL given tags (AND).',
+    "List moments with optional structured filters. Paginated: when `truncated` is true, pass `nextCursor` back with the same filters to continue. `tags` requires ALL given tags (AND).",
   schema: {
     filter: z
       .object({
@@ -2062,18 +2095,37 @@ defineTool(server, {
         tags: z.array(z.string()).nonempty().optional(),
       })
       .optional(),
-    limit: z.number().int().min(1).max(200).optional().describe("Page size, default 50."),
-    cursor: z.string().optional().describe("Opaque cursor from a previous response."),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe("Page size, default 50."),
+    cursor: z
+      .string()
+      .optional()
+      .describe("Opaque cursor from a previous response."),
   },
   annotations: { readOnlyHint: true },
   concise: (p) => {
-    const env = p as { items: unknown[]; total: number; truncated: boolean; nextCursor: string | null };
+    const env = p as {
+      items: unknown[];
+      total: number;
+      truncated: boolean;
+      nextCursor: string | null;
+    };
     return { ...env, items: env.items.map((m) => conciseMoment(m as Moment)) };
   },
   handler: async ({ filter, limit, cursor }) => {
     const moments = readCollection(VAULT_ROOT, "moments");
     const wantedTags = filter?.tags ? normalizeTags(filter.tags) : null;
-    const PHASE_ORDER: Record<string, number> = { MORNING: 0, AFTERNOON: 1, EVENING: 2, NIGHT: 3 };
+    const PHASE_ORDER: Record<string, number> = {
+      MORNING: 0,
+      AFTERNOON: 1,
+      EVENING: 2,
+      NIGHT: 3,
+    };
     const list = Object.values(moments).filter((m) => {
       if (!filter) return true;
       if (filter.areaId && m.areaId !== filter.areaId) return false;
@@ -2190,7 +2242,21 @@ function buildMoment(params: {
   };
 }
 
-function runAddMoment(input: Parameters<typeof resolveAddMoment>[0]) {
+/**
+ * The write half of `resolveAddMoment`: persist the moment it resolved.
+ *
+ * The return type is written out rather than inferred. Inference gives each
+ * branch an optional `err?: undefined` / `created?: undefined` counterpart,
+ * which defeats `"err" in result` narrowing at the call sites and leaves
+ * `result.err` as `string | undefined`. Two disjoint shapes narrow cleanly.
+ */
+type RunAddMomentResult =
+  | { err: string }
+  | { created: Moment; dayViewOverflow?: { count: number } };
+
+function runAddMoment(
+  input: Parameters<typeof resolveAddMoment>[0],
+): RunAddMomentResult {
   const areas = readCollection(VAULT_ROOT, "areas");
   const habits = readCollection(VAULT_ROOT, "habits");
   const cycles = readCollection(VAULT_ROOT, "cycles");
@@ -2305,7 +2371,14 @@ defineTool(server, {
   },
   concise: (p) => conciseMoment((p as any).created),
   handler: async (params) => {
-    const result = runAddMoment(params);
+    // This deprecated schema still accepts `phase: null` (the pre-add_moment
+    // shape); AddMomentInput has no null there, so drop it rather than widen
+    // the input type for a tool on its way out.
+    const { phase, ...rest } = params;
+    const result = runAddMoment({
+      ...rest,
+      ...(phase ? { phase } : {}),
+    });
     if ("err" in result) return err(result.err);
     return ok({ ...result, deprecated: "use add_moment" });
   },
@@ -2313,26 +2386,33 @@ defineTool(server, {
 
 defineTool(server, {
   name: "update_moment",
-  description: "Partially update a moment. Set `day` to allocate/move; `day: null` returns a spontaneous moment to the drawing board (plan-linked moments must use unallocate_moment). When `startTime` is set (not null), phase is auto-derived from phase configs. `startTime`/`durationMin` override what the moment inherited from its habit schedule; pass null to clear. `refs` replaces the URLs; pass `[]` to clear. `personIds`/`placeIds`/`placeUrl`: pass null or [] to clear, omit to leave alone.",
+  description:
+    "Partially update a moment. Set `day` to allocate/move; `day: null` returns a spontaneous moment to the drawing board (plan-linked moments must use unallocate_moment). When `startTime` is set (not null), phase is auto-derived from phase configs. `startTime`/`durationMin` override what the moment inherited from its habit schedule; pass null to clear. `refs` replaces the URLs; pass `[]` to clear. `personIds`/`placeIds`/`placeUrl`: pass null or [] to clear, omit to leave alone.",
   schema: {
-      id: z.string(),
-      name: z.string().optional(),
-      areaId: z.string().optional(),
-      day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional()
-        .describe("Set to allocate/move; null to return a spontaneous moment to the drawing board."),
-      order: z.number().int().nonnegative().optional(),
-      emoji: z.string().nullable().optional(),
-      phase: PhaseSchema.nullable().optional(),
-      tags: z.array(z.string()).optional(),
-      personIds: z.array(z.string()).nullable().optional(),
-      placeIds: z.array(z.string()).nullable().optional(),
-      placeUrl: z.string().nullable().optional(),
-      customMetric: CustomMetricSchema.optional(),
-      startTime: StartTimeSchema.nullable().optional(),
-      durationMin: z.number().int().positive().nullable().optional(),
-      refs: z.array(z.string()).optional(),
-      status: z.enum(["tentative", "accepted"]).optional(),
-    },
+    id: z.string(),
+    name: z.string().optional(),
+    areaId: z.string().optional(),
+    day: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional()
+      .describe(
+        "Set to allocate/move; null to return a spontaneous moment to the drawing board.",
+      ),
+    order: z.number().int().nonnegative().optional(),
+    emoji: z.string().nullable().optional(),
+    phase: PhaseSchema.nullable().optional(),
+    tags: z.array(z.string()).optional(),
+    personIds: z.array(z.string()).nullable().optional(),
+    placeIds: z.array(z.string()).nullable().optional(),
+    placeUrl: z.string().nullable().optional(),
+    customMetric: CustomMetricSchema.optional(),
+    startTime: StartTimeSchema.nullable().optional(),
+    durationMin: z.number().int().positive().nullable().optional(),
+    refs: z.array(z.string()).optional(),
+    status: z.enum(["tentative", "accepted"]).optional(),
+  },
   concise: (p) => conciseMoment((p as any).updated),
   handler: async (params) => {
     const { id, ...updates } = params;
@@ -2441,7 +2521,8 @@ defineTool(server, {
         }
         const allMoments = Object.values(moments);
         next.order =
-          updates.order ?? countMomentsInPhase(allMoments, updates.day, next.phase, id);
+          updates.order ??
+          countMomentsInPhase(allMoments, updates.day, next.phase, id);
         const cycles = readCollection(VAULT_ROOT, "cycles");
         const dayMs = Date.parse(updates.day);
         let covCycleId: string | null = null;
@@ -2449,7 +2530,10 @@ defineTool(server, {
           const startMs = Date.parse(c.startDate);
           const endMs = c.endDate ? Date.parse(c.endDate) : Infinity;
           if (!Number.isNaN(startMs) && dayMs >= startMs && dayMs <= endMs) {
-            if (!covCycleId || c.startDate > (cycles[covCycleId]?.startDate ?? "")) {
+            if (
+              !covCycleId ||
+              c.startDate > (cycles[covCycleId]?.startDate ?? "")
+            ) {
               covCycleId = c.id;
             }
           }
@@ -2484,13 +2568,13 @@ defineTool(server, {
   description:
     "DEPRECATED — use update_moment { day, phase } instead. Allocate a moment to a specific (day, phase).",
   schema: {
-      id: z.string(),
-      day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      phase: PhaseSchema.optional(),
-      order: z.number().int().nonnegative().optional(),
-      startTime: StartTimeSchema.optional(),
-      durationMin: z.number().int().positive().optional(),
-    },
+    id: z.string(),
+    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    phase: PhaseSchema.optional(),
+    order: z.number().int().nonnegative().optional(),
+    startTime: StartTimeSchema.optional(),
+    durationMin: z.number().int().positive().optional(),
+  },
   concise: (p) => conciseMoment((p as any).allocated),
   handler: async ({
     id,
@@ -2536,7 +2620,8 @@ defineTool(server, {
 
 defineTool(server, {
   name: "unallocate_moment",
-  description: "Delete the moment row for a previously-allocated plan-linked moment. Virtual deck ghost reappears automatically as allocatedCount drops. Spontaneous moments (cyclePlanId === null) must use delete_moment instead.",
+  description:
+    "Delete the moment row for a previously-allocated plan-linked moment. Virtual deck ghost reappears automatically as allocatedCount drops. Spontaneous moments (cyclePlanId === null) must use delete_moment instead.",
   schema: { id: z.string() },
   handler: async ({ id }) => {
     const moments = readCollection(VAULT_ROOT, "moments");
@@ -2731,7 +2816,8 @@ defineTool(server, {
 
 defineTool(server, {
   name: "get_active_moment",
-  description: "Read the current intention pointer, resolved to its moment and area. Returns null when nothing is active.",
+  description:
+    "Read the current intention pointer, resolved to its moment and area. Returns null when nothing is active.",
   schema: {},
   annotations: { readOnlyHint: true },
   handler: async () => {
@@ -2774,20 +2860,21 @@ defineTool(server, {
 
 defineTool(server, {
   name: "update_phase_config",
-  description: "Update a phase configuration (label, emoji, color, hours, visibility, order).",
+  description:
+    "Update a phase configuration (label, emoji, color, hours, visibility, order).",
   schema: {
-      id: z.string(),
-      label: z.string().min(1).optional(),
-      emoji: z.string().min(1).optional(),
-      color: z
-        .string()
-        .regex(/^#[0-9a-fA-F]{6}$/)
-        .optional(),
-      startHour: z.number().int().min(0).max(23).optional(),
-      endHour: z.number().int().min(0).max(23).optional(),
-      isVisible: z.boolean().optional(),
-      order: z.number().int().nonnegative().optional(),
-    },
+    id: z.string(),
+    label: z.string().min(1).optional(),
+    emoji: z.string().min(1).optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+    startHour: z.number().int().min(0).max(23).optional(),
+    endHour: z.number().int().min(0).max(23).optional(),
+    isVisible: z.boolean().optional(),
+    order: z.number().int().nonnegative().optional(),
+  },
   handler: async (params) => {
     const { id, ...updates } = params;
     const configs = readCollection(VAULT_ROOT, "phaseConfigs");
@@ -2820,10 +2907,11 @@ defineTool(server, {
 
 defineTool(server, {
   name: "list_tags",
-  description: "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read any namespace as an index. Sorted by total usage. People and places are NOT here: they are entity keys in `Moment.personIds`, `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds` — ask those fields, or `list_people_to_reach`. A `person-` or `place-` tag surfacing in this index is a habit the migration has not reached, not the index for that type.",
+  description:
+    "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read any namespace as an index. Sorted by total usage. People and places are NOT here: they are entity keys in `Moment.personIds`, `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds` — ask those fields, or `list_people_to_reach`. A `person-` or `place-` tag surfacing in this index is a habit the migration has not reached, not the index for that type.",
   schema: {
-      prefix: z.string().optional(),
-    },
+    prefix: z.string().optional(),
+  },
   annotations: { readOnlyHint: true },
   handler: async ({ prefix }) => {
     const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
@@ -2835,10 +2923,11 @@ defineTool(server, {
 
 defineTool(server, {
   name: "get_tag_profile",
-  description: 'One tag\'s neighbourhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments, first/last day, and a recent sample. Generic tag aggregation — it never parsed a prefix and does not know what a person or a place is. "What did I do with someone, and where?" is now a question for `personIds` and `placeIds`, which hold references rather than strings.',
+  description:
+    'One tag\'s neighbourhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments, first/last day, and a recent sample. Generic tag aggregation — it never parsed a prefix and does not know what a person or a place is. "What did I do with someone, and where?" is now a question for `personIds` and `placeIds`, which hold references rather than strings.',
   schema: {
-      tag: z.string().min(1),
-    },
+    tag: z.string().min(1),
+  },
   annotations: { readOnlyHint: true },
   handler: async ({ tag }) => {
     const normalized = normalizeTags([tag])[0];
@@ -2858,8 +2947,8 @@ defineTool(server, {
   description:
     "DEPRECATED — use get_tag_profile (includes relatedHabits). A habit's derived edges in the garden graph.",
   schema: {
-      habitId: z.string(),
-    },
+    habitId: z.string(),
+  },
   annotations: { readOnlyHint: true },
   handler: async ({ habitId }) => {
     const habits = Object.values(readCollection(VAULT_ROOT, "habits"));
@@ -2878,14 +2967,11 @@ defineTool(server, {
 defineTool(server, {
   name: "search",
   description:
-    'Fuzzy-search habits, people, or places by name. Returns matches ranked by confidence (exact > prefix > substring > levenshtein). Use to resolve natural-language entity references. Pass areaId/includeArchived only for habit searches.',
+    "Fuzzy-search habits, people, or places by name. Returns matches ranked by confidence (exact > prefix > substring > levenshtein). Use to resolve natural-language entity references. Pass areaId/includeArchived only for habit searches.",
   schema: {
     type: z.enum(["habit", "person", "place"]),
     query: z.string().describe("Name, alias, or approximate spelling"),
-    areaId: z
-      .string()
-      .optional()
-      .describe("habit only: restrict to this area"),
+    areaId: z.string().optional().describe("habit only: restrict to this area"),
     includeArchived: z
       .boolean()
       .optional()
@@ -2947,18 +3033,18 @@ defineTool(server, {
   description:
     "DEPRECATED — use search { type: 'habit' } instead. Fuzzy-search habits by name or alias.",
   schema: {
-      query: z
-        .string()
-        .describe("The habit name, alias, or approximate spelling to search for"),
-      areaId: z
-        .string()
-        .optional()
-        .describe("Restrict results to habits in this area"),
-      includeArchived: z
-        .boolean()
-        .optional()
-        .describe("Include archived habits in results (default false)"),
-    },
+    query: z
+      .string()
+      .describe("The habit name, alias, or approximate spelling to search for"),
+    areaId: z
+      .string()
+      .optional()
+      .describe("Restrict results to habits in this area"),
+    includeArchived: z
+      .boolean()
+      .optional()
+      .describe("Include archived habits in results (default false)"),
+  },
   annotations: { readOnlyHint: true },
   handler: async ({ query, areaId, includeArchived }) => {
     const habits = readCollection(VAULT_ROOT, "habits");
@@ -2984,12 +3070,12 @@ defineTool(server, {
   description:
     "DEPRECATED — use search { type: 'person' } instead. Fuzzy-search people by name or key.",
   schema: {
-      query: z
-        .string()
-        .describe(
-          "The person's name, key, or approximate spelling to search for",
-        ),
-    },
+    query: z
+      .string()
+      .describe(
+        "The person's name, key, or approximate spelling to search for",
+      ),
+  },
   annotations: { readOnlyHint: true },
   handler: async ({ query }) => {
     const people = readCollection(VAULT_ROOT, "people");
@@ -3014,10 +3100,10 @@ defineTool(server, {
   description:
     "DEPRECATED — use search { type: 'place' } instead. Fuzzy-search places by name, key, or parent key.",
   schema: {
-      query: z
-        .string()
-        .describe("The place name, key, or approximate spelling to search for"),
-    },
+    query: z
+      .string()
+      .describe("The place name, key, or approximate spelling to search for"),
+  },
   annotations: { readOnlyHint: true },
   handler: async ({ query }) => {
     const places = readCollection(VAULT_ROOT, "places");
@@ -3077,29 +3163,30 @@ const fenceDeps: FenceDeps = {
 
 defineTool(server, {
   name: "set_fence",
-  description: 'Declare a session fence: "only this stream, and friction on anything else". Builds a declared rule (never derived — fences come from what you say here, nothing else) and writes it to the fences collection, which zenborg alone writes. Every rung of the escalation ladder carries an exit; a fence can ask, never deny. Areas may be passed by name ("Themia") or id; paths are absolute prefixes INSIDE the fence (~ expands).',
+  description:
+    'Declare a session fence: "only this stream, and friction on anything else". Builds a declared rule (never derived — fences come from what you say here, nothing else) and writes it to the fences collection, which zenborg alone writes. Every rung of the escalation ladder carries an exit; a fence can ask, never deny. Areas may be passed by name ("Themia") or id; paths are absolute prefixes INSIDE the fence (~ expands).',
   schema: {
-      label: z
-        .string()
-        .min(1)
-        .describe(
-          'What the stream is called — shown back at every crossing, e.g. "Themia data"',
-        ),
-      paths: z
-        .array(z.string().min(1))
-        .min(1)
-        .describe("Absolute path prefixes the fence encloses"),
-      areas: z
-        .array(z.string().min(1))
-        .min(1)
-        .describe(
-          "Areas the fence encloses — names or ids. Attention is expected to return to one of them.",
-        ),
-      description: z
-        .string()
-        .optional()
-        .describe("Optional: the declaration in the principal's own words"),
-    },
+    label: z
+      .string()
+      .min(1)
+      .describe(
+        'What the stream is called — shown back at every crossing, e.g. "Themia data"',
+      ),
+    paths: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Absolute path prefixes the fence encloses"),
+    areas: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe(
+        "Areas the fence encloses — names or ids. Attention is expected to return to one of them.",
+      ),
+    description: z
+      .string()
+      .optional()
+      .describe("Optional: the declaration in the principal's own words"),
+  },
   handler: async ({ label, paths, areas, description }) => {
     const result = await declareFence(fenceDeps, {
       label,
@@ -3124,33 +3211,34 @@ defineTool(server, {
 
 defineTool(server, {
   name: "set_host_block",
-  description: "Declare a standing block on a host, as a rule that says what it is for. Browser-enforced by default — the extension actuates it from the pushed armed record; pass `resolverProfile` for a resolver-level block instead, which is the only reach that covers a phone. `unlockNote` is required and is the exit: a block that names no way out is refused, never armed.",
+  description:
+    "Declare a standing block on a host, as a rule that says what it is for. Browser-enforced by default — the extension actuates it from the pushed armed record; pass `resolverProfile` for a resolver-level block instead, which is the only reach that covers a phone. `unlockNote` is required and is the exit: a block that names no way out is refused, never armed.",
   schema: {
-      host: z
-        .string()
-        .min(1)
-        .describe('A registrable host — "chess.com", not a URL and not a path'),
-      returnsTo: z
-        .array(z.string().min(1))
-        .min(1)
-        .describe(
-          "Areas attention should land in when the wall is met — names or ids. This is the proximal claim: blocking is not the point, not losing the next ten minutes is.",
-        ),
-      unlockNote: z
-        .string()
-        .min(1)
-        .describe(
-          "How the block is lifted, deliberately outside the running system so it cannot be taken in the moment of wanting",
-        ),
-      name: z.string().optional(),
-      description: z.string().optional(),
-      resolverProfile: z
-        .string()
-        .optional()
-        .describe(
-          "Name the resolver profile carrying the block to enforce it there instead of in the browser",
-        ),
-    },
+    host: z
+      .string()
+      .min(1)
+      .describe('A registrable host — "chess.com", not a URL and not a path'),
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe(
+        "Areas attention should land in when the wall is met — names or ids. This is the proximal claim: blocking is not the point, not losing the next ten minutes is.",
+      ),
+    unlockNote: z
+      .string()
+      .min(1)
+      .describe(
+        "How the block is lifted, deliberately outside the running system so it cannot be taken in the moment of wanting",
+      ),
+    name: z.string().optional(),
+    description: z.string().optional(),
+    resolverProfile: z
+      .string()
+      .optional()
+      .describe(
+        "Name the resolver profile carrying the block to enforce it there instead of in the browser",
+      ),
+  },
   handler: async (input) => {
     const result = await declareHostBlock(fenceDeps, input);
     if ("problems" in result) return err(result.problems.join("; "));
@@ -3160,28 +3248,29 @@ defineTool(server, {
 
 defineTool(server, {
   name: "set_browser_gate",
-  description: "Declare a recurring stopping cue on a host: every N attended minutes of dwell, the page asks a question with an exit. Friction on the duration rather than on the visit — which is the answer to a standing block on a host you have a real reason to use, since that block gets lifted and a block lifted in the moment is not a boundary. Ships below delivery probability 1, because whether a cue like this returns attention is exactly what is unknown.",
+  description:
+    "Declare a recurring stopping cue on a host: every N attended minutes of dwell, the page asks a question with an exit. Friction on the duration rather than on the visit — which is the answer to a standing block on a host you have a real reason to use, since that block gets lifted and a block lifted in the moment is not a boundary. Ships below delivery probability 1, because whether a cue like this returns attention is exactly what is unknown.",
   schema: {
-      host: z
-        .string()
-        .min(1)
-        .describe('A registrable host — "linkedin.com", not a URL'),
-      returnsTo: z
-        .array(z.string().min(1))
-        .min(1)
-        .describe("Areas attention should land in after the gate — names or ids"),
-      everyMinutes: z
-        .number()
-        .describe(
-          "Accumulated ATTENDED dwell between firings — a backgrounded tab or an idle person does not accrue it",
-        ),
-      prompt: z
-        .string()
-        .min(1)
-        .describe("What the gate asks. The question is the friction."),
-      name: z.string().optional(),
-      description: z.string().optional(),
-    },
+    host: z
+      .string()
+      .min(1)
+      .describe('A registrable host — "linkedin.com", not a URL'),
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Areas attention should land in after the gate — names or ids"),
+    everyMinutes: z
+      .number()
+      .describe(
+        "Accumulated ATTENDED dwell between firings — a backgrounded tab or an idle person does not accrue it",
+      ),
+    prompt: z
+      .string()
+      .min(1)
+      .describe("What the gate asks. The question is the friction."),
+    name: z.string().optional(),
+    description: z.string().optional(),
+  },
   handler: async (input) => {
     const result = await declareBrowserGate(fenceDeps, input);
     if ("problems" in result) return err(result.problems.join("; "));
@@ -3191,51 +3280,52 @@ defineTool(server, {
 
 defineTool(server, {
   name: "set_browser_transform",
-  description: "Declare a DOM transform on a host: hide, restyle or replace a region rather than gate or block it — the LinkedIn feed, the YouTube Shorts shelf. Completes the fence trilogy: set_host_block asks whether you should reach a host at all, set_browser_gate asks whether you've been there longer than you meant to be, this asks whether a cue needs to be visible at all. No exit to name: a CSS conceal withholds nothing, the concealed content is still one direct navigation away, so invariant 6 does not apply to this primitive the way it does to a block or a gate.",
+  description:
+    "Declare a DOM transform on a host: hide, restyle or replace a region rather than gate or block it — the LinkedIn feed, the YouTube Shorts shelf. Completes the fence trilogy: set_host_block asks whether you should reach a host at all, set_browser_gate asks whether you've been there longer than you meant to be, this asks whether a cue needs to be visible at all. No exit to name: a CSS conceal withholds nothing, the concealed content is still one direct navigation away, so invariant 6 does not apply to this primitive the way it does to a block or a gate.",
   schema: {
-      host: z
-        .string()
-        .min(1)
-        .describe('A registrable host — "linkedin.com", not a URL'),
-      selectors: z
-        .object({
-          primary: z
-            .string()
-            .min(1)
-            .describe("The main CSS selector for the region to transform"),
-          fallbacks: z
-            .array(z.string().min(1))
-            .optional()
-            .describe(
-              "Selectors to emit alongside the primary — all match together, not primary-then-fallback, because selectors rot on the next deploy",
-            ),
-        })
-        .describe("What gets transformed"),
-      replacement: z
-        .discriminatedUnion("type", [
-          z.object({ type: z.literal("hide") }),
-          z.object({
-            type: z.literal("restyle"),
-            style: z
-              .record(z.string(), z.string())
-              .describe('CSS properties, e.g. { "visibility": "hidden" }'),
-          }),
-          z.object({
-            type: z.literal("text"),
-            content: z.string().min(1).describe("Placeholder text"),
-          }),
-        ])
-        .optional()
-        .describe('How the target is replaced. Defaults to { type: "hide" }.'),
-      returnsTo: z
-        .array(z.string().min(1))
-        .min(1)
-        .describe(
-          "Areas attention is free to land in with the cue gone — names or ids",
-        ),
-      name: z.string().optional(),
-      description: z.string().optional(),
-    },
+    host: z
+      .string()
+      .min(1)
+      .describe('A registrable host — "linkedin.com", not a URL'),
+    selectors: z
+      .object({
+        primary: z
+          .string()
+          .min(1)
+          .describe("The main CSS selector for the region to transform"),
+        fallbacks: z
+          .array(z.string().min(1))
+          .optional()
+          .describe(
+            "Selectors to emit alongside the primary — all match together, not primary-then-fallback, because selectors rot on the next deploy",
+          ),
+      })
+      .describe("What gets transformed"),
+    replacement: z
+      .discriminatedUnion("type", [
+        z.object({ type: z.literal("hide") }),
+        z.object({
+          type: z.literal("restyle"),
+          style: z
+            .record(z.string(), z.string())
+            .describe('CSS properties, e.g. { "visibility": "hidden" }'),
+        }),
+        z.object({
+          type: z.literal("text"),
+          content: z.string().min(1).describe("Placeholder text"),
+        }),
+      ])
+      .optional()
+      .describe('How the target is replaced. Defaults to { type: "hide" }.'),
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe(
+        "Areas attention is free to land in with the cue gone — names or ids",
+      ),
+    name: z.string().optional(),
+    description: z.string().optional(),
+  },
   handler: async (input) => {
     const result = await declareBrowserTransform(fenceDeps, input);
     if ("problems" in result) return err(result.problems.join("; "));
@@ -3245,26 +3335,27 @@ defineTool(server, {
 
 defineTool(server, {
   name: "seed_host_blocks",
-  description: "Write the seed blocklist into fences as rules — the oldest working piece of the system, carried out of keel's own rules directory and into the collection the kernel contract registers. Idempotent: each rule's id is derived from its host and enforcement point, so re-running replaces rather than accumulating, and fences it did not write are left alone.",
+  description:
+    "Write the seed blocklist into fences as rules — the oldest working piece of the system, carried out of keel's own rules directory and into the collection the kernel contract registers. Idempotent: each rule's id is derived from its host and enforcement point, so re-running replaces rather than accumulating, and fences it did not write are left alone.",
   schema: {
-      returnsTo: z
-        .array(z.string().min(1))
-        .min(1)
-        .describe("Areas attention should land in when a wall is met"),
-      unlockNote: z
-        .string()
-        .min(1)
-        .describe("How any of these blocks is lifted, out of band"),
-      hosts: z
-        .array(z.string().min(1))
-        .describe(
-          "The hosts to wall. Required: there is no default list, so a seed names its own hosts.",
-        ),
-      resolverProfile: z
-        .string()
-        .optional()
-        .describe("Enforce at the resolver instead of in the browser"),
-    },
+    returnsTo: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Areas attention should land in when a wall is met"),
+    unlockNote: z
+      .string()
+      .min(1)
+      .describe("How any of these blocks is lifted, out of band"),
+    hosts: z
+      .array(z.string().min(1))
+      .describe(
+        "The hosts to wall. Required: there is no default list, so a seed names its own hosts.",
+      ),
+    resolverProfile: z
+      .string()
+      .optional()
+      .describe("Enforce at the resolver instead of in the browser"),
+  },
   handler: async (input) => {
     const result = await seedHostBlocks(fenceDeps, input);
     if ("problems" in result) return err(result.problems.join("; "));
@@ -3280,11 +3371,12 @@ defineTool(server, {
 
 defineTool(server, {
   name: "clear_fence",
-  description: "Take a fence down, by id — or all of them at once. Pass exactly one of `id` or `all`. The crossing tally is plugin-owned and left alone; a cleared fence's id is never reused, so its count can never gate anything again.",
+  description:
+    "Take a fence down, by id — or all of them at once. Pass exactly one of `id` or `all`. The crossing tally is plugin-owned and left alone; a cleared fence's id is never reused, so its count can never gate anything again.",
   schema: {
-      id: z.string().optional().describe("The fence's rule id"),
-      all: z.boolean().optional().describe("Take every standing fence down"),
-    },
+    id: z.string().optional().describe("The fence's rule id"),
+    all: z.boolean().optional().describe("Take every standing fence down"),
+  },
   annotations: { destructiveHint: true },
   handler: async ({ id, all }) => {
     if ((id === undefined) === (all === undefined)) {
@@ -3303,7 +3395,8 @@ defineTool(server, {
 
 defineTool(server, {
   name: "get_fence",
-  description: "Report what is currently fenced: each standing fence with its crossing tally (from the plugin's fences-state.json, zero when never crossed) and the rung the NEXT crossing would land on.",
+  description:
+    "Report what is currently fenced: each standing fence with its crossing tally (from the plugin's fences-state.json, zero when never crossed) and the rung the NEXT crossing would land on.",
   schema: {},
   annotations: { readOnlyHint: true },
   handler: async () => {
