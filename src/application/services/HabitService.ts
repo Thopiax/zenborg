@@ -7,7 +7,11 @@ import {
   unarchiveHabit,
   updateHabit,
 } from "@/domain/entities/Habit";
-import { cyclePlans$, habits$ } from "@/infrastructure/state/store";
+import {
+  cyclePlans$,
+  habits$,
+  phaseConfigs$,
+} from "@/infrastructure/state/store";
 
 /**
  * Application Service for Habit Management
@@ -29,7 +33,8 @@ export class HabitService {
    * @returns Created habit or error if validation fails
    */
   createHabit(props: CreateHabitProps): HabitResult {
-    const result = createHabit(props);
+    const configs = Object.values(phaseConfigs$.get());
+    const result = createHabit({ ...props, phaseConfigs: configs });
 
     if ("error" in result) {
       return result;
@@ -60,7 +65,8 @@ export class HabitService {
       return { error: `Habit with ID ${habitId} not found` };
     }
 
-    const result = updateHabit(existing, updates);
+    const configs = Object.values(phaseConfigs$.get());
+    const result = updateHabit(existing, updates, configs);
 
     if ("error" in result) {
       return result;

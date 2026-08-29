@@ -3,6 +3,7 @@ import type { Moment } from "@/domain/entities/Moment";
 import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
 import type { Phase } from "@/domain/value-objects/Phase";
 import type { Rhythm } from "@/domain/value-objects/Rhythm";
+import type { Schedule } from "@/domain/value-objects/Schedule";
 import { getTodayISO } from "@/lib/dates";
 
 /**
@@ -297,6 +298,7 @@ export interface HabitFormState {
   tags: string[];
   aliases: string[];
   rhythm: Rhythm | null;
+  schedule: Schedule | null;
   /** For edit mode: the habit ID being edited */
   editingHabitId: string | null;
 }
@@ -312,6 +314,7 @@ export const habitFormState$ = observable<HabitFormState>({
   tags: [],
   aliases: [],
   rhythm: null,
+  schedule: null,
   editingHabitId: null,
 });
 
@@ -337,6 +340,7 @@ export function openHabitFormCreate(params?: {
     tags: [],
     aliases: [],
     rhythm: null,
+    schedule: null,
     editingHabitId: null,
   });
 }
@@ -355,6 +359,7 @@ export function openHabitFormEdit(
     tags: string[];
     aliases?: string[];
     rhythm?: Rhythm | null;
+    schedule?: Schedule | null;
   },
 ) {
   habitFormState$.set({
@@ -368,6 +373,7 @@ export function openHabitFormEdit(
     tags: habit.tags || [],
     aliases: habit.aliases ?? [],
     rhythm: habit.rhythm ?? null,
+    schedule: habit.schedule ?? null,
     editingHabitId: habitId,
   });
 }
@@ -387,6 +393,7 @@ export function closeHabitForm() {
     tags: [],
     aliases: [],
     rhythm: null,
+    schedule: null,
     editingHabitId: null,
   });
 }

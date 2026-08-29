@@ -4,6 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import type { Habit } from "@/domain/entities/Habit";
+import { scheduleLabel } from "@/components/ScheduleSelector";
 import { getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import { TagSummary } from "./TagSummary";
@@ -80,6 +81,17 @@ export function SortableHabitItem({
             {habit.name}
           </span>
         </div>
+        {/* Schedule under habit name */}
+        {habit.schedule && (
+          <span
+            className={cn(
+              "block mt-1 text-xs font-mono opacity-70",
+              textColors.secondary,
+            )}
+          >
+            {scheduleLabel(habit.schedule)}
+          </span>
+        )}
         {/* Tags under habit name */}
         <TagSummary
           tags={habit.tags}

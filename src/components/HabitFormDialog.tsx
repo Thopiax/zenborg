@@ -1,7 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { AtSign, Clock, Timer, Trash2, X } from "lucide-react";
+import { AtSign, Calendar, Clock, Timer, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
@@ -12,6 +12,7 @@ import {
   rhythmIcon,
   rhythmLabel,
 } from "@/components/RhythmSelector";
+import { ScheduleSelector, scheduleLabel } from "@/components/ScheduleSelector";
 import { TaggedNameInput } from "@/components/TaggedNameInput";
 import {
   Dialog,
@@ -83,6 +84,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     tags,
     aliases,
     rhythm,
+    schedule,
     editingHabitId,
   } = formState;
 
@@ -93,6 +95,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   const [phaseSelectorOpen, setPhaseSelectorOpen] = useState(false);
   const [aliasesSelectorOpen, setAliasesSelectorOpen] = useState(false);
   const [rhythmSelectorOpen, setRhythmSelectorOpen] = useState(false);
+  const [scheduleSelectorOpen, setScheduleSelectorOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
 
@@ -136,7 +139,8 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     !attitudeSelectorOpen &&
     !phaseSelectorOpen &&
     !aliasesSelectorOpen &&
-    !rhythmSelectorOpen;
+    !rhythmSelectorOpen &&
+    !scheduleSelectorOpen;
 
   // Reset local UI state when dialog opens
   useEffect(() => {
@@ -150,6 +154,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       setPhaseSelectorOpen(false);
       setAliasesSelectorOpen(false);
       setRhythmSelectorOpen(false);
+      setScheduleSelectorOpen(false);
     }
   }, [open]);
 
@@ -214,6 +219,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       tags: finalTags,
       aliases,
       rhythm: rhythm ?? undefined,
+      schedule: schedule ?? undefined,
     });
 
     closeHabitForm();
@@ -269,6 +275,15 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     (e) => {
       e.preventDefault();
       setRhythmSelectorOpen(true);
+    },
+    { enabled: formHotkeysEnabled && open },
+  );
+
+  useHotkeys(
+    "s",
+    (e) => {
+      e.preventDefault();
+      setScheduleSelectorOpen(true);
     },
     { enabled: formHotkeysEnabled && open },
   );
@@ -467,6 +482,34 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
               />
             )}
 
+            {/* Schedule Selector - Show as button if selected */}
+            {schedule && (
+              <ScheduleSelector
+                open={scheduleSelectorOpen}
+                selectedSchedule={schedule}
+                onSelectSchedule={(newSchedule) =>
+                  habitFormState$.schedule.set(newSchedule)
+                }
+                onClose={() => setScheduleSelectorOpen(false)}
+                onOpen={() => setScheduleSelectorOpen(true)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                  >
+                    <Calendar className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                    <span className="font-mono text-sm flex-1 text-left truncate">
+                      {scheduleLabel(schedule)}
+                    </span>
+                    <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
+                      S
+                    </kbd>
+                  </button>
+                }
+              />
+            )}
+
             {/* Rhythm Selector - Show as button if selected */}
             {rhythm && (
               <RhythmSelector
@@ -562,6 +605,29 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                   >
                     <Clock className="w-3.5 h-3.5" strokeWidth={1.5} />
                     <span className="text-xs font-mono">no phase</span>
+                  </button>
+                }
+              />
+            )}
+
+            {/* Schedule - subtle label if not selected */}
+            {!schedule && (
+              <ScheduleSelector
+                open={scheduleSelectorOpen}
+                selectedSchedule={schedule}
+                onSelectSchedule={(newSchedule) =>
+                  habitFormState$.schedule.set(newSchedule)
+                }
+                onClose={() => setScheduleSelectorOpen(false)}
+                onOpen={() => setScheduleSelectorOpen(true)}
+                collisionBoundary={dialogRef.current}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                  >
+                    <Calendar className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    <span className="text-xs font-mono">no schedule</span>
                   </button>
                 }
               />
