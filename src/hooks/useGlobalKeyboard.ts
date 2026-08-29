@@ -122,9 +122,7 @@ export function useGlobalKeyboard() {
         ? { day: uiAllocation.day, phase: uiAllocation.phase as Phase }
         : undefined;
 
-    const placeKeys = new Set(
-      Object.values(places$.peek()).map((p) => p.key),
-    );
+    const placeKeys = new Set(Object.values(places$.peek()).map((p) => p.key));
 
     const result = momentCreationService.createMomentWithWorkflow({
       name,
@@ -209,13 +207,9 @@ export function useGlobalKeyboard() {
           );
           const classified = classifyMentionIds(mentionIds, placeKeys);
           result.personIds =
-            classified.personIds.length > 0
-              ? classified.personIds
-              : undefined;
+            classified.personIds.length > 0 ? classified.personIds : undefined;
           result.placeIds =
-            classified.placeIds.length > 0
-              ? classified.placeIds
-              : undefined;
+            classified.placeIds.length > 0 ? classified.placeIds : undefined;
         } else {
           delete result.personIds;
           delete result.placeIds;

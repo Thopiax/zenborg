@@ -79,11 +79,11 @@ describe("onboarding smoke test", () => {
 
     const savedAreas = readCollection(root, "areas");
     expect(Object.keys(savedAreas)).toHaveLength(3);
-    expect(Object.values(savedAreas).map((a) => a.name).sort()).toEqual([
-      "Fitness",
-      "Social",
-      "Work",
-    ]);
+    expect(
+      Object.values(savedAreas)
+        .map((a) => a.name)
+        .sort(),
+    ).toEqual(["Fitness", "Social", "Work"]);
 
     // ── Phase 2: Create habits per area ────────────────────────────
     const habitSpecs = [

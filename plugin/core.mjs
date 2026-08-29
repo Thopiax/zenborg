@@ -19,9 +19,17 @@ export const DEFAULT_TARGET = {
 
 /** @returns {State} */
 export const emptyState = () => ({
-  sessionStartTs: 0, lastPromptTs: 0, inferNudgedTs: 0,
-  granularity: "", granularityDay: "", focus: false, focusTs: 0,
-  lastRuleHash: "", consentShownTs: 0, lastMomentId: "", granularitySeen: {},
+  sessionStartTs: 0,
+  lastPromptTs: 0,
+  inferNudgedTs: 0,
+  granularity: "",
+  granularityDay: "",
+  focus: false,
+  focusTs: 0,
+  lastRuleHash: "",
+  consentShownTs: 0,
+  lastMomentId: "",
+  granularitySeen: {},
   disclosureShownTs: 0,
 });
 
@@ -37,10 +45,15 @@ export function mergeTarget(t = {}) {
 
 /** nowMin in half-open [start,end), wrapping midnight if start > end. */
 export function inWindow(nowMin, start, end) {
-  return start > end ? nowMin >= start || nowMin < end : nowMin >= start && nowMin < end;
+  return start > end
+    ? nowMin >= start || nowMin < end
+    : nowMin >= start && nowMin < end;
 }
 
-export const nowMinOf = (now) => { const d = new Date(now); return d.getHours() * 60 + d.getMinutes(); };
+export const nowMinOf = (now) => {
+  const d = new Date(now);
+  return d.getHours() * 60 + d.getMinutes();
+};
 
 // The bands are the kernel's, not keel's. zenborg owns `$KAIROS_HOME/phaseConfigs.json`
 // (MORNING/AFTERNOON/EVENING/NIGHT, each a [startHour, endHour) arc) and keel READS them,
@@ -62,14 +75,17 @@ export function bandAt(nowMin, phaseConfigs) {
   for (const p of phaseConfigs) {
     const start = Number(p?.startHour) * 60;
     const end = Number(p?.endHour) * 60;
-    if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) continue;
-    if (inWindow(nowMin, start, end)) return /** @type {Band} */ (String(p?.phase ?? ""));
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start === end)
+      continue;
+    if (inWindow(nowMin, start, end))
+      return /** @type {Band} */ (String(p?.phase ?? ""));
   }
   return "";
 }
 
 /** The band right now. @param {PhaseConfig[]|null|undefined} phaseConfigs @param {number} now @returns {Band} */
-export const bandNow = (phaseConfigs, now) => bandAt(nowMinOf(now), phaseConfigs);
+export const bandNow = (phaseConfigs, now) =>
+  bandAt(nowMinOf(now), phaseConfigs);
 
 // ── Session ─────────────────────────────────────────────────────
 
@@ -77,7 +93,11 @@ export const bandNow = (phaseConfigs, now) => bandAt(nowMinOf(now), phaseConfigs
 export function updateSession(state, nowTs, orient) {
   const gapMs = orient.sessionGapMin * 60_000;
   const fresh = !state.lastPromptTs || nowTs - state.lastPromptTs > gapMs;
-  return { ...state, sessionStartTs: fresh ? nowTs : state.sessionStartTs, lastPromptTs: nowTs };
+  return {
+    ...state,
+    sessionStartTs: fresh ? nowTs : state.sessionStartTs,
+    lastPromptTs: nowTs,
+  };
 }
 // ── Presentation (pure) ─────────────────────────────────────────
 
@@ -140,7 +160,12 @@ export function resolveActiveMoment(pointer, moments, areas, now) {
   if (!m || typeof m.name !== "string" || !m.name.trim()) return null;
   if (m.day !== focusDayKey(now)) return null;
   const area = (areas ?? []).find((a) => a && a.id === m.areaId);
-  return { id, name: m.name.trim(), area: area?.name ?? "", emoji: m.emoji ?? "" };
+  return {
+    id,
+    name: m.name.trim(),
+    area: area?.name ?? "",
+    emoji: m.emoji ?? "",
+  };
 }
 
 /** Edge-detect a change of the active-moment pointer — the same shape as the rule_changed
@@ -163,13 +188,20 @@ export function resolveActiveMoment(pointer, moments, areas, now) {
  * @param {any} pointer @param {ActiveMoment|null} moment @param {any} state
  * @returns {{ extra: Record<string, unknown>, lastMomentId: string }|null} */
 export function intentionSwitch(pointer, moment, state) {
-  const id = pointer && typeof pointer === "object" && typeof pointer.momentId === "string"
-    ? pointer.momentId.trim() : "";
-  const prev = typeof state?.lastMomentId === "string" ? state.lastMomentId : "";
+  const id =
+    pointer &&
+    typeof pointer === "object" &&
+    typeof pointer.momentId === "string"
+      ? pointer.momentId.trim()
+      : "";
+  const prev =
+    typeof state?.lastMomentId === "string" ? state.lastMomentId : "";
   if (id === prev) return null;
   /** @type {Record<string, unknown>} */
   const extra = { keel_moment_id: id, keel_prev_moment_id: prev };
-  const at = Date.parse(pointer && typeof pointer === "object" ? pointer.at ?? "" : "");
+  const at = Date.parse(
+    pointer && typeof pointer === "object" ? (pointer.at ?? "") : "",
+  );
   if (Number.isFinite(at)) extra.keel_declared_at = at;
   // The name and area ride along because moments are deletable — `delete_cycle` cascades —
   // and an id that no longer resolves would leave the event unreadable to a later read.
@@ -186,7 +218,9 @@ export function intentionSwitch(pointer, moment, state) {
 export function todaysMoments(moments, now) {
   const day = focusDayKey(now);
   return Object.values(moments ?? {})
-    .filter((m) => m && m.day === day && typeof m.name === "string" && m.name.trim())
+    .filter(
+      (m) => m && m.day === day && typeof m.name === "string" && m.name.trim(),
+    )
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((m) => ({ name: m.name.trim(), emoji: m.emoji ?? "" }));
 }
@@ -206,7 +240,8 @@ export function todaysMoments(moments, now) {
  * loop runs and nothing acts on it.
  * @param {ActiveMoment|null} moment @returns {string} */
 export function intentionLine(moment) {
-  if (!moment) return "[keel] ◌ nothing is being tended — no habit is getting water this session.";
+  if (!moment)
+    return "[keel] ◌ nothing is being tended — no habit is getting water this session.";
   const where = moment.area ? ` (${moment.area})` : "";
   return `[keel] ◎ tending: ${moment.name}${where} — capture drift (idea/pain), hold the thread.`;
 }
@@ -226,24 +261,33 @@ export function intentionNudge(candidates, cwd) {
     : "Today's garden is bare.";
   const dir = String(cwd ?? "").trim();
   const where = dir ? ` Working in ${dir}.` : "";
-  return `<keel: nothing is being tended — no habit is getting water this session. ${garden}${where}` +
+  return (
+    `<keel: nothing is being tended — no habit is getting water this session. ${garden}${where}` +
     " Infer what this session is actually doing, propose the closest habit to tend (or a new" +
     " 1–3 word moment) in one short line, and on the user's yes set it active in zenborg via" +
-    " the zenborg MCP. Never set it unasked; if you genuinely cannot infer it, say nothing.>";
+    " the zenborg MCP. Never set it unasked; if you genuinely cannot infer it, say nothing.>"
+  );
 }
 
 /** Response-granularity levels → the depth contract each implies (maps to semantic-zoom). */
 export const GRANULARITY_LEVELS = {
   sentence: "L1 — one sentence, claim only.",
-  tldr:     "L2 — one paragraph, claim + mechanism.",
-  page:     "L3 — ~a page: claim + mechanism + worked example, scannable.",
-  essay:    "L4 — ~800-1500 words: the claim in tension with the alternatives it beats.",
-  report:   "L5 — multi-section, citations, edge cases. Defensible.",
+  tldr: "L2 — one paragraph, claim + mechanism.",
+  page: "L3 — ~a page: claim + mechanism + worked example, scannable.",
+  essay:
+    "L4 — ~800-1500 words: the claim in tension with the alternatives it beats.",
+  report: "L5 — multi-section, citations, edge cases. Defensible.",
 };
 
 /** Levels in ascending depth. The order is the whole comparison — `min` over this index
  * is how every ceiling composes. */
-export const GRANULARITY_ORDER = ["sentence", "tldr", "page", "essay", "report"];
+export const GRANULARITY_ORDER = [
+  "sentence",
+  "tldr",
+  "page",
+  "essay",
+  "report",
+];
 
 /** The ceiling in force when none is set for the day. Deliberately `page`, not `tldr`:
  * a `tldr` default is a floor by another name, and a floor is a constant — which is
@@ -252,12 +296,46 @@ export const DEFAULT_GRANULARITY = "page";
 
 /** Normalize a raw granularity arg to a canonical level, or "" if unrecognized. @param {string} raw */
 export function normalizeGranularity(raw) {
-  const s = String(raw ?? "").trim().toLowerCase().replace(/[\s_;-]+/g, "");
-  if (s === "sentence" || s === "1" || s === "l1" || s === "oneliner" || s === "line") return "sentence";
-  if (s === "tldr" || s === "2" || s === "l2" || s === "paragraph" || s === "brief" || s === "summary") return "tldr";
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_;-]+/g, "");
+  if (
+    s === "sentence" ||
+    s === "1" ||
+    s === "l1" ||
+    s === "oneliner" ||
+    s === "line"
+  )
+    return "sentence";
+  if (
+    s === "tldr" ||
+    s === "2" ||
+    s === "l2" ||
+    s === "paragraph" ||
+    s === "brief" ||
+    s === "summary"
+  )
+    return "tldr";
   if (s === "page" || s === "3" || s === "l3" || s === "usable") return "page";
-  if (s === "essay" || s === "4" || s === "l4" || s === "argue" || s === "blogpost" || s === "post") return "essay";
-  if (s === "report" || s === "5" || s === "l5" || s === "full" || s === "detailed" || s === "deep") return "report";
+  if (
+    s === "essay" ||
+    s === "4" ||
+    s === "l4" ||
+    s === "argue" ||
+    s === "blogpost" ||
+    s === "post"
+  )
+    return "essay";
+  if (
+    s === "report" ||
+    s === "5" ||
+    s === "l5" ||
+    s === "full" ||
+    s === "detailed" ||
+    s === "deep"
+  )
+    return "report";
   return "";
 }
 
@@ -288,7 +366,9 @@ export function activeGranularity(state, now = Date.now()) {
 export function effectiveGranularity(want, state, now = Date.now()) {
   const ceiling = activeGranularity(state, now);
   const asked = GRANULARITY_LEVELS[want] ? want : ceiling;
-  return GRANULARITY_ORDER.indexOf(asked) <= GRANULARITY_ORDER.indexOf(ceiling) ? asked : ceiling;
+  return GRANULARITY_ORDER.indexOf(asked) <= GRANULARITY_ORDER.indexOf(ceiling)
+    ? asked
+    : ceiling;
 }
 
 /** Does this ask outrun the day's ceiling? The guard against a ceiling's failure mode,
@@ -297,7 +377,10 @@ export function effectiveGranularity(want, state, now = Date.now()) {
  * not over it. @param {string} want @param {State} state @param {number} [now] */
 export function exceedsCeiling(want, state, now = Date.now()) {
   if (!GRANULARITY_LEVELS[want]) return false;
-  return GRANULARITY_ORDER.indexOf(want) > GRANULARITY_ORDER.indexOf(activeGranularity(state, now));
+  return (
+    GRANULARITY_ORDER.indexOf(want) >
+    GRANULARITY_ORDER.indexOf(activeGranularity(state, now))
+  );
 }
 
 /** The granularity contract line — surfaced at session-start. Always renders,
@@ -364,7 +447,10 @@ export function granularityNotice(state, sessionId, now = Date.now()) {
     line: granularityLine(state, now),
     state: {
       ...state,
-      granularitySeen: pruneGranularitySeen({ ...seen, [key]: { level, ts: now } }, now),
+      granularitySeen: pruneGranularitySeen(
+        { ...seen, [key]: { level, ts: now } },
+        now,
+      ),
     },
   };
 }
@@ -411,7 +497,11 @@ export function seedAllowFromRefs(refs) {
   for (const ref of refs) {
     if (typeof ref !== "string") continue;
     let host = "";
-    try { host = new URL(ref.trim()).hostname; } catch { continue; } // malformed → skip
+    try {
+      host = new URL(ref.trim()).hostname;
+    } catch {
+      continue;
+    } // malformed → skip
     if (!host) continue; // schemes like things:/// carry no host — nothing to allow
     out.add(host.toLowerCase().replace(/^www\./, ""));
   }
@@ -471,7 +561,14 @@ export function focusLine(state) {
  * @returns {ActivityEvent} */
 export function buildEvent({ id, kind, ts, sessionId, payload, durationMs }) {
   /** @type {ActivityEvent} */
-  const e = { id, surface: "agent", kind, ts, sessionId: sessionId ?? "", payload: payload ?? {} };
+  const e = {
+    id,
+    surface: "agent",
+    kind,
+    ts,
+    sessionId: sessionId ?? "",
+    payload: payload ?? {},
+  };
   if (durationMs !== undefined) e.durationMs = durationMs;
   return e;
 }
@@ -483,7 +580,9 @@ export function buildEvent({ id, kind, ts, sessionId, payload, durationMs }) {
 export function capValue(v, max) {
   if (typeof v === "string") {
     const bytes = Buffer.byteLength(v, "utf8");
-    return bytes <= max ? v : { truncated: true, bytes, value: v.slice(0, max) };
+    return bytes <= max
+      ? v
+      : { truncated: true, bytes, value: v.slice(0, max) };
   }
   const s = JSON.stringify(v) ?? "";
   const bytes = Buffer.byteLength(s, "utf8");
@@ -496,7 +595,8 @@ export function capValue(v, max) {
 export function capPayload(obj, maxField = 2048) {
   /** @type {Record<string, unknown>} */
   const out = {};
-  for (const [k, v] of Object.entries(obj ?? {})) out[k] = capValue(v, maxField);
+  for (const [k, v] of Object.entries(obj ?? {}))
+    out[k] = capValue(v, maxField);
   return out;
 }
 
@@ -525,10 +625,12 @@ export function summarizeEvents(events, now, activeWindowMs = 15 * 60_000) {
   const lastSeen = new Map();
   for (const e of events) {
     byKind[e.kind] = (byKind[e.kind] ?? 0) + 1;
-    if (e.sessionId) lastSeen.set(e.sessionId, Math.max(lastSeen.get(e.sessionId) ?? 0, e.ts));
+    if (e.sessionId)
+      lastSeen.set(e.sessionId, Math.max(lastSeen.get(e.sessionId) ?? 0, e.ts));
   }
   let activeSessions = 0;
-  for (const ts of lastSeen.values()) if (now - ts <= activeWindowMs) activeSessions++;
+  for (const ts of lastSeen.values())
+    if (now - ts <= activeWindowMs) activeSessions++;
   return { byKind, sessions: lastSeen.size, activeSessions };
 }
 
@@ -540,19 +642,29 @@ export function summarizeEvents(events, now, activeWindowMs = 15 * 60_000) {
 export function matchDispatch(events, completed) {
   const p = completed?.payload ?? {};
   if (p.tool_use_id) {
-    const consumed = new Set(events
-      .filter((e) => e.kind === "tool_completed" && e.payload?.tool_use_id)
-      .map((e) => e.payload.tool_use_id));
+    const consumed = new Set(
+      events
+        .filter((e) => e.kind === "tool_completed" && e.payload?.tool_use_id)
+        .map((e) => e.payload.tool_use_id),
+    );
     let found = null;
     for (const e of events) {
-      if (e.kind === "tool_dispatched" && e.payload?.tool_use_id === p.tool_use_id
-        && !consumed.has(p.tool_use_id)) found = e;
+      if (
+        e.kind === "tool_dispatched" &&
+        e.payload?.tool_use_id === p.tool_use_id &&
+        !consumed.has(p.tool_use_id)
+      )
+        found = e;
     }
     if (found) return found;
   }
   const stack = [];
   for (const e of events) {
-    if (e.sessionId !== completed?.sessionId || e.payload?.tool_name !== p.tool_name) continue;
+    if (
+      e.sessionId !== completed?.sessionId ||
+      e.payload?.tool_name !== p.tool_name
+    )
+      continue;
     if (e.kind === "tool_dispatched") stack.push(e);
     else if (e.kind === "tool_completed") stack.pop();
   }
@@ -572,7 +684,8 @@ export function targetHash(target) {
     if (v && typeof v === "object") {
       /** @type {Record<string, unknown>} */
       const o = {};
-      for (const k of Object.keys(v).sort()) o[k] = canon(/** @type {any} */ (v)[k]);
+      for (const k of Object.keys(v).sort())
+        o[k] = canon(/** @type {any} */ (v)[k]);
       return o;
     }
     return v;
@@ -594,19 +707,31 @@ export function targetHash(target) {
  * @param {Target} t @param {any} configured raw (unmerged) user config for provenance
  * @param {PhaseConfig[]|null|undefined} phaseConfigs the kernel's bands */
 export function renderRules(t, configured = {}, phaseConfigs = null) {
-  const src = (k) => (configured && configured[k] !== undefined ? "custom" : "default");
-  const bands = Array.isArray(phaseConfigs) && phaseConfigs.length
-    ? phaseConfigs.map((b) => `${b.phase}@${b.startHour}→${b.endHour}`).join(", ")
-    : "(unreadable — events log with no band)";
+  const src = (k) =>
+    configured && configured[k] !== undefined ? "custom" : "default";
+  const bands =
+    Array.isArray(phaseConfigs) && phaseConfigs.length
+      ? phaseConfigs
+          .map((b) => `${b.phase}@${b.startHour}→${b.endHour}`)
+          .join(", ")
+      : "(unreadable — events log with no band)";
   const lines = [
     `keel rules — effective target (hash ${targetHash(t)})`,
     `phase bands (kairos): ${bands}`,
     `gates: none — keel denies nothing. The night lock, the day-note gate and the focus lock were retired 2026-08-18.`,
   ];
-  lines.push(`orient (${src("orient")}): bell after ${t.orient.bellAfterMin}m · session gap ${t.orient.sessionGapMin}m`);
-  const setVoice = Object.entries(t.voice).filter(([, v]) => typeof v === "string" && v).map(([k]) => k);
-  lines.push(`voice (${src("voice")}): ${setVoice.join(", ") || "(all silent)"}`);
-  lines.push(`edit: ~/.kairos/keel/config.json — changes apply at the next hook fire, no reload.`);
+  lines.push(
+    `orient (${src("orient")}): bell after ${t.orient.bellAfterMin}m · session gap ${t.orient.sessionGapMin}m`,
+  );
+  const setVoice = Object.entries(t.voice)
+    .filter(([, v]) => typeof v === "string" && v)
+    .map(([k]) => k);
+  lines.push(
+    `voice (${src("voice")}): ${setVoice.join(", ") || "(all silent)"}`,
+  );
+  lines.push(
+    `edit: ~/.kairos/keel/config.json — changes apply at the next hook fire, no reload.`,
+  );
   return lines.join("\n");
 }
 
@@ -659,7 +784,9 @@ export function mergeWatchlist(w = {}) {
  * @param {Watchlist} w @returns {string[]} */
 export function watchlistLines(w) {
   if (w.observe.length === 0 && w.windowed.length === 0) {
-    return ["watchlist: empty — self-authored; add domains in ~/.kairos/keel/config.json (tiers: observe, windowed)"];
+    return [
+      "watchlist: empty — self-authored; add domains in ~/.kairos/keel/config.json (tiers: observe, windowed)",
+    ];
   }
   const observe = w.observe.length ? w.observe.join(", ") : "(none)";
   const windowed = `${w.windowed.length} domain(s) (tier inert — vice retired)`;

@@ -28,7 +28,11 @@ export function MentionBadges({
 
   const resolvedPeople = personIds.map((key) => {
     const person = Object.values(allPeople).find((p) => p.key === key);
-    return { key, name: person ? displayName(person) : key, emoji: person?.emoji };
+    return {
+      key,
+      name: person ? displayName(person) : key,
+      emoji: person?.emoji,
+    };
   });
 
   const resolvedPlaces = placeIds.map((key) => {
