@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "crates/observer-core", "crates/kairos-daemon"]
+
 [package]
 name = "app"
 version = "0.3.13"
@@ -7,8 +10,6 @@ license = ""
 repository = ""
 edition = "2021"
 rust-version = "1.77.2"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "app_lib"
@@ -33,10 +34,11 @@ tauri-plugin-store = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-dialog = "2"
 
-# The desktop observer (migration step 3). Same crates and same versions the
-# keel tray used, so the two writers can be diffed rather than argued about.
+# The desktop observer. Pure logic in observer-core; sensors + Tauri wiring here.
+observer-core = { path = "crates/observer-core" }
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }
+libc = "0.2"
 
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

@@ -1,3 +1,4 @@
+mod daemon_install;
 mod login_item;
 mod mcp_install;
 mod observer;
@@ -35,6 +36,11 @@ fn mcp_integrations_status() -> mcp_install::IntegrationsStatus {
 }
 
 #[tauri::command]
+fn daemon_status() -> daemon_install::DaemonStatus {
+    daemon_install::status()
+}
+
+#[tauri::command]
 async fn rewire_mcp_integrations() -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(|| {
         mcp_install::install_all()
@@ -68,6 +74,7 @@ pub fn run() {
             vault::vault_root_path,
             mcp_integrations_status,
             rewire_mcp_integrations,
+            daemon_status,
             observer::observer_status,
             observer::observer_set_paused,
             login_item::login_item_status,
@@ -144,6 +151,9 @@ pub fn run() {
                 tauri::async_runtime::spawn_blocking(move || {
                     if let Err(e) = mcp_install::install_once_per_version(&app_version) {
                         log::info!("[mcp] wiring skipped: {e}");
+                    }
+                    if let Err(e) = daemon_install::install_once_per_version(&app_version) {
+                        log::info!("[daemon] wiring skipped: {e}");
                     }
                 });
             }

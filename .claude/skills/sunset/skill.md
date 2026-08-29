@@ -33,6 +33,7 @@ Fetch today's state in parallel:
 - `mcp__zenborg__list_moments` with `{ "day": "YYYY-MM-DD", "allocation": "allocated" }` for today
 - `mcp__zenborg__list_areas` to map area names and emoji
 - `mcp__zenborg__get_active_moment` to check if an intention is still set
+- `mcp__garmin__get_sleep_summary` with today's date for last night's sleep (the night that opened this day)
 
 ### 2. Render the day summary
 
@@ -64,7 +65,14 @@ If `get_active_moment` shows a stale intention, offer to clear it:
 
 On confirmation, call `mcp__zenborg__clear_active_moment`.
 
-### 5. Seed tomorrow (optional)
+### 5. Sleep bookend
+
+If sleep data is available, close the body loop that sunrise opened. Include last night's
+sleep as context for how the day went. The gardener already lived the day; the observation
+is for their own pattern recognition.
+
+### 6. Seed tomorrow (optional)
+
 
 If the user wants to look ahead:
 - "Want to plant anything for tomorrow?"
@@ -72,7 +80,7 @@ If the user wants to look ahead:
 
 If the user names tomorrow's plans, use tend with `day = tomorrow`.
 
-### 6. Close
+### 7. Close
 
 End with a natural close. No summary statistics, no scores, no "well done." The day is complete because the gardener says it is.
 

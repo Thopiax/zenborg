@@ -1,0 +1,572 @@
+<title>Keel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap">
+<style>
+  :root {
+    --ground: #1a1d23;
+    --surface: #242830;
+    --surface-raised: #2c3038;
+    --text: #c8cdd5;
+    --text-muted: #7d8590;
+    --text-dim: #4d5560;
+    --accent: #6b8fa3;
+    --accent-dim: rgba(107,143,163,0.15);
+    --warm: #c4956a;
+    --warm-dim: rgba(196,149,106,0.12);
+    --red: #a06054;
+    --red-dim: rgba(160,96,84,0.12);
+    --border: rgba(200,205,213,0.08);
+    --border-strong: rgba(200,205,213,0.15);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --ground: #f4f1ec;
+      --surface: #eae7e1;
+      --surface-raised: #e0ddd7;
+      --text: #2a2d32;
+      --text-muted: #6b6e74;
+      --text-dim: #9a9da3;
+      --accent: #4a7389;
+      --accent-dim: rgba(74,115,137,0.1);
+      --warm: #9e7348;
+      --warm-dim: rgba(158,115,72,0.1);
+      --red: #8c4f43;
+      --red-dim: rgba(140,79,67,0.08);
+      --border: rgba(42,45,50,0.08);
+      --border-strong: rgba(42,45,50,0.15);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #1a1d23;
+    --surface: #242830;
+    --surface-raised: #2c3038;
+    --text: #c8cdd5;
+    --text-muted: #7d8590;
+    --text-dim: #4d5560;
+    --accent: #6b8fa3;
+    --accent-dim: rgba(107,143,163,0.15);
+    --warm: #c4956a;
+    --warm-dim: rgba(196,149,106,0.12);
+    --red: #a06054;
+    --red-dim: rgba(160,96,84,0.12);
+    --border: rgba(200,205,213,0.08);
+    --border-strong: rgba(200,205,213,0.15);
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--text);
+    font-family: 'Source Sans 3', 'Source Sans Pro', system-ui, sans-serif;
+    line-height: 1.7;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 80px 24px 120px;
+  }
+
+  /* ── Title page ─────────────────────────────── */
+
+  .title-block {
+    text-align: center;
+    padding: 60px 0 48px;
+    border-bottom: 1px solid var(--border-strong);
+    margin-bottom: 56px;
+  }
+
+  .title-block h1 {
+    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    font-weight: 400;
+    font-size: 3.2rem;
+    letter-spacing: 0.04em;
+    margin: 0 0 12px;
+    color: var(--text);
+  }
+
+  .title-block .dates {
+    font-size: 0.85rem;
+    font-weight: 300;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 32px;
+  }
+
+  .title-block .commits {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 4px 14px;
+    border-radius: 2px;
+    margin-bottom: 36px;
+  }
+
+  .epigraph {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .epigraph .etymology {
+    display: block;
+    font-family: 'Source Sans 3', system-ui, sans-serif;
+    font-style: normal;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-top: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Sections ───────────────────────────────── */
+
+  h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 400;
+    font-size: 1.5rem;
+    margin: 56px 0 20px;
+    color: var(--text);
+    text-wrap: balance;
+  }
+
+  h2::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  p {
+    margin: 0 0 16px;
+  }
+
+  strong {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  /* ── Tables ─────────────────────────────────── */
+
+  .table-wrap {
+    overflow-x: auto;
+    margin: 20px 0 28px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px 8px 0;
+    border-bottom: 1px solid var(--border-strong);
+  }
+
+  td {
+    padding: 10px 12px 10px 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  td:first-child {
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.82em;
+    background: var(--surface);
+    padding: 2px 6px;
+    border-radius: 2px;
+    color: var(--text-muted);
+  }
+
+  /* ── Timeline ───────────────────────────────── */
+
+  .timeline {
+    position: relative;
+    padding: 8px 0 8px 40px;
+    margin: 24px 0 36px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--red) 0%, var(--text-dim) 100%);
+  }
+
+  .timeline-entry {
+    position: relative;
+    margin-bottom: 28px;
+  }
+
+  .timeline-entry:last-child {
+    margin-bottom: 0;
+  }
+
+  .timeline-entry::before {
+    content: '';
+    position: absolute;
+    left: -33px;
+    top: 6px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 0 3px var(--red-dim);
+  }
+
+  .timeline-entry:last-child::before {
+    width: 9px;
+    height: 9px;
+    left: -34px;
+    top: 5px;
+    background: var(--ground);
+    border: 2px solid var(--red);
+    box-shadow: 0 0 0 4px var(--red-dim);
+  }
+
+  .timeline-date {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+
+  .timeline-event {
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .timeline-quote {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── Why block ──────────────────────────────── */
+
+  .reason {
+    background: var(--surface);
+    border-left: 2px solid var(--accent);
+    padding: 20px 24px;
+    margin: 20px 0;
+    border-radius: 0 2px 2px 0;
+  }
+
+  .reason-number {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .reason p:last-child {
+    margin-bottom: 0;
+  }
+
+  .stat {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--warm);
+  }
+
+  /* ── Kept table ─────────────────────────────── */
+
+  .kept td:first-child {
+    color: var(--warm);
+  }
+
+  /* ── Lessons ────────────────────────────────── */
+
+  .lesson {
+    margin: 24px 0;
+    padding-left: 20px;
+    border-left: 1px solid var(--border-strong);
+  }
+
+  .lesson-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .lesson p {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* ── Disposition ────────────────────────────── */
+
+  .disposition {
+    background: var(--surface);
+    padding: 24px;
+    border-radius: 2px;
+    margin-top: 24px;
+  }
+
+  .disposition-item {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+  }
+
+  .disposition-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .disposition-label {
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+    min-width: 120px;
+  }
+
+  .disposition-status {
+    color: var(--text-muted);
+  }
+
+  .badge-archived {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--red-dim);
+    color: var(--red);
+    padding: 2px 8px;
+    border-radius: 2px;
+    margin-left: 6px;
+  }
+
+  .badge-done {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--warm-dim);
+    color: var(--warm);
+    padding: 2px 8px;
+    border-radius: 2px;
+    margin-left: 6px;
+  }
+
+  /* ── Footer ─────────────────────────────────── */
+
+  .colophon {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+</style>
+
+<div class="title-block">
+  <h1>Keel</h1>
+  <p class="dates">22 Feb 2026 — 28 Aug 2026</p>
+  <span class="commits">334 commits</span>
+  <p class="epigraph">
+    "See where your attention goes — and steer it from compulsion toward flourishing."
+    <span class="etymology">Named for a boat's stabilizing fin — near-homophone of equanimity (Pāli upekkhā)</span>
+  </p>
+</div>
+
+<h2>What it shipped</h2>
+
+<p>Three surfaces observing three channels of attention:</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Surface</th><th>Channel</th><th>What it did</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>agent</td>
+        <td>Claude Code sessions</td>
+        <td>Activity-log writer, fences, gap practice</td>
+      </tr>
+      <tr>
+        <td>browser</td>
+        <td>Chrome</td>
+        <td>Watchlist sensors, blocklist drogue, activity writer</td>
+      </tr>
+      <tr>
+        <td>desktop</td>
+        <td>macOS frontmost app</td>
+        <td>Attention compass — Tauri + React + fp-ts, 4750 LOC</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>Plus a <strong>tray</strong> writer that replaced desktop, and three <strong>launchd agents</strong> for garmin sync, classify, and tray uptime.</p>
+
+<h2>What died, and when</h2>
+
+<div class="timeline">
+  <div class="timeline-entry">
+    <div class="timeline-date">2026-06-12</div>
+    <div class="timeline-event">Intervention layer retired</div>
+    <div class="timeline-quote">"Static always-on interventions are the documented anti-pattern."</div>
+  </div>
+  <div class="timeline-entry">
+    <div class="timeline-date">2026-06-13</div>
+    <div class="timeline-event">Desktop compass archived</div>
+    <div class="timeline-quote">fp-ts-coupled, frozen, unused. Gems mapped for later revival.</div>
+  </div>
+  <div class="timeline-entry">
+    <div class="timeline-date">2026-08-18</div>
+    <div class="timeline-event">All agent gates retired</div>
+    <div class="timeline-quote">"A wall whose escape hatch is editing the wall is friction with extra steps."</div>
+  </div>
+  <div class="timeline-entry">
+    <div class="timeline-date">2026-08-21</div>
+    <div class="timeline-event">Tray deleted from repo</div>
+    <div class="timeline-quote">"A menubar icon is a UI affordance for something with no UI."</div>
+  </div>
+  <div class="timeline-entry">
+    <div class="timeline-date">2026-08-24</div>
+    <div class="timeline-event">Classifier, inference, HUD removed</div>
+  </div>
+  <div class="timeline-entry">
+    <div class="timeline-date">2026-08-28</div>
+    <div class="timeline-event">Plugin moved to zenborg. Tray orphan killed.</div>
+    <div class="timeline-quote">No keel-repo code executes.</div>
+  </div>
+</div>
+
+<h2>Why it merged</h2>
+
+<div class="reason">
+  <div class="reason-number">The intervention thesis failed</div>
+  <p>Keel was built to <em>steer</em> attention — shields that blocked sites, budgets that rationed time, signals that nudged. Every one was retired by mid-2026 after research review showed static interventions increase workload for high-perceived-control users.</p>
+  <p>What survived was the <em>observation</em> layer: the log, the watchlist, the fences that read accumulated signal rather than enforcing static rules. Keel stopped being a product and became infrastructure.</p>
+</div>
+
+<div class="reason">
+  <div class="reason-number">Zenborg needed what keel observed</div>
+  <p>The kairos-direction pivot recognized that zenborg's garden — "where will I place my consciousness today?" — demands the raw attention signal keel produces. The tool demands input it should derive. The log is that derivation source. Two repos for one pipeline was indirection.</p>
+  <p>The tray's uptime data sealed it: dark for <span class="stat">1096</span> of <span class="stat">1342</span> hours tracked, with <span class="stat">670</span> hours of machine-in-use time lost across <span class="stat">55</span> gaps. The writer needed a process that stays up, and zenborg already was that process.</p>
+</div>
+
+<h2>What we kept</h2>
+
+<div class="table-wrap">
+  <table class="kept">
+    <thead>
+      <tr><th>Concept</th><th>Where it lives now</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Activity log</td>
+        <td>Append-only JSONL, 4 streams → <code>~/.kairos/keel/log/</code></td>
+      </tr>
+      <tr>
+        <td>Plugin</td>
+        <td>Hooks, fences, gap practice → <code>zenborg/plugin/</code></td>
+      </tr>
+      <tr>
+        <td>Observer domain</td>
+        <td><code>domain.rs</code> byte-for-byte → <code>crates/observer-core/</code></td>
+      </tr>
+      <tr>
+        <td>Watchlist</td>
+        <td>Observe + windowed tiers → <code>config.json</code></td>
+      </tr>
+      <tr>
+        <td>Blocklist drogue</td>
+        <td>Browser extension (kairos, pending Phase D2)</td>
+      </tr>
+      <tr>
+        <td>Privacy posture</td>
+        <td>Local-first. Logs never leave the machine.</td>
+      </tr>
+      <tr>
+        <td>The name</td>
+        <td><code>~/.kairos/keel/</code> — the attention namespace</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>What we learned</h2>
+
+<div class="lesson">
+  <div class="lesson-title">Observation is the product; intervention is a trap.</div>
+  <p>Every intervention keel shipped was retired within four months. The log outlived all of them. Building for "steering" led to walls the user resented; building for "seeing" led to data the garden can metabolize.</p>
+</div>
+
+<div class="lesson">
+  <div class="lesson-title">Uptime is an architecture problem, not a daemon problem.</div>
+  <p>Three launchd plists, a menubar tray, and a browser extension were four separate answers to "how does this stay running." The real answer: be part of the app the user already runs.</p>
+</div>
+
+<div class="lesson">
+  <div class="lesson-title">Separate repos for coupled systems create drift.</div>
+  <p>Keel and zenborg shared a vault, a substrate contract, and a user. Two repos meant two vault implementations and a seam that went stale twelve minutes after it was written.</p>
+</div>
+
+<div class="lesson">
+  <div class="lesson-title">Retire early, retire visibly.</div>
+  <p>Every keel retirement was stamped — a decision artifact with rationale, not a quiet deletion. That discipline made this postmortem possible and each retirement reversible in principle.</p>
+</div>
+
+<h2>Disposition</h2>
+
+<div class="disposition">
+  <div class="disposition-item">
+    <span class="disposition-label">keel repo</span>
+    <span class="disposition-status">Tagged <code>final</code>. <span class="badge-archived">archived</span></span>
+  </div>
+  <div class="disposition-item">
+    <span class="disposition-label">~/.keel/</span>
+    <span class="disposition-status">Symlinks removed, directory deleted. <span class="badge-done">done</span></span>
+  </div>
+  <div class="disposition-item">
+    <span class="disposition-label">kairos repo</span>
+    <span class="disposition-status">Still alive — owns extension, native-host, garmin, kernel. Phase D2 pending.</span>
+  </div>
+</div>
+
+<div class="colophon">
+  equanimitech · postmortem · 28 august 2026
+</div>
