@@ -1,6 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
+import { displayName } from "@/domain/entities/Person";
 import { people$, places$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 
@@ -25,8 +26,10 @@ export function MentionSummary({
 
   const resolve = (key: string): string => {
     const person = Object.values(allPeople).find((p) => p.key === key);
-    if (person)
-      return person.emoji ? `${person.emoji} ${person.name}` : person.name;
+    if (person) {
+      const dn = displayName(person);
+      return person.emoji ? `${person.emoji} ${dn}` : dn;
+    }
     const place = Object.values(allPlaces).find((p) => p.key === key);
     if (place) return place.emoji ? `${place.emoji} ${place.name}` : place.name;
     return key;
