@@ -110,7 +110,7 @@ Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + 
 | `list_habits` | `areaId?, includeArchived?` | |
 | `get_habit` | `id` | |
 | `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, emoji?, description?, guidance?, rhythm?, schedule?, placeIds?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. A habit is always a ritual — a person is a registry entity carried in `Moment.personIds`, never a habit. `placeIds` bind a practice to where its object actually is, so the gap roster stops offering something whose equipment is in another city; a practice bound to no place is offered everywhere. |
-| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. |
+| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. A `schedule` rewrite that omits `timezone` keeps the stored anchor; `schedule.timezone: null` unanchors. |
 | `archive_habit` | `id` | **Cascade:** deletes all cycle plans for this habit; allocated moments preserved as historical records (orphan via `habitId`). |
 | `unarchive_habit` | `id` | |
 
@@ -307,11 +307,22 @@ Current `mcp-server/index.ts` reads penceive's `vault/areas/<key>.md` + YAML fro
 
 ### Habit schedules (added 2026-08-07)
 
-`Habit.schedule?: { weekdays: Weekday[], startTime: "HH:MM", durationMin: number }` and
+`Habit.schedule?: { weekdays: Weekday[], startTime: "HH:MM", durationMin: number, timezone?: string }` and
 `Moment.startTime?` / `Moment.durationMin?` are **fully optional and purely additive** — no
 migration, existing vault data stays valid, ambient habits are unaffected.
 
 - `rhythm` stays **stored, not derived.** A schedule *fills* it when absent (`{ weekly, weekdays.length }`) and is **rejected** when a weekly rhythm's `count` disagrees with `weekdays.length`. Longer periods are unconstrained — "every other Monday" is `biweekly ×1` on `[MON]`.
 - `phase` stays **stored, not derived.** A schedule fills it from the band `startTime` falls in (read from `phaseConfigs`) and rejects a phase that contradicts it.
 - Moments inherit `startTime`/`durationMin` from the habit's schedule at allocation time and may override either per instance.
+
+#### `schedule.timezone` (added 2026-08-29)
+
+Optional IANA identifier — `"America/Sao_Paulo"`, `"Europe/Paris"`, or bare `"UTC"`.
+
+- **Absent = floating.** `"09:00"` means nine in the morning wherever you are. Right for a run, a sit, a gym session — and the behaviour every existing habit keeps, so this is purely additive.
+- **Present = anchored.** `"09:00"` + `"America/Sao_Paulo"` is a fixed instant that someone else keeps — a remote lesson. Travel to Paris and the same lesson reads `14:00`; the appointment did not move, your clock did.
+- **A fixed offset (`"+05:00"`) is rejected** even though `Intl` accepts it. The Swift calendar sidecar resolves the stored string via `TimeZone(identifier:)`, which returns nil for an offset and then silently falls back to the device's zone — firing the event at the wrong hour with nothing logged. The write boundary refuses it so the three readers cannot disagree.
+- **Rewriting a schedule preserves the anchor.** `timezone` omitted inherits whatever was stored, so a caller that only knows how to move the hour cannot unanchor a habit as a side effect. Pass `timezone: null` to unanchor deliberately.
+
+Readers today: the calendar sidecar (`calendar-sidecar/Sources/EventStore.swift`, `resolveTimezone`) applies it to the EventKit event. `scheduleLocalStartTime()` in `src/domain/value-objects/Schedule.ts` converts for display; wiring it into the app's own cards is still open.
 
