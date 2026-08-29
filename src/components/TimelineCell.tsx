@@ -131,6 +131,43 @@ export function TimelineCell({
       aria-live="off"
       aria-atomic="true"
     >
+      {/* Phase header: icon + name + add button */}
+      <div className="flex items-center px-1 pb-1.5">
+        <PhaseIcon
+          phase={phase}
+          className={cn(
+            "w-3.5 h-3.5 flex-shrink-0",
+            isActivePhase
+              ? "text-stone-700 dark:text-stone-200"
+              : "text-stone-400 dark:text-stone-500",
+          )}
+        />
+        <span
+          className={cn(
+            "ml-1.5 text-xs font-mono truncate",
+            isActivePhase
+              ? "text-stone-600 dark:text-stone-300"
+              : "text-stone-400 dark:text-stone-500",
+          )}
+        >
+          {phase.charAt(0) + phase.slice(1).toLowerCase()}
+        </span>
+        <button
+          type="button"
+          onClick={handleEmptyCellClick}
+          className={cn(
+            "ml-auto flex-shrink-0 p-0.5 rounded",
+            "text-stone-400 dark:text-stone-500",
+            "hover:text-stone-600 dark:hover:text-stone-300",
+            "hover:bg-stone-200 dark:hover:bg-stone-700",
+            "transition-[color,background-color] duration-150",
+          )}
+          aria-label={`Add moment to ${phase.charAt(0) + phase.slice(1).toLowerCase()}`}
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
       <div
         className="overflow-y-auto overscroll-contain"
         style={{ maxHeight: timelineCell.viewportHeight }}
@@ -168,43 +205,6 @@ export function TimelineCell({
             <span className="text-3xl">+</span>
           </button>
         )}
-      </div>
-
-      {/* Phase footer: icon + name + add button, pinned at cell bottom */}
-      <div className="mt-auto flex items-center px-1 pt-1.5">
-        <PhaseIcon
-          phase={phase}
-          className={cn(
-            "w-3.5 h-3.5 flex-shrink-0",
-            isActivePhase
-              ? "text-stone-700 dark:text-stone-200"
-              : "text-stone-400 dark:text-stone-500",
-          )}
-        />
-        <span
-          className={cn(
-            "ml-1.5 text-xs font-mono truncate",
-            isActivePhase
-              ? "text-stone-600 dark:text-stone-300"
-              : "text-stone-400 dark:text-stone-500",
-          )}
-        >
-          {phase.charAt(0) + phase.slice(1).toLowerCase()}
-        </span>
-        <button
-          type="button"
-          onClick={handleEmptyCellClick}
-          className={cn(
-            "ml-auto flex-shrink-0 p-0.5 rounded",
-            "text-stone-400 dark:text-stone-500",
-            "hover:text-stone-600 dark:hover:text-stone-300",
-            "hover:bg-stone-200 dark:hover:bg-stone-700",
-            "transition-[color,background-color] duration-150",
-          )}
-          aria-label={`Add moment to ${phase.charAt(0) + phase.slice(1).toLowerCase()}`}
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
       </div>
     </div>
   );
