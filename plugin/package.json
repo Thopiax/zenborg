@@ -1,0 +1,18 @@
+{
+  "name": "@kairos/plugin",
+  "description": "kairos plugin: the vault's Claude Code surface. The garden's fences and gap practice, plus keel's activity-log writer and HUD. Ships as a Claude Code plugin.",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "keel": "./keel.mjs"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit --checkJs --allowJs --target es2022 --module nodenext --moduleResolution nodenext core.mjs store.mjs keel.mjs onboard.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "~5.8.3"
+  }
+}

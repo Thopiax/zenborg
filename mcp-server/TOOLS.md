@@ -69,8 +69,8 @@ When `truncated` is true, pass `nextCursor` back with the same filters.
 |---|---|---|
 | `list_habits` | `areaId?, includeArchived?, health?, limit?, cursor?` | Paginated. `health: "wilting"` filters to wilting habits. |
 | `get_habit` | `idOrName` | Includes `health`, `daysSinceLast`, `effectiveRhythm` in response. |
-| `create_habit` | `name, areaId, order, ...` | Name 1–3 words. `schedule` fills `rhythm`+`phase`. |
-| `update_habit` | `id, ...fields, archived?` | `archived: true` cascades: deletes cycle plans, preserves moments. |
+| `create_habit` | `name, areaId, order, ...` | Name 1–3 words. `schedule` fills `rhythm`+`phase`.  `schedule.timezone` is an optional IANA zone: absent = floating, present = anchored to a fixed instant. |
+| `update_habit` | `id, ...fields, archived?` | `archived: true` cascades: deletes cycle plans, preserves moments. A `schedule` rewrite that omits `timezone` keeps the stored anchor; `schedule.timezone: null` unanchors. |
 
 ### Moments
 
@@ -185,3 +185,16 @@ When `truncated` is true, pass `nextCursor` back with the same filters.
 | `search_habits` / `search_people` / `search_places` | `search { type }` |
 | `get_related` | `list_relationships { entityType, entityId }` |
 | `get_related_habits` | `get_tag_profile` (related habits in response) |
+
+---
+
+## Habit schedules — `timezone`
+
+Optional IANA identifier — `"America/Sao_Paulo"`, `"Europe/Paris"`, or bare `"UTC"`.
+
+- **Absent = floating.** `"09:00"` means nine in the morning wherever you are. Right for a run, a sit, a gym session — and the behaviour every existing habit keeps, so this is purely additive.
+- **Present = anchored.** `"09:00"` + `"America/Sao_Paulo"` is a fixed instant that someone else keeps — a remote lesson. Travel to Paris and the same lesson reads `14:00`; the appointment did not move, your clock did.
+- **A fixed offset (`"+05:00"`) is rejected** even though `Intl` accepts it. The Swift calendar sidecar resolves the stored string via `TimeZone(identifier:)`, which returns nil for an offset and then silently falls back to the device's zone — firing the event at the wrong hour with nothing logged. The write boundary refuses it so the three readers cannot disagree.
+- **Rewriting a schedule preserves the anchor.** `timezone` omitted inherits whatever was stored, so a caller that only knows how to move the hour cannot unanchor a habit as a side effect. Pass `timezone: null` to unanchor deliberately.
+
+Readers today: the calendar sidecar (`calendar-sidecar/Sources/EventStore.swift`, `resolveTimezone`) applies it to the EventKit event. `scheduleLocalStartTime()` in `src/domain/value-objects/Schedule.ts` converts for display; wiring it into the app's own cards is still open.
