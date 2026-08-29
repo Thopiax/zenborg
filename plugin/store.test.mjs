@@ -25,23 +25,48 @@ test("loadAreas filters archived, orders by order, and keeps the shared fields",
   const dir = mkdtempSync(join(tmpdir(), "keel-areas-"));
   // Vault shape: keyed by id, with archived entries present rather than removed.
   writeJsonAtomic(join(dir, "areas.json"), {
-    b: { id: "b", name: "Beta", emoji: "🌿", color: "#0f0", tags: ["craft"], order: 2 },
+    b: {
+      id: "b",
+      name: "Beta",
+      emoji: "🌿",
+      color: "#0f0",
+      tags: ["craft"],
+      order: 2,
+    },
     gone: { id: "gone", name: "Retired", order: 1, isArchived: true },
     a: { id: "a", name: "Alpha", order: 0 },
   });
   const areas = await loadAreasFrom(dir);
-  assert.deepEqual(areas.map((x) => x.name), ["Alpha", "Beta"]);
+  assert.deepEqual(
+    areas.map((x) => x.name),
+    ["Alpha", "Beta"],
+  );
   assert.deepEqual(areas[1], {
-    id: "b", name: "Beta", emoji: "🌿", color: "#0f0", tags: ["craft"], order: 2,
+    id: "b",
+    name: "Beta",
+    emoji: "🌿",
+    color: "#0f0",
+    tags: ["craft"],
+    order: 2,
   });
   // Absent optionals become empty rather than undefined, so readers can render.
-  assert.deepEqual(areas[0], { id: "a", name: "Alpha", emoji: "", color: "", tags: [], order: 0 });
+  assert.deepEqual(areas[0], {
+    id: "a",
+    name: "Alpha",
+    emoji: "",
+    color: "",
+    tags: [],
+    order: 0,
+  });
 });
 
 test("loadAreas accepts the pre-migration array shape and fails soft when absent", async () => {
   const dir = mkdtempSync(join(tmpdir(), "keel-areas-"));
   writeJsonAtomic(join(dir, "areas.json"), [{ id: "a", name: "Alpha" }]);
-  assert.deepEqual((await loadAreasFrom(dir)).map((x) => x.id), ["a"]);
+  assert.deepEqual(
+    (await loadAreasFrom(dir)).map((x) => x.id),
+    ["a"],
+  );
   assert.deepEqual(await loadAreasFrom(join(dir, "nope")), []);
 });
 
@@ -51,11 +76,20 @@ test("projectFriction carries the declared mechanism instead of flattening it", 
   // The regression this guards: a delay has no `.prompt`, and the old projection
   // (`p.frictionType?.prompt ?? default`) turned it into the DEFAULT intention prompt.
   // The author declared a beat and the runtime rendered a question.
-  assert.deepEqual(projectFriction({ type: "delay", seconds: 20 }), { type: "delay", seconds: 20 });
-  assert.deepEqual(projectFriction({ type: "breath", cycles: 3 }), { type: "breath", cycles: 3 });
-  assert.deepEqual(projectFriction({ type: "confirmation" }), { type: "confirmation" });
+  assert.deepEqual(projectFriction({ type: "delay", seconds: 20 }), {
+    type: "delay",
+    seconds: 20,
+  });
+  assert.deepEqual(projectFriction({ type: "breath", cycles: 3 }), {
+    type: "breath",
+    cycles: 3,
+  });
+  assert.deepEqual(projectFriction({ type: "confirmation" }), {
+    type: "confirmation",
+  });
   assert.deepEqual(projectFriction({ type: "intention", prompt: "Still?" }), {
-    type: "intention", prompt: "Still?",
+    type: "intention",
+    prompt: "Still?",
   });
 });
 
@@ -63,14 +97,18 @@ test("projectFriction says so when it cannot render what was declared", async ()
   const { projectFriction } = await import("./store.mjs");
 
   // Loud, not silent. An unsupported mechanism must not masquerade as a working gate.
-  const out = projectFriction({ type: "value_recall", valueRef: { source: "self_storage", key: "v" } });
+  const out = projectFriction({
+    type: "value_recall",
+    valueRef: { source: "self_storage", key: "v" },
+  });
   assert.equal(out.type, "intention");
   assert.match(out.prompt, /value_recall/);
   assert.match(out.prompt, /cannot render/);
 
   // A missing declaration keeps the historical default rather than blanking the card.
   assert.deepEqual(projectFriction(undefined), {
-    type: "intention", prompt: "Still what you came for?",
+    type: "intention",
+    prompt: "Still what you came for?",
   });
 });
 
@@ -90,8 +128,14 @@ test("safeRedirect refuses schemes that execute", async () => {
   assert.equal(safeRedirect(undefined), null);
 
   // What a reroute actually looks like.
-  assert.equal(safeRedirect("https://example.test/read"), "https://example.test/read");
-  assert.equal(safeRedirect("http://localhost:3000/"), "http://localhost:3000/");
+  assert.equal(
+    safeRedirect("https://example.test/read"),
+    "https://example.test/read",
+  );
+  assert.equal(
+    safeRedirect("http://localhost:3000/"),
+    "http://localhost:3000/",
+  );
   assert.equal(safeRedirect("/feed/"), "/feed/");
 });
 
@@ -112,21 +156,34 @@ const textRule = (replacement) => ({
   domains: ["x.test"],
   defaultEnabled: true,
   primitives: [
-    { kind: "transform", targets: { primary: ".a", fallbacks: [] }, replacement },
+    {
+      kind: "transform",
+      targets: { primary: ".a", fallbacks: [] },
+      replacement,
+    },
   ],
 });
 
 test("loadTransforms projects a text placeholder with its content", async () => {
   const dir = mkdtempSync(join(tmpdir(), "keel-transforms-"));
-  const [t] = await loadTransformsFrom(dir, textRule({ type: "text", content: "the feed is off." }));
-  assert.deepEqual(t.replacement, { type: "text", content: "the feed is off." });
+  const [t] = await loadTransformsFrom(
+    dir,
+    textRule({ type: "text", content: "the feed is off." }),
+  );
+  assert.deepEqual(t.replacement, {
+    type: "text",
+    content: "the feed is off.",
+  });
 });
 
 test("loadTransforms degrades a text placeholder with no content to a plain hide", async () => {
   const dir = mkdtempSync(join(tmpdir(), "keel-transforms-blank-"));
   // A half-written rule must still suppress the element. Shipping `text` with
   // nothing in it would render an empty box where the content used to be.
-  const [blank] = await loadTransformsFrom(dir, textRule({ type: "text", content: "   " }));
+  const [blank] = await loadTransformsFrom(
+    dir,
+    textRule({ type: "text", content: "   " }),
+  );
   assert.deepEqual(blank.replacement, { type: "hide" });
 
   const dir2 = mkdtempSync(join(tmpdir(), "keel-transforms-missing-"));
@@ -157,7 +214,10 @@ test("loadArmed projects a standing host block with its out-of-band exit", async
           kind: "cooldown",
           enforcement: { at: "browser" },
           duration: { type: "standing" },
-          unlockPath: { type: "out_of_band", note: "edit the fence and restart" },
+          unlockPath: {
+            type: "out_of_band",
+            note: "edit the fence and restart",
+          },
         },
       ],
     },
@@ -197,7 +257,9 @@ test("loadArmed skips a session-scoped rule — it reaches no browser", async ()
     fence: {
       id: "fence",
       scope: { surface: "session", paths: ["/Users/x/dev"] },
-      primitives: [{ kind: "gate", trigger: { type: "dwell", everyMinutes: 5 } }],
+      primitives: [
+        { kind: "gate", trigger: { type: "dwell", everyMinutes: 5 } },
+      ],
     },
   });
   assert.deepEqual(await loadArmedFrom(dir), {});
@@ -209,13 +271,20 @@ test("loadArmed reads a browser RuleScope's domain", async () => {
     g: {
       id: "g",
       name: "Feed",
-      scope: { surface: "browser", domain: "linkedin.com", matches: ["*://linkedin.com/*"] },
+      scope: {
+        surface: "browser",
+        domain: "linkedin.com",
+        matches: ["*://linkedin.com/*"],
+      },
       primitives: [
         {
           kind: "gate",
           trigger: { type: "dwell", everyMinutes: 20 },
           frictionType: { type: "confirmation" },
-          proceedAffordance: { label: "Keep going", action: { type: "continue" } },
+          proceedAffordance: {
+            label: "Keep going",
+            action: { type: "continue" },
+          },
         },
       ],
     },
@@ -227,7 +296,10 @@ test("loadArmed reads a browser RuleScope's domain", async () => {
     everyMinutes: 20,
     friction: { type: "confirmation" },
   });
-  assert.deepEqual(armed.g.proceed, { label: "Keep going", action: { type: "continue" } });
+  assert.deepEqual(armed.g.proceed, {
+    label: "Keep going",
+    action: { type: "continue" },
+  });
 });
 
 test("loadArmed splits a rule carrying two actuable primitives", async () => {
@@ -246,7 +318,10 @@ test("loadArmed splits a rule carrying two actuable primitives", async () => {
           kind: "gate",
           trigger: { type: "dwell", everyMinutes: 10 },
           frictionType: { type: "confirmation" },
-          proceedAffordance: { label: "Continue", action: { type: "continue" } },
+          proceedAffordance: {
+            label: "Continue",
+            action: { type: "continue" },
+          },
         },
       ],
     },
@@ -269,7 +344,11 @@ test("loadArmed skips a disabled rule", async () => {
       defaultEnabled: false,
       domains: ["youtube.com"],
       primitives: [
-        { kind: "cooldown", duration: { type: "standing" }, unlockPath: { type: "wait" } },
+        {
+          kind: "cooldown",
+          duration: { type: "standing" },
+          unlockPath: { type: "wait" },
+        },
       ],
     },
   });
@@ -334,7 +413,11 @@ test("loadArmed arms a browser fence zenborg wrote, and only that", async () => 
     id: "legacy",
     domains: ["youtube.com"],
     primitives: [
-      { kind: "cooldown", duration: { type: "standing" }, unlockPath: { type: "wait" } },
+      {
+        kind: "cooldown",
+        duration: { type: "standing" },
+        unlockPath: { type: "wait" },
+      },
     ],
   });
   // The shape `hostBlockSeedRules` produces: browser scope, standing cooldown,
@@ -354,7 +437,10 @@ test("loadArmed arms a browser fence zenborg wrote, and only that", async () => 
           kind: "cooldown",
           enforcement: { at: "browser" },
           duration: { type: "standing" },
-          unlockPath: { type: "out_of_band", note: "take it out of the profile" },
+          unlockPath: {
+            type: "out_of_band",
+            note: "take it out of the profile",
+          },
         },
       ],
     },
@@ -362,7 +448,9 @@ test("loadArmed arms a browser fence zenborg wrote, and only that", async () => 
   const m = await storeFrom(dir);
   const armed = m.loadArmed();
   assert.deepEqual(Object.keys(armed), ["seed-block-browser-chess.com"]);
-  assert.deepEqual(armed["seed-block-browser-chess.com"].domains, ["chess.com"]);
+  assert.deepEqual(armed["seed-block-browser-chess.com"].domains, [
+    "chess.com",
+  ]);
 });
 
 test("resolveRuleDomains reads a browser RuleScope as well as the flat shape", async () => {
@@ -372,7 +460,7 @@ test("resolveRuleDomains reads a browser RuleScope as well as the flat shape", a
     m.resolveRuleDomains({
       scope: { surface: "browser", domain: "linkedin.com", matches: [] },
     }),
-    ["linkedin.com"]
+    ["linkedin.com"],
   );
   // Session and desktop reach no browser and yield nothing, rather than
   // falling through to the flat shape and inventing a domain.
@@ -381,9 +469,11 @@ test("resolveRuleDomains reads a browser RuleScope as well as the flat shape", a
       scope: { surface: "session", paths: ["/x"] },
       domains: ["linkedin.com"],
     }),
-    []
+    [],
   );
-  assert.deepEqual(m.resolveRuleDomains({ domains: ["chess.com"] }), ["chess.com"]);
+  assert.deepEqual(m.resolveRuleDomains({ domains: ["chess.com"] }), [
+    "chess.com",
+  ]);
 });
 
 test("loadTransforms and loadBreakTarget read fences, not the rules directory", async () => {
@@ -394,7 +484,11 @@ test("loadTransforms and loadBreakTarget read fences, not the rules directory", 
   writeJsonAtomic(join(dir, "fences.json"), {
     "content-break": {
       id: "content-break",
-      scope: { surface: "browser", domain: "youtube.com", matches: ["*://youtube.com/*"] },
+      scope: {
+        surface: "browser",
+        domain: "youtube.com",
+        matches: ["*://youtube.com/*"],
+      },
       areas: ["a"],
       primitives: [
         {
@@ -406,7 +500,11 @@ test("loadTransforms and loadBreakTarget read fences, not the rules directory", 
     },
     feed: {
       id: "feed",
-      scope: { surface: "browser", domain: "linkedin.com", matches: ["*://linkedin.com/*"] },
+      scope: {
+        surface: "browser",
+        domain: "linkedin.com",
+        matches: ["*://linkedin.com/*"],
+      },
       primitives: [
         {
           kind: "transform",

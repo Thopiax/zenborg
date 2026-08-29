@@ -15,6 +15,10 @@ export interface Person {
   updatedAt: string;
 }
 
+export function displayName(person: Pick<Person, "name" | "aliases">): string {
+  return person.aliases?.[0] ?? person.name;
+}
+
 export function normalizeAliases(
   aliases: string[] | undefined,
   name: string,

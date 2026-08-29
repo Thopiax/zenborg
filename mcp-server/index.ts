@@ -61,6 +61,7 @@ import {
   validateOneToThreeWords,
   validatePlaceUrl,
   validateRefs,
+  withResolvedTimezone,
 } from "./validation.js";
 import {
   type Area,
@@ -69,6 +70,7 @@ import {
   type Cycle,
   type CyclePlan,
   clearActiveMoment,
+  EntityTypeSchema,
   type Habit,
   logVaultBanner,
   type Moment,
@@ -79,7 +81,6 @@ import {
   type Place,
   type Relationship,
   RelationshipDirectionSchema,
-  EntityTypeSchema,
   type Rhythm,
   RhythmSchema,
   readActiveMoment,
@@ -87,7 +88,7 @@ import {
   resolveVault,
   rhythmToCycleBudget,
   type Schedule,
-  ScheduleSchema,
+  ScheduleInputSchema,
   StartTimeSchema,
   writeActiveMoment,
   writeCollection,
@@ -189,7 +190,7 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 - **Phase** — time-of-day band (MORNING / AFTERNOON / EVENING / NIGHT)
 - **Attitude** — relationship mode: BEGINNING → RETURNING → KEEPING → BUILDING → PUSHING → BEING, plus PRUNING (deliberate taper)
 - **Rhythm** — how often (\`{ period, count }\`)
-- **Schedule** — *when* on the clock (\`{ weekdays, startTime, durationMin }\`), optional; most habits are ambient
+- **Schedule** — *when* on the clock (\`{ weekdays, startTime, durationMin, timezone? }\`), optional; most habits are ambient
 
 ## Vault layout
 
@@ -207,6 +208,7 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 - **No cap on moments per (day, phase).** A phase holds as many moments as you plant in it.
 - A habit's \`schedule\` (optional) fills \`rhythm\` and \`phase\` when they're absent, and is **rejected** when they contradict it: a weekly rhythm's \`count\` must equal \`weekdays.length\`, and \`phase\` must match the band \`startTime\` falls in. Longer rhythm periods are unconstrained (weekdays are candidate days).
 - Moments inherit \`startTime\`/\`durationMin\` from their habit's schedule at allocation, and may override either per instance.
+- A schedule's \`timezone\` is optional and IANA (\`"America/Sao_Paulo"\`). Absent = **floating**: the clock time means that hour wherever you are, which is right for a run or a sit. Present = **anchored** to a fixed instant, which is right for a remote lesson someone else keeps — the calendar sidecar then fires the event at the correct local hour after you travel. Rewriting a schedule without naming \`timezone\` keeps the stored one; pass \`timezone: null\` to unanchor.
 - \`archive_habit\` cascade: allocated moments preserved as historical records (orphan via habitId).
 - \`delete_cycle\` cascades: deletes all moments scoped to the cycle.
 - Active cycle is **derived from dates**, not a mutation. To activate a cycle, move its dates.
@@ -416,7 +418,7 @@ server.tool(
 
 server.tool(
   "create_habit",
-  "Create a habit (perennial) inside an area. Name must be 1–3 words. Pass `schedule` for clock-time commitments (e.g. singing at 14:00 on Mondays); it fills `rhythm` and `phase` when they are absent and is rejected when they contradict it. Omit it for ambient habits.",
+  "Create a habit (perennial) inside an area. Name must be 1–3 words. Pass `schedule` for clock-time commitments (e.g. singing at 09:00 on Mondays); it fills `rhythm` and `phase` when they are absent and is rejected when they contradict it. Omit it for ambient habits. `schedule.timezone` is an optional IANA zone: omit it and the hour floats with wherever you are (a run, a sit); set it to anchor the commitment to a fixed instant (a remote lesson), so travelling shifts the wall clock instead of the appointment.",
   {
     name: z.string(),
     areaId: z.string(),
@@ -429,7 +431,7 @@ server.tool(
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
     rhythm: RhythmSchema.optional(),
-    schedule: ScheduleSchema.optional(),
+    schedule: ScheduleInputSchema.optional(),
     placeIds: z.array(z.string()).optional(),
   },
   async (params): Promise<ToolResult> => {
@@ -444,7 +446,9 @@ server.tool(
     let rhythm = params.rhythm;
     let phase: Phase | null = params.phase ?? null;
     if (params.schedule) {
-      const normalized = normalizeSchedule(params.schedule);
+      const normalized = normalizeSchedule(
+        withResolvedTimezone(params.schedule, undefined),
+      );
       if ("error" in normalized) return err(normalized.error);
       const reconciled = reconcileHabitSchedule(
         normalized,
@@ -493,7 +497,7 @@ server.tool(
 
 server.tool(
   "update_habit",
-  "Partially update a habit. Pass `schedule: null` to drop a clock-time commitment. Setting or keeping a schedule re-reconciles `rhythm` and `phase` against it.",
+  "Partially update a habit. Pass `schedule: null` to drop a clock-time commitment. Setting or keeping a schedule re-reconciles `rhythm` and `phase` against it. Rewriting `schedule` without naming `timezone` preserves the anchor already stored — moving the hour never silently unanchors the habit; pass `schedule.timezone: null` to do that deliberately.",
   {
     id: z.string(),
     name: z.string().optional(),
@@ -507,7 +511,7 @@ server.tool(
     description: z.string().max(2000).optional(),
     guidance: z.string().optional(),
     rhythm: RhythmSchema.nullable().optional(),
-    schedule: ScheduleSchema.nullable().optional(),
+    schedule: ScheduleInputSchema.nullable().optional(),
     placeIds: z.array(z.string()).nullable().optional(),
   },
   async (params): Promise<ToolResult> => {
@@ -593,7 +597,7 @@ server.tool(
       if (updates.schedule === null) {
         delete next.schedule;
       } else if (updates.schedule !== undefined) {
-        next.schedule = updates.schedule;
+        next.schedule = withResolvedTimezone(updates.schedule, habit.schedule);
       }
     }
 
@@ -1902,7 +1906,8 @@ server.tool(
       if (dayComp !== 0) return dayComp;
       const aTime = a.startTime ?? "";
       const bTime = b.startTime ?? "";
-      if (aTime && bTime) return aTime.localeCompare(bTime) || a.order - b.order;
+      if (aTime && bTime)
+        return aTime.localeCompare(bTime) || a.order - b.order;
       if (aTime) return -1;
       if (bTime) return 1;
       return a.order - b.order;
