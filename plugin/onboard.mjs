@@ -41,13 +41,15 @@ export const QUESTIONS = Object.freeze([
     id: "plots",
     ask: "What parts of your life do you want to be able to name? Three to six of them, one or two words each.",
     why: "A plot is the only input the system cannot derive, infer or defer. Every rule names one, and every measure that asks whether attention came back asks it about a plot.",
-    lands: "zenborg writes them to areas.json: create them in the garden, or ask the agent to (zenborg's create_area).",
+    lands:
+      "zenborg writes them to areas.json: create them in the garden, or ask the agent to (zenborg's create_area).",
   }),
   Object.freeze({
     id: "intention",
     ask: "What is this season for, in one sentence, and which plot is it in?",
     why: "The distal outcome. It is what makes `serves` inhabitable, and it is what harvest reads the season back against. Without it a rule points at nothing.",
-    lands: "zenborg writes it onto the open cycle: set the intention in the garden, or ask the agent to (zenborg's update_cycle).",
+    lands:
+      "zenborg writes it onto the open cycle: set the intention in the garden, or ask the agent to (zenborg's update_cycle).",
   }),
 ]);
 
@@ -60,10 +62,20 @@ export const QUESTIONS = Object.freeze([
  * because a rule serving a season that is over cannot be settled.
  * @param {VaultReading} vault @param {string} [today] */
 export function season(vault, today = new Date().toISOString().slice(0, 10)) {
-  return (vault.cycles ?? [])
-    .filter((c) => c && c.id && typeof c.intention === "string" && c.intention.trim() !== "")
-    .filter((c) => !c.endDate || c.endDate >= today)
-    .sort((a, b) => String(b.startDate ?? "").localeCompare(String(a.startDate ?? "")))[0] ?? null;
+  return (
+    (vault.cycles ?? [])
+      .filter(
+        (c) =>
+          c &&
+          c.id &&
+          typeof c.intention === "string" &&
+          c.intention.trim() !== "",
+      )
+      .filter((c) => !c.endDate || c.endDate >= today)
+      .sort((a, b) =>
+        String(b.startDate ?? "").localeCompare(String(a.startDate ?? "")),
+      )[0] ?? null
+  );
 }
 
 /** Which of the two are still open. Empty means a rule can be authored.
@@ -87,7 +99,8 @@ export function readiness(vault, today) {
   return {
     ready: open.length === 0,
     open,
-    serves: open.length === 0 && s ? { cycleId: s.id, areaId: areas[0].id } : null,
+    serves:
+      open.length === 0 && s ? { cycleId: s.id, areaId: areas[0].id } : null,
     areaIds: areas.map((a) => a.id),
     cycleId: s ? s.id : null,
   };
@@ -115,29 +128,29 @@ export function readiness(vault, today) {
 export function disclosureLines() {
   return [
     "This appears in your Login Items and in your browser's Extensions because it observes. " +
-    "It records which application and which domain had your attention and for how long: " +
-    "window titles capped at 256 characters, domains, timings. " +
-    "Never page contents, never URLs, never prompts, never keystrokes. " +
-    "It writes to a folder on your machine that you can read, edit and delete. " +
-    "None of it is sent anywhere: the extension holds no host permissions at all, so there " +
-    "is nothing for it to send with. You can revoke any of it from System Settings or the " +
-    "extensions page without uninstalling anything else.",
+      "It records which application and which domain had your attention and for how long: " +
+      "window titles capped at 256 characters, domains, timings. " +
+      "Never page contents, never URLs, never prompts, never keystrokes. " +
+      "It writes to a folder on your machine that you can read, edit and delete. " +
+      "None of it is sent anywhere: the extension holds no host permissions at all, so there " +
+      "is nothing for it to send with. You can revoke any of it from System Settings or the " +
+      "extensions page without uninstalling anything else.",
     "",
     "Classification runs on your machine, and it runs two ways depending on which surface " +
-    "asks. The app runs the model in-process (candle, by way of mistral.rs) behind a build " +
-    "feature, so nothing crosses a socket at all. This plugin's own classifier instead asks " +
-    "a model server you started, at localhost. Both are local; neither needs a key.",
+      "asks. The app runs the model in-process (candle, by way of mistral.rs) behind a build " +
+      "feature, so nothing crosses a socket at all. This plugin's own classifier instead asks " +
+      "a model server you started, at localhost. Both are local; neither needs a key.",
     "",
     "What is not there is the part worth checking. A hosted provider exists only behind a " +
-    "second build feature that is off by default, so the binary you get carries no path to " +
-    "one: there is no code in it that could call out, which is a stronger claim than a " +
-    "promise not to. Turning that feature on is a deliberate act, it needs your own key, " +
-    "and from then on the text being classified leaves this machine. Until you do that, " +
-    "local is a property of the build rather than a policy you have to trust.",
+      "second build feature that is off by default, so the binary you get carries no path to " +
+      "one: there is no code in it that could call out, which is a stronger claim than a " +
+      "promise not to. Turning that feature on is a deliberate act, it needs your own key, " +
+      "and from then on the text being classified leaves this machine. Until you do that, " +
+      "local is a property of the build rather than a policy you have to trust.",
     "",
     "One thing worth knowing in advance, because it looks like a fault and is not: the " +
-    "browser extension is loaded unpacked, so your browser shows a developer-mode warning " +
-    "every time it starts. It is benign and it does not stop the extension.",
+      "browser extension is loaded unpacked, so your browser shows a developer-mode warning " +
+      "every time it starts. It is benign and it does not stop the extension.",
   ];
 }
 
@@ -150,9 +163,16 @@ export function wrap(text, width = 88) {
   const lines = [];
   let line = "";
   for (const word of text.split(" ")) {
-    if (line === "") { line = word; continue; }
-    if (line.length + 1 + word.length > width) { lines.push(line); line = word; }
-    else { line += " " + word; }
+    if (line === "") {
+      line = word;
+      continue;
+    }
+    if (line.length + 1 + word.length > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line += " " + word;
+    }
   }
   if (line !== "") lines.push(line);
   return lines;
@@ -208,52 +228,64 @@ export function preflight(p) {
       name: "Claude Code hooks",
       why: "the plugin's session events are the only thing this surface records.",
       status: (p.logEventsToday ?? 0) > 0 ? "ok" : "missing",
-      detail: (p.logEventsToday ?? 0) > 0
-        ? `${p.logEventsToday} event(s) logged today, so the hooks are firing.`
-        : "no events logged today. If you installed the plugin in this session, the hooks register on the next one.",
+      detail:
+        (p.logEventsToday ?? 0) > 0
+          ? `${p.logEventsToday} event(s) logged today, so the hooks are firing.`
+          : "no events logged today. If you installed the plugin in this session, the hooks register on the next one.",
     },
     {
       id: "login-items",
       name: "Login Items and Extensions, Allow in the Background",
       why: "without it the app runs when you open it and the background observer does not survive a restart.",
       status: "unmeasurable",
-      detail: "Only the app can read its own registration, and it re-reads it after registering rather than trusting the call: registering can report success and still sit in RequiresApproval. Check the switch in System Settings under Login Items and Extensions.",
+      detail:
+        "Only the app can read its own registration, and it re-reads it after registering rather than trusting the call: registering can report success and still sit in RequiresApproval. Check the switch in System Settings under Login Items and Extensions.",
     },
     {
       id: "screen-recording",
       name: "Screen Recording",
       why: "window titles are how a span knows what it was.",
       status: sr === null ? "unmeasurable" : sr ? "ok" : "missing",
-      detail: sr === null
-        ? `the check could not be run here. macOS grants this per application, so check Screen Recording in System Settings for the app itself.`
-        : sr
-          ? `granted to ${p.screenRecordingProcess}, the process that ran this check. macOS grants this per application, so the app's own grant is separate; check it in System Settings.`
-          : `not granted to ${p.screenRecordingProcess}. This is the one that fails quietly: without it the window list returns empty titles and the call still succeeds, so a missing grant looks exactly like an idle day.`,
+      detail:
+        sr === null
+          ? `the check could not be run here. macOS grants this per application, so check Screen Recording in System Settings for the app itself.`
+          : sr
+            ? `granted to ${p.screenRecordingProcess}, the process that ran this check. macOS grants this per application, so the app's own grant is separate; check it in System Settings.`
+            : `not granted to ${p.screenRecordingProcess}. This is the one that fails quietly: without it the window list returns empty titles and the call still succeeds, so a missing grant looks exactly like an idle day.`,
     },
     {
       id: "native-host",
       name: "the browser relay",
       why: "the extension reads and writes the vault only through it, and it validates every message first.",
       status: hosts.length > 0 ? "ok" : "missing",
-      detail: hosts.length > 0
-        ? `installed for: ${hosts.join(", ")}.`
-        : "not installed for any browser found here. Run the native-host installer before loading the extension.",
+      detail:
+        hosts.length > 0
+          ? `installed for: ${hosts.join(", ")}.`
+          : "not installed for any browser found here. Run the native-host installer before loading the extension.",
     },
     {
       id: "incognito",
       name: "Allow in Incognito",
       why: "without it a fence you declared does not hold in a private window, which is the window it was declared for.",
       status: "unmeasurable",
-      detail: "The browser does not expose this to us. Turn it on at the extensions page, under keel, then Details.",
+      detail:
+        "The browser does not expose this to us. Turn it on at the extensions page, under keel, then Details.",
     },
   ];
 }
 
-const MARK = { ok: "ok", missing: "MISSING", unmeasurable: "not measurable here" };
+const MARK = {
+  ok: "ok",
+  missing: "MISSING",
+  unmeasurable: "not measurable here",
+};
 
 /** @param {Grant[]} grants @returns {string[]} */
 export function preflightLines(grants) {
-  const out = ["Before anything is asked, here is what you are asked to allow.", ""];
+  const out = [
+    "Before anything is asked, here is what you are asked to allow.",
+    "",
+  ];
   for (const g of grants) {
     out.push(`  ${g.name}  [${MARK[g.status]}]`);
     for (const l of wrap(g.why, 80)) out.push(`      ${l}`);
@@ -270,8 +302,13 @@ export function preflightLines(grants) {
 export function onboardLines({ vault, probe, showDisclosure, today }) {
   const out = ["keel onboard", ""];
 
-  if (showDisclosure) out.push(...disclosureLines().flatMap((p) => wrap(p)), "");
-  else out.push("(the disclosure was shown on the first run: `keel onboard --disclosure` to read it again)", "");
+  if (showDisclosure)
+    out.push(...disclosureLines().flatMap((p) => wrap(p)), "");
+  else
+    out.push(
+      "(the disclosure was shown on the first run: `keel onboard --disclosure` to read it again)",
+      "",
+    );
 
   out.push(...preflightLines(preflight(probe)), "");
 
@@ -284,7 +321,8 @@ export function onboardLines({ vault, probe, showDisclosure, today }) {
     for (const q of v.open) {
       out.push(`  ${q.ask}`);
       for (const l of wrap(`why: ${q.why}`, 80)) out.push(`      ${l}`);
-      for (const l of wrap(`where it lands: ${q.lands}`, 80)) out.push(`      ${l}`);
+      for (const l of wrap(`where it lands: ${q.lands}`, 80))
+        out.push(`      ${l}`);
       out.push("");
     }
     out.push(
