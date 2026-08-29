@@ -31,6 +31,7 @@ import {
   parseVaultDay,
   resolveRhythm,
 } from "./health.js";
+import { resolveAddMoment } from "./moments.js";
 import { type RegistryPerson, selectPeopleToReach } from "./people.js";
 import { searchHabits, searchPeople, searchPlaces } from "./search.js";
 import { buildTagIndex, buildTagProfile } from "./tags.js";
@@ -114,24 +115,21 @@ function derivePhaseFromStartTime(startTime: string): Phase | null {
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Result helpers
+// Result helpers + tool wrapper
 // ────────────────────────────────────────────────────────────────────────
 
-type ToolResult = {
-  content: Array<{ type: "text"; text: string }>;
-};
-
-function ok(payload: unknown): ToolResult {
-  return {
-    content: [
-      { type: "text" as const, text: JSON.stringify(payload, null, 2) },
-    ],
-  };
-}
-
-function err(message: string): ToolResult {
-  return { content: [{ type: "text" as const, text: `Error: ${message}` }] };
-}
+import { paginate } from "./paging.js";
+import {
+  conciseArea,
+  conciseCycle,
+  conciseHabit,
+  conciseMoment,
+  concisePerson,
+  concisePlace,
+  conciseRelationship,
+  stripNulls,
+} from "./serialize.js";
+import { defineTool, err, ok, type ToolResult } from "./tooling.js";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -175,7 +173,7 @@ function reconcileHabitSchedule(
 // ────────────────────────────────────────────────────────────────────────
 
 const server = new McpServer(
-  { name: "zenborg-mcp", version: "0.3.0" },
+  { name: "zenborg-mcp", version: "0.4.0" },
   {
     instructions: `Zenborg is an intention-cultivation garden. The vault at \`${VAULT_ROOT}\` stores the garden state as JSON collections written by the Tauri app.
 
@@ -199,16 +197,19 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 ## Typical workflows
 
 1. \`list_areas\` to orient yourself, then \`list_habits\` in an area.
-2. \`plan_cycle\` to open a season, \`spawn_spontaneous_from_habit\` to place moments.
-3. \`create_standalone_moment\` for one-offs not tied to a habit.
+2. \`plan_cycle\` to open a season (pass \`template: "week"\` for a 7-day cycle).
+3. \`add_moment\` to plant an intention: pass \`habitId\` to create from a habit, or \`name\` + \`areaId\` for standalone. Add \`day\` to allocate; omit for the drawing board. \`fromPlan: true\` links to the cycle budget.
+4. \`search\` to resolve fuzzy entity references before planting.
+5. Every tool accepts \`response_format: "concise" | "full"\` (default concise).
 
 ## Invariants the MCP enforces
 
 - Moment and habit names are **1–3 words**.
-- **No cap on moments per (day, phase).** A phase holds as many moments as you plant in it.
-- A habit's \`schedule\` (optional) fills \`rhythm\` and \`phase\` when they're absent, and is **rejected** when they contradict it: a weekly rhythm's \`count\` must equal \`weekdays.length\`, and \`phase\` must match the band \`startTime\` falls in. Longer rhythm periods are unconstrained (weekdays are candidate days).
+- **No cap on moments per (day, phase).** A phase holds as many moments as you plant. Past 3, \`add_moment\` reports \`dayViewOverflow\` (informative, never a refusal).
+- A habit's \`schedule\` (optional) fills \`rhythm\` and \`phase\` when they're absent, and is **rejected** when they contradict it.
 - Moments inherit \`startTime\`/\`durationMin\` from their habit's schedule at allocation, and may override either per instance.
 - A schedule's \`timezone\` is optional and IANA (\`"America/Sao_Paulo"\`). Absent = **floating**: the clock time means that hour wherever you are, which is right for a run or a sit. Present = **anchored** to a fixed instant, which is right for a remote lesson someone else keeps — the calendar sidecar then fires the event at the correct local hour after you travel. Rewriting a schedule without naming \`timezone\` keeps the stored one; pass \`timezone: null\` to unanchor.
+- \`update_habit { archived: true }\` cascade: deletes cycle plans, preserves allocated moments.
 - \`archive_habit\` cascade: allocated moments preserved as historical records (orphan via habitId).
 - \`delete_cycle\` cascades: deletes all moments scoped to the cycle.
 - Active cycle is **derived from dates**, not a mutation. To activate a cycle, move its dates.
@@ -220,35 +221,40 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 // AREAS
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "list_areas",
-  "List active (non-archived) areas, sorted by order. Pass includeArchived=true to include archived.",
-  { includeArchived: z.boolean().optional() },
-  async ({ includeArchived }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "list_areas",
+  description:
+    "List active (non-archived) areas, sorted by order. Pass includeArchived=true to include archived.",
+  schema: { includeArchived: z.boolean().optional() },
+  annotations: { readOnlyHint: true },
+  concise: (p) => (p as unknown[]).map((a) => conciseArea(a as Area)),
+  handler: async ({ includeArchived }) => {
     const areas = readCollection(VAULT_ROOT, "areas");
     const list = Object.values(areas)
       .filter((a) => includeArchived || !a.isArchived)
       .sort((a, b) => a.order - b.order);
     return ok(list);
   },
-);
+});
 
-server.tool(
-  "get_area",
-  "Get a single area by id or exact name.",
-  { idOrName: z.string() },
-  async ({ idOrName }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_area",
+  description: "Get a single area by id or exact name.",
+  schema: { idOrName: z.string() },
+  annotations: { readOnlyHint: true },
+  concise: (p) => conciseArea(p as Area),
+  handler: async ({ idOrName }) => {
     const areas = readCollection(VAULT_ROOT, "areas");
     const area = findAreaByIdOrName(areas, idOrName);
     if (!area) return err(`Area not found or ambiguous: ${idOrName}`);
     return ok(area);
   },
-);
+});
 
-server.tool(
-  "create_area",
-  "Create a new area (plot of the garden).",
-  {
+defineTool(server, {
+  name: "create_area",
+  description: "Create a new area (plot of the garden).",
+  schema: {
     name: z.string().min(1),
     color: z
       .string()
@@ -258,14 +264,11 @@ server.tool(
     attitude: AttitudeSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
   },
-  async ({
-    name,
-    color,
-    emoji,
-    order,
-    attitude,
-    tags,
-  }): Promise<ToolResult> => {
+  concise: (p) => {
+    const d = (p as any).created;
+    return { id: d.id, name: d.name, emoji: d.emoji, color: d.color };
+  },
+  handler: async ({ name, color, emoji, order, attitude, tags }) => {
     const areas = readCollection(VAULT_ROOT, "areas");
     const now = nowIso();
     const area: Area = {
@@ -285,12 +288,13 @@ server.tool(
     writeCollection(VAULT_ROOT, "areas", areas);
     return ok({ created: area });
   },
-);
+});
 
-server.tool(
-  "update_area",
-  "Partially update an area. Pass only fields you want to change.",
-  {
+defineTool(server, {
+  name: "update_area",
+  description:
+    "Partially update an area. Pass only fields you want to change. Set archived: true to soft-delete (hides from active lists), archived: false to restore.",
+  schema: {
     idOrName: z.string(),
     name: z.string().min(1).optional(),
     color: z
@@ -301,11 +305,25 @@ server.tool(
     order: z.number().int().nonnegative().optional(),
     attitude: AttitudeSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
+    archived: z
+      .boolean()
+      .optional()
+      .describe("true to archive (soft-delete), false to restore."),
   },
-  async (params): Promise<ToolResult> => {
+  concise: (p) => conciseArea((p as any).updated),
+  handler: async (params) => {
     const { idOrName, ...updates } = params;
     const areas = readCollection(VAULT_ROOT, "areas");
-    const area = findAreaByIdOrName(areas, idOrName);
+    let area = findAreaByIdOrName(areas, idOrName);
+    if (!area && updates.archived === false) {
+      area =
+        areas[idOrName] ??
+        Object.values(areas).find(
+          (a) =>
+            a.isArchived && a.name.toLowerCase() === idOrName.toLowerCase(),
+        ) ??
+        null;
+    }
     if (!area) return err(`Area not found or ambiguous: ${idOrName}`);
     const next: Area = {
       ...area,
@@ -317,33 +335,41 @@ server.tool(
       ...(updates.tags !== undefined
         ? { tags: normalizeTags(updates.tags) }
         : {}),
+      ...(updates.archived !== undefined
+        ? { isArchived: updates.archived }
+        : {}),
       updatedAt: nowIso(),
     };
     areas[area.id] = next;
     writeCollection(VAULT_ROOT, "areas", areas);
     return ok({ updated: next });
   },
-);
+});
 
-server.tool(
-  "archive_area",
-  "Soft-delete an area (hides from active lists; moments preserved).",
-  { idOrName: z.string() },
-  async ({ idOrName }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "archive_area",
+  description:
+    "DEPRECATED — use update_area { archived: true } instead. Soft-delete an area.",
+  schema: { idOrName: z.string() },
+  handler: async ({ idOrName }) => {
     const areas = readCollection(VAULT_ROOT, "areas");
     const area = findAreaByIdOrName(areas, idOrName);
     if (!area) return err(`Area not found or ambiguous: ${idOrName}`);
     areas[area.id] = { ...area, isArchived: true, updatedAt: nowIso() };
     writeCollection(VAULT_ROOT, "areas", areas);
-    return ok({ archived: area.id });
+    return ok({
+      archived: area.id,
+      deprecated: "use update_area { archived: true }",
+    });
   },
-);
+});
 
-server.tool(
-  "unarchive_area",
-  "Restore an archived area.",
-  { idOrName: z.string() },
-  async ({ idOrName }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "unarchive_area",
+  description:
+    "DEPRECATED — use update_area { archived: false } instead. Restore an archived area.",
+  schema: { idOrName: z.string() },
+  handler: async ({ idOrName }) => {
     const areas = readCollection(VAULT_ROOT, "areas");
     const area =
       areas[idOrName] ??
@@ -353,15 +379,20 @@ server.tool(
     if (!area) return err(`Archived area not found: ${idOrName}`);
     areas[area.id] = { ...area, isArchived: false, updatedAt: nowIso() };
     writeCollection(VAULT_ROOT, "areas", areas);
-    return ok({ unarchived: area.id });
+    return ok({
+      unarchived: area.id,
+      deprecated: "use update_area { archived: false }",
+    });
   },
-);
+});
 
-server.tool(
-  "delete_area",
-  "Permanently delete an archived area. Only allowed if the area has no moments.",
-  { idOrName: z.string() },
-  async ({ idOrName }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "delete_area",
+  description:
+    "Permanently delete an archived area. Only allowed if the area has no moments.",
+  schema: { idOrName: z.string() },
+  annotations: { destructiveHint: true },
+  handler: async ({ idOrName }) => {
     const areas = readCollection(VAULT_ROOT, "areas");
     const area =
       areas[idOrName] ??
@@ -381,45 +412,129 @@ server.tool(
     writeCollection(VAULT_ROOT, "areas", areas);
     return ok({ deleted: area.id });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // HABITS
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "list_habits",
-  "List habits. Filter by areaId and/or includeArchived.",
-  {
+defineTool(server, {
+  name: "list_habits",
+  description:
+    'List habits. Filter by areaId, includeArchived, and/or health ("wilting"). Paginated: when `truncated` is true, pass `nextCursor` back with the same filters to continue.',
+  schema: {
     areaId: z.string().optional(),
     includeArchived: z.boolean().optional(),
+    health: z
+      .enum(["wilting"])
+      .optional()
+      .describe("Filter to habits with this health status."),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe("Page size, default 50."),
+    cursor: z
+      .string()
+      .optional()
+      .describe("Opaque cursor from a previous response."),
   },
-  async ({ areaId, includeArchived }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  concise: (p) => {
+    const env = p as {
+      items: unknown[];
+      total: number;
+      truncated: boolean;
+      nextCursor: string | null;
+    };
+    return { ...env, items: env.items.map((h) => conciseHabit(h as Habit)) };
+  },
+  handler: async ({ areaId, includeArchived, health, limit, cursor }) => {
     const habits = readCollection(VAULT_ROOT, "habits");
-    const list = Object.values(habits)
+    let list = Object.values(habits)
       .filter((h) => includeArchived || !h.isArchived)
       .filter((h) => (areaId ? h.areaId === areaId : true))
-      .sort((a, b) => a.order - b.order);
-    return ok(list);
+      .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+    if (health === "wilting") {
+      const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
+      const cycles = readCollection(VAULT_ROOT, "cycles");
+      const moments = readCollection(VAULT_ROOT, "moments");
+      const momentsArr = Object.values(moments);
+      const now = new Date();
+      const isoToday = now.toISOString().slice(0, 10);
+      list = list.filter((habit) => {
+        const activePlan =
+          Object.values(cyclePlans).find((p) => {
+            if (p.habitId !== habit.id) return false;
+            const c = cycles[p.cycleId];
+            if (!c) return false;
+            return (
+              c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday)
+            );
+          }) ?? null;
+        return computeHealth(habit, activePlan, momentsArr, now) === "wilting";
+      });
+    }
+    try {
+      const filter: Record<string, unknown> = {
+        areaId,
+        includeArchived,
+        health,
+      };
+      return ok(paginate(list, filter, { limit, cursor }));
+    } catch (e) {
+      return err((e as Error).message);
+    }
   },
-);
+});
 
-server.tool(
-  "get_habit",
-  "Get a habit by id or exact name.",
-  { idOrName: z.string() },
-  async ({ idOrName }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_habit",
+  description:
+    "Get a habit by id or exact name. Includes health, rhythm, and daysSinceLast.",
+  schema: { idOrName: z.string() },
+  annotations: { readOnlyHint: true },
+  concise: (p) => {
+    const d = p as Record<string, unknown>;
+    const out = conciseHabit(d.habit as Habit);
+    out.health = d.health;
+    out.daysSinceLast = d.daysSinceLast;
+    if (d.rhythm) out.effectiveRhythm = d.rhythm;
+    return out;
+  },
+  handler: async ({ idOrName }) => {
     const habits = readCollection(VAULT_ROOT, "habits");
     const habit = findHabitByIdOrName(habits, idOrName);
     if (!habit) return err(`Habit not found or ambiguous: ${idOrName}`);
-    return ok(habit);
+    const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
+    const cycles = readCollection(VAULT_ROOT, "cycles");
+    const moments = readCollection(VAULT_ROOT, "moments");
+    const now = new Date();
+    const isoToday = now.toISOString().slice(0, 10);
+    const activePlan =
+      Object.values(cyclePlans).find((p) => {
+        if (p.habitId !== habit.id) return false;
+        const c = cycles[p.cycleId];
+        if (!c) return false;
+        return c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday);
+      }) ?? null;
+    const momentsArr = Object.values(moments);
+    return ok({
+      habit,
+      health: computeHealth(habit, activePlan, momentsArr, now),
+      rhythm: resolveRhythm(habit, activePlan),
+      daysSinceLast: daysSinceLast(habit.id, momentsArr, now),
+    });
   },
-);
+});
 
-server.tool(
-  "create_habit",
-  "Create a habit (perennial) inside an area. Name must be 1–3 words. Pass `schedule` for clock-time commitments (e.g. singing at 09:00 on Mondays); it fills `rhythm` and `phase` when they are absent and is rejected when they contradict it. Omit it for ambient habits. `schedule.timezone` is an optional IANA zone: omit it and the hour floats with wherever you are (a run, a sit); set it to anchor the commitment to a fixed instant (a remote lesson), so travelling shifts the wall clock instead of the appointment.",
-  {
+defineTool(server, {
+  name: "create_habit",
+  description:
+    "Create a habit (perennial) inside an area. Name must be 1–3 words. Pass `schedule` for clock-time commitments (e.g. singing at 09:00 on Mondays); it fills `rhythm` and `phase` when they are absent and is rejected when they contradict it. Omit it for ambient habits. `schedule.timezone` is an optional IANA zone: omit it and the hour floats with wherever you are (a run, a sit); set it to anchor the commitment to a fixed instant (a remote lesson), so travelling shifts the wall clock instead of the appointment.",
+  schema: {
     name: z.string(),
     areaId: z.string(),
     order: z.number().int().nonnegative(),
@@ -434,7 +549,8 @@ server.tool(
     schedule: ScheduleInputSchema.optional(),
     placeIds: z.array(z.string()).optional(),
   },
-  async (params): Promise<ToolResult> => {
+  concise: (p) => conciseHabit((p as any).created),
+  handler: async (params) => {
     const nameError = validateOneToThreeWords(params.name, "Habit");
     if (nameError) return err(nameError);
 
@@ -493,12 +609,13 @@ server.tool(
     writeCollection(VAULT_ROOT, "habits", habits);
     return ok({ created: habit });
   },
-);
+});
 
-server.tool(
-  "update_habit",
-  "Partially update a habit. Pass `schedule: null` to drop a clock-time commitment. Setting or keeping a schedule re-reconciles `rhythm` and `phase` against it. Rewriting `schedule` without naming `timezone` preserves the anchor already stored — moving the hour never silently unanchors the habit; pass `schedule.timezone: null` to do that deliberately.",
-  {
+defineTool(server, {
+  name: "update_habit",
+  description:
+    "Partially update a habit. Pass `schedule: null` to drop a clock-time commitment. Setting or keeping a schedule re-reconciles `rhythm` and `phase` against it. Rewriting `schedule` without naming `timezone` preserves the anchor already stored — moving the hour never silently unanchors the habit; pass `schedule.timezone: null` to do that deliberately. Set archived: true to archive (cascades: deletes cycle plans; moments preserved). Set archived: false to restore.",
+  schema: {
     id: z.string(),
     name: z.string().optional(),
     areaId: z.string().optional(),
@@ -513,8 +630,15 @@ server.tool(
     rhythm: RhythmSchema.nullable().optional(),
     schedule: ScheduleInputSchema.nullable().optional(),
     placeIds: z.array(z.string()).nullable().optional(),
+    archived: z
+      .boolean()
+      .optional()
+      .describe(
+        "true to archive (cascades: deletes cycle plans; moments preserved). false to restore.",
+      ),
   },
-  async (params): Promise<ToolResult> => {
+  concise: (p) => conciseHabit((p as any).updated),
+  handler: async (params) => {
     const { id, ...updates } = params;
     const habits = readCollection(VAULT_ROOT, "habits");
     const habit = habits[id];
@@ -615,17 +739,37 @@ server.tool(
       next.phase = reconciled.phase;
     }
 
+    let deletedPlans = 0;
+    if (updates.archived !== undefined) {
+      next.isArchived = updates.archived;
+      if (updates.archived) {
+        const plans = readCollection(VAULT_ROOT, "cyclePlans");
+        const planIdsToDelete: string[] = [];
+        for (const p of Object.values(plans)) {
+          if (p.habitId === id) planIdsToDelete.push(p.id);
+        }
+        for (const pId of planIdsToDelete) delete plans[pId];
+        deletedPlans = planIdsToDelete.length;
+        if (deletedPlans > 0) writeCollection(VAULT_ROOT, "cyclePlans", plans);
+      }
+    }
+
     habits[id] = next;
     writeCollection(VAULT_ROOT, "habits", habits);
-    return ok({ updated: next });
+    return ok({
+      updated: next,
+      ...(deletedPlans > 0 ? { deletedPlans } : {}),
+    });
   },
-);
+});
 
-server.tool(
-  "archive_habit",
-  "Archive a habit. Cascades: deletes all cycle plans for this habit. Allocated moments are preserved as historical record (virtual deck ghosts vanish because plans are gone).",
-  { id: z.string() },
-  async ({ id }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "archive_habit",
+  description:
+    "DEPRECATED — use update_habit { archived: true } instead. Archive a habit. Cascades: deletes all cycle plans for this habit.",
+  schema: { id: z.string() },
+  annotations: { destructiveHint: true },
+  handler: async ({ id }) => {
     const habits = readCollection(VAULT_ROOT, "habits");
     const habit = habits[id];
     if (!habit) return err(`Habit not found: ${id}`);
@@ -644,29 +788,36 @@ server.tool(
     return ok({
       archived: id,
       deletedPlans: planIdsToDelete.length,
+      deprecated: "use update_habit { archived: true }",
     });
   },
-);
+});
 
-server.tool(
-  "unarchive_habit",
-  "Restore an archived habit. Does not restore cascaded moments/plans.",
-  { id: z.string() },
-  async ({ id }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "unarchive_habit",
+  description:
+    "DEPRECATED — use update_habit { archived: false } instead. Restore an archived habit.",
+  schema: { id: z.string() },
+  handler: async ({ id }) => {
     const habits = readCollection(VAULT_ROOT, "habits");
     const habit = habits[id];
     if (!habit) return err(`Habit not found: ${id}`);
     habits[id] = { ...habit, isArchived: false, updatedAt: nowIso() };
     writeCollection(VAULT_ROOT, "habits", habits);
-    return ok({ unarchived: id });
+    return ok({
+      unarchived: id,
+      deprecated: "use update_habit { archived: false }",
+    });
   },
-);
+});
 
-server.tool(
-  "get_habit_health",
-  "Compute health, effective rhythm, and days-since-last-allocation for a habit.",
-  { habitId: z.string() },
-  async ({ habitId }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_habit_health",
+  description:
+    "DEPRECATED — use get_habit instead (includes health in response). Compute health, effective rhythm, and days-since-last-allocation for a habit.",
+  schema: { habitId: z.string() },
+  annotations: { readOnlyHint: true },
+  handler: async ({ habitId }) => {
     const habits = readCollection(VAULT_ROOT, "habits");
     const habit = habits[habitId];
     if (!habit) return err(`Habit not found: ${habitId}`);
@@ -694,18 +845,21 @@ server.tool(
       health,
       rhythm: resolveRhythm(habit, activePlan),
       daysSinceLast: daysSinceLast(habitId, momentsArr, now),
+      deprecated: "use get_habit",
     });
   },
-);
+});
 
-server.tool(
-  "list_wilting_habits",
-  'List habits whose current health is "wilting". Optionally filter by areaId or attitude.',
-  {
+defineTool(server, {
+  name: "list_wilting_habits",
+  description:
+    'DEPRECATED — use list_habits { health: "wilting" } instead. List habits whose current health is "wilting".',
+  schema: {
     areaId: z.string().optional(),
     attitude: AttitudeSchema.optional(),
   },
-  async ({ areaId, attitude }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  handler: async ({ areaId, attitude }) => {
     const habits = readCollection(VAULT_ROOT, "habits");
     const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
     const cycles = readCollection(VAULT_ROOT, "cycles");
@@ -753,17 +907,19 @@ server.tool(
 
     return ok(results);
   },
-);
+});
 
-server.tool(
-  "list_people_to_reach",
-  "The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by registry `category` (friend, family, lover, colleague), or by `far` — whether they are based somewhere other than where the current cycle is being lived. Every row carries `far`; `null` means unknown, either because the registry has no base place for them or because the season states none, and nobody is ever dropped by a distance that could not be checked.",
-  {
+defineTool(server, {
+  name: "list_people_to_reach",
+  description:
+    "The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by registry `category` (friend, family, lover, colleague), or by `far` — whether they are based somewhere other than where the current cycle is being lived. Every row carries `far`; `null` means unknown, either because the registry has no base place for them or because the season states none, and nobody is ever dropped by a distance that could not be checked.",
+  schema: {
     category: z.string().optional(),
     limit: z.number().int().positive().optional(),
     far: z.boolean().optional(),
   },
-  async ({ category, limit, far }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  handler: async ({ category, limit, far }) => {
     const registryPeople: RegistryPerson[] = Object.values(
       readCollection(VAULT_ROOT, "people"),
     ).map((p) => ({
@@ -784,7 +940,7 @@ server.tool(
       }),
     );
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // PEOPLE
@@ -793,39 +949,44 @@ server.tool(
 const CadenceSchema = z.enum(["weekly", "monthly", "quarterly", "yearly"]);
 const PersonStatusSchema = z.enum(["active", "paused"]);
 
-server.tool(
-  "list_people",
-  "List all people in the registry. Filter by status or category.",
-  {
+defineTool(server, {
+  name: "list_people",
+  description: "List all people in the registry. Filter by status or category.",
+  schema: {
     status: PersonStatusSchema.optional(),
     category: z.string().optional(),
   },
-  async ({ status, category }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  concise: (p) => (p as unknown[]).map((x) => concisePerson(x as Person)),
+  handler: async ({ status, category }) => {
     let list = Object.values(readCollection(VAULT_ROOT, "people"));
     if (status) list = list.filter((p) => p.status === status);
     if (category) list = list.filter((p) => p.category === category);
     list.sort((a, b) => a.name.localeCompare(b.name));
     return ok(list);
   },
-);
+});
 
-server.tool(
-  "get_person",
-  "Get a person by id or key.",
-  { idOrKey: z.string() },
-  async ({ idOrKey }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_person",
+  description: "Get a person by id or key.",
+  schema: { idOrKey: z.string() },
+  annotations: { readOnlyHint: true },
+  concise: (p) => concisePerson(p as Person),
+  handler: async ({ idOrKey }) => {
     const people = readCollection(VAULT_ROOT, "people");
     const person =
       people[idOrKey] ?? Object.values(people).find((p) => p.key === idOrKey);
     if (!person) return err(`Person not found: ${idOrKey}`);
     return ok(person);
   },
-);
+});
 
-server.tool(
-  "create_person",
-  'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `aliases` are nicknames or relational terms (e.g. ["mom", "mama"]). `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.',
-  {
+defineTool(server, {
+  name: "create_person",
+  description:
+    'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `aliases` are nicknames or relational terms (e.g. ["mom", "mama"]). `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.',
+  schema: {
     name: z.string(),
     key: z.string().optional(),
     aliases: z.array(z.string()).optional(),
@@ -836,7 +997,8 @@ server.tool(
     emoji: z.string().nullable().optional(),
     isSelf: z.boolean().optional(),
   },
-  async (params): Promise<ToolResult> => {
+  concise: (p) => concisePerson((p as any).created),
+  handler: async (params) => {
     const people = readCollection(VAULT_ROOT, "people");
     const key = params.key ? slugify(params.key) : slugify(params.name);
     if (!key) return err("Name produces an empty key");
@@ -871,12 +1033,13 @@ server.tool(
     writeCollection(VAULT_ROOT, "people", people);
     return ok({ created: person });
   },
-);
+});
 
-server.tool(
-  "update_person",
-  'Update a person by id or key. Only provided fields are changed. Pass `aliases` to set nicknames (e.g. ["mom", "mama"]); pass `[]` to clear.',
-  {
+defineTool(server, {
+  name: "update_person",
+  description:
+    'Update a person by id or key. Only provided fields are changed. Pass `aliases` to set nicknames (e.g. ["mom", "mama"]); pass `[]` to clear.',
+  schema: {
     idOrKey: z.string(),
     name: z.string().optional(),
     aliases: z.array(z.string()).optional(),
@@ -887,7 +1050,8 @@ server.tool(
     emoji: z.string().nullable().optional(),
     isSelf: z.boolean().optional(),
   },
-  async ({ idOrKey, ...updates }): Promise<ToolResult> => {
+  concise: (p) => concisePerson((p as any).updated),
+  handler: async ({ idOrKey, ...updates }) => {
     const people = readCollection(VAULT_ROOT, "people");
     const id =
       people[idOrKey]?.id ??
@@ -937,13 +1101,15 @@ server.tool(
     writeCollection(VAULT_ROOT, "people", people);
     return ok({ updated: person });
   },
-);
+});
 
-server.tool(
-  "delete_person",
-  "Remove a person from the registry. Does NOT remove their key from existing moments.",
-  { idOrKey: z.string() },
-  async ({ idOrKey }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "delete_person",
+  description:
+    "Remove a person from the registry. Does NOT remove their key from existing moments.",
+  schema: { idOrKey: z.string() },
+  annotations: { destructiveHint: true },
+  handler: async ({ idOrKey }) => {
     const people = readCollection(VAULT_ROOT, "people");
     const id =
       people[idOrKey]?.id ??
@@ -954,40 +1120,45 @@ server.tool(
     writeCollection(VAULT_ROOT, "people", people);
     return ok({ deleted: removed });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // PLACES
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "list_places",
-  "List all places in the registry.",
-  {},
-  async (): Promise<ToolResult> => {
+defineTool(server, {
+  name: "list_places",
+  description: "List all places in the registry.",
+  schema: {},
+  annotations: { readOnlyHint: true },
+  concise: (p) => (p as unknown[]).map((x) => concisePlace(x as Place)),
+  handler: async () => {
     const list = Object.values(readCollection(VAULT_ROOT, "places"));
     list.sort((a, b) => a.name.localeCompare(b.name));
     return ok(list);
   },
-);
+});
 
-server.tool(
-  "get_place",
-  "Get a place by id or key.",
-  { idOrKey: z.string() },
-  async ({ idOrKey }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_place",
+  description: "Get a place by id or key.",
+  schema: { idOrKey: z.string() },
+  annotations: { readOnlyHint: true },
+  concise: (p) => concisePlace(p as Place),
+  handler: async ({ idOrKey }) => {
     const places = readCollection(VAULT_ROOT, "places");
     const place =
       places[idOrKey] ?? Object.values(places).find((p) => p.key === idOrKey);
     if (!place) return err(`Place not found: ${idOrKey}`);
     return ok(place);
   },
-);
+});
 
-server.tool(
-  "create_place",
-  'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `address` is a street/postal address for calendar event locations. `coordinates` is `{ lat, lng }` for map pins. `url` is a map link.',
-  {
+defineTool(server, {
+  name: "create_place",
+  description:
+    'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `address` is a street/postal address for calendar event locations. `coordinates` is `{ lat, lng }` for map pins. `url` is a map link.',
+  schema: {
     name: z.string(),
     key: z.string().optional(),
     parentKey: z.string().nullable().optional(),
@@ -999,7 +1170,8 @@ server.tool(
     emoji: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
   },
-  async (params): Promise<ToolResult> => {
+  concise: (p) => concisePlace((p as any).created),
+  handler: async (params) => {
     const places = readCollection(VAULT_ROOT, "places");
     const key = params.key ? slugify(params.key) : slugify(params.name);
     if (!key) return err("Name produces an empty key");
@@ -1024,12 +1196,12 @@ server.tool(
     writeCollection(VAULT_ROOT, "places", places);
     return ok({ created: place });
   },
-);
+});
 
-server.tool(
-  "update_place",
-  "Update a place by id or key. Only provided fields are changed.",
-  {
+defineTool(server, {
+  name: "update_place",
+  description: "Update a place by id or key. Only provided fields are changed.",
+  schema: {
     idOrKey: z.string(),
     name: z.string().optional(),
     parentKey: z.string().nullable().optional(),
@@ -1041,7 +1213,8 @@ server.tool(
     emoji: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
   },
-  async ({ idOrKey, ...updates }): Promise<ToolResult> => {
+  concise: (p) => concisePlace((p as any).updated),
+  handler: async ({ idOrKey, ...updates }) => {
     const places = readCollection(VAULT_ROOT, "places");
     const id =
       places[idOrKey]?.id ??
@@ -1064,13 +1237,15 @@ server.tool(
     writeCollection(VAULT_ROOT, "places", places);
     return ok({ updated: place });
   },
-);
+});
 
-server.tool(
-  "delete_place",
-  "Remove a place from the registry. Does NOT remove its key from existing moments, habits, or cycles.",
-  { idOrKey: z.string() },
-  async ({ idOrKey }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "delete_place",
+  description:
+    "Remove a place from the registry. Does NOT remove its key from existing moments, habits, or cycles.",
+  schema: { idOrKey: z.string() },
+  annotations: { destructiveHint: true },
+  handler: async ({ idOrKey }) => {
     const places = readCollection(VAULT_ROOT, "places");
     const id =
       places[idOrKey]?.id ??
@@ -1081,21 +1256,25 @@ server.tool(
     writeCollection(VAULT_ROOT, "places", places);
     return ok({ deleted: removed });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // RELATIONSHIPS — authored edges between entities
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "list_relationships",
-  'List all relationships, optionally filtered by entity type, entity id, or label. Pass `entityType` + `entityId` to find all edges touching one entity (both directions for mutual edges). Pass `label` to filter by edge label (e.g. "lives-in").',
-  {
+defineTool(server, {
+  name: "list_relationships",
+  description:
+    'List all relationships, optionally filtered by entity type, entity id, or label. Pass `entityType` + `entityId` to find all edges touching one entity (both directions for mutual edges). Pass `label` to filter by edge label (e.g. "lives-in").',
+  schema: {
     entityType: EntityTypeSchema.optional(),
     entityId: z.string().optional(),
     label: z.string().optional(),
   },
-  async ({ entityType, entityId, label }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  concise: (p) =>
+    (p as unknown[]).map((r) => conciseRelationship(r as Relationship)),
+  handler: async ({ entityType, entityId, label }) => {
     const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
     const filtered = rels.filter((r) => {
       if (label && r.label !== label) return false;
@@ -1118,12 +1297,13 @@ server.tool(
     );
     return ok(filtered);
   },
-);
+});
 
-server.tool(
-  "create_relationship",
-  'Create an edge between two entities. `fromType`/`fromId` and `toType`/`toId` identify the endpoints. `label` is a freeform slug (e.g. "mother-of", "lives-in", "trains-at"). `direction` defaults to "mutual".',
-  {
+defineTool(server, {
+  name: "create_relationship",
+  description:
+    'Create an edge between two entities. `fromType`/`fromId` and `toType`/`toId` identify the endpoints. `label` is a freeform slug (e.g. "mother-of", "lives-in", "trains-at"). `direction` defaults to "mutual".',
+  schema: {
     fromType: EntityTypeSchema,
     fromId: z.string(),
     toType: EntityTypeSchema,
@@ -1131,7 +1311,8 @@ server.tool(
     label: z.string().min(1),
     direction: RelationshipDirectionSchema.optional(),
   },
-  async (params): Promise<ToolResult> => {
+  concise: (p) => conciseRelationship((p as any).created),
+  handler: async (params) => {
     const rels = readCollection(VAULT_ROOT, "relationships");
     const dupe = Object.values(rels).find(
       (r) =>
@@ -1160,13 +1341,14 @@ server.tool(
     writeCollection(VAULT_ROOT, "relationships", rels);
     return ok({ created: rel });
   },
-);
+});
 
-server.tool(
-  "delete_relationship",
-  "Remove a relationship by id.",
-  { id: z.string() },
-  async ({ id }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "delete_relationship",
+  description: "Remove a relationship by id.",
+  schema: { id: z.string() },
+  annotations: { destructiveHint: true },
+  handler: async ({ id }) => {
     const rels = readCollection(VAULT_ROOT, "relationships");
     if (!rels[id]) return err(`Relationship not found: ${id}`);
     const removed = rels[id];
@@ -1174,17 +1356,19 @@ server.tool(
     writeCollection(VAULT_ROOT, "relationships", rels);
     return ok({ deleted: removed });
   },
-);
+});
 
-server.tool(
-  "get_related",
-  "Get all entities related to a given entity. Returns the relationship edges with the other endpoint resolved to its display name when possible.",
-  {
+defineTool(server, {
+  name: "get_related",
+  description:
+    "DEPRECATED — use list_relationships { entityType, entityId } instead. Get all entities related to a given entity.",
+  schema: {
     entityType: EntityTypeSchema,
     entityId: z.string(),
     label: z.string().optional(),
   },
-  async ({ entityType, entityId, label }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  handler: async ({ entityType, entityId, label }) => {
     const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
     const people = readCollection(VAULT_ROOT, "people");
     const places = readCollection(VAULT_ROOT, "places");
@@ -1229,20 +1413,21 @@ server.tool(
 
     return ok({ entityType, entityId, related: edges });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // MENTIONS — @-mention people and places on a moment
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "mention",
-  "Mention people and/or places on a moment, like @-tagging. Each name is resolved against the people and places registries by key. Matched people go to `personIds`, matched places go to `placeIds`. Unresolved names are returned so you can create them first. Additive: existing mentions are kept.",
-  {
+defineTool(server, {
+  name: "mention",
+  description:
+    "Mention people and/or places on a moment, like @-tagging. Each name is resolved against the people and places registries by key. Matched people go to `personIds`, matched places go to `placeIds`. Unresolved names are returned so you can create them first. Additive: existing mentions are kept.",
+  schema: {
     momentId: z.string(),
     entities: z.array(z.string()),
   },
-  async ({ momentId, entities }): Promise<ToolResult> => {
+  handler: async ({ momentId, entities }) => {
     const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[momentId];
     if (!moment) return err(`Moment not found: ${momentId}`);
@@ -1295,17 +1480,19 @@ server.tool(
       unresolved,
     });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // CYCLES
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "get_cycle_planning_proposals",
-  "Read-only: compute habit proposals for a cycle based on attitude + rhythm + health. Caller decides what to accept.",
-  { cycleId: z.string() },
-  async ({ cycleId }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_cycle_planning_proposals",
+  description:
+    "Read-only: compute habit proposals for a cycle based on attitude + rhythm + health. Caller decides what to accept.",
+  schema: { cycleId: z.string() },
+  annotations: { readOnlyHint: true },
+  handler: async ({ cycleId }) => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[cycleId];
     if (!cycle) return err(`Cycle not found: ${cycleId}`);
@@ -1387,13 +1574,15 @@ server.tool(
 
     return ok(proposals);
   },
-);
+});
 
-server.tool(
-  "get_cycle_review",
-  "Read-only: descriptive review of a cycle. No aggregate scores. Observational mirror only.",
-  { cycleId: z.string() },
-  async ({ cycleId }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_cycle_review",
+  description:
+    "Read-only: descriptive review of a cycle. No aggregate scores. Observational mirror only.",
+  schema: { cycleId: z.string() },
+  annotations: { readOnlyHint: true },
+  handler: async ({ cycleId }) => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[cycleId];
     if (!cycle) return err(`Cycle not found: ${cycleId}`);
@@ -1467,7 +1656,7 @@ server.tool(
       totalMoments: cycleMoments.length,
     });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // CYCLES
@@ -1501,13 +1690,16 @@ function currentPlaceIds(): string[] {
   return active[0]?.placeIds ?? [];
 }
 
-server.tool(
-  "list_cycles",
-  'List cycles. filter: "active"/"current" = contains today (derived from dates), "upcoming" = starts in future, "all" = everything. Default "all".',
-  {
+defineTool(server, {
+  name: "list_cycles",
+  description:
+    'List cycles. filter: "active"/"current" = contains today (derived from dates), "upcoming" = starts in future, "all" = everything. Default "all".',
+  schema: {
     filter: z.enum(["active", "upcoming", "current", "all"]).optional(),
   },
-  async ({ filter = "all" }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  concise: (p) => (p as unknown[]).map((c) => conciseCycle(c as Cycle)),
+  handler: async ({ filter = "all" }) => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1530,19 +1722,21 @@ server.tool(
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
     return ok(list);
   },
-);
+});
 
-server.tool(
-  "get_cycle",
-  "Get a cycle by id or exact name.",
-  { idOrName: z.string() },
-  async ({ idOrName }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_cycle",
+  description: "Get a cycle by id or exact name.",
+  schema: { idOrName: z.string() },
+  annotations: { readOnlyHint: true },
+  concise: (p) => conciseCycle(p as Cycle),
+  handler: async ({ idOrName }) => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = findCycleByIdOrName(cycles, idOrName);
     if (!cycle) return err(`Cycle not found or ambiguous: ${idOrName}`);
     return ok(cycle);
   },
-);
+});
 
 function addDays(iso: string, days: number): string {
   const d = new Date(iso);
@@ -1550,11 +1744,18 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-server.tool(
-  "plan_cycle",
-  "Create a new cycle (season). If startDate is omitted, defaults to today. If endDate is omitted, cycle is open-ended.",
-  {
+defineTool(server, {
+  name: "plan_cycle",
+  description:
+    'Create a new cycle (season). If startDate is omitted, defaults to today. Pass template ("week"=7d, "month"=28d, "quarter"=90d) OR endDate, not both. If neither, cycle is open-ended.',
+  schema: {
     name: z.string().min(1),
+    template: z
+      .enum(["week", "month", "quarter"])
+      .optional()
+      .describe(
+        'Computes endDate: "week"=7d, "month"=28d, "quarter"=90d from startDate.',
+      ),
     startDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, "startDate must be YYYY-MM-DD")
@@ -1567,21 +1768,31 @@ server.tool(
     intention: z.string().optional(),
     placeIds: z.array(z.string()).optional(),
   },
-  async ({
+  concise: (p) => conciseCycle((p as any).created),
+  handler: async ({
     name,
+    template,
     startDate,
     endDate,
     intention,
     placeIds,
-  }): Promise<ToolResult> => {
+  }) => {
+    if (template && endDate !== undefined) {
+      return err("pass template or endDate, not both");
+    }
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const now = nowIso();
     const resolvedStart = startDate ?? new Date().toISOString().slice(0, 10);
+    let resolvedEnd: string | null = endDate ?? null;
+    if (template) {
+      const days = template === "week" ? 7 : template === "month" ? 28 : 90;
+      resolvedEnd = addDays(resolvedStart, days - 1);
+    }
     const cycle: Cycle = {
       id: crypto.randomUUID(),
       name: name.trim(),
       startDate: resolvedStart,
-      endDate: endDate ?? null,
+      endDate: resolvedEnd,
       ...(intention?.trim() ? { intention: intention.trim() } : {}),
       ...(placeIds && placeIds.length > 0
         ? { placeIds: placeIds.map(slugify).filter((k) => k.length > 0) }
@@ -1593,12 +1804,13 @@ server.tool(
     writeCollection(VAULT_ROOT, "cycles", cycles);
     return ok({ created: cycle });
   },
-);
+});
 
-server.tool(
-  "quick_create_cycle",
-  'Shortcut for common cycle templates. template: "week" (7 days), "month" (28 days), "quarter" (90 days).',
-  {
+defineTool(server, {
+  name: "quick_create_cycle",
+  description:
+    "DEPRECATED — use plan_cycle { template } instead. Shortcut for common cycle templates.",
+  schema: {
     name: z.string().min(1),
     template: z.enum(["week", "month", "quarter"]),
     startDate: z
@@ -1607,7 +1819,8 @@ server.tool(
       .optional(),
     intention: z.string().optional(),
   },
-  async ({ name, template, startDate, intention }): Promise<ToolResult> => {
+  concise: (p) => conciseCycle((p as any).created),
+  handler: async ({ name, template, startDate, intention }) => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const now = nowIso();
     const resolvedStart = startDate ?? new Date().toISOString().slice(0, 10);
@@ -1624,14 +1837,18 @@ server.tool(
     };
     cycles[cycle.id] = cycle;
     writeCollection(VAULT_ROOT, "cycles", cycles);
-    return ok({ created: cycle });
+    return ok({
+      created: cycle,
+      deprecated: "use plan_cycle { template }",
+    });
   },
-);
+});
 
-server.tool(
-  "update_cycle",
-  "Partially update a cycle (name, dates, intention, reflection). Writing a reflection here stamps it as a machine draft, so harvest never shows it as the human's own words.",
-  {
+defineTool(server, {
+  name: "update_cycle",
+  description:
+    "Partially update a cycle (name, dates, intention, reflection). Writing a reflection here stamps it as a machine draft, so harvest never shows it as the human's own words.",
+  schema: {
     id: z.string(),
     name: z.string().min(1).optional(),
     startDate: z
@@ -1647,7 +1864,8 @@ server.tool(
     reflection: z.string().optional(),
     placeIds: z.array(z.string()).nullable().optional(),
   },
-  async (params): Promise<ToolResult> => {
+  concise: (p) => conciseCycle((p as any).updated),
+  handler: async (params) => {
     const { id, ...updates } = params;
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[id];
@@ -1688,19 +1906,20 @@ server.tool(
     writeCollection(VAULT_ROOT, "cycles", cycles);
     return ok({ updated: next });
   },
-);
+});
 
-server.tool(
-  "end_cycle",
-  "Set a cycle's endDate (defaults to today).",
-  {
+defineTool(server, {
+  name: "end_cycle",
+  description:
+    "DEPRECATED — use update_cycle { endDate } instead. Set a cycle's endDate (defaults to today).",
+  schema: {
     id: z.string(),
     endDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
   },
-  async ({ id, endDate }): Promise<ToolResult> => {
+  handler: async ({ id, endDate }) => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[id];
     if (!cycle) return err(`Cycle not found: ${id}`);
@@ -1711,15 +1930,21 @@ server.tool(
     };
     cycles[id] = next;
     writeCollection(VAULT_ROOT, "cycles", cycles);
-    return ok({ ended: id, endDate: next.endDate });
+    return ok({
+      ended: id,
+      endDate: next.endDate,
+      deprecated: "use update_cycle { endDate }",
+    });
   },
-);
+});
 
-server.tool(
-  "delete_cycle",
-  "Permanently delete a cycle. Cascades: deletes all moments + cycle plans scoped to this cycle.",
-  { id: z.string() },
-  async ({ id }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "delete_cycle",
+  description:
+    "Permanently delete a cycle. Cascades: deletes all moments + cycle plans scoped to this cycle.",
+  schema: { id: z.string() },
+  annotations: { destructiveHint: true },
+  handler: async ({ id }) => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const cycle = cycles[id];
     if (!cycle) return err(`Cycle not found: ${id}`);
@@ -1742,17 +1967,19 @@ server.tool(
       deletedPlans: cascade.planIdsToDelete.length,
     });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // RUNNING CYCLE (replaces cycle plan CRUD — see pitch 2026-08-24)
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "get_running_cycle",
-  "Orientation snapshot: the active cycle with its intention, elapsed/remaining days, and per-habit health. One tool call instead of stitching list_cycles + list_cycle_plans + list_wilting_habits.",
-  {},
-  async (): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_running_cycle",
+  description:
+    "Orientation snapshot: the active cycle with its intention, elapsed/remaining days, and per-habit health. One tool call instead of stitching list_cycles + list_cycle_plans + list_wilting_habits.",
+  schema: {},
+  annotations: { readOnlyHint: true },
+  handler: async () => {
     const cycles = readCollection(VAULT_ROOT, "cycles");
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1835,7 +2062,7 @@ server.tool(
       wilting,
     });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // MOMENTS
@@ -1849,10 +2076,11 @@ const MomentAllocationFilter = z.enum([
   "spontaneous",
 ]);
 
-server.tool(
-  "list_moments",
-  "List moments with optional structured filters. `tags` requires ALL given tags on a moment (AND) — the way to pull every moment with a `person-<name>` / `place-<name>` tag.",
-  {
+defineTool(server, {
+  name: "list_moments",
+  description:
+    "List moments with optional structured filters. Paginated: when `truncated` is true, pass `nextCursor` back with the same filters to continue. `tags` requires ALL given tags (AND).",
+  schema: {
     filter: z
       .object({
         areaId: z.string().optional(),
@@ -1867,10 +2095,37 @@ server.tool(
         tags: z.array(z.string()).nonempty().optional(),
       })
       .optional(),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe("Page size, default 50."),
+    cursor: z
+      .string()
+      .optional()
+      .describe("Opaque cursor from a previous response."),
   },
-  async ({ filter }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  concise: (p) => {
+    const env = p as {
+      items: unknown[];
+      total: number;
+      truncated: boolean;
+      nextCursor: string | null;
+    };
+    return { ...env, items: env.items.map((m) => conciseMoment(m as Moment)) };
+  },
+  handler: async ({ filter, limit, cursor }) => {
     const moments = readCollection(VAULT_ROOT, "moments");
     const wantedTags = filter?.tags ? normalizeTags(filter.tags) : null;
+    const PHASE_ORDER: Record<string, number> = {
+      MORNING: 0,
+      AFTERNOON: 1,
+      EVENING: 2,
+      NIGHT: 3,
+    };
     const list = Object.values(moments).filter((m) => {
       if (!filter) return true;
       if (filter.areaId && m.areaId !== filter.areaId) return false;
@@ -1902,31 +2157,37 @@ server.tool(
       return true;
     });
     list.sort((a, b) => {
-      const dayComp = (a.day ?? "").localeCompare(b.day ?? "");
-      if (dayComp !== 0) return dayComp;
-      const aTime = a.startTime ?? "";
-      const bTime = b.startTime ?? "";
-      if (aTime && bTime)
-        return aTime.localeCompare(bTime) || a.order - b.order;
-      if (aTime) return -1;
-      if (bTime) return 1;
-      return a.order - b.order;
+      const aDay = a.day ?? "\xff";
+      const bDay = b.day ?? "\xff";
+      if (aDay !== bDay) return bDay.localeCompare(aDay);
+      const aPhase = PHASE_ORDER[a.phase ?? ""] ?? 99;
+      const bPhase = PHASE_ORDER[b.phase ?? ""] ?? 99;
+      if (aPhase !== bPhase) return aPhase - bPhase;
+      if (a.order !== b.order) return a.order - b.order;
+      return a.id.localeCompare(b.id);
     });
-    return ok(list);
+    try {
+      const filterKey: Record<string, unknown> = filter ?? {};
+      return ok(paginate(list, filterKey, { limit, cursor }));
+    } catch (e) {
+      return err((e as Error).message);
+    }
   },
-);
+});
 
-server.tool(
-  "get_moment",
-  "Get a moment by id.",
-  { id: z.string() },
-  async ({ id }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_moment",
+  description: "Get a moment by id.",
+  schema: { id: z.string() },
+  annotations: { readOnlyHint: true },
+  concise: (p) => conciseMoment(p as Moment),
+  handler: async ({ id }) => {
     const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[id];
     if (!moment) return err(`Moment not found: ${id}`);
     return ok(moment);
   },
-);
+});
 
 function buildMoment(params: {
   name: string;
@@ -1981,10 +2242,119 @@ function buildMoment(params: {
   };
 }
 
-server.tool(
-  "create_moment",
-  "Create an unallocated moment (lives in the drawing board). Name must be 1–3 words. `startTime`/`durationMin` are optional clock time — usually inherited from a habit schedule, but settable directly. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`.",
-  {
+/**
+ * The write half of `resolveAddMoment`: persist the moment it resolved.
+ *
+ * The return type is written out rather than inferred. Inference gives each
+ * branch an optional `err?: undefined` / `created?: undefined` counterpart,
+ * which defeats `"err" in result` narrowing at the call sites and leaves
+ * `result.err` as `string | undefined`. Two disjoint shapes narrow cleanly.
+ */
+type RunAddMomentResult =
+  | { err: string }
+  | { created: Moment; dayViewOverflow?: { count: number } };
+
+function runAddMoment(
+  input: Parameters<typeof resolveAddMoment>[0],
+): RunAddMomentResult {
+  const areas = readCollection(VAULT_ROOT, "areas");
+  const habits = readCollection(VAULT_ROOT, "habits");
+  const cycles = readCollection(VAULT_ROOT, "cycles");
+  const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
+  const moments = readCollection(VAULT_ROOT, "moments");
+  const phaseConfigs = readCollection(VAULT_ROOT, "phaseConfigs");
+  const result = resolveAddMoment(input, {
+    areas,
+    habits,
+    cycles,
+    cyclePlans,
+    moments,
+    phaseConfigs,
+    now: new Date(),
+  });
+  if (!result.ok) return { err: result.error };
+  moments[result.moment.id] = result.moment;
+  writeCollection(VAULT_ROOT, "moments", moments);
+  return {
+    created: result.moment,
+    ...(result.dayViewOverflow
+      ? { dayViewOverflow: { count: result.dayViewOverflow } }
+      : {}),
+  };
+}
+
+defineTool(server, {
+  name: "add_moment",
+  description:
+    "Put an intention on the board. Pass habitId to create from a habit (inherits name/area/emoji/tags/timing), or name + areaId for standalone. Add day to allocate; omit for drawing board. fromPlan: true links to the covering cycle's budget.",
+  schema: {
+    habitId: z
+      .string()
+      .optional()
+      .describe(
+        "Create from this habit. Inherits name, areaId, emoji, tags, schedule timing.",
+      ),
+    name: z
+      .string()
+      .optional()
+      .describe("Moment name, 1–3 words. Required when habitId is absent."),
+    areaId: z
+      .string()
+      .optional()
+      .describe("Required when habitId is absent; override when present."),
+    day: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional()
+      .describe("Allocate to this day. Omit for drawing-board."),
+    phase: PhaseSchema.optional().describe(
+      "Required with day unless startTime derives it.",
+    ),
+    startTime: StartTimeSchema.optional(),
+    durationMin: z.number().int().positive().optional(),
+    order: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .describe("Position in (day, phase) slot. Default: appended."),
+    fromPlan: z
+      .boolean()
+      .optional()
+      .describe(
+        "Link to covering cycle plan and consume budget. Requires habitId + day.",
+      ),
+    emoji: z.string().nullable().optional(),
+    tags: z.array(z.string()).optional(),
+    personIds: z.array(z.string()).optional(),
+    placeIds: z.array(z.string()).optional(),
+    placeUrl: z.string().optional(),
+    customMetric: CustomMetricSchema.optional(),
+    refs: z.array(z.string()).optional(),
+    status: z.enum(["tentative", "accepted"]).optional(),
+  },
+  concise: (p) => {
+    const d = p as Record<string, unknown>;
+    const m = d.created as Moment;
+    const out: Record<string, unknown> = conciseMoment(m);
+    if (d.dayViewOverflow) out.dayViewOverflow = d.dayViewOverflow;
+    if (m.cyclePlanId) {
+      out.fromPlan = true;
+    }
+    return out;
+  },
+  handler: async (params) => {
+    const result = runAddMoment(params);
+    if ("err" in result) return err(result.err);
+    return ok(result);
+  },
+});
+
+defineTool(server, {
+  name: "create_moment",
+  description:
+    "DEPRECATED — use add_moment instead. Create an unallocated moment (drawing board).",
+  schema: {
     name: z.string(),
     areaId: z.string(),
     phase: PhaseSchema.nullable().optional(),
@@ -1999,41 +2369,38 @@ server.tool(
     refs: z.array(z.string()).optional(),
     status: z.enum(["tentative", "accepted"]).optional(),
   },
-  async (params): Promise<ToolResult> => {
-    const nameError = validateOneToThreeWords(params.name, "Moment");
-    if (nameError) return err(nameError);
-
-    const timingError = validateMomentTiming(
-      params.startTime,
-      params.durationMin,
-    );
-    if (timingError) return err(timingError);
-
-    const refsError = validateRefs(params.refs);
-    if (refsError) return err(refsError);
-
-    const placeUrlError = validatePlaceUrl(params.placeUrl);
-    if (placeUrlError) return err(placeUrlError);
-
-    const areas = readCollection(VAULT_ROOT, "areas");
-    const areaCheck = requireActiveArea(areas, params.areaId);
-    if (typeof areaCheck === "string") return err(areaCheck);
-
-    const moments = readCollection(VAULT_ROOT, "moments");
-    const moment = buildMoment(params);
-    moments[moment.id] = moment;
-    writeCollection(VAULT_ROOT, "moments", moments);
-    return ok({ created: moment });
+  concise: (p) => conciseMoment((p as any).created),
+  handler: async (params) => {
+    // This deprecated schema still accepts `phase: null` (the pre-add_moment
+    // shape); AddMomentInput has no null there, so drop it rather than widen
+    // the input type for a tool on its way out.
+    const { phase, ...rest } = params;
+    const result = runAddMoment({
+      ...rest,
+      ...(phase ? { phase } : {}),
+    });
+    if ("err" in result) return err(result.err);
+    return ok({ ...result, deprecated: "use add_moment" });
   },
-);
+});
 
-server.tool(
-  "update_moment",
-  "Partially update a moment. When `startTime` is set (not null), phase is auto-derived from phase configs. `startTime`/`durationMin` override what the moment inherited from its habit schedule (a moment can start at 12:15 when the habit says 12:00); pass null to clear. `refs` replaces the URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, pass `[]` to clear. `personIds` replaces the whole guest list — pass null or [] to clear it, omit it to leave it alone. `placeIds` and `placeUrl` behave the same way: pass null or [] to clear, omit to leave alone.",
-  {
+defineTool(server, {
+  name: "update_moment",
+  description:
+    "Partially update a moment. Set `day` to allocate/move; `day: null` returns a spontaneous moment to the drawing board (plan-linked moments must use unallocate_moment). When `startTime` is set (not null), phase is auto-derived from phase configs. `startTime`/`durationMin` override what the moment inherited from its habit schedule; pass null to clear. `refs` replaces the URLs; pass `[]` to clear. `personIds`/`placeIds`/`placeUrl`: pass null or [] to clear, omit to leave alone.",
+  schema: {
     id: z.string(),
     name: z.string().optional(),
     areaId: z.string().optional(),
+    day: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional()
+      .describe(
+        "Set to allocate/move; null to return a spontaneous moment to the drawing board.",
+      ),
+    order: z.number().int().nonnegative().optional(),
     emoji: z.string().nullable().optional(),
     phase: PhaseSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
@@ -2046,7 +2413,8 @@ server.tool(
     refs: z.array(z.string()).optional(),
     status: z.enum(["tentative", "accepted"]).optional(),
   },
-  async (params): Promise<ToolResult> => {
+  concise: (p) => conciseMoment((p as any).updated),
+  handler: async (params) => {
     const { id, ...updates } = params;
     const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[id];
@@ -2129,29 +2497,77 @@ server.tool(
         next.placeUrl = updates.placeUrl;
       }
     }
+    if ("day" in updates) {
+      if (updates.day === null) {
+        if (moment.cyclePlanId) {
+          return err(
+            "use unallocate_moment — plan-linked moments are deleted, and the deck ghost reappears",
+          );
+        }
+        next.day = null;
+        next.phase = null;
+        next.order = 0;
+        next.cycleId = null;
+      } else if (updates.day !== undefined) {
+        next.day = updates.day;
+        if (next.startTime) {
+          const derived = derivePhaseFromStartTime(next.startTime);
+          if (derived) next.phase = derived;
+        }
+        if (!next.phase) {
+          return err(
+            "phase is required when allocating — set phase or startTime",
+          );
+        }
+        const allMoments = Object.values(moments);
+        next.order =
+          updates.order ??
+          countMomentsInPhase(allMoments, updates.day, next.phase, id);
+        const cycles = readCollection(VAULT_ROOT, "cycles");
+        const dayMs = Date.parse(updates.day);
+        let covCycleId: string | null = null;
+        for (const c of Object.values(cycles)) {
+          const startMs = Date.parse(c.startDate);
+          const endMs = c.endDate ? Date.parse(c.endDate) : Infinity;
+          if (!Number.isNaN(startMs) && dayMs >= startMs && dayMs <= endMs) {
+            if (
+              !covCycleId ||
+              c.startDate > (cycles[covCycleId]?.startDate ?? "")
+            ) {
+              covCycleId = c.id;
+            }
+          }
+        }
+        next.cycleId = covCycleId;
+      }
+    } else if ("order" in updates && updates.order !== undefined) {
+      next.order = updates.order;
+    }
     moments[id] = next;
     writeCollection(VAULT_ROOT, "moments", moments);
     return ok({ updated: next });
   },
-);
+});
 
-server.tool(
-  "delete_moment",
-  "Permanently delete a moment.",
-  { id: z.string() },
-  async ({ id }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "delete_moment",
+  description: "Permanently delete a moment.",
+  schema: { id: z.string() },
+  annotations: { destructiveHint: true },
+  handler: async ({ id }) => {
     const moments = readCollection(VAULT_ROOT, "moments");
     if (!moments[id]) return err(`Moment not found: ${id}`);
     delete moments[id];
     writeCollection(VAULT_ROOT, "moments", moments);
     return ok({ deleted: id });
   },
-);
+});
 
-server.tool(
-  "allocate_moment",
-  "Allocate a moment to a specific (day, phase). `startTime`/`durationMin` optionally pin the moment to the clock. When `startTime` is provided, `phase` is auto-derived from phase configs and any explicit `phase` is ignored.",
-  {
+defineTool(server, {
+  name: "allocate_moment",
+  description:
+    "DEPRECATED — use update_moment { day, phase } instead. Allocate a moment to a specific (day, phase).",
+  schema: {
     id: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     phase: PhaseSchema.optional(),
@@ -2159,14 +2575,15 @@ server.tool(
     startTime: StartTimeSchema.optional(),
     durationMin: z.number().int().positive().optional(),
   },
-  async ({
+  concise: (p) => conciseMoment((p as any).allocated),
+  handler: async ({
     id,
     day,
     phase: explicitPhase,
     order,
     startTime,
     durationMin,
-  }): Promise<ToolResult> => {
+  }) => {
     const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[id];
     if (!moment) return err(`Moment not found: ${id}`);
@@ -2194,15 +2611,19 @@ server.tool(
     };
     moments[id] = next;
     writeCollection(VAULT_ROOT, "moments", moments);
-    return ok({ allocated: next });
+    return ok({
+      allocated: next,
+      deprecated: "use update_moment { day, phase }",
+    });
   },
-);
+});
 
-server.tool(
-  "unallocate_moment",
-  "Delete the moment row for a previously-allocated plan-linked moment. Virtual deck ghost reappears automatically as allocatedCount drops. Spontaneous moments (cyclePlanId === null) must use delete_moment instead.",
-  { id: z.string() },
-  async ({ id }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "unallocate_moment",
+  description:
+    "Delete the moment row for a previously-allocated plan-linked moment. Virtual deck ghost reappears automatically as allocatedCount drops. Spontaneous moments (cyclePlanId === null) must use delete_moment instead.",
+  schema: { id: z.string() },
+  handler: async ({ id }) => {
     const moments = readCollection(VAULT_ROOT, "moments");
     const moment = moments[id];
     if (!moment) return err(`Moment not found: ${id}`);
@@ -2215,171 +2636,49 @@ server.tool(
     writeCollection(VAULT_ROOT, "moments", moments);
     return ok({ unallocated: id });
   },
-);
+});
 
-server.tool(
-  "allocate_from_plan",
-  "Allocate a virtual deck card into a specific day/phase slot. Creates a new Moment linked to the cycle plan, inheriting the habit's schedule timing when it has one. When the habit has a scheduled startTime, phase is auto-derived from phase configs and any explicit phase is ignored. Errors if no plan exists, budget is exhausted, habit is archived, or day is outside cycle range.",
-  {
+defineTool(server, {
+  name: "allocate_from_plan",
+  description:
+    "DEPRECATED — use add_moment { habitId, day, phase, fromPlan: true } instead. Allocate a deck card into a day/phase slot.",
+  schema: {
     cycleId: z.string(),
     habitId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     phase: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]).optional(),
   },
-  async ({
-    cycleId,
-    habitId,
-    day,
-    phase: explicitPhase,
-  }): Promise<ToolResult> => {
-    const cycles = readCollection(VAULT_ROOT, "cycles");
-    const cycle = cycles[cycleId];
-    if (!cycle) return err(`Cycle ${cycleId} not found`);
-
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const habit = habits[habitId];
-    if (!habit) return err(`Habit ${habitId} not found`);
-    if (habit.isArchived) return err(`Habit ${habitId} is archived`);
-
-    const plans = readCollection(VAULT_ROOT, "cyclePlans");
-    const plan = Object.values(plans).find(
-      (p: CyclePlan) => p.cycleId === cycleId && p.habitId === habitId,
-    ) as CyclePlan | undefined;
-    if (!plan) return err("No budget: habit not planned for cycle");
-
-    const allMoments = readCollection(VAULT_ROOT, "moments");
-    const allocatedForPlan = Object.values(allMoments).filter(
-      (m: Moment) =>
-        m.cyclePlanId === plan.id && m.day !== null && m.phase !== null,
-    ).length;
-    if (allocatedForPlan >= plan.budgetedCount) {
-      return err(
-        `Over budget: ${allocatedForPlan}/${plan.budgetedCount} already allocated`,
-      );
-    }
-
-    if (cycle.endDate) {
-      if (day < cycle.startDate || day > cycle.endDate) {
-        return err(
-          `Day ${day} outside cycle range ${cycle.startDate}..${cycle.endDate}`,
-        );
-      }
-    } else if (day < cycle.startDate) {
-      return err(`Day ${day} before cycle start ${cycle.startDate}`);
-    }
-
-    const timing = habit.schedule ? timingFromSchedule(habit.schedule) : null;
-    let phase = explicitPhase ?? null;
-    if (timing) {
-      const derived = derivePhaseFromStartTime(timing.startTime);
-      if (derived) phase = derived;
-    }
-    if (!phase) return err("phase is required when habit has no schedule");
-
-    const slotCount = countMomentsInPhase(
-      Object.values(allMoments),
-      day,
-      phase,
-    );
-
-    const nowIsoStr = nowIso();
-    const moment: Moment = {
-      id: crypto.randomUUID(),
-      name: habit.name,
-      areaId: habit.areaId,
-      habitId: habit.id,
-      cycleId,
-      cyclePlanId: plan.id,
-      day,
-      phase,
-      order: slotCount,
-      ...(timing ?? {}),
-      emoji: habit.emoji ?? null,
-      tags: habit.tags ?? [],
-      createdAt: nowIsoStr,
-      updatedAt: nowIsoStr,
-    };
-
-    allMoments[moment.id] = moment;
-    writeCollection(VAULT_ROOT, "moments", allMoments);
-    return ok({ allocated: moment });
+  concise: (p) => conciseMoment((p as any).created),
+  handler: async ({ habitId, day, phase }) => {
+    const result = runAddMoment({ habitId, day, phase, fromPlan: true });
+    if ("err" in result) return err(result.err);
+    return ok({ ...result, deprecated: "use add_moment { fromPlan: true }" });
   },
-);
+});
 
-server.tool(
-  "spawn_spontaneous_from_habit",
-  "Create an ad-hoc moment from a habit template and allocate it. Inherits name/area/emoji/tags, plus the habit's schedule timing when it has one. When the habit has a scheduled startTime, phase is auto-derived from phase configs and any explicit phase is ignored. Spontaneous = no cyclePlanId. If a cycle contains the day, inherits its cycleId.",
-  {
+defineTool(server, {
+  name: "spawn_spontaneous_from_habit",
+  description:
+    "DEPRECATED — use add_moment { habitId, day, phase } instead. Create an ad-hoc moment from a habit template.",
+  schema: {
     habitId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     phase: PhaseSchema.optional(),
     order: z.number().int().nonnegative().optional(),
   },
-  async ({
-    habitId,
-    day,
-    phase: explicitPhase,
-    order,
-  }): Promise<ToolResult> => {
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const habitCheck = requireActiveHabit(habits, habitId);
-    if (typeof habitCheck === "string") return err(habitCheck);
-    const habit = habitCheck;
-
-    const areas = readCollection(VAULT_ROOT, "areas");
-    const areaCheck = requireActiveArea(areas, habit.areaId);
-    if (typeof areaCheck === "string") return err(areaCheck);
-
-    const timing = habit.schedule ? timingFromSchedule(habit.schedule) : null;
-    let phase = explicitPhase ?? null;
-    if (timing) {
-      const derived = derivePhaseFromStartTime(timing.startTime);
-      if (derived) phase = derived;
-    }
-    if (!phase) return err("phase is required when habit has no schedule");
-
-    const moments = readCollection(VAULT_ROOT, "moments");
-    const slotCount = countMomentsInPhase(Object.values(moments), day, phase);
-
-    // Inherit cycleId if a cycle contains `day`.
-    const cycles = readCollection(VAULT_ROOT, "cycles");
-    const dayMs = Date.parse(day);
-    let cycleId: string | null = null;
-    for (const c of Object.values(cycles)) {
-      const startMs = Date.parse(c.startDate);
-      const endMs = c.endDate ? Date.parse(c.endDate) : Infinity;
-      if (!Number.isNaN(startMs) && dayMs >= startMs && dayMs <= endMs) {
-        cycleId = c.id;
-        break;
-      }
-    }
-
-    // No refs inherited: Habit has no refs field and does not get one. A
-    // habit is a perennial template; the thing a moment points at (an issue,
-    // a PR, a doc) is particular to that occurrence, not to the template.
-    const moment = buildMoment({
-      name: habit.name,
-      areaId: habit.areaId,
-      habitId: habit.id,
-      cycleId,
-      cyclePlanId: null, // spontaneous
-      phase,
-      day,
-      order: order ?? slotCount,
-      emoji: habit.emoji,
-      tags: habit.tags,
-      ...(timing ?? {}),
-    });
-    moments[moment.id] = moment;
-    writeCollection(VAULT_ROOT, "moments", moments);
-    return ok({ created: moment });
+  concise: (p) => conciseMoment((p as any).created),
+  handler: async ({ habitId, day, phase, order }) => {
+    const result = runAddMoment({ habitId, day, phase, order });
+    if ("err" in result) return err(result.err);
+    return ok({ ...result, deprecated: "use add_moment" });
   },
-);
+});
 
-server.tool(
-  "create_standalone_moment",
-  "Create a new moment and allocate it in one op. For ad-hoc day moments not tied to a habit. Optional `startTime`/`durationMin` pin it to the clock. When `startTime` is provided, `phase` is auto-derived from phase configs and any explicit `phase` is ignored. `refs` are URLs this moment refers to (the Linear issue, the PR, the doc) — pointers only, not attachments and not a task list; any parseable URL scheme, including `things:///show?id=…`.",
-  {
+defineTool(server, {
+  name: "create_standalone_moment",
+  description:
+    "DEPRECATED — use add_moment { name, areaId, day, phase } instead. Create and allocate an ad-hoc moment.",
+  schema: {
     name: z.string(),
     areaId: z.string(),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -2394,60 +2693,13 @@ server.tool(
     durationMin: z.number().int().positive().optional(),
     refs: z.array(z.string()).optional(),
   },
-  async (params): Promise<ToolResult> => {
-    const nameError = validateOneToThreeWords(params.name, "Moment");
-    if (nameError) return err(nameError);
-
-    const timingError = validateMomentTiming(
-      params.startTime,
-      params.durationMin,
-    );
-    if (timingError) return err(timingError);
-
-    const refsError = validateRefs(params.refs);
-    if (refsError) return err(refsError);
-
-    const placeUrlError = validatePlaceUrl(params.placeUrl);
-    if (placeUrlError) return err(placeUrlError);
-
-    let phase = params.phase ?? null;
-    if (params.startTime) {
-      const derived = derivePhaseFromStartTime(params.startTime);
-      if (derived) phase = derived;
-    }
-    if (!phase) return err("phase is required when no startTime is provided");
-
-    const areas = readCollection(VAULT_ROOT, "areas");
-    const areaCheck = requireActiveArea(areas, params.areaId);
-    if (typeof areaCheck === "string") return err(areaCheck);
-
-    const moments = readCollection(VAULT_ROOT, "moments");
-    const slotCount = countMomentsInPhase(
-      Object.values(moments),
-      params.day,
-      phase,
-    );
-
-    const moment = buildMoment({
-      name: params.name,
-      areaId: params.areaId,
-      phase,
-      day: params.day,
-      order: params.order ?? slotCount,
-      emoji: params.emoji ?? null,
-      tags: params.tags,
-      personIds: params.personIds,
-      placeIds: params.placeIds,
-      placeUrl: params.placeUrl,
-      startTime: params.startTime,
-      durationMin: params.durationMin,
-      refs: params.refs,
-    });
-    moments[moment.id] = moment;
-    writeCollection(VAULT_ROOT, "moments", moments);
-    return ok({ created: moment });
+  concise: (p) => conciseMoment((p as any).created),
+  handler: async (params) => {
+    const result = runAddMoment(params);
+    if ("err" in result) return err(result.err);
+    return ok({ ...result, deprecated: "use add_moment" });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // ACTIVE MOMENT — the intention pointer
@@ -2509,11 +2761,23 @@ function describeActiveMoment(pointer: { momentId: string; at: string }) {
   };
 }
 
-server.tool(
-  "set_active_moment",
-  "Point the intention at a moment — 'this is what I'm doing now'. Accepts a moment id, or a name matched against today's board. keel reads this pointer and surfaces it in every Claude Code session. Refuses moments that aren't on today's board, since keel would ignore them.",
-  { momentIdOrName: z.string().min(1) },
-  async ({ momentIdOrName }): Promise<ToolResult> => {
+defineTool(server, {
+  name: "set_active_moment",
+  description:
+    "Point the intention at a moment — 'this is what I'm doing now'. Accepts a moment id or name matched against today's board. Pass null to clear (release the intention).",
+  schema: {
+    momentIdOrName: z
+      .string()
+      .min(1)
+      .nullable()
+      .describe("Moment id or name on today's board. null to clear."),
+  },
+  handler: async ({ momentIdOrName }) => {
+    if (momentIdOrName === null) {
+      const previous = readActiveMoment(VAULT_ROOT);
+      clearActiveMoment(VAULT_ROOT);
+      return ok({ cleared: previous ? previous.momentId : null });
+    }
     const moments = readCollection(VAULT_ROOT, "moments");
     const today = wakingDayKey();
     const needle = momentIdOrName.trim();
@@ -2548,49 +2812,57 @@ server.tool(
     const pointer = writeActiveMoment(VAULT_ROOT, moment.id, nowIso());
     return ok({ set: describeActiveMoment(pointer) });
   },
-);
+});
 
-server.tool(
-  "get_active_moment",
-  "Read the current intention pointer, resolved to its moment and area. Returns null when nothing is active.",
-  {},
-  async (): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_active_moment",
+  description:
+    "Read the current intention pointer, resolved to its moment and area. Returns null when nothing is active.",
+  schema: {},
+  annotations: { readOnlyHint: true },
+  handler: async () => {
     const pointer = readActiveMoment(VAULT_ROOT);
     if (!pointer) return ok({ active: null });
     return ok({ active: describeActiveMoment(pointer) });
   },
-);
+});
 
-server.tool(
-  "clear_active_moment",
-  "Release the intention — no moment is active. Removing the pointer IS the empty state.",
-  {},
-  async (): Promise<ToolResult> => {
+defineTool(server, {
+  name: "clear_active_moment",
+  description:
+    "DEPRECATED — use set_active_moment { momentIdOrName: null } instead. Release the intention.",
+  schema: {},
+  handler: async () => {
     const previous = readActiveMoment(VAULT_ROOT);
     clearActiveMoment(VAULT_ROOT);
-    return ok({ cleared: previous ? previous.momentId : null });
+    return ok({
+      cleared: previous ? previous.momentId : null,
+      deprecated: "use set_active_moment { momentIdOrName: null }",
+    });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // PHASE CONFIGS (Should-have)
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "list_phase_configs",
-  "List phase configurations, sorted by order.",
-  {},
-  async (): Promise<ToolResult> => {
+defineTool(server, {
+  name: "list_phase_configs",
+  description: "List phase configurations, sorted by order.",
+  schema: {},
+  annotations: { readOnlyHint: true },
+  handler: async () => {
     const configs = readCollection(VAULT_ROOT, "phaseConfigs");
     const list = Object.values(configs).sort((a, b) => a.order - b.order);
     return ok(list);
   },
-);
+});
 
-server.tool(
-  "update_phase_config",
-  "Update a phase configuration (label, emoji, color, hours, visibility, order).",
-  {
+defineTool(server, {
+  name: "update_phase_config",
+  description:
+    "Update a phase configuration (label, emoji, color, hours, visibility, order).",
+  schema: {
     id: z.string(),
     label: z.string().min(1).optional(),
     emoji: z.string().min(1).optional(),
@@ -2603,7 +2875,7 @@ server.tool(
     isVisible: z.boolean().optional(),
     order: z.number().int().nonnegative().optional(),
   },
-  async (params): Promise<ToolResult> => {
+  handler: async (params) => {
     const { id, ...updates } = params;
     const configs = readCollection(VAULT_ROOT, "phaseConfigs");
     const config = configs[id];
@@ -2627,33 +2899,37 @@ server.tool(
     writeCollection(VAULT_ROOT, "phaseConfigs", configs);
     return ok({ updated: next });
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // TAGS — derived people/place/theme index (read-side, computed, no storage)
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "list_tags",
-  "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read any namespace as an index. Sorted by total usage. People and places are NOT here: they are entity keys in `Moment.personIds`, `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds` — ask those fields, or `list_people_to_reach`. A `person-` or `place-` tag surfacing in this index is a habit the migration has not reached, not the index for that type.",
-  {
+defineTool(server, {
+  name: "list_tags",
+  description:
+    "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read any namespace as an index. Sorted by total usage. People and places are NOT here: they are entity keys in `Moment.personIds`, `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds` — ask those fields, or `list_people_to_reach`. A `person-` or `place-` tag surfacing in this index is a habit the migration has not reached, not the index for that type.",
+  schema: {
     prefix: z.string().optional(),
   },
-  async ({ prefix }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  handler: async ({ prefix }) => {
     const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
     const habits = Object.values(readCollection(VAULT_ROOT, "habits"));
     const areas = Object.values(readCollection(VAULT_ROOT, "areas"));
     return ok(buildTagIndex(moments, habits, areas, prefix));
   },
-);
+});
 
-server.tool(
-  "get_tag_profile",
-  'One tag\'s neighbourhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments, first/last day, and a recent sample. Generic tag aggregation — it never parsed a prefix and does not know what a person or a place is. "What did I do with someone, and where?" is now a question for `personIds` and `placeIds`, which hold references rather than strings.',
-  {
+defineTool(server, {
+  name: "get_tag_profile",
+  description:
+    'One tag\'s neighbourhood in the garden graph, derived at read time: which habits and areas its moments landed in, which tags co-occur on the same moments, first/last day, and a recent sample. Generic tag aggregation — it never parsed a prefix and does not know what a person or a place is. "What did I do with someone, and where?" is now a question for `personIds` and `placeIds`, which hold references rather than strings.',
+  schema: {
     tag: z.string().min(1),
   },
-  async ({ tag }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  handler: async ({ tag }) => {
     const normalized = normalizeTags([tag])[0];
     if (!normalized)
       return err(
@@ -2664,15 +2940,17 @@ server.tool(
     const areas = Object.values(readCollection(VAULT_ROOT, "areas"));
     return ok(buildTagProfile(normalized, moments, habits, areas));
   },
-);
+});
 
-server.tool(
-  "get_related_habits",
-  "A habit's derived edges in the garden graph — no stored relations, computed from existing data: `sharedTags` (habits whose tag signatures overlap — a signature is the habit's tags plus its moments' tags), `coOccurrence` (habits allocated on the same days, with the share of this habit's active days), and `areaSiblings` (active habits in the same plot). Tags only. Edges mediated by a shared person or place are not computed here, because those are references now rather than tags; a habit whose moments share `personIds` will not surface as related until something reads that field.",
-  {
+defineTool(server, {
+  name: "get_related_habits",
+  description:
+    "DEPRECATED — use get_tag_profile (includes relatedHabits). A habit's derived edges in the garden graph.",
+  schema: {
     habitId: z.string(),
   },
-  async ({ habitId }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  handler: async ({ habitId }) => {
     const habits = Object.values(readCollection(VAULT_ROOT, "habits"));
     const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
     const areas = Object.values(readCollection(VAULT_ROOT, "areas"));
@@ -2680,16 +2958,81 @@ server.tool(
     if (!related) return err(`Habit not found: ${habitId}`);
     return ok(related);
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // FUZZY SEARCH — entity resolution for the garden skills plugin
 // ────────────────────────────────────────────────────────────────────────
 
-server.tool(
-  "search_habits",
-  "Fuzzy-search habits by name or alias. Returns matches ranked by confidence (exact > prefix > substring > levenshtein). Use to resolve natural-language habit references before planting moments.",
-  {
+defineTool(server, {
+  name: "search",
+  description:
+    "Fuzzy-search habits, people, or places by name. Returns matches ranked by confidence (exact > prefix > substring > levenshtein). Use to resolve natural-language entity references. Pass areaId/includeArchived only for habit searches.",
+  schema: {
+    type: z.enum(["habit", "person", "place"]),
+    query: z.string().describe("Name, alias, or approximate spelling"),
+    areaId: z.string().optional().describe("habit only: restrict to this area"),
+    includeArchived: z
+      .boolean()
+      .optional()
+      .describe("habit only: include archived (default false)"),
+  },
+  annotations: { readOnlyHint: true },
+  handler: async ({ type, query, areaId, includeArchived }) => {
+    if (type === "habit") {
+      const habits = readCollection(VAULT_ROOT, "habits");
+      const results = searchHabits(query, habits, { areaId, includeArchived });
+      return ok(
+        results.map((r) => ({
+          habitId: r.habit.id,
+          name: r.habit.name,
+          areaId: r.habit.areaId,
+          emoji: r.habit.emoji,
+          attitude: r.habit.attitude,
+          aliases: r.habit.aliases ?? [],
+          matchedOn: r.matchedOn,
+          matchedValue: r.matchedValue,
+          matchMethod: r.method,
+        })),
+      );
+    }
+    if (type === "person") {
+      const people = readCollection(VAULT_ROOT, "people");
+      const results = searchPeople(query, people);
+      return ok(
+        results.map((r) => ({
+          personKey: r.person.key,
+          name: r.person.name,
+          emoji: r.person.emoji,
+          category: r.person.category,
+          status: r.person.status,
+          matchedOn: r.matchedOn,
+          matchedValue: r.matchedValue,
+          matchMethod: r.method,
+        })),
+      );
+    }
+    const places = readCollection(VAULT_ROOT, "places");
+    const results = searchPlaces(query, places);
+    return ok(
+      results.map((r) => ({
+        placeKey: r.place.key,
+        name: r.place.name,
+        emoji: r.place.emoji,
+        parentKey: r.place.parentKey,
+        matchedOn: r.matchedOn,
+        matchedValue: r.matchedValue,
+        matchMethod: r.method,
+      })),
+    );
+  },
+});
+
+defineTool(server, {
+  name: "search_habits",
+  description:
+    "DEPRECATED — use search { type: 'habit' } instead. Fuzzy-search habits by name or alias.",
+  schema: {
     query: z
       .string()
       .describe("The habit name, alias, or approximate spelling to search for"),
@@ -2702,7 +3045,8 @@ server.tool(
       .optional()
       .describe("Include archived habits in results (default false)"),
   },
-  async ({ query, areaId, includeArchived }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  handler: async ({ query, areaId, includeArchived }) => {
     const habits = readCollection(VAULT_ROOT, "habits");
     const results = searchHabits(query, habits, { areaId, includeArchived });
     return ok(
@@ -2719,19 +3063,21 @@ server.tool(
       })),
     );
   },
-);
+});
 
-server.tool(
-  "search_people",
-  "Fuzzy-search people by name or key. Returns matches ranked by confidence. Use to resolve person references before tagging moments with personIds.",
-  {
+defineTool(server, {
+  name: "search_people",
+  description:
+    "DEPRECATED — use search { type: 'person' } instead. Fuzzy-search people by name or key.",
+  schema: {
     query: z
       .string()
       .describe(
         "The person's name, key, or approximate spelling to search for",
       ),
   },
-  async ({ query }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  handler: async ({ query }) => {
     const people = readCollection(VAULT_ROOT, "people");
     const results = searchPeople(query, people);
     return ok(
@@ -2747,17 +3093,19 @@ server.tool(
       })),
     );
   },
-);
+});
 
-server.tool(
-  "search_places",
-  "Fuzzy-search places by name, key, or parent key. Returns matches ranked by confidence. Use to resolve place references before tagging moments with placeIds.",
-  {
+defineTool(server, {
+  name: "search_places",
+  description:
+    "DEPRECATED — use search { type: 'place' } instead. Fuzzy-search places by name, key, or parent key.",
+  schema: {
     query: z
       .string()
       .describe("The place name, key, or approximate spelling to search for"),
   },
-  async ({ query }): Promise<ToolResult> => {
+  annotations: { readOnlyHint: true },
+  handler: async ({ query }) => {
     const places = readCollection(VAULT_ROOT, "places");
     const results = searchPlaces(query, places);
     return ok(
@@ -2772,7 +3120,7 @@ server.tool(
       })),
     );
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // Fences (fences.json) — declared rules only
@@ -2813,10 +3161,11 @@ const fenceDeps: FenceDeps = {
   newRuleId: () => crypto.randomUUID(),
 };
 
-server.tool(
-  "set_fence",
-  'Declare a session fence: "only this stream, and friction on anything else". Builds a declared rule (never derived — fences come from what you say here, nothing else) and writes it to the fences collection, which zenborg alone writes. Every rung of the escalation ladder carries an exit; a fence can ask, never deny. Areas may be passed by name ("Themia") or id; paths are absolute prefixes INSIDE the fence (~ expands).',
-  {
+defineTool(server, {
+  name: "set_fence",
+  description:
+    'Declare a session fence: "only this stream, and friction on anything else". Builds a declared rule (never derived — fences come from what you say here, nothing else) and writes it to the fences collection, which zenborg alone writes. Every rung of the escalation ladder carries an exit; a fence can ask, never deny. Areas may be passed by name ("Themia") or id; paths are absolute prefixes INSIDE the fence (~ expands).',
+  schema: {
     label: z
       .string()
       .min(1)
@@ -2838,7 +3187,7 @@ server.tool(
       .optional()
       .describe("Optional: the declaration in the principal's own words"),
   },
-  async ({ label, paths, areas, description }): Promise<ToolResult> => {
+  handler: async ({ label, paths, areas, description }) => {
     const result = await declareFence(fenceDeps, {
       label,
       paths: paths.map(expandHome),
@@ -2848,7 +3197,7 @@ server.tool(
     if ("problems" in result) return err(result.problems.join("; "));
     return ok({ declared: result.declared, standing: result.standing });
   },
-);
+});
 
 // ── Browser-scoped fences ─────────────────────────────────────────────
 //
@@ -2860,10 +3209,11 @@ server.tool(
 // They exist because migration step 5 could not flip the readers without them:
 // with no browser-scoped writer, a fences-only read reached no browser at all.
 
-server.tool(
-  "set_host_block",
-  "Declare a standing block on a host, as a rule that says what it is for. Browser-enforced by default — the extension actuates it from the pushed armed record; pass `resolverProfile` for a resolver-level block instead, which is the only reach that covers a phone. `unlockNote` is required and is the exit: a block that names no way out is refused, never armed.",
-  {
+defineTool(server, {
+  name: "set_host_block",
+  description:
+    "Declare a standing block on a host, as a rule that says what it is for. Browser-enforced by default — the extension actuates it from the pushed armed record; pass `resolverProfile` for a resolver-level block instead, which is the only reach that covers a phone. `unlockNote` is required and is the exit: a block that names no way out is refused, never armed.",
+  schema: {
     host: z
       .string()
       .min(1)
@@ -2889,17 +3239,18 @@ server.tool(
         "Name the resolver profile carrying the block to enforce it there instead of in the browser",
       ),
   },
-  async (input): Promise<ToolResult> => {
+  handler: async (input) => {
     const result = await declareHostBlock(fenceDeps, input);
     if ("problems" in result) return err(result.problems.join("; "));
     return ok({ declared: result.declared, standing: result.standing });
   },
-);
+});
 
-server.tool(
-  "set_browser_gate",
-  "Declare a recurring stopping cue on a host: every N attended minutes of dwell, the page asks a question with an exit. Friction on the duration rather than on the visit — which is the answer to a standing block on a host you have a real reason to use, since that block gets lifted and a block lifted in the moment is not a boundary. Ships below delivery probability 1, because whether a cue like this returns attention is exactly what is unknown.",
-  {
+defineTool(server, {
+  name: "set_browser_gate",
+  description:
+    "Declare a recurring stopping cue on a host: every N attended minutes of dwell, the page asks a question with an exit. Friction on the duration rather than on the visit — which is the answer to a standing block on a host you have a real reason to use, since that block gets lifted and a block lifted in the moment is not a boundary. Ships below delivery probability 1, because whether a cue like this returns attention is exactly what is unknown.",
+  schema: {
     host: z
       .string()
       .min(1)
@@ -2920,17 +3271,18 @@ server.tool(
     name: z.string().optional(),
     description: z.string().optional(),
   },
-  async (input): Promise<ToolResult> => {
+  handler: async (input) => {
     const result = await declareBrowserGate(fenceDeps, input);
     if ("problems" in result) return err(result.problems.join("; "));
     return ok({ declared: result.declared, standing: result.standing });
   },
-);
+});
 
-server.tool(
-  "set_browser_transform",
-  "Declare a DOM transform on a host: hide, restyle or replace a region rather than gate or block it — the LinkedIn feed, the YouTube Shorts shelf. Completes the fence trilogy: set_host_block asks whether you should reach a host at all, set_browser_gate asks whether you've been there longer than you meant to be, this asks whether a cue needs to be visible at all. No exit to name: a CSS conceal withholds nothing, the concealed content is still one direct navigation away, so invariant 6 does not apply to this primitive the way it does to a block or a gate.",
-  {
+defineTool(server, {
+  name: "set_browser_transform",
+  description:
+    "Declare a DOM transform on a host: hide, restyle or replace a region rather than gate or block it — the LinkedIn feed, the YouTube Shorts shelf. Completes the fence trilogy: set_host_block asks whether you should reach a host at all, set_browser_gate asks whether you've been there longer than you meant to be, this asks whether a cue needs to be visible at all. No exit to name: a CSS conceal withholds nothing, the concealed content is still one direct navigation away, so invariant 6 does not apply to this primitive the way it does to a block or a gate.",
+  schema: {
     host: z
       .string()
       .min(1)
@@ -2974,17 +3326,18 @@ server.tool(
     name: z.string().optional(),
     description: z.string().optional(),
   },
-  async (input): Promise<ToolResult> => {
+  handler: async (input) => {
     const result = await declareBrowserTransform(fenceDeps, input);
     if ("problems" in result) return err(result.problems.join("; "));
     return ok({ declared: result.declared, standing: result.standing });
   },
-);
+});
 
-server.tool(
-  "seed_host_blocks",
-  "Write the seed blocklist into fences as rules — the oldest working piece of the system, carried out of keel's own rules directory and into the collection the kernel contract registers. Idempotent: each rule's id is derived from its host and enforcement point, so re-running replaces rather than accumulating, and fences it did not write are left alone.",
-  {
+defineTool(server, {
+  name: "seed_host_blocks",
+  description:
+    "Write the seed blocklist into fences as rules — the oldest working piece of the system, carried out of keel's own rules directory and into the collection the kernel contract registers. Idempotent: each rule's id is derived from its host and enforcement point, so re-running replaces rather than accumulating, and fences it did not write are left alone.",
+  schema: {
     returnsTo: z
       .array(z.string().min(1))
       .min(1)
@@ -3003,7 +3356,7 @@ server.tool(
       .optional()
       .describe("Enforce at the resolver instead of in the browser"),
   },
-  async (input): Promise<ToolResult> => {
+  handler: async (input) => {
     const result = await seedHostBlocks(fenceDeps, input);
     if ("problems" in result) return err(result.problems.join("; "));
     return ok({
@@ -3014,16 +3367,18 @@ server.tool(
       standing: result.standing,
     });
   },
-);
+});
 
-server.tool(
-  "clear_fence",
-  "Take a fence down, by id — or all of them at once. Pass exactly one of `id` or `all`. The crossing tally is plugin-owned and left alone; a cleared fence's id is never reused, so its count can never gate anything again.",
-  {
+defineTool(server, {
+  name: "clear_fence",
+  description:
+    "Take a fence down, by id — or all of them at once. Pass exactly one of `id` or `all`. The crossing tally is plugin-owned and left alone; a cleared fence's id is never reused, so its count can never gate anything again.",
+  schema: {
     id: z.string().optional().describe("The fence's rule id"),
     all: z.boolean().optional().describe("Take every standing fence down"),
   },
-  async ({ id, all }): Promise<ToolResult> => {
+  annotations: { destructiveHint: true },
+  handler: async ({ id, all }) => {
     if ((id === undefined) === (all === undefined)) {
       return err("pass exactly one of `id` or `all`");
     }
@@ -3036,16 +3391,18 @@ server.tool(
       cleared: result.cleared.map((f) => ({ id: f.id, label: f.name })),
     });
   },
-);
+});
 
-server.tool(
-  "get_fence",
-  "Report what is currently fenced: each standing fence with its crossing tally (from the plugin's fences-state.json, zero when never crossed) and the rung the NEXT crossing would land on.",
-  {},
-  async (): Promise<ToolResult> => {
+defineTool(server, {
+  name: "get_fence",
+  description:
+    "Report what is currently fenced: each standing fence with its crossing tally (from the plugin's fences-state.json, zero when never crossed) and the rung the NEXT crossing would land on.",
+  schema: {},
+  annotations: { readOnlyHint: true },
+  handler: async () => {
     return ok(await fenceReport(fenceDeps));
   },
-);
+});
 
 // ────────────────────────────────────────────────────────────────────────
 // Connect
