@@ -38,7 +38,14 @@ export interface Schedule {
   readonly weekdays: readonly Weekday[];
   readonly startTime: string; // "HH:MM", 24h, zero-padded
   readonly durationMin: number; // positive whole minutes
-  readonly timezone?: string; // IANA timezone, e.g. "Europe/Paris"
+  /**
+   * IANA zone the `startTime` is read in, e.g. "America/Sao_Paulo".
+   *
+   * Absent means *floating* — the clock time is whatever local time you are
+   * in. Present means *anchored* to a fixed instant. See
+   * `scheduleLocalStartTime`.
+   */
+  readonly timezone?: string;
 }
 
 export type ScheduleResult = Schedule | { error: string };
@@ -86,6 +93,12 @@ export function createSchedule(props: CreateScheduleProps): ScheduleResult {
   if (!Number.isInteger(props.durationMin) || props.durationMin <= 0) {
     return {
       error: "Schedule durationMin must be a positive whole number of minutes",
+    };
+  }
+
+  if (props.timezone !== undefined && !isValidTimezone(props.timezone)) {
+    return {
+      error: `Schedule timezone must be an IANA identifier like "America/Sao_Paulo", got: ${props.timezone}`,
     };
   }
 
@@ -183,4 +196,149 @@ export function schedulePhaseError(
     return null;
   }
   return `Phase ${phase} contradicts startTime ${schedule.startTime}, which falls in ${derived}`;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Timezone — floating vs anchored schedules
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * IANA identifier shape: "Europe/Paris", "America/Argentina/Buenos_Aires",
+ * or the bare "UTC".
+ *
+ * Deliberately stricter than `Intl`, which also accepts fixed offsets such as
+ * "+05:00". The Swift calendar sidecar resolves this same string through
+ * `TimeZone(identifier:)`, which rejects an offset and returns nil — and a nil
+ * there falls back to the device's own zone, firing the event at the wrong
+ * hour with nothing logged. Refusing the offset here is what keeps the three
+ * readers agreeing on one meaning.
+ */
+const IANA_TIMEZONE_PATTERN =
+  /^(UTC|[A-Za-z][A-Za-z0-9_+-]*(?:\/[A-Za-z0-9_+-]+)+)$/;
+
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True when `value` is an IANA zone this system and the sidecar both accept. */
+export function isValidTimezone(value: string): boolean {
+  if (!IANA_TIMEZONE_PATTERN.test(value)) {
+    return false;
+  }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * True when the schedule names the zone its clock time is read in.
+ *
+ * Anchored — "09:00 America/Sao_Paulo" — is a lesson a teacher in Brazil
+ * keeps. The instant is fixed and the wall clock you read it at moves when
+ * you do.
+ *
+ * Floating, the default and the case for most habits, is "09:00" meaning nine
+ * in the morning wherever you happen to be. A run, a sit.
+ */
+export function isScheduleAnchored(schedule: Schedule): boolean {
+  return schedule.timezone !== undefined;
+}
+
+/**
+ * The offset of `timeZone` from UTC at one instant, in milliseconds.
+ *
+ * Derived by formatting the instant *in* that zone and reading the wall clock
+ * back — the only offset-free way to ask, and the reason DST needs no table
+ * here.
+ */
+function zoneOffsetMs(instant: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(instant);
+  const read = (type: string): number =>
+    Number(parts.find((part) => part.type === type)?.value);
+  const asUtc = Date.UTC(
+    read("year"),
+    read("month") - 1,
+    read("day"),
+    read("hour"),
+    read("minute"),
+    read("second"),
+  );
+  return asUtc - instant.getTime();
+}
+
+/**
+ * The instant at which `startTime` reads on the wall clock of `timeZone`, on
+ * `day`.
+ *
+ * Two passes, because the offset depends on the instant and the instant
+ * depends on the offset. The first guess is corrected once, which settles
+ * every case except a wall time inside a spring-forward gap — an hour that
+ * does not exist, where the correction lands just after the jump. That is the
+ * conventional resolution and matches what EventKit does with the same input.
+ */
+function instantForZonedWallTime(
+  day: string,
+  startTime: string,
+  timeZone: string,
+): Date {
+  const [year, month, date] = day.split("-").map(Number);
+  const [hour, minute] = startTime.split(":").map(Number);
+  const naive = Date.UTC(year, month - 1, date, hour, minute);
+  const firstGuess = naive - zoneOffsetMs(new Date(naive), timeZone);
+  return new Date(naive - zoneOffsetMs(new Date(firstGuess), timeZone));
+}
+
+/**
+ * The wall clock to *render* for a scheduled commitment, as read from
+ * `viewerTimezone` on `day`.
+ *
+ * A floating schedule returns its `startTime` untouched. An anchored one is
+ * converted: the singing lesson stored as "09:00 America/Sao_Paulo" renders
+ * "14:00" when read from Europe/Paris.
+ *
+ * `day` is required because the gap between two zones is not a constant — the
+ * hemispheres change over on different dates, so São Paulo and Paris sit five
+ * hours apart in one part of the year and four in another. This is precisely
+ * why an offset is never stored, only ever computed at render.
+ *
+ * Fails soft, per the vault contract: an unusable zone or day on either side
+ * returns the stored `startTime` rather than throwing. A wrong hour is
+ * recoverable; a card that will not render is not.
+ */
+export function scheduleLocalStartTime(
+  schedule: Schedule,
+  viewerTimezone: string,
+  day: string,
+): string {
+  const anchor = schedule.timezone;
+  if (
+    anchor === undefined ||
+    anchor === viewerTimezone ||
+    !DAY_PATTERN.test(day) ||
+    !isValidTimezone(anchor) ||
+    !isValidTimezone(viewerTimezone)
+  ) {
+    return schedule.startTime;
+  }
+  const instant = instantForZonedWallTime(day, schedule.startTime, anchor);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: viewerTimezone,
+    hourCycle: "h23",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(instant);
+  const read = (type: string): string =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  const local = `${read("hour").padStart(2, "0")}:${read("minute").padStart(2, "0")}`;
+  return isValidStartTime(local) ? local : schedule.startTime;
 }
