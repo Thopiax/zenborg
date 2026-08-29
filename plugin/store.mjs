@@ -1,11 +1,30 @@
 // @ts-check
 // keel agent store — the only I/O. Config + state repository over ~/.kairos/keel, plus stdin.
 
-import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, renameSync, statSync, readdirSync, unlinkSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  appendFileSync,
+  mkdirSync,
+  existsSync,
+  renameSync,
+  statSync,
+  readdirSync,
+  unlinkSync,
+} from "node:fs";
 import { homedir, platform } from "node:os";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { mergeTarget, mergeWatchlist, mergeDesktopSensors, emptyState, logFileName, browserLogFileName, eventLine, momentFrictionAt } from "./core.mjs";
+import {
+  mergeTarget,
+  mergeWatchlist,
+  mergeDesktopSensors,
+  emptyState,
+  logFileName,
+  browserLogFileName,
+  eventLine,
+  momentFrictionAt,
+} from "./core.mjs";
 
 // The kairos vault is the shared home, so keel's own files live INSIDE it as a subtree
 // keel owns: `$KAIROS_HOME/keel/`. The one-way seam is unchanged and worth stating
@@ -28,35 +47,55 @@ const STATE_PATH = join(KEEL_DIR, "state.json");
 /** @returns {import("./core.mjs").Target} */
 export function loadTarget(id = TARGET_ID) {
   let cfg = {};
-  try { cfg = JSON.parse(readFileSync(CONFIG_PATH, "utf8")); } catch { /* defaults */ }
+  try {
+    cfg = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+  } catch {
+    /* defaults */
+  }
   return mergeTarget(cfg?.targets?.[id]);
 }
 
 /** The raw (unmerged) user config for one target — provenance for `keel rules`.
  * @returns {any} */
 export function loadRawTarget(id = TARGET_ID) {
-  try { return JSON.parse(readFileSync(CONFIG_PATH, "utf8"))?.targets?.[id] ?? {}; }
-  catch { return {}; }
+  try {
+    return JSON.parse(readFileSync(CONFIG_PATH, "utf8"))?.targets?.[id] ?? {};
+  } catch {
+    return {};
+  }
 }
 
 /** The watchlist (config spine) — top-level in config.json, cross-target.
  * @returns {import("./core.mjs").Watchlist} */
 export function loadWatchlist() {
-  try { return mergeWatchlist(JSON.parse(readFileSync(CONFIG_PATH, "utf8"))?.watchlist); }
-  catch { return mergeWatchlist(); }
+  try {
+    return mergeWatchlist(
+      JSON.parse(readFileSync(CONFIG_PATH, "utf8"))?.watchlist,
+    );
+  } catch {
+    return mergeWatchlist();
+  }
 }
 
 /** Desktop (tray) sensor toggles — top-level in config.json.
  * @returns {import("./core.mjs").DesktopSensors} */
 export function loadDesktopSensors() {
-  try { return mergeDesktopSensors(JSON.parse(readFileSync(CONFIG_PATH, "utf8"))?.desktop); }
-  catch { return mergeDesktopSensors(); }
+  try {
+    return mergeDesktopSensors(
+      JSON.parse(readFileSync(CONFIG_PATH, "utf8"))?.desktop,
+    );
+  } catch {
+    return mergeDesktopSensors();
+  }
 }
 
 /** @returns {import("./core.mjs").State} */
 export function loadState() {
-  try { return { ...emptyState(), ...JSON.parse(readFileSync(STATE_PATH, "utf8")) }; }
-  catch { return emptyState(); }
+  try {
+    return { ...emptyState(), ...JSON.parse(readFileSync(STATE_PATH, "utf8")) };
+  } catch {
+    return emptyState();
+  }
 }
 
 /** Atomic JSON write: temp file in the same dir, then rename. Avoids torn
@@ -79,7 +118,11 @@ export const SNAPSHOT_PATH = join(KEEL_DIR, "watchlist-snapshot.json");
 
 /** @returns {Record<string, string>} */
 export function loadLedger() {
-  try { return JSON.parse(readFileSync(LEDGER_PATH, "utf8")); } catch { return {}; }
+  try {
+    return JSON.parse(readFileSync(LEDGER_PATH, "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 /** @param {Record<string, string>} led */
@@ -90,7 +133,11 @@ export function saveLedger(led) {
 
 /** @returns {Record<string, unknown>} */
 export function loadSnapshot() {
-  try { return JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8")); } catch { return {}; }
+  try {
+    return JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 /** @param {Record<string, unknown>} snap */
@@ -167,7 +214,9 @@ export function loadActiveMomentPointer() {
   try {
     const raw = JSON.parse(readFileSync(ACTIVE_MOMENT_PATH, "utf8"));
     return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Moments from the kernel, keyed by id — the collection the pointer resolves against,
@@ -177,7 +226,9 @@ export function loadMoments() {
   try {
     const raw = JSON.parse(readFileSync(MOMENTS_PATH, "utf8"));
     return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Phase bands from the kernel — when MORNING/AFTERNOON/EVENING/NIGHT start and end.
@@ -196,13 +247,26 @@ export function loadMoments() {
 export function loadPhaseConfigs() {
   /** @type {any} */
   let raw;
-  try { raw = JSON.parse(readFileSync(PHASE_CONFIGS_PATH, "utf8")); } catch { return []; }
+  try {
+    raw = JSON.parse(readFileSync(PHASE_CONFIGS_PATH, "utf8"));
+  } catch {
+    return [];
+  }
   const list = Array.isArray(raw) ? raw : Object.values(raw ?? {});
   return list
-    .filter((b) => b && typeof b.phase === "string"
-      && Number.isFinite(Number(b.startHour)) && Number.isFinite(Number(b.endHour)))
+    .filter(
+      (b) =>
+        b &&
+        typeof b.phase === "string" &&
+        Number.isFinite(Number(b.startHour)) &&
+        Number.isFinite(Number(b.endHour)),
+    )
     .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
-    .map((b) => ({ phase: String(b.phase), startHour: Number(b.startHour), endHour: Number(b.endHour) }));
+    .map((b) => ({
+      phase: String(b.phase),
+      startHour: Number(b.startHour),
+      endHour: Number(b.endHour),
+    }));
 }
 
 /** Areas from the kernel — live, ordered, without the archived ones.
@@ -227,7 +291,11 @@ export function loadPhaseConfigs() {
 export function loadAreas() {
   /** @type {any} */
   let raw;
-  try { raw = JSON.parse(readFileSync(AREAS_PATH, "utf8")); } catch { return []; }
+  try {
+    raw = JSON.parse(readFileSync(AREAS_PATH, "utf8"));
+  } catch {
+    return [];
+  }
   const list = Array.isArray(raw) ? raw : Object.values(raw ?? {});
   return list
     .filter((a) => a && a.id && a.name && a.isArchived !== true)
@@ -252,7 +320,11 @@ export function loadAreas() {
 export function loadCycles() {
   /** @type {any} */
   let raw;
-  try { raw = JSON.parse(readFileSync(CYCLES_PATH, "utf8")); } catch { return []; }
+  try {
+    raw = JSON.parse(readFileSync(CYCLES_PATH, "utf8"));
+  } catch {
+    return [];
+  }
   const list = Array.isArray(raw) ? raw : Object.values(raw ?? {});
   return list
     .filter((c) => c && c.id)
@@ -291,7 +363,9 @@ export function vaultWritable() {
     writeFileSync(probe, "");
     unlinkSync(probe);
     return true;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 /** Is Screen Recording granted? Preflight, not request: this variant never
@@ -306,18 +380,27 @@ export function vaultWritable() {
 export function screenRecordingGranted() {
   if (platform() !== "darwin") return null;
   try {
-    const out = execFileSync("osascript", ["-l", "JavaScript", "-e",
-      "ObjC.bindFunction('CGPreflightScreenCaptureAccess', ['bool', []]); $.CGPreflightScreenCaptureAccess() ? 'true' : 'false'"],
-      { encoding: "utf8", timeout: 5000, stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const out = execFileSync(
+      "osascript",
+      [
+        "-l",
+        "JavaScript",
+        "-e",
+        "ObjC.bindFunction('CGPreflightScreenCaptureAccess', ['bool', []]); $.CGPreflightScreenCaptureAccess() ? 'true' : 'false'",
+      ],
+      { encoding: "utf8", timeout: 5000, stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
     return out === "true" ? true : out === "false" ? false : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Which browsers carry the relay manifest. @returns {string[]} */
 export function nativeHostProfiles() {
-  return NATIVE_HOST_DIRS
-    .filter(([, rel]) => existsSync(join(homedir(), rel, `${NATIVE_HOST_NAME}.json`)))
-    .map(([label]) => label);
+  return NATIVE_HOST_DIRS.filter(([, rel]) =>
+    existsSync(join(homedir(), rel, `${NATIVE_HOST_NAME}.json`)),
+  ).map(([label]) => label);
 }
 
 /** Everything the preflight is allowed to know. I/O only; the judgement about
@@ -327,7 +410,11 @@ export function nativeHostProfiles() {
 export async function probeMachine({ now = Date.now() } = {}) {
   /** @type {number|null} */
   let logEventsToday = null;
-  try { logEventsToday = readEvents(LOG_DIR, now).length; } catch { logEventsToday = null; }
+  try {
+    logEventsToday = readEvents(LOG_DIR, now).length;
+  } catch {
+    logEventsToday = null;
+  }
 
   return {
     vaultPath: KAIROS_DIR,
@@ -349,13 +436,22 @@ export async function probeMachine({ now = Date.now() } = {}) {
  * posture stops URLs at this boundary. What crosses the relay is domains.
  * @param {number} [now] @returns {{allow: string[], deny: string[]}|null} */
 export function loadMomentFriction(now = Date.now()) {
-  return momentFrictionAt(loadActiveMomentPointer(), loadMoments(), loadAreas(), now);
+  return momentFrictionAt(
+    loadActiveMomentPointer(),
+    loadMoments(),
+    loadAreas(),
+    now,
+  );
 }
 
 /** Domain (or domain/path) → areaId.
  * @returns {Record<string, string>} */
 export function loadAreaMap() {
-  try { return JSON.parse(readFileSync(AREA_MAP_PATH, "utf8")); } catch { return {}; }
+  try {
+    return JSON.parse(readFileSync(AREA_MAP_PATH, "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 /** @param {Record<string, string>} map */
@@ -399,8 +495,11 @@ export function resolveRuleDomains(rule) {
 export function loadBreakTarget() {
   const areas = loadAreas();
   for (const rule of loadRuleSpecs()) {
-    if (rule?.id !== "content-break" || rule?.defaultEnabled === false) continue;
-    const cooldown = (rule.primitives ?? []).find((p) => p?.kind === "cooldown");
+    if (rule?.id !== "content-break" || rule?.defaultEnabled === false)
+      continue;
+    const cooldown = (rule.primitives ?? []).find(
+      (p) => p?.kind === "cooldown",
+    );
     if (!cooldown) continue;
     return {
       areas: (rule.areas ?? [])
@@ -427,20 +526,31 @@ export function loadBreakTarget() {
 export function readBrowserEventsSince(sinceTs) {
   const out = [];
   let files;
-  try { files = readdirSync(LOG_DIR).filter((f) => f.endsWith(".browser.jsonl")).sort(); }
-  catch { return out; }
+  try {
+    files = readdirSync(LOG_DIR)
+      .filter((f) => f.endsWith(".browser.jsonl"))
+      .sort();
+  } catch {
+    return out;
+  }
   for (const f of files) {
     // Skip whole day-files that close before the cutoff, rather than parsing them.
     const dayEnd = new Date(`${f.slice(0, 10)}T23:59:59.999`).getTime();
     if (Number.isFinite(dayEnd) && dayEnd < sinceTs) continue;
     let text;
-    try { text = readFileSync(join(LOG_DIR, f), "utf8"); } catch { continue; }
+    try {
+      text = readFileSync(join(LOG_DIR, f), "utf8");
+    } catch {
+      continue;
+    }
     for (const line of text.split("\n")) {
       if (!line) continue;
       try {
         const e = JSON.parse(line);
         if (e && typeof e.ts === "number" && e.ts >= sinceTs) out.push(e);
-      } catch { /* skip a torn line, never fail the backfill */ }
+      } catch {
+        /* skip a torn line, never fail the backfill */
+      }
     }
   }
   return out;
@@ -477,7 +587,9 @@ export function safeRedirect(to) {
   if (url.startsWith("/") && !url.startsWith("//")) return url;
   try {
     const parsed = new URL(url);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? url : null;
+    return parsed.protocol === "https:" || parsed.protocol === "http:"
+      ? url
+      : null;
   } catch {
     return null;
   }
@@ -485,14 +597,22 @@ export function safeRedirect(to) {
 
 export function projectFriction(frictionType) {
   const t = frictionType?.type;
-  if (t === "delay") return { type: "delay", seconds: Number(frictionType.seconds) || 0 };
-  if (t === "breath") return { type: "breath", cycles: Number(frictionType.cycles) || 3 };
+  if (t === "delay")
+    return { type: "delay", seconds: Number(frictionType.seconds) || 0 };
+  if (t === "breath")
+    return { type: "breath", cycles: Number(frictionType.cycles) || 3 };
   if (t === "confirmation") return { type: "confirmation" };
   if (t === "intention") {
-    return { type: "intention", prompt: frictionType.prompt || "Still what you came for?" };
+    return {
+      type: "intention",
+      prompt: frictionType.prompt || "Still what you came for?",
+    };
   }
   if (t) {
-    return { type: "intention", prompt: `keel declared "${t}" here and cannot render it yet.` };
+    return {
+      type: "intention",
+      prompt: `keel declared "${t}" here and cannot render it yet.`,
+    };
   }
   return { type: "intention", prompt: "Still what you came for?" };
 }
@@ -515,7 +635,8 @@ export function loadTransforms() {
     if (rule?.defaultEnabled === false) continue;
     for (const p of rule?.primitives ?? []) {
       if (p?.kind !== "transform") continue;
-      const primary = typeof p?.targets?.primary === "string" ? p.targets.primary.trim() : "";
+      const primary =
+        typeof p?.targets?.primary === "string" ? p.targets.primary.trim() : "";
       if (!primary) continue;
       const fallbacks = (p.targets.fallbacks ?? [])
         .filter((s) => typeof s === "string" && s.trim())
@@ -526,13 +647,17 @@ export function loadTransforms() {
       // `text` with nothing in it would leave an empty box where the content was,
       // which reads as a broken site rather than a suppressed one.
       const content =
-        typeof p.replacement?.content === "string" ? p.replacement.content.trim() : "";
+        typeof p.replacement?.content === "string"
+          ? p.replacement.content.trim()
+          : "";
       out.push({
         ruleId: rule.id,
         domains: resolveRuleDomains(rule),
         targets: { primary, fallbacks },
         replacement:
-          p.replacement?.type === "restyle" && style && typeof style === "object"
+          p.replacement?.type === "restyle" &&
+          style &&
+          typeof style === "object"
             ? { type: "restyle", style }
             : p.replacement?.type === "text" && content !== ""
               ? { type: "text", content }
@@ -548,7 +673,11 @@ export function loadTransforms() {
 export function writeObserveList(observe) {
   /** @type {any} */
   let cfg = {};
-  try { cfg = JSON.parse(readFileSync(CONFIG_PATH, "utf8")); } catch { cfg = {}; }
+  try {
+    cfg = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+  } catch {
+    cfg = {};
+  }
   cfg.watchlist = cfg.watchlist || {};
   cfg.watchlist.observe = observe;
   if (!existsSync(KEEL_DIR)) mkdirSync(KEEL_DIR, { recursive: true });
@@ -561,7 +690,13 @@ export function readStdin() {
     if (process.stdin.isTTY) return res(null);
     let d = "";
     process.stdin.on("data", (c) => (d += c));
-    process.stdin.on("end", () => { try { res(JSON.parse(d)); } catch { res(null); } });
+    process.stdin.on("end", () => {
+      try {
+        res(JSON.parse(d));
+      } catch {
+        res(null);
+      }
+    });
   });
 }
 
@@ -576,7 +711,9 @@ export function appendEvent(dir, e) {
     mkdirSync(dir, { recursive: true });
     appendFileSync(join(dir, logFileName(e.ts)), eventLine(e));
     return true;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 /** Read one day's events; missing/corrupt file → []. Skips torn/foreign lines.
@@ -585,9 +722,18 @@ export function appendEvent(dir, e) {
 export function readEvents(dir, ts) {
   try {
     return readFileSync(join(dir, logFileName(ts)), "utf8")
-      .split("\n").filter(Boolean)
-      .flatMap((l) => { try { return [JSON.parse(l)]; } catch { return []; } });
-  } catch { return []; }
+      .split("\n")
+      .filter(Boolean)
+      .flatMap((l) => {
+        try {
+          return [JSON.parse(l)];
+        } catch {
+          return [];
+        }
+      });
+  } catch {
+    return [];
+  }
 }
 
 const MAX_BROWSER_LOG_BYTES = 64 * 1024 * 1024;
@@ -602,11 +748,17 @@ export function appendBrowserEvents(events, maxBytes = MAX_BROWSER_LOG_BYTES) {
     try {
       const file = join(LOG_DIR, browserLogFileName(e.ts));
       let size = 0;
-      try { size = statSync(file).size; } catch { /* missing → 0 */ }
+      try {
+        size = statSync(file).size;
+      } catch {
+        /* missing → 0 */
+      }
       if (size >= maxBytes) continue; // retention guard: day-file full
       appendFileSync(file, JSON.stringify(e) + "\n");
       written.push(e.id);
-    } catch { /* fail-open: skip this event */ }
+    } catch {
+      /* fail-open: skip this event */
+    }
   }
   return written;
 }
@@ -655,13 +807,25 @@ function projectUnlock(unlockPath) {
   const t = unlockPath?.type;
   if (t === "wait") return { label: "Wait it out", action: { type: "wait" } };
   if (t === "unlock_with_intention" && unlockPath.prompt) {
-    return { label: "Unlock", action: { type: "intention", prompt: unlockPath.prompt } };
+    return {
+      label: "Unlock",
+      action: { type: "intention", prompt: unlockPath.prompt },
+    };
   }
-  if (t === "unlock_with_delay" && Number.isFinite(Number(unlockPath.seconds))) {
-    return { label: "Unlock", action: { type: "delay", seconds: Number(unlockPath.seconds) } };
+  if (
+    t === "unlock_with_delay" &&
+    Number.isFinite(Number(unlockPath.seconds))
+  ) {
+    return {
+      label: "Unlock",
+      action: { type: "delay", seconds: Number(unlockPath.seconds) },
+    };
   }
   if (t === "out_of_band" && unlockPath.note) {
-    return { label: "Lift it", action: { type: "out_of_band", note: unlockPath.note } };
+    return {
+      label: "Lift it",
+      action: { type: "out_of_band", note: unlockPath.note },
+    };
   }
   return null;
 }
@@ -695,7 +859,9 @@ function armedEntriesFor(rule) {
           primitive: {
             kind: "cooldown",
             enforcement: at,
-            standing: Boolean(p.duration && "standing" in p.duration) || p.duration?.type === "standing",
+            standing:
+              Boolean(p.duration && "standing" in p.duration) ||
+              p.duration?.type === "standing",
           },
           proceed: projectUnlock(p.unlockPath),
         },
