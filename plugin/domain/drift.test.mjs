@@ -20,14 +20,21 @@ function tsFiles(root) {
   return out.sort();
 }
 
-test("the vendored slice has not drifted from zenborg", { skip: !existsSync(SOURCE) }, () => {
-  for (const copy of tsFiles(HERE)) {
-    const original = join(SOURCE, relative(HERE, copy));
-    assert.ok(existsSync(original), `${relative(HERE, copy)} has no original in zenborg`);
-    assert.equal(
-      readFileSync(copy, "utf8"),
-      readFileSync(original, "utf8"),
-      `${relative(HERE, copy)} differs from zenborg's copy. Reconcile deliberately, then update domain/README.md.`,
-    );
-  }
-});
+test(
+  "the vendored slice has not drifted from zenborg",
+  { skip: !existsSync(SOURCE) },
+  () => {
+    for (const copy of tsFiles(HERE)) {
+      const original = join(SOURCE, relative(HERE, copy));
+      assert.ok(
+        existsSync(original),
+        `${relative(HERE, copy)} has no original in zenborg`,
+      );
+      assert.equal(
+        readFileSync(copy, "utf8"),
+        readFileSync(original, "utf8"),
+        `${relative(HERE, copy)} differs from zenborg's copy. Reconcile deliberately, then update domain/README.md.`,
+      );
+    }
+  },
+);
