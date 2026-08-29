@@ -11,11 +11,13 @@ import {
   type Cycle,
   type CyclePlan,
   type Habit,
+  isValidTimezone,
   type Moment,
   type Phase,
   type PhaseConfig,
   type Rhythm,
   type Schedule,
+  type ScheduleInput,
   START_TIME_PATTERN,
   WEEKDAYS,
   type Weekday,
@@ -204,6 +206,7 @@ export function normalizeSchedule(input: {
   weekdays: readonly Weekday[];
   startTime: string;
   durationMin: number;
+  timezone?: string;
 }): Schedule | { error: string } {
   const weekdays = normalizeWeekdays(input.weekdays);
   if (weekdays.length === 0) {
@@ -219,10 +222,41 @@ export function normalizeSchedule(input: {
       error: "Schedule durationMin must be a positive whole number of minutes",
     };
   }
+  if (input.timezone !== undefined && !isValidTimezone(input.timezone)) {
+    return {
+      error: `Schedule timezone must be an IANA identifier like "America/Sao_Paulo", got: ${input.timezone}`,
+    };
+  }
   return {
     weekdays,
     startTime: input.startTime,
     durationMin: input.durationMin,
+    ...(input.timezone ? { timezone: input.timezone } : {}),
+  };
+}
+
+/**
+ * Resolves the anchor zone for an incoming schedule against the stored one.
+ *
+ * A schedule rewrite carries the weekday slot and the clock time; the anchor
+ * is a separate fact about that commitment and must survive a caller that
+ * cannot express it — an older tool schema, the UI, an agent just moving the
+ * hour. Omitting `timezone` therefore inherits the stored one; only an
+ * explicit null unanchors.
+ */
+export function withResolvedTimezone(
+  incoming: ScheduleInput,
+  stored: Schedule | undefined,
+): Schedule {
+  const timezone =
+    incoming.timezone === undefined
+      ? stored?.timezone
+      : (incoming.timezone ?? undefined);
+  return {
+    weekdays: incoming.weekdays,
+    startTime: incoming.startTime,
+    durationMin: incoming.durationMin,
+    ...(timezone ? { timezone } : {}),
   };
 }
 
