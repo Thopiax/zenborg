@@ -9,12 +9,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { displayName } from "@/domain/entities/Person";
 import { people$, places$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 
 interface MentionItem {
   key: string;
   name: string;
+  aliases: string[];
   emoji: string | null;
   type: "person" | "place";
 }
@@ -50,7 +52,8 @@ export function MentionAutocompleteInline({
     for (const person of Object.values(allPeople)) {
       items.push({
         key: person.key,
-        name: person.name,
+        name: displayName(person),
+        aliases: person.aliases ?? [],
         emoji: person.emoji,
         type: "person",
       });
@@ -59,6 +62,7 @@ export function MentionAutocompleteInline({
       items.push({
         key: place.key,
         name: place.name,
+        aliases: [],
         emoji: place.emoji,
         type: "place",
       });
@@ -84,17 +88,32 @@ export function MentionAutocompleteInline({
     for (const item of allItems) {
       const lowerName = item.name.toLowerCase();
       const lowerKey = item.key.toLowerCase();
+      const lowerAliases = item.aliases.map((a) => a.toLowerCase());
 
-      if (lowerKey === trimmedSearch || lowerName === trimmedSearch) {
+      const anyAliasExact = lowerAliases.some((a) => a === trimmedSearch);
+      const anyAliasPrefix = lowerAliases.some((a) =>
+        a.startsWith(trimmedSearch),
+      );
+      const anyAliasContains = lowerAliases.some((a) =>
+        a.includes(trimmedSearch),
+      );
+
+      if (
+        lowerKey === trimmedSearch ||
+        lowerName === trimmedSearch ||
+        anyAliasExact
+      ) {
         exactMatches.push(item);
       } else if (
         lowerKey.startsWith(trimmedSearch) ||
-        lowerName.startsWith(trimmedSearch)
+        lowerName.startsWith(trimmedSearch) ||
+        anyAliasPrefix
       ) {
         prefixMatches.push(item);
       } else if (
         lowerKey.includes(trimmedSearch) ||
-        lowerName.includes(trimmedSearch)
+        lowerName.includes(trimmedSearch) ||
+        anyAliasContains
       ) {
         containsMatches.push(item);
       }
@@ -109,7 +128,7 @@ export function MentionAutocompleteInline({
 
     if (remaining.length > 0) {
       const fuse = new Fuse(remaining, {
-        keys: ["name", "key"],
+        keys: ["name", "key", "aliases"],
         threshold: 0.4,
         distance: 100,
       });
