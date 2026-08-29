@@ -4,5 +4,12 @@
   "description": "kairos for Claude Code: the vault's session surface. Reads the fences you declared and puts friction on crossing one, offers a practice for the gap while the agent works, and writes every session event to a local-first attention log that never leaves your machine.",
   "author": { "name": "EquanimiTech", "url": "https://equanimi.tech" },
   "license": "MIT",
-  "keywords": ["attention", "focus", "fences", "observability", "calm-technology", "equanimitech"]
+  "keywords": [
+    "attention",
+    "focus",
+    "fences",
+    "observability",
+    "calm-technology",
+    "equanimitech"
+  ]
 }

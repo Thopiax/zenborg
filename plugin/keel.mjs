@@ -5,15 +5,58 @@
 // Gate-free since 2026-08-18: this surface observes and reports; it denies nothing.
 
 import {
-  bandNow, updateSession,
-  resolveActiveMoment, todaysMoments, intentionLine, intentionNudge, intentionSwitch,
-  setGranularity, normalizeGranularity, activeGranularity, GRANULARITY_LEVELS, DEFAULT_GRANULARITY,
-  setFocus, focusLine,
-  buildEvent, capPayload, summarizeEvents, matchDispatch, targetHash, renderRules, consentLines,
-  watchlistLines, desktopSensorLines,
-  applyObserveVerdicts, mergeLedger,
+  bandNow,
+  updateSession,
+  resolveActiveMoment,
+  todaysMoments,
+  intentionLine,
+  intentionNudge,
+  intentionSwitch,
+  setGranularity,
+  normalizeGranularity,
+  activeGranularity,
+  GRANULARITY_LEVELS,
+  DEFAULT_GRANULARITY,
+  setFocus,
+  focusLine,
+  buildEvent,
+  capPayload,
+  summarizeEvents,
+  matchDispatch,
+  targetHash,
+  renderRules,
+  consentLines,
+  watchlistLines,
+  desktopSensorLines,
+  applyObserveVerdicts,
+  mergeLedger,
 } from "./core.mjs";
-import { loadTarget, loadRawTarget, loadWatchlist, loadDesktopSensors, loadState, saveState, loadPhaseConfigs, loadActiveMomentPointer, loadMoments, loadAreas, loadCycles, probeMachine, readStdin, TARGET_ID, LOG_DIR, appendEvent, readEvents, loadLedger, saveLedger, loadSnapshot, saveSnapshot, writeObserveList, LEDGER_PATH, SNAPSHOT_PATH } from "./store.mjs";
+import {
+  loadTarget,
+  loadRawTarget,
+  loadWatchlist,
+  loadDesktopSensors,
+  loadState,
+  saveState,
+  loadPhaseConfigs,
+  loadActiveMomentPointer,
+  loadMoments,
+  loadAreas,
+  loadCycles,
+  probeMachine,
+  readStdin,
+  TARGET_ID,
+  LOG_DIR,
+  appendEvent,
+  readEvents,
+  loadLedger,
+  saveLedger,
+  loadSnapshot,
+  saveSnapshot,
+  writeObserveList,
+  LEDGER_PATH,
+  SNAPSHOT_PATH,
+} from "./store.mjs";
 import { onboardLines, disclosureLines, wrap } from "./onboard.mjs";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -21,19 +64,31 @@ import { createInterface } from "node:readline";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const emit = (obj) => { if (obj) process.stdout.write(JSON.stringify(obj)); process.exit(0); };
-const emitText = (t) => { if (t) process.stdout.write(t); process.exit(0); };
+const emit = (obj) => {
+  if (obj) process.stdout.write(JSON.stringify(obj));
+  process.exit(0);
+};
+const emitText = (t) => {
+  if (t) process.stdout.write(t);
+  process.exit(0);
+};
 
 // ── Activity log: every hook event lands in ~/.kairos/keel/log, full stdin captured
 // (size-capped per field; the transcript_path we log keeps full fidelity).
 // Fail-open at every layer — observability must never break the gate.
 const KIND_BY_HOOK = {
-  "session-start": "session_start", "user-submit": "prompt",
-  "pre-tool": "tool_dispatched", "post-tool": "tool_completed",
-  "post-tool-failure": "tool_failed", "stop": "turn_stop",
-  "subagent-stop": "subagent_stop", "session-end": "session_end",
-  "notification": "notification", "pre-compact": "pre_compact",
-  "permission-request": "permission_request", "config-change": "config_change",
+  "session-start": "session_start",
+  "user-submit": "prompt",
+  "pre-tool": "tool_dispatched",
+  "post-tool": "tool_completed",
+  "post-tool-failure": "tool_failed",
+  stop: "turn_stop",
+  "subagent-stop": "subagent_stop",
+  "session-end": "session_end",
+  notification: "notification",
+  "pre-compact": "pre_compact",
+  "permission-request": "permission_request",
+  "config-change": "config_change",
   "file-changed": "file_changed",
 };
 
@@ -41,12 +96,20 @@ const KIND_BY_HOOK = {
  * @param {{ durationMs?: number, extra?: Record<string, unknown> }} [opts] */
 function logHookEvent(kind, now, input, opts = {}) {
   try {
-    appendEvent(LOG_DIR, buildEvent({
-      id: randomUUID(), kind, ts: now, sessionId: input?.session_id ?? "",
-      payload: { ...capPayload(input), ...(opts.extra ?? {}) },
-      durationMs: opts.durationMs,
-    }));
-  } catch { /* fail-open */ }
+    appendEvent(
+      LOG_DIR,
+      buildEvent({
+        id: randomUUID(),
+        kind,
+        ts: now,
+        sessionId: input?.session_id ?? "",
+        payload: { ...capPayload(input), ...(opts.extra ?? {}) },
+        durationMs: opts.durationMs,
+      }),
+    );
+  } catch {
+    /* fail-open */
+  }
 }
 
 /** Session-end hook: log the event, then write a lightweight journal trace
@@ -63,52 +126,99 @@ async function handleSessionEnd(now) {
     // If close-up already ran this session, it wrote its own journal entry.
     if (transcriptPath) {
       try {
-        const grep = spawnSync("grep", ["-q", "close-up", transcriptPath], { timeout: 3000 });
-        if (grep.status === 0) { return emit(null); }
-      } catch { /* fall through -- write the trace */ }
+        const grep = spawnSync("grep", ["-q", "close-up", transcriptPath], {
+          timeout: 3000,
+        });
+        if (grep.status === 0) {
+          return emit(null);
+        }
+      } catch {
+        /* fall through -- write the trace */
+      }
     }
 
     // Gather git context from the session's working directory.
-    let branch = "", diffSummary = "", recentCommits = "";
+    let branch = "",
+      diffSummary = "",
+      recentCommits = "";
     try {
-      const r = spawnSync("git", ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"],
-        { encoding: "utf8", timeout: 3000 });
+      const r = spawnSync(
+        "git",
+        ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"],
+        { encoding: "utf8", timeout: 3000 },
+      );
       branch = r.stdout?.trim() || "";
-    } catch { /* not a repo, or git unavailable */ }
+    } catch {
+      /* not a repo, or git unavailable */
+    }
 
     if (branch) {
       try {
-        const r = spawnSync("git", ["-C", cwd, "diff", "--stat", "--no-color"],
-          { encoding: "utf8", timeout: 3000 });
+        const r = spawnSync(
+          "git",
+          ["-C", cwd, "diff", "--stat", "--no-color"],
+          { encoding: "utf8", timeout: 3000 },
+        );
         const lines = (r.stdout || "").trim().split("\n");
         diffSummary = lines[lines.length - 1]?.trim() || "";
-      } catch { /* fail-open */ }
+      } catch {
+        /* fail-open */
+      }
 
       try {
-        const r = spawnSync("git", ["-C", cwd, "log", "--oneline", "-5", "--since=3 hours ago"],
-          { encoding: "utf8", timeout: 3000 });
+        const r = spawnSync(
+          "git",
+          ["-C", cwd, "log", "--oneline", "-5", "--since=3 hours ago"],
+          { encoding: "utf8", timeout: 3000 },
+        );
         recentCommits = (r.stdout || "").trim();
-      } catch { /* fail-open */ }
+      } catch {
+        /* fail-open */
+      }
     }
 
-    const hhmm = new Date(now).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const hhmm = new Date(now).toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     const project = cwd.split("/").pop() || "unknown";
 
-    const body = [`## ${hhmm} -- session ended: ${project}`, "", "source: keel-agent/session-end", ""];
-    if (branch) { body.push(`- branch: ${branch}`); }
+    const body = [
+      `## ${hhmm} -- session ended: ${project}`,
+      "",
+      "source: keel-agent/session-end",
+      "",
+    ];
+    if (branch) {
+      body.push(`- branch: ${branch}`);
+    }
     if (recentCommits) {
       body.push("- commits:");
       for (const line of recentCommits.split("\n").slice(0, 5)) {
         body.push(`  - ${line}`);
       }
     }
-    if (diffSummary) { body.push(`- uncommitted: ${diffSummary}`); }
-    if (!branch && !recentCommits && !diffSummary) { body.push("- (no git context)"); }
+    if (diffSummary) {
+      body.push(`- uncommitted: ${diffSummary}`);
+    }
+    if (!branch && !recentCommits && !diffSummary) {
+      body.push("- (no git context)");
+    }
 
-    const journalAppend = process.env.KEEL_JOURNAL_CMD
-      || join(process.env.HOME || "", "Developer/equanimitech/penceive/bin/journal-append");
-    spawnSync(journalAppend, [], { input: body.join("\n"), encoding: "utf8", timeout: 5000 });
-  } catch { /* fail-open */ }
+    const journalAppend =
+      process.env.KEEL_JOURNAL_CMD ||
+      join(
+        process.env.HOME || "",
+        "Developer/equanimitech/penceive/bin/journal-append",
+      );
+    spawnSync(journalAppend, [], {
+      input: body.join("\n"),
+      encoding: "utf8",
+      timeout: 5000,
+    });
+  } catch {
+    /* fail-open */
+  }
 
   return emit(null);
 }
@@ -121,11 +231,17 @@ async function handleObservedHook(sub, now) {
     let durationMs;
     try {
       const m = matchDispatch(readEvents(LOG_DIR, now), {
-        sessionId: input?.session_id ?? "", ts: now,
-        payload: { tool_name: input?.tool_name, tool_use_id: input?.tool_use_id },
+        sessionId: input?.session_id ?? "",
+        ts: now,
+        payload: {
+          tool_name: input?.tool_name,
+          tool_use_id: input?.tool_use_id,
+        },
       });
       if (m) durationMs = now - m.ts;
-    } catch { /* derive later read-side */ }
+    } catch {
+      /* derive later read-side */
+    }
     logHookEvent(kind, now, input, { durationMs });
   } else {
     logHookEvent(kind, now, input);
@@ -142,7 +258,9 @@ async function handleObservedHook(sub, now) {
 async function handlePreTool(now) {
   const input = await readStdin();
   const band = bandNow(loadPhaseConfigs(), now);
-  logHookEvent("tool_dispatched", now, input, { extra: band ? { keel_band: band } : {} });
+  logHookEvent("tool_dispatched", now, input, {
+    extra: band ? { keel_band: band } : {},
+  });
   return emit(null); // always allow
 }
 
@@ -194,9 +312,15 @@ async function handleSessionStart(now) {
   let state = loadState();
   // Rules observability: any change to the effective rules — including the
   // watchlist (config spine) — becomes a logged event.
-  const hash = targetHash({ target, watchlist: loadWatchlist(), desktop: loadDesktopSensors() });
+  const hash = targetHash({
+    target,
+    watchlist: loadWatchlist(),
+    desktop: loadDesktopSensors(),
+  });
   if (state.lastRuleHash !== hash) {
-    logHookEvent("rule_changed", now, input, { extra: { keel_rule_hash: hash, keel_prev_hash: state.lastRuleHash || "" } });
+    logHookEvent("rule_changed", now, input, {
+      extra: { keel_rule_hash: hash, keel_prev_hash: state.lastRuleHash || "" },
+    });
     state = { ...state, lastRuleHash: hash };
   }
   // First-run contract: shown exactly once, before anything else.
@@ -223,16 +347,20 @@ async function handleSessionStart(now) {
     state = { ...state, lastMomentId: switched.lastMomentId };
   }
   saveState(state);
-  return emitText([...consent, intentionLine(moment)].filter(Boolean).join("\n"));
+  return emitText(
+    [...consent, intentionLine(moment)].filter(Boolean).join("\n"),
+  );
 }
 
 function cmdStatus(now) {
   const state = loadState();
-  const band = bandNow(loadPhaseConfigs(), now) || "(none — zenborg's phaseConfigs unreadable)";
+  const band =
+    bandNow(loadPhaseConfigs(), now) ||
+    "(none — zenborg's phaseConfigs unreadable)";
   console.log(
     `keel[${TARGET_ID}]: band=${band} · gates=none · ` +
-    `tending=${activeMomentNow(now)?.name ?? "nothing"} · ` +
-    `focus=${state.focus ? "on" : "off"} · granularity=${activeGranularity(state)}`,
+      `tending=${activeMomentNow(now)?.name ?? "nothing"} · ` +
+      `focus=${state.focus ? "on" : "off"} · granularity=${activeGranularity(state)}`,
   );
 }
 
@@ -240,7 +368,9 @@ function cmdStatus(now) {
 // walls (2026-06-17), then the night lock that outlived them (2026-08-18). Nothing is left to
 // pull: signoff acknowledges the close and the log carries the rest.
 function cmdSignoff() {
-  console.log("keel: signed off. The day is sealed. (keel walls nothing — it watches and reports.)");
+  console.log(
+    "keel: signed off. The day is sealed. (keel walls nothing — it watches and reports.)",
+  );
 }
 
 // ponytail: `keel signon` is gone (2026-08-07). The day now opens in zenborg, which
@@ -253,24 +383,35 @@ function cmdSignoff() {
 function cmdIntention(arg, now) {
   const moment = activeMomentNow(now);
   if (String(arg ?? "").trim()) {
-    console.log("keel: what you tend is a zenborg moment now — tend it there (MCP or the UI) and keel picks it up. `keel intention` shows what's being tended.");
+    console.log(
+      "keel: what you tend is a zenborg moment now — tend it there (MCP or the UI) and keel picks it up. `keel intention` shows what's being tended.",
+    );
     return;
   }
-  console.log(moment
-    ? `keel: ◎ tending — ${moment.name}${moment.area ? ` (${moment.area})` : ""}.`
-    : "keel: nothing is being tended. Tend a habit in zenborg; keel reads it from the vault.");
+  console.log(
+    moment
+      ? `keel: ◎ tending — ${moment.name}${moment.area ? ` (${moment.area})` : ""}.`
+      : "keel: nothing is being tended. Tend a habit in zenborg; keel reads it from the vault.",
+  );
 }
 
 /** The active moment right now, resolved from the kairos vault. @param {number} now */
 function activeMomentNow(now) {
-  return resolveActiveMoment(loadActiveMomentPointer(), loadMoments(), loadAreas(), now);
+  return resolveActiveMoment(
+    loadActiveMomentPointer(),
+    loadMoments(),
+    loadAreas(),
+    now,
+  );
 }
 
 function cmdGranularity(arg) {
   const raw = String(arg ?? "").trim();
   if (raw === "clear" || raw === "reset") {
     saveState(setGranularity(loadState(), ""));
-    console.log(`keel: granularity ceiling cleared — back to the default (${DEFAULT_GRANULARITY}: ${GRANULARITY_LEVELS[DEFAULT_GRANULARITY]}).`);
+    console.log(
+      `keel: granularity ceiling cleared — back to the default (${DEFAULT_GRANULARITY}: ${GRANULARITY_LEVELS[DEFAULT_GRANULARITY]}).`,
+    );
     return;
   }
   if (!raw) {
@@ -280,16 +421,32 @@ function cmdGranularity(arg) {
   }
   const level = normalizeGranularity(raw);
   if (!level) {
-    console.log(`keel: unknown granularity "${raw}". Choose: ${Object.keys(GRANULARITY_LEVELS).join(" | ")} (or reset).`);
+    console.log(
+      `keel: unknown granularity "${raw}". Choose: ${Object.keys(GRANULARITY_LEVELS).join(" | ")} (or reset).`,
+    );
     return;
   }
   saveState(setGranularity(loadState(), level));
-  console.log(`keel: granularity ceiling set — ${level}: ${GRANULARITY_LEVELS[level]} Held for this waking-day across sessions; below it, answers fit the ask. \`keel granularity reset\` returns to ${DEFAULT_GRANULARITY}.`);
+  console.log(
+    `keel: granularity ceiling set — ${level}: ${GRANULARITY_LEVELS[level]} Held for this waking-day across sessions; below it, answers fit the ask. \`keel granularity reset\` returns to ${DEFAULT_GRANULARITY}.`,
+  );
 }
 
 function logFocusEvent(kind, now) {
-  try { appendEvent(LOG_DIR, buildEvent({ id: randomUUID(), kind, ts: now, sessionId: "", payload: { source: "cli" } })); }
-  catch { /* fail-open */ }
+  try {
+    appendEvent(
+      LOG_DIR,
+      buildEvent({
+        id: randomUUID(),
+        kind,
+        ts: now,
+        sessionId: "",
+        payload: { source: "cli" },
+      }),
+    );
+  } catch {
+    /* fail-open */
+  }
 }
 
 // `keel focus` — the deep gear over the intention: flips the breath flag over the active
@@ -304,21 +461,29 @@ function cmdFocus(arg, now) {
   const state = loadState();
   const label = activeMomentNow(now)?.name ?? "";
   if (!raw) {
-    console.log(state.focus
-      ? `keel: ◉ focus on${label ? ` — "${label}"` : ""}. \`keel focus off\` to close.`
-      : "keel: focus off. `keel focus on` to go deep on the active moment.");
+    console.log(
+      state.focus
+        ? `keel: ◉ focus on${label ? ` — "${label}"` : ""}. \`keel focus off\` to close.`
+        : "keel: focus off. `keel focus on` to go deep on the active moment.",
+    );
     return;
   }
   if (low === "off" || low === "stop" || low === "clear") {
     saveState(setFocus(state, false, now));
     logFocusEvent("focus_off", now);
-    console.log("keel: focus off — stream closed. (the active moment stays whatever zenborg says.)");
+    console.log(
+      "keel: focus off — stream closed. (the active moment stays whatever zenborg says.)",
+    );
     return;
   }
   saveState(setFocus(state, true, now));
   logFocusEvent("focus_on", now);
-  const named = label ? `one stream on "${label}"` : "one stream (no active moment — set one in zenborg to name it)";
-  console.log(`keel: ◉ focus on — ${named}. A marker, not a lock: nothing is held. Breath on the AI gap. \`keel focus off\` to release.`);
+  const named = label
+    ? `one stream on "${label}"`
+    : "one stream (no active moment — set one in zenborg to name it)";
+  console.log(
+    `keel: ◉ focus on — ${named}. A marker, not a lock: nothing is held. Breath on the AI gap. \`keel focus off\` to release.`,
+  );
 }
 
 /** `keel rules` — the effective rules, with provenance per section. */
@@ -331,55 +496,93 @@ function cmdRules() {
 /** `keel log status` — today's per-kind counts + session liveness. The P1
  * data-quality seed: its job is to make silent writer death visible. */
 function cmdLog(now, sub = "status", day = "today") {
-  if (sub !== "status") { console.log("usage: keel log status [yesterday]"); return; }
+  if (sub !== "status") {
+    console.log("usage: keel log status [yesterday]");
+    return;
+  }
   const at = day === "yesterday" ? now - 86_400_000 : now;
   const events = readEvents(LOG_DIR, at);
   if (!events.length) {
-    console.log(day === "yesterday"
-      ? "keel log: no events yesterday."
-      : "keel log: no events today yet — is the writer wired? (hooks → ~/.kairos/keel/log/)");
+    console.log(
+      day === "yesterday"
+        ? "keel log: no events yesterday."
+        : "keel log: no events today yet — is the writer wired? (hooks → ~/.kairos/keel/log/)",
+    );
     return;
   }
   const s = summarizeEvents(events, now);
-  const kinds = Object.entries(s.byKind).sort((a, b) => b[1] - a[1])
-    .map(([k, n]) => `${k}=${n}`).join(" ");
-  console.log(`keel log: ${events.length} events today · ${s.sessions} session(s), ${s.activeSessions} active · ${kinds}`);
+  const kinds = Object.entries(s.byKind)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${k}=${n}`)
+    .join(" ");
+  console.log(
+    `keel log: ${events.length} events today · ${s.sessions} session(s), ${s.activeSessions} active · ${kinds}`,
+  );
 }
 
 async function cmdWatchlistScan() {
   const here = dirname(fileURLToPath(import.meta.url));
-  const py = spawnSync("python3", [
-    join(here, "watchlist_scan.py"),
-    "--ledger", LEDGER_PATH,
-    "--snapshot", SNAPSHOT_PATH,
-  ], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const py = spawnSync(
+    "python3",
+    [
+      join(here, "watchlist_scan.py"),
+      "--ledger",
+      LEDGER_PATH,
+      "--snapshot",
+      SNAPSHOT_PATH,
+    ],
+    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+  );
   if (py.status !== 0 || !py.stdout) {
     console.error("scan failed:", py.stderr || "(no output)");
     process.exit(0); // fail-open
   }
   /** @type {any} */
   let slate;
-  try { slate = JSON.parse(py.stdout); } catch { console.error("bad slate JSON"); process.exit(0); }
-  if (slate.error) { console.error("scan:", slate.error, slate.path || slate.detail || ""); process.exit(0); }
+  try {
+    slate = JSON.parse(py.stdout);
+  } catch {
+    console.error("bad slate JSON");
+    process.exit(0);
+  }
+  if (slate.error) {
+    console.error("scan:", slate.error, slate.path || slate.detail || "");
+    process.exit(0);
+  }
   const candidates = slate.candidates || [];
-  if (candidates.length === 0) { console.log("No new candidates. Observe tier is current."); process.exit(0); }
+  if (candidates.length === 0) {
+    console.log("No new candidates. Observe tier is current.");
+    process.exit(0);
+  }
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const ask = (/** @type {string} */ q) => new Promise((res) => rl.question(q, res));
+  const ask = (/** @type {string} */ q) =>
+    new Promise((res) => rl.question(q, res));
   /** @type {Record<string, string>} */
   const verdicts = {};
-  console.log(`\nkeel watchlist scan — ${candidates.length} candidates. ` +
-    `[o]bserve · [b]enign(never-ask) · [w]ork · [s]kip · [q]uit\n`);
+  console.log(
+    `\nkeel watchlist scan — ${candidates.length} candidates. ` +
+      `[o]bserve · [b]enign(never-ask) · [w]ork · [s]kip · [q]uit\n`,
+  );
   for (const c of candidates) {
     const e = c.evidence;
-    const binge = e.binge ? `binge ${e.binge.max_run}max/${e.binge.pct_in_runs_5plus}%in5+` : "";
-    const line = `${c.key}\n  ${e.dwell_hours}h · ${e.visits} visits · return ${e.return_pct}% · ${binge}` +
+    const binge = e.binge
+      ? `binge ${e.binge.max_run}max/${e.binge.pct_in_runs_5plus}%in5+`
+      : "";
+    const line =
+      `${c.key}\n  ${e.dwell_hours}h · ${e.visits} visits · return ${e.return_pct}% · ${binge}` +
       `${e.is_new ? " · NEW" : ""}\n  suggested: ${c.suggested_tier}  → [o/b/w/s/q]? `;
     const a = (await ask(line)).trim().toLowerCase()[0];
-    if (a === "q") { break; }
-    if (a === "o") { verdicts[c.key] = "observe"; }
-    else if (a === "b") { verdicts[c.key] = "benign"; }
-    else if (a === "w") { verdicts[c.key] = "work"; }
+    if (a === "q") {
+      break;
+    }
+    if (a === "o") {
+      verdicts[c.key] = "observe";
+    } else if (a === "b") {
+      verdicts[c.key] = "benign";
+    } else if (a === "w") {
+      verdicts[c.key] = "work";
+    }
     // s/skip → no verdict recorded
   }
   rl.close();
@@ -387,9 +590,13 @@ async function cmdWatchlistScan() {
   const observe = applyObserveVerdicts(loadWatchlist().observe, verdicts);
   writeObserveList(observe);
   saveLedger(mergeLedger(loadLedger(), verdicts));
-  if (slate._snapshot) { saveSnapshot(slate._snapshot); }
+  if (slate._snapshot) {
+    saveSnapshot(slate._snapshot);
+  }
   const added = Object.values(verdicts).filter((v) => v === "observe").length;
-  console.log(`\nDone. ${added} key(s) added to watchlist.observe (${observe.length} total). Ledger + snapshot updated.`);
+  console.log(
+    `\nDone. ${added} key(s) added to watchlist.observe (${observe.length} total). Ledger + snapshot updated.`,
+  );
   process.exit(0);
 }
 
@@ -414,8 +621,11 @@ async function cmdOnboard(now, arg) {
   });
 
   if (first) {
-    try { saveState({ ...state, disclosureShownTs: now }); }
-    catch { /* an unwritable vault is already reported in the preflight */ }
+    try {
+      saveState({ ...state, disclosureShownTs: now });
+    } catch {
+      /* an unwritable vault is already reported in the preflight */
+    }
   }
   console.log(lines.join("\n"));
 }
@@ -435,13 +645,17 @@ async function main() {
   if (cmd === "log") return cmdLog(now, sub, process.argv[4]);
   if (cmd === "rules") return cmdRules();
   if (cmd === "signoff") return cmdSignoff();
-  if (cmd === "intention") return cmdIntention(process.argv.slice(3).join(" "), now);
+  if (cmd === "intention")
+    return cmdIntention(process.argv.slice(3).join(" "), now);
   if (cmd === "granularity" || cmd === "gran") return cmdGranularity(sub);
   if (cmd === "focus") return cmdFocus(process.argv.slice(3).join(" "), now);
-  if (cmd === "arm") return cmdFocus(process.argv.slice(3).join(" ") || "on", now);  // skill entry: empty label → on, no shell expansion needed
+  if (cmd === "arm")
+    return cmdFocus(process.argv.slice(3).join(" ") || "on", now); // skill entry: empty label → on, no shell expansion needed
   if (cmd === "status") return cmdStatus(now);
   if (cmd === "watchlist" && sub === "scan") return cmdWatchlistScan();
-  console.log("usage: keel <onboard [--disclosure] | hook pre-tool|user-submit|session-start | signoff | intention (read-only; set it in zenborg) | granularity [sentence|tldr|page|essay|report|reset] | focus [on|off] | rules | log status | status | watchlist scan>");
+  console.log(
+    "usage: keel <onboard [--disclosure] | hook pre-tool|user-submit|session-start | signoff | intention (read-only; set it in zenborg) | granularity [sentence|tldr|page|essay|report|reset] | focus [on|off] | rules | log status | status | watchlist scan>",
+  );
 }
 
 main().catch(() => process.exit(0)); // fail-open
