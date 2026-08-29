@@ -1,8 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
-/plugin/node_modules
+node_modules
 /plugin/__pycache__
 
 # Rust build artifacts (crates have their own targets when built standalone)
