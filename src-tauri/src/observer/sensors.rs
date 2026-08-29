@@ -14,8 +14,16 @@ use tauri::{AppHandle, Emitter, Manager};
 use user_idle::UserIdle;
 use x_win::get_active_window;
 
-use super::domain::{self, IdleTransition};
+use super::domain::{self, IdleTransition, MediaSnapshot, MediaTransition};
 use super::{writer, ObserverState};
+
+#[cfg(target_os = "macos")]
+use media_remote::{
+    get_now_playing_application_is_playing,
+    get_now_playing_client_bundle_identifier,
+    get_now_playing_info,
+    InfoTypes,
+};
 
 /// Sensor poll cadence (~1–2s, as the tray polled).
 const POLL_INTERVAL: Duration = Duration::from_millis(1500);
@@ -105,6 +113,10 @@ fn now_ms() -> u64 {
 /// restarting the app. Missing file/key = off.
 fn input_sensor_opted_in() -> bool {
     domain::input_sensor_enabled(&writer::read_config())
+}
+
+fn now_playing_opted_in() -> bool {
+    domain::now_playing_sensor_enabled(&writer::read_config())
 }
 
 /// Build and append one event (fail-open).
@@ -206,6 +218,10 @@ pub fn start(app: AppHandle) -> bool {
         flag_permission_needed(&app, &state);
     }
 
+    if now_playing_opted_in() {
+        log::info!("[observer] Now Playing sensor enabled");
+    }
+
     spawn_loop(app);
     true
 }
@@ -220,6 +236,10 @@ fn spawn_loop(app: AppHandle) {
         let mut input_deltas: Vec<[u64; 4]> = Vec::new();
         let mut ticks: usize = 0;
 
+        // Now Playing sensor (media-aware screen time).
+        let mut np_enabled = now_playing_opted_in();
+        let mut media_state: Option<(MediaSnapshot, u64)> = None;
+
         loop {
             thread::sleep(POLL_INTERVAL);
 
@@ -233,6 +253,7 @@ fn spawn_loop(app: AppHandle) {
                 idle_since = None;
                 input_prev = None;
                 input_deltas.clear();
+                media_state = None;
                 continue;
             }
 
@@ -289,6 +310,70 @@ fn spawn_loop(app: AppHandle) {
                     }
                     None => {}
                 }
+            }
+
+            // Now Playing (media-aware screen time, default-off).
+            // Re-read the opt-in once per rollup window, same cadence as input.
+            if ticks % INPUT_POLLS_PER_ROLLUP == 0 {
+                np_enabled = now_playing_opted_in();
+            }
+            #[cfg(target_os = "macos")]
+            if np_enabled {
+                let is_playing = get_now_playing_application_is_playing()
+                    .unwrap_or(false);
+                let bundle_id = get_now_playing_client_bundle_identifier()
+                    .unwrap_or_default();
+
+                let title = get_now_playing_info()
+                    .and_then(|info| {
+                        info.get("kMRMediaRemoteNowPlayingInfoTitle")
+                            .and_then(|v| if let InfoTypes::String(s) = v { Some(s.clone()) } else { None })
+                    })
+                    .unwrap_or_default();
+
+                let bundle_name = bundle_id
+                    .rsplit('.')
+                    .next()
+                    .unwrap_or(&bundle_id)
+                    .to_string();
+
+                let (next, transition) = domain::media_transition(
+                    media_state.as_ref(),
+                    now,
+                    is_playing,
+                    &bundle_id,
+                    &bundle_name,
+                    &title,
+                    domain::TITLE_CAP,
+                );
+                media_state = next;
+                match transition {
+                    Some(MediaTransition::Playing { ts, bundle_id, bundle_name, title }) => {
+                        emit(
+                            &state,
+                            "media_playing",
+                            ts,
+                            domain::media_playing_payload(&bundle_id, &bundle_name, &title),
+                            None,
+                        );
+                    }
+                    Some(MediaTransition::Stopped { ts, duration_ms }) => {
+                        emit(&state, "media_stopped", ts, json!({}), Some(duration_ms));
+                    }
+                    Some(MediaTransition::Changed { ts, prev_duration_ms, bundle_id, bundle_name, title }) => {
+                        emit(&state, "media_stopped", ts, json!({}), Some(prev_duration_ms));
+                        emit(
+                            &state,
+                            "media_playing",
+                            ts,
+                            domain::media_playing_payload(&bundle_id, &bundle_name, &title),
+                            None,
+                        );
+                    }
+                    None => {}
+                }
+            } else {
+                media_state = None;
             }
 
             // Frontmost app (x-win).

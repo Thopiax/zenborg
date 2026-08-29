@@ -141,6 +141,111 @@ pub fn input_sensor_enabled(config_json: &str) -> bool {
         .unwrap_or(false)
 }
 
+// ── Now Playing sensor (media-aware screen time, default-off) ──
+// macOS MRMediaRemote tracks system-wide media playback. The sensor
+// emits `media_playing` / `media_stopped` transitions so that dwell
+// attribution works for background video/audio (focus-gating stops
+// the clock on the browser surface, but media keeps delivering).
+
+/// Explicit opt-in gate, same pattern as input activity.
+pub fn now_playing_sensor_enabled(config_json: &str) -> bool {
+    serde_json::from_str::<Value>(config_json)
+        .ok()
+        .and_then(|c| c.get("desktop")?.get("nowPlaying")?.as_bool())
+        .unwrap_or(false)
+}
+
+/// Snapshot of the currently playing media, used for transition detection.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MediaSnapshot {
+    pub bundle_id: String,
+    pub title: String,
+}
+
+/// A media state transition the sensor loop should log.
+#[derive(Debug, Clone, PartialEq)]
+pub enum MediaTransition {
+    /// Media started playing.
+    Playing {
+        ts: u64,
+        bundle_id: String,
+        bundle_name: String,
+        title: String,
+    },
+    /// Media stopped. `duration_ms` covers the playing span.
+    Stopped { ts: u64, duration_ms: u64 },
+    /// Track/app changed while playing. Closes the old span and opens a new one.
+    Changed {
+        ts: u64,
+        prev_duration_ms: u64,
+        bundle_id: String,
+        bundle_name: String,
+        title: String,
+    },
+}
+
+/// Pure media state machine. State is `(snapshot, playing_since)`.
+/// Returns the next state and the event to emit, if any.
+pub fn media_transition(
+    prev: Option<&(MediaSnapshot, u64)>,
+    now_ms: u64,
+    is_playing: bool,
+    bundle_id: &str,
+    bundle_name: &str,
+    title: &str,
+    title_cap: usize,
+) -> (Option<(MediaSnapshot, u64)>, Option<MediaTransition>) {
+    let capped_title = cap_title(title, title_cap);
+    let current = MediaSnapshot {
+        bundle_id: bundle_id.to_string(),
+        title: capped_title.clone(),
+    };
+
+    match (prev, is_playing) {
+        // Was silent, now playing → emit Playing.
+        (None, true) => {
+            let next = (current, now_ms);
+            let event = MediaTransition::Playing {
+                ts: now_ms,
+                bundle_id: bundle_id.to_string(),
+                bundle_name: bundle_name.to_string(),
+                title: capped_title,
+            };
+            (Some(next), Some(event))
+        }
+        // Was playing, now stopped → emit Stopped with duration.
+        (Some((_, since)), false) => {
+            let duration_ms = now_ms.saturating_sub(*since);
+            (None, Some(MediaTransition::Stopped { ts: now_ms, duration_ms }))
+        }
+        // Was playing, still playing but different track/app → close + reopen.
+        (Some((prev_snap, since)), true) if *prev_snap != current => {
+            let next = (current, now_ms);
+            let event = MediaTransition::Changed {
+                ts: now_ms,
+                prev_duration_ms: now_ms.saturating_sub(*since),
+                bundle_id: bundle_id.to_string(),
+                bundle_name: bundle_name.to_string(),
+                title: capped_title,
+            };
+            (Some(next), Some(event))
+        }
+        // Was playing, same track, still playing → no event.
+        (Some(_), true) => (prev.cloned(), None),
+        // Was silent, still silent → no event.
+        (None, false) => (None, None),
+    }
+}
+
+/// `media_playing` payload.
+pub fn media_playing_payload(bundle_id: &str, bundle_name: &str, title: &str) -> Value {
+    json!({
+        "bundle_id": bundle_id,
+        "bundle_name": bundle_name,
+        "title": title,
+    })
+}
+
 /// Events since the previous poll. The system counter is a u32 since boot;
 /// wrapping subtraction survives the rollover.
 pub fn counter_delta(prev: u32, now: u32) -> u64 {
@@ -315,5 +420,83 @@ mod tests {
                 duration_ms: 129_500
             })
         );
+    }
+
+    // ── Now Playing sensor ──
+
+    #[test]
+    fn now_playing_sensor_is_off_unless_the_config_says_literal_true() {
+        assert!(!now_playing_sensor_enabled(""));
+        assert!(!now_playing_sensor_enabled("{ not json"));
+        assert!(!now_playing_sensor_enabled(r#"{"desktop":{}}"#));
+        assert!(!now_playing_sensor_enabled(
+            r#"{"desktop":{"nowPlaying":"yes"}}"#
+        ));
+        assert!(now_playing_sensor_enabled(
+            r#"{"desktop":{"nowPlaying":true}}"#
+        ));
+    }
+
+    #[test]
+    fn media_transition_emits_playing_when_media_starts() {
+        let (state, event) = media_transition(
+            None, 1_000, true, "com.brave.Browser", "Brave", "Some Video", 256,
+        );
+        assert!(state.is_some());
+        assert!(matches!(event, Some(MediaTransition::Playing { .. })));
+    }
+
+    #[test]
+    fn media_transition_emits_stopped_with_duration() {
+        let prev = (
+            MediaSnapshot { bundle_id: "com.brave.Browser".into(), title: "Video".into() },
+            1_000,
+        );
+        let (state, event) = media_transition(
+            Some(&prev), 61_000, false, "", "", "", 256,
+        );
+        assert!(state.is_none());
+        assert_eq!(
+            event,
+            Some(MediaTransition::Stopped { ts: 61_000, duration_ms: 60_000 })
+        );
+    }
+
+    #[test]
+    fn media_transition_emits_changed_when_track_switches() {
+        let prev = (
+            MediaSnapshot { bundle_id: "com.brave.Browser".into(), title: "Video A".into() },
+            1_000,
+        );
+        let (_, event) = media_transition(
+            Some(&prev), 30_000, true, "com.brave.Browser", "Brave", "Video B", 256,
+        );
+        match event {
+            Some(MediaTransition::Changed { title, prev_duration_ms, .. }) => {
+                assert_eq!(title, "Video B");
+                assert_eq!(prev_duration_ms, 29_000);
+            }
+            _ => panic!("expected Changed with new title and duration"),
+        }
+    }
+
+    #[test]
+    fn media_transition_is_silent_when_same_track_keeps_playing() {
+        let prev = (
+            MediaSnapshot { bundle_id: "com.brave.Browser".into(), title: "Video".into() },
+            1_000,
+        );
+        let (state, event) = media_transition(
+            Some(&prev), 30_000, true, "com.brave.Browser", "Brave", "Video", 256,
+        );
+        assert!(state.is_some());
+        assert!(event.is_none());
+    }
+
+    #[test]
+    fn media_transition_is_silent_when_nothing_is_playing() {
+        let (state, event) = media_transition(None, 1_000, false, "", "", "", 256);
+        assert!(state.is_none());
+        assert!(event.is_none());
     }
 }
