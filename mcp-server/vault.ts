@@ -91,12 +91,61 @@ export const StartTimeSchema = z
   .string()
   .regex(START_TIME_PATTERN, "startTime must be HH:MM (24h)");
 
+/**
+ * IANA identifier shape — mirrors `src/domain/value-objects/Schedule.ts`,
+ * which this workspace cannot import from.
+ *
+ * Stricter than `Intl` on purpose: `Intl` also accepts fixed offsets like
+ * "+05:00", but the Swift calendar sidecar resolves the stored string through
+ * `TimeZone(identifier:)`, which rejects an offset and returns nil — falling
+ * back to the device zone and firing the event at the wrong hour with nothing
+ * logged. Refusing it at the write boundary is what keeps the readers agreeing.
+ */
+export const IANA_TIMEZONE_PATTERN =
+  /^(UTC|[A-Za-z][A-Za-z0-9_+-]*(?:\/[A-Za-z0-9_+-]+)+)$/;
+
+export function isValidTimezone(value: string): boolean {
+  if (!IANA_TIMEZONE_PATTERN.test(value)) {
+    return false;
+  }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export const TimezoneSchema = z
+  .string()
+  .refine(
+    isValidTimezone,
+    'timezone must be an IANA identifier like "America/Sao_Paulo"; a fixed offset such as "+05:00" is rejected because the calendar sidecar cannot resolve it',
+  );
+
+/**
+ * The stored shape. `timezone` absent means the clock time floats with
+ * wherever you are; present anchors it to a fixed zone.
+ */
 export const ScheduleSchema = z.object({
   weekdays: z.array(WeekdaySchema).min(1),
   startTime: StartTimeSchema,
   durationMin: z.number().int().positive(),
+  timezone: TimezoneSchema.optional(),
 });
 export type Schedule = z.infer<typeof ScheduleSchema>;
+
+/**
+ * The tool-input spelling, where `timezone` gains a third state.
+ *
+ * Omitted keeps whatever the habit already had — a caller rewriting the
+ * weekday slot must not silently unanchor the habit as a side effect. An
+ * explicit null drops the anchor and returns the schedule to floating.
+ */
+export const ScheduleInputSchema = ScheduleSchema.extend({
+  timezone: TimezoneSchema.nullable().optional(),
+});
+export type ScheduleInput = z.infer<typeof ScheduleInputSchema>;
 
 export const PERIOD_DAYS: Record<RhythmPeriod, number> = {
   weekly: 7,
