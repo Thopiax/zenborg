@@ -1,4 +1,4 @@
-# keel agent — Claude Code surface
+# zenborg — Claude Code surface
 
 **Keep your attention from fragmenting, yours and your agent's, locally.**
 
@@ -26,6 +26,36 @@ keel accumulates attention signal now; steering comes later, built on your own b
 - **Wind-down gate** (`PreToolUse` hook) denies Edit/Write/Bash once you've signed off, parked, or passed a backstop hour. **Breakpoint-armed** (engages at a turn boundary, never mid-edit), escapable only by a scarce **skip credit**. Conversation and journal/ritual writes (`allowPaths`) stay open, so closing the day is never blocked.
 
 The gate is the surprise that made keel worth shipping: built to stop *you* coding past midnight, it ends up disciplining the *model*. Under the gate Claude declines to start new subsystems at 1am, decomposes instead, and tells you to bank it for morning. "It's late, wrap up" turns out to be an alignment primitive, a governor on bias-to-action exactly when judgment is worst, for the human and the agent both.
+
+## Skills
+
+The plugin ships the rituals that drive the vault, so they work in **any** session
+rather than only inside the zenborg checkout.
+
+**The garden** — operate on the vault through the zenborg MCP server:
+
+| Skill | Scale | What it does |
+|---|---|---|
+| `sunrise` | day | Open the day: today's board, wilting habits, whispers |
+| `sunset` | day | Close the day: what grew, unrecorded moments, seed tomorrow |
+| `tend` | ad hoc | Batch-capture moments from natural language |
+| `season` | cycle | Plan or review a cycle |
+| `weather` | week | The weekly review |
+| `weekly-moments-review` | week | Read back the week's moments |
+| `onboarding` | once | First run |
+
+**The session** — bracket a stretch of work:
+
+| Skill | What it does |
+|---|---|
+| `close-up` | Close out a session: land the progress, release the intention, name the carry-over |
+| `recap` | Read back a window without writing anything |
+
+`close-up` is the write; `recap` is its read-only sibling. The session's *start* needs
+no skill — the `SessionStart` hook already records it.
+
+Skills and the tools they call now ship from one place and version together, which is
+the point: a commit renaming an MCP tool updates its skill in the same diff.
 
 ## Privacy posture (load-bearing)
 
