@@ -46,6 +46,7 @@ tauri-plugin-updater = "2"
 tauri-plugin-global-shortcut = "2"
 x-win = "5.7.0"
 user-idle = "0.6"
+media-remote = { version = "0.5.2", default-features = false }
 
 # Dev profile tuned for disk usage. Full debuginfo + incremental compilation
 # push target/debug into double-digit GB territory during normal tauri:dev
