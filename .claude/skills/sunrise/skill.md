@@ -34,6 +34,7 @@ Fetch today's state in parallel:
 - `mcp__zenborg__list_wilting_habits` for habits that need attention
 - `mcp__zenborg__get_active_moment` to see if an intention is already set
 - `mcp__zenborg__list_phase_configs` to know the phase bands
+- `mcp__garmin__get_sleep_summary` with today's date for last night's sleep
 
 ### 2. Render the day view
 
@@ -42,17 +43,22 @@ Present a compact overview:
 ```
 ## Today (YYYY-MM-DD) -- Season: [cycle name] ([intention])
 
+Sleep:     [last night's summary from Garmin]
+
 Morning:   [moment1] [moment2]
 Afternoon: [moment3]
 Evening:   (empty)
 Night:     (hidden or empty)
 ```
 
+Include last night's sleep as context for the day ahead. Use the data naturally; the gardener
+reads their own body. If Garmin returned no data (watch off, travel), say so briefly.
+
 Show each moment with its emoji and habit name. Empty phases are visible silence.
 
 ### 3. Surface whispers
 
-From the wilting habits and cycle health:
+From the wilting habits, cycle health, and sleep:
 - List 3-5 habits that are wilting or approaching their rhythm threshold
 - Note the cycle's elapsed/remaining days
 - If `list_people_to_reach` returns overdue contacts, mention the top 2-3
