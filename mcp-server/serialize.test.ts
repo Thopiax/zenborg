@@ -89,7 +89,12 @@ describe("conciseMoment", () => {
   });
 
   it("omits empty tags and personIds", () => {
-    const sparse = { ...full, tags: [] as string[], personIds: undefined, placeIds: undefined };
+    const sparse = {
+      ...full,
+      tags: [] as string[],
+      personIds: undefined,
+      placeIds: undefined,
+    };
     const c = conciseMoment(sparse);
     expect(c).not.toHaveProperty("tags");
     expect(c).not.toHaveProperty("personIds");
@@ -112,7 +117,11 @@ describe("conciseHabit", () => {
     description: "A long description",
     guidance: "Some guidance text",
     rhythm: { period: "weekly" as const, count: 5 },
-    schedule: { weekdays: ["MON" as const], startTime: "07:00", durationMin: 30 },
+    schedule: {
+      weekdays: ["MON" as const],
+      startTime: "07:00",
+      durationMin: 30,
+    },
     placeIds: ["home"],
     createdAt: TS,
     updatedAt: TS,
@@ -158,7 +167,12 @@ describe("conciseArea", () => {
       createdAt: TS,
       updatedAt: TS,
     });
-    expect(c).toEqual({ id: "a1", name: "work", emoji: "💼", color: "#aabbcc" });
+    expect(c).toEqual({
+      id: "a1",
+      name: "work",
+      emoji: "💼",
+      color: "#aabbcc",
+    });
     expect(c).not.toHaveProperty("isDefault");
     expect(c).not.toHaveProperty("order");
     expect(c).not.toHaveProperty("createdAt");
@@ -281,19 +295,15 @@ describe("conciseWriteEcho", () => {
 
   it("picks listed changed fields", () => {
     expect(
-      conciseWriteEcho(
-        { id: "x", name: "foo", color: "#fff", order: 3 },
-        ["color"],
-      ),
+      conciseWriteEcho({ id: "x", name: "foo", color: "#fff", order: 3 }, [
+        "color",
+      ]),
     ).toEqual({ id: "x", name: "foo", color: "#fff" });
   });
 
   it("strips null values from changed fields", () => {
     expect(
-      conciseWriteEcho(
-        { id: "x", name: "foo", attitude: null },
-        ["attitude"],
-      ),
+      conciseWriteEcho({ id: "x", name: "foo", attitude: null }, ["attitude"]),
     ).toEqual({ id: "x", name: "foo" });
   });
 });

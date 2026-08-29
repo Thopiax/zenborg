@@ -488,8 +488,13 @@ try {
       response_format: "full",
     });
     const created = parseOk(resp);
-    const parsed = parseOk(await callTool("get_running_cycle", { response_format: "full" }));
-    if (!parsed.running) throw new Error(`expected a running cycle, got: ${JSON.stringify(parsed).slice(0, 200)}`);
+    const parsed = parseOk(
+      await callTool("get_running_cycle", { response_format: "full" }),
+    );
+    if (!parsed.running)
+      throw new Error(
+        `expected a running cycle, got: ${JSON.stringify(parsed).slice(0, 200)}`,
+      );
     if (parsed.running.name !== "Active Season")
       throw new Error(`expected "Active Season", got "${parsed.running.name}"`);
     if (parsed.running.intention !== "test the running cycle tool")

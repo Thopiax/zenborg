@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  decodeCursor,
-  encodeCursor,
-  filterHash,
-  paginate,
-} from "./paging.js";
+import { decodeCursor, encodeCursor, filterHash, paginate } from "./paging.js";
 
 describe("filterHash", () => {
   it("produces an 8-char hex string", () => {

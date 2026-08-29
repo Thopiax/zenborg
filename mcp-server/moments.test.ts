@@ -1,16 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  resolveAddMoment,
   type AddMomentContext,
   type AddMomentInput,
+  resolveAddMoment,
 } from "./moments.js";
-import type {
-  Area,
-  Cycle,
-  CyclePlan,
-  Habit,
-  PhaseConfig,
-} from "./vault.js";
+import type { Area, Cycle, CyclePlan, Habit, PhaseConfig } from "./vault.js";
 
 const NOW = new Date("2026-08-29T10:00:00Z");
 
@@ -247,10 +241,7 @@ describe("resolveAddMoment", () => {
       const ctx = baseCtx({
         areas: { "area-1": makeArea({ isArchived: true }) },
       });
-      const result = resolveAddMoment(
-        { name: "test", areaId: "area-1" },
-        ctx,
-      );
+      const result = resolveAddMoment({ name: "test", areaId: "area-1" }, ctx);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error).toContain("archived");
     });
@@ -331,7 +322,10 @@ describe("resolveAddMoment", () => {
     it("picks latest-starting cycle when multiple cover the day", () => {
       const ctx = baseCtx({
         cycles: {
-          "cycle-1": makeCycle({ startDate: "2026-08-01", endDate: "2026-09-30" }),
+          "cycle-1": makeCycle({
+            startDate: "2026-08-01",
+            endDate: "2026-09-30",
+          }),
           "cycle-2": makeCycle({
             id: "cycle-2",
             startDate: "2026-08-20",
@@ -350,7 +344,10 @@ describe("resolveAddMoment", () => {
     it("cycleId is null when no cycle covers the day", () => {
       const ctx = baseCtx({
         cycles: {
-          "cycle-1": makeCycle({ startDate: "2026-07-01", endDate: "2026-07-31" }),
+          "cycle-1": makeCycle({
+            startDate: "2026-07-01",
+            endDate: "2026-07-31",
+          }),
         },
       });
       const result = resolveAddMoment(
@@ -402,7 +399,8 @@ describe("resolveAddMoment", () => {
         baseCtx(),
       );
       expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.error).toContain("fromPlan requires habitId");
+      if (!result.ok)
+        expect(result.error).toContain("fromPlan requires habitId");
     });
 
     it("fails when fromPlan but no day", () => {
@@ -485,7 +483,10 @@ describe("resolveAddMoment", () => {
     it("fails when day is outside cycle range", () => {
       const ctx = baseCtx({
         cycles: {
-          "cycle-1": makeCycle({ startDate: "2026-08-25", endDate: "2026-08-28" }),
+          "cycle-1": makeCycle({
+            startDate: "2026-08-25",
+            endDate: "2026-08-28",
+          }),
         },
         cyclePlans: { "plan-1": makePlan() },
       });
@@ -571,7 +572,12 @@ describe("resolveAddMoment", () => {
         },
       });
       const result = resolveAddMoment(
-        { name: "fourth", areaId: "area-1", day: "2026-08-29", phase: "MORNING" },
+        {
+          name: "fourth",
+          areaId: "area-1",
+          day: "2026-08-29",
+          phase: "MORNING",
+        },
         ctx,
       );
       expect(result.ok).toBe(true);

@@ -1,13 +1,4 @@
 import * as crypto from "node:crypto";
-import type {
-  Area,
-  Cycle,
-  CyclePlan,
-  Moment,
-  Habit,
-  Phase,
-  PhaseConfig,
-} from "./vault.js";
 import {
   countMomentsInPhase,
   normalizeRefs,
@@ -22,6 +13,15 @@ import {
   validatePlaceUrl,
   validateRefs,
 } from "./validation.js";
+import type {
+  Area,
+  Cycle,
+  CyclePlan,
+  Habit,
+  Moment,
+  Phase,
+  PhaseConfig,
+} from "./vault.js";
 
 const DAY_VIEW_PHASE_CAPACITY = 3;
 
@@ -94,7 +94,7 @@ export function resolveAddMoment(
   const hasStandalone = input.name !== undefined && input.areaId !== undefined;
   if (!hasHabit && !hasStandalone) {
     return fail(
-      'pass habitId (create from a habit) or both name and areaId (standalone). ' +
+      "pass habitId (create from a habit) or both name and areaId (standalone). " +
         'Example: { "name": "call sasa", "areaId": "<area uuid>", "day": "2026-08-29", "phase": "EVENING" }',
     );
   }
@@ -184,14 +184,10 @@ export function resolveAddMoment(
 
     const cycle = ctx.cycles[cycleId]!;
     if (input.day < cycle.startDate) {
-      return fail(
-        `day ${input.day} before cycle start ${cycle.startDate}`,
-      );
+      return fail(`day ${input.day} before cycle start ${cycle.startDate}`);
     }
     if (cycle.endDate && input.day > cycle.endDate) {
-      return fail(
-        `day ${input.day} after cycle end ${cycle.endDate}`,
-      );
+      return fail(`day ${input.day} after cycle end ${cycle.endDate}`);
     }
 
     let plan: CyclePlan | null = null;
@@ -202,9 +198,7 @@ export function resolveAddMoment(
       }
     }
     if (!plan) {
-      return fail(
-        `no budget: habit not planned for cycle "${cycle.name}"`,
-      );
+      return fail(`no budget: habit not planned for cycle "${cycle.name}"`);
     }
 
     let allocatedForPlan = 0;
@@ -226,9 +220,7 @@ export function resolveAddMoment(
   const refs = normalizeRefs(input.refs);
   const tags = normalizeTags(effectiveTags);
   const placeIds =
-    input.placeIds
-      ?.map(slugify)
-      .filter((k) => k.length > 0) ?? [];
+    input.placeIds?.map(slugify).filter((k) => k.length > 0) ?? [];
 
   let order = input.order ?? 0;
   let dayViewOverflow: number | undefined;
@@ -241,8 +233,7 @@ export function resolveAddMoment(
     );
     if (input.order === undefined) order = slotCount;
     const totalAfter = slotCount + 1;
-    if (totalAfter > DAY_VIEW_PHASE_CAPACITY)
-      dayViewOverflow = totalAfter;
+    if (totalAfter > DAY_VIEW_PHASE_CAPACITY) dayViewOverflow = totalAfter;
   }
 
   const moment: Moment = {
