@@ -1,11 +1,14 @@
 "use client";
 
-import { useRef } from "react";
+import { use$ } from "@legendapp/state/react";
+import { useMemo, useRef } from "react";
 import { MentionAutocompleteInline } from "@/components/MentionAutocompleteInline";
 import { MentionBadges } from "@/components/MentionBadges";
 import { TagAutocompleteInline } from "@/components/TagAutocompleteInline";
 import { TagBadges } from "@/components/TagBadges";
+import { classifyMentionIds } from "@/domain/services/MentionService";
 import type { TaggedNameField } from "@/hooks/useTaggedNameField";
+import { places$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 
 interface TaggedNameInputProps {
@@ -51,6 +54,16 @@ export function TaggedNameInput({
   tagBadgesClassName,
 }: TaggedNameInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const allPlaces = use$(places$);
+
+  const placeKeys = useMemo(
+    () => new Set(Object.values(allPlaces).map((p) => p.key)),
+    [allPlaces],
+  );
+  const { personIds, placeIds } = useMemo(
+    () => classifyMentionIds(field.mentionIds, placeKeys),
+    [field.mentionIds, placeKeys],
+  );
 
   const inputElement = (
     <input
@@ -102,9 +115,10 @@ export function TaggedNameInput({
       {/* Mention Badges */}
       {showMentions && field.mentionIds.length > 0 && (
         <MentionBadges
-          personIds={field.mentionIds}
-          placeIds={[]}
+          personIds={personIds}
+          placeIds={placeIds}
           onRemovePerson={field.removeMention}
+          onRemovePlace={field.removeMention}
           className={cn("mt-3", tagBadgesClassName)}
         />
       )}
