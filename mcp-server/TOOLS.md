@@ -1,321 +1,194 @@
-# Zenborg MCP — Tool Inventory (proposal)
+# Zenborg MCP — Tool Inventory
 
-**Status:** draft for sign-off before implementation.
-**Vault layout:** collections are JSON keyed by UUID — `areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`, `moments.json`, `phaseConfigs.json`, `metricLogs.json`, `dayNotes.json`.
-
-**Vault root:** `~/.kairos` (release) or `~/.kairos-dev` (debug). Resolution order is
-`--vault` → `$KAIROS_HOME` → `$ZENBORG_VAULT_DIR` (legacy) → `~/.kairos`, and it must stay
-in lockstep with `vault_root()` in `src-tauri/src/vault/fs.rs`. The vault moved from
-`~/.zenborg` on 2026-08-06 (0.15.0); the MCP server followed on the same release. `.mcp.json`
-deliberately does *not* pin `--vault` — the default is the single source of truth, because
-two places naming the root is exactly how the app and the MCP server drifted apart.
-
-**Area sidecar folders.** Unstructured, area-scoped content lives at
-`<vault root>/areas/<slug>/` — `AGENTS.md`, `docs/`, `skills/` — where `<slug>` is the
-area name kebab-cased. The sidecar holds files only; `areas.json` remains the source of
-truth for all structured fields. No `AREA.md`, no frontmatter, no parser, and no MCP tool
-resolves an area to its folder yet. See `CLAUDE.md` → *Area Sidecar Folders*.
+**Version:** 0.4.0 (implemented)
+**Tools:** 52 active + 19 deprecated wrappers (removed in 0.5.0)
 
 ---
 
-## Agent Read/Write Boundary
+## Vault
 
-Zenborg MCP tools split into **read-side** (safe for an agent to call freely
-while exploring) and **write-side** (require explicit user authorization
-before the agent commits).
-
-### Read-side (propose freely)
-
-- `list_areas`, `list_habits`, `list_cycles`, `list_moments`, `list_phase_configs`
-- `get_area`, `get_habit`, `get_cycle`, `get_moment`
-- `get_running_cycle`
-- `get_habit_health`
-- `list_tags`, `get_tag_profile`
-- `get_active_moment`
-- `list_wilting_habits`
-- `list_people_to_reach`
-- `get_cycle_planning_proposals`
-- `get_cycle_review`
-- `get_fence`
-- `search_habits`, `search_people`, `search_places`
-
-### Write-side (commit only with explicit user consent)
-
-- `create_habit`, `update_habit`, `archive_habit`, `unarchive_habit`
-- `create_area`, `update_area`, `archive_area`, `unarchive_area`, `delete_area`
-- `create_moment`, `update_moment`, `delete_moment`
-- `allocate_moment`, `unallocate_moment`, `allocate_from_plan`
-- `spawn_spontaneous_from_habit`, `create_standalone_moment`
-- `plan_cycle`, `quick_create_cycle`, `update_cycle`, `end_cycle`, `delete_cycle`
-- `update_phase_config`
-- `set_active_moment`, `clear_active_moment`
-- `set_fence`, `set_host_block`, `set_browser_gate`, `seed_host_blocks`, `clear_fence`
-
-### Attitude-driven planning
-
-At cycle planning time, call `get_cycle_planning_proposals` to surface what
-rhythm + health signals suggest. Never call `plan_cycle` without the user
-confirming which proposals to accept. The agent's role is to show the
-garden's state; the user decides what to tend.
-
-For orientation, call `get_running_cycle` — it returns the active cycle with
-intention, elapsed/remaining days, and per-habit health in one call.
-
-Plan and review are distinct acts. `get_cycle_planning_proposals` does NOT
-take review context as input — review is backward-looking reflection, plan
-is forward-looking intention. Chain them only at the user's direction.
+Collections are JSON keyed by UUID at `~/.kairos` (release) / `~/.kairos-dev` (debug).
+Resolution: `--vault` → `$KAIROS_HOME` → `$ZENBORG_VAULT_DIR` → `~/.kairos`.
 
 ---
 
-## Scope (Shape-Up)
+## Surface-wide conventions
 
-### Must-have — v0.3
-Covers Rafa's explicit ask: "CRUDs for areas, habits, cycles, moments, phases + services".
+### `response_format`
 
-**Reads** — `list_*` + `get_*` for every collection.
-**Writes** — CRUD for Areas / Habits / Cycles / Moments / CyclePlans.
-**Archive** — archive / unarchive for Areas + Habits (cascade handled).
-**Service orchestration** — `plan_cycle`, `allocate_from_plan`, `allocate_moment`, `unallocate_moment`, `spawn_spontaneous_from_habit`, `create_standalone_moment`.
-**Orientation** — `get_running_cycle`.
+Every tool accepts `response_format: "concise" | "full"` (default `"concise"`).
 
-### Should-have — if cheap
-- `PhaseConfig` update (the only mutating op — configs are seeded)
-- `quick_create_cycle` (template shortcut)
+- **Concise** omits timestamps (`createdAt`/`updatedAt`), `isDefault`, `order`, null-valued keys, and empty arrays. Writes echo `{ id, name }` + changed/derived fields only.
+- **Full** returns the complete stored record.
 
-### Nice-to-have / off-sides
-- MetricLog CRUD — defer (Rafa didn't ask, PUSHING-only surface)
-- Bulk ops — defer
-- History/undo — stays UI-local (history observable is not in vault)
-- Search / full-text — defer
-- "Activate cycle" as an explicit MCP op — off-sides: `activeCycle$` is **purely derived from dates** per `store.ts:180`. Mutating it directly would drift from the app. To make a cycle active, move its dates.
+### Annotations
+
+All tools carry `openWorldHint: false` (local vault, no network). Read tools carry `readOnlyHint: true`. Hard deletes and cascades carry `destructiveHint: true`.
+
+### Pagination
+
+`list_moments` and `list_habits` are paginated:
+
+```
+limit:  number (1–200, default 50)
+cursor: string (opaque, from previous response)
+```
+
+Response envelope: `{ items, total, truncated, nextCursor }`.
+When `truncated` is true, pass `nextCursor` back with the same filters.
 
 ---
 
-## Tool list
+## Read/write boundary
 
-### Areas (`areas.json`)
-| Tool | Inputs | Notes |
-|---|---|---|
-| `list_areas` | `includeArchived?` | Already exists — sort by `order`. |
-| `get_area` | `idOrName` | Resolve by id, then exact-name match among active. |
-| `create_area` | `name, color, emoji, order, attitude?, tags?` | Validate via `createArea` domain fn. |
-| `update_area` | `idOrName, updates` | Partial patch; re-normalize tags. |
-| `archive_area` | `idOrName` | Soft delete. |
-| `unarchive_area` | `idOrName` | |
-| `delete_area` | `idOrName` | Only if archived **and** `hasAreaMoments === false`. |
+### Read-side (safe to call freely)
 
-### Habits (`habits.json`)
-| Tool | Inputs | Notes |
-|---|---|---|
-| `list_habits` | `areaId?, includeArchived?` | |
-| `get_habit` | `id` | |
-| `create_habit` | `name(1–3 words), areaId, order, attitude?, phase?, tags?, aliases?, emoji?, description?, guidance?, rhythm?, schedule?, placeIds?` | `HABIT_DESCRIPTION_MAX_CHARS = 2000`. `aliases` are alternate names (nicknames/full names) that participate in habit search — normalized: trimmed, empty dropped, de-duped case-insensitively, any alias matching the name case-insensitively is dropped. A habit is always a ritual — a person is a registry entity carried in `Moment.personIds`, never a habit. `placeIds` bind a practice to where its object actually is, so the gap roster stops offering something whose equipment is in another city; a practice bound to no place is offered everywhere. |
-| `update_habit` | `id, updates` (inc. `aliases?`, pass `null` or `[]` to clear; `schedule?`, pass `null` to clear) | Updates to `name` auto-renormalize existing aliases against the new name. Setting/keeping a `schedule` re-reconciles `rhythm` and `phase`. A `schedule` rewrite that omits `timezone` keeps the stored anchor; `schedule.timezone: null` unanchors. |
-| `archive_habit` | `id` | **Cascade:** deletes all cycle plans for this habit; allocated moments preserved as historical records (orphan via `habitId`). |
-| `unarchive_habit` | `id` | |
+`list_areas` · `get_area` · `list_habits` · `get_habit` · `list_moments` · `get_moment` · `list_cycles` · `get_cycle` · `get_running_cycle` · `get_cycle_planning_proposals` · `get_cycle_review` · `list_people` · `get_person` · `list_places` · `get_place` · `list_relationships` · `list_people_to_reach` · `list_phase_configs` · `list_tags` · `get_tag_profile` · `get_active_moment` · `search` · `get_fence`
 
-### Cycles (`cycles.json`)
-| Tool | Inputs | Notes |
-|---|---|---|
-| `list_cycles` | `filter?: "active"\|"current"\|"upcoming"\|"all"` | `active` = derived from dates. |
-| `get_cycle` | `id` | |
-| `get_running_cycle` | — | Orientation snapshot: active cycle + intention + elapsed/remaining days + per-habit health + wilting list. One call replaces stitching `list_cycles` + `list_cycle_plans` + `list_wilting_habits`. Returns `{ running: null }` when no cycle is active. |
-| `plan_cycle` | `name, templateDuration?, startDate?, endDate?, intention?, placeIds?` | Mirrors `CycleService.planCycle`. `placeIds` say where the season is lived — a season is a stretch of time *somewhere*, and it is what `list_people_to_reach` reads to answer `far` and what the gap roster reads to know which practices are within reach. A list, because a season split between two cities names both. |
-| `quick_create_cycle` | `template` | Should-have. |
-| `update_cycle` | `id, updates` | Writing `reflection` stamps `reflectionSource: "machine"` — an agent writing is a machine writing, whoever asked for it. Only a hand edit in the app stamps `"human"`; harvest marks everything else as drafted. `placeIds` follow the moment contract: `null` or `[]` clears, omitting leaves alone. |
-| `end_cycle` | `id, endDate?` | Sets `endDate`; keeps cycle. |
-| `delete_cycle` | `id` | **Cascade:** plans + moments scoped to cycle. |
+### Write-side (require user authorization)
 
-### Moments (`moments.json`)
-| Tool | Inputs | Notes |
+`create_area` · `update_area` · `delete_area` · `create_habit` · `update_habit` · `add_moment` · `update_moment` · `delete_moment` · `unallocate_moment` · `mention` · `plan_cycle` · `update_cycle` · `delete_cycle` · `create_person` · `update_person` · `delete_person` · `create_place` · `update_place` · `delete_place` · `create_relationship` · `delete_relationship` · `set_active_moment` · `update_phase_config` · `set_fence` · `set_host_block` · `set_browser_gate` · `set_browser_transform` · `seed_host_blocks` · `clear_fence`
+
+---
+
+## Tools by category
+
+### Areas
+
+| Tool | Key params | Notes |
 |---|---|---|
-| `list_moments` | `filter: { areaId?, habitId?, cycleId?, day?, phase?, allocation?: "unallocated"\|"deck"\|"allocated"\|"budgeted"\|"spontaneous", tags? }` | One tool, structured filter. `tags` = AND over normalized tags. |
+| `list_areas` | `includeArchived?` | Sorted by `order`. |
+| `get_area` | `idOrName` | By id or exact name. |
+| `create_area` | `name, color, emoji, order` | |
+| `update_area` | `idOrName, ...fields, archived?` | `archived: true/false` replaces archive/unarchive. |
+| `delete_area` | `idOrName` | Must be archived + momentless. `destructiveHint`. |
+
+### Habits
+
+| Tool | Key params | Notes |
+|---|---|---|
+| `list_habits` | `areaId?, includeArchived?, health?, limit?, cursor?` | Paginated. `health: "wilting"` filters to wilting habits. |
+| `get_habit` | `idOrName` | Includes `health`, `daysSinceLast`, `effectiveRhythm` in response. |
+| `create_habit` | `name, areaId, order, ...` | Name 1–3 words. `schedule` fills `rhythm`+`phase`.  `schedule.timezone` is an optional IANA zone: absent = floating, present = anchored to a fixed instant. |
+| `update_habit` | `id, ...fields, archived?` | `archived: true` cascades: deletes cycle plans, preserves moments. A `schedule` rewrite that omits `timezone` keeps the stored anchor; `schedule.timezone: null` unanchors. |
+
+### Moments
+
+| Tool | Key params | Notes |
+|---|---|---|
+| `add_moment` | `habitId?, name?, areaId?, day?, phase?, fromPlan?, ...` | **The one creation path.** `habitId` → inherit from habit. `day` → allocate. `fromPlan: true` → link to cycle budget. Reports `dayViewOverflow` past 3. |
+| `update_moment` | `id, day?, order?, phase?, ...` | `day` allocates/moves. `day: null` returns spontaneous moments to drawing board (refuses plan-linked — use `unallocate_moment`). |
+| `list_moments` | `filter?, limit?, cursor?` | Paginated. Filter: `areaId, habitId, cycleId, day, phase, allocation, tags`. |
 | `get_moment` | `id` | |
-| `create_moment` | `name, areaId, phase?, emoji?, tags?, personIds?, placeIds?, placeUrl?, customMetric?, startTime?, durationMin?, refs?, status?` | Unallocated. `refs` = URLs this moment refers to (pointers only). `personIds` are the people present; an empty array writes nothing (absent means nobody). `placeIds` are entity keys for where it happened, at whatever grain you know. `placeUrl` is a pasted map link kept verbatim, so wake can mint the place entity from it; anything the URL parser cannot read is refused. `status` is `"tentative"` or `"accepted"`; absence means accepted (every pre-existing vault moment). Tentative moments are calendar proposals excluded from health, cycle counts, and density reads (spec D5). |
-| `update_moment` | `id, { name?, areaId?, emoji?, phase?, tags?, personIds?, placeIds?, placeUrl?, customMetric?, startTime?, durationMin?, refs?, status? }` | `startTime`/`durationMin` override what the moment inherited from its habit's schedule; pass `null` to clear. `refs` replaces the list; `[]` clears it. `personIds` replaces the whole list; pass `null` or `[]` to clear it (absent means nobody); omit it to leave the existing list untouched. `placeIds` and `placeUrl` follow the same contract. `status` flips a tentative proposal to accepted (one-way from MCP). `externalRef` is read-only provenance owned by the calendar sidecar; not writable through MCP. |
-| `delete_moment` | `id` | |
-| `allocate_moment` | `id, day, phase, order?, startTime?, durationMin?` | No cap. Returns `dayViewOverflow` past 3 in the slot. |
-| `unallocate_moment` | `id` | |
-| `allocate_from_plan` | `cycleId, habitId, day, phase` | Materialize a virtual deck card onto a slot. Resolves plan server-side; creates `Moment` with `cyclePlanId` set and the habit's schedule timing inherited. Returns `dayViewOverflow` past 3 in the slot. |
-| `spawn_spontaneous_from_habit` | `habitId, day, phase, order?` | Inherits area/emoji/tags, plus the habit's schedule timing. No `refs`: a habit has none — what a moment points at is particular to the occurrence. Returns `dayViewOverflow` past 3 in the slot. |
-| `create_standalone_moment` | `name, areaId, day, phase, order?, emoji?, tags?, personIds?, placeIds?, placeUrl?, startTime?, durationMin?, refs?` | Create + allocate in one op. Returns `dayViewOverflow` past 3 in the slot. `personIds` are the people present; an empty array writes nothing (absent means nobody). `placeIds` are entity keys for where it happened, at whatever grain you know (a café, its neighbourhood, its city) — labels are slugged for you, and an empty array writes nothing. `placeUrl` is a pasted map link kept verbatim, so wake can mint the place entity from it; anything the URL parser cannot read is refused. Place is **not** inherited from a habit by `spawn_spontaneous_from_habit` or `allocate_from_plan`: a template has no place. |
+| `delete_moment` | `id` | `destructiveHint`. |
+| `unallocate_moment` | `id` | Deletes plan-linked moment row; deck ghost reappears. Refuses spontaneous (use `delete_moment`). |
+| `mention` | `momentId, entities[]` | Resolve names against people+places registries, additive attach. |
 
-### Active moment (`activeMoment.json`)
+### Active moment
 
-The one moment that is *what I'm doing now*. A singleton pointer — `{ momentId, at }` — not a collection, so it stays out of the registry and out of export/import.
-
-**Zenborg writes it; keel reads it** and surfaces it in every Claude Code session as `◎ intention: …`. Keel honours the pointer only while the moment it names sits on the current **waking-day**, which rolls at **04:00**, not midnight. `set_active_moment` uses the same roll; the two must stay in lockstep or a moment set at 02:00 would be written here and silently ignored there.
-
-| Tool | Inputs | Notes |
+| Tool | Key params | Notes |
 |---|---|---|
-| `set_active_moment` | `momentIdOrName` | An id, or a name matched against today's board. Refuses a moment not allocated to today (keel would ignore it), and refuses an ambiguous name, listing the candidate ids. |
-| `get_active_moment` | — | Resolved to its moment and area. `{ active: null }` when nothing is set. Reports `stale: true` when the moment was deleted or has rolled off today. |
-| `clear_active_moment` | — | Releases the intention. Removing the pointer IS the empty state. |
+| `set_active_moment` | `momentIdOrName` | By id or name on today's board. Pass `null` to clear. Keel reads this pointer. |
+| `get_active_moment` | — | Resolved to moment+area. Reports `stale` when deleted/off-day. |
 
-### Fences (`fences.json`) — declared rules (added 2026-08-20)
+### Cycles
 
-A fence is the first *declared* intervention rule: "only this stream this
-afternoon, and friction on anything else." The record shape is the domain's
-`RuleSpec` (built by `sessionFenceRule`), keyed by rule id at the vault root.
-Per the substrate contract **zenborg is the only writer** of `fences` — these
-tools are that writer; the Claude plugin (`plugin/hooks/fences.mts`) and later
-the browser extension read.
-
-The stamped decision `kairos/docs/decisions/2026-08-20-open-fences-to-declared-
-rules-before-step-5.md` permits **declared** rules only: every fence written
-here is constructed from the caller's arguments, and nothing in this server
-reads `discrepancy.json`. Construction + validation live in
-`src/domain/intervention/`; orchestration (name→id resolution, `serves`
-pointing at the running season, validate-before-write) in
-`src/application/use-cases/fences.ts`; the tool handlers are thin adapters.
-
-| Tool | Inputs | Notes |
+| Tool | Key params | Notes |
 |---|---|---|
-| `set_fence` | `label, paths, areas, description?` | Declare a fence. `paths` are absolute prefixes *inside* the fence (`~` expands); `areas` are area **names or ids** the fence encloses. `serves` resolves to the active cycle + first enclosed area — refused when no season is running. Validated with `validateRuleSpec` before the write; every rung carries an exit by type (a fence can ask, never deny). |
-| `clear_fence` | `id` \| `all` | Take a fence down (exactly one of the two). The crossing tally (`plugin/fences-state.json`) is **plugin-owned and never written here** — rule ids are never reused, so a cleared fence's count is inert by construction. |
-| `set_host_block` | `host, returnsTo, unlockNote, name?, description?, resolverProfile?` | A standing block on one host, **browser-scoped** so it reaches the extension's armed record. Browser-enforced unless `resolverProfile` is given, which moves it to the reach that covers a phone. `unlockNote` is the exit and is required — invariant 6 is checked at the writer, not only at the extension. |
-| `set_browser_gate` | `host, returnsTo, everyMinutes, prompt, name?, description?` | A recurring stopping cue: every N minutes of **attended** dwell, the page asks and offers an exit. Friction on the duration rather than on the visit. Ships at `deliveryProbability` 0.7, because whether a cue like this returns attention is the open question. |
-| `seed_host_blocks` | `returnsTo, unlockNote, hosts, resolverProfile?` | Write a seed blocklist into `fences` as rules. `hosts` is required: there is no default list to fall back to. Idempotent — ids derive from host + enforcement point, so re-running replaces; fences it did not write are untouched. One write, not one per host. |
-| `get_fence` | — | Every standing fence with its crossing tally (zero when the plugin has recorded none) and the rung the *next* crossing lands on, read off the rule's own ladder via `rungFor`. |
+| `list_cycles` | `filter?` | `"active"/"current"/"upcoming"/"all"`. |
+| `get_cycle` | `idOrName` | |
+| `get_running_cycle` | — | Orientation snapshot: active cycle + per-habit health + wilting list. |
+| `get_cycle_planning_proposals` | `cycleId` | Attitude + rhythm + health proposals. |
+| `get_cycle_review` | `cycleId` | Descriptive review — no aggregate scores. |
+| `plan_cycle` | `name, template?, startDate?, endDate?, ...` | `template: "week"/"month"/"quarter"` computes endDate (7/28/90 days). Pass template OR endDate. |
+| `update_cycle` | `id, ...fields` | Set `endDate` to close a cycle. `reflection` stamps `reflectionSource: "machine"`. |
+| `delete_cycle` | `id` | Cascades: deletes all moments + plans. `destructiveHint`. |
 
-**Two surfaces, one collection.** `set_fence` writes `scope.surface: "session"`,
-which the plugin's `PreToolUse` hook reads; the three above write
-`scope.surface: "browser"`, which the extension reads out of the armed record
-keel's native host projects and pushes. Migration step 5 (2026-08-21) made
-`fences` the *only* rule store — `~/.kairos/keel/rules/*.json` is retired, and a
-rule still sitting there is inert until it is re-declared through these tools.
+### People
 
-### Tags — derived index (added 2026-08-14)
-
-These tools derive a tag index at read time from the existing collections: **no stored
-index, no vault shape change**, so neither vault implementation pays a cost. `normalizeTags`
-strips `/` and `:` — dashes are the only namespacing that survives.
-
-**People and places are no longer tags.** `person-<name>` and `place-<name>` were the
-stopgap for first-class entities, and the entities arrived: people live in
-`Moment.personIds`, places in `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds`, all
-of them registry entity keys. The kernel's flatten rule always made `place-atlantis` and
-`kairos:place/atlantis` the same reference — only the storage changed.
-
-`tags.ts` and `graph.ts` needed no change for this, because they never parsed the prefixes;
-they aggregate strings and always did. What changed is that the claim these prefixes *are*
-the People and Places indexes is now false. Ask the fields instead, or
-`list_people_to_reach`. A `person-` or `place-` tag still showing up here is a record the
-migration has not reached.
-
-| Tool | Inputs | Notes |
+| Tool | Key params | Notes |
 |---|---|---|
-| `list_tags` | `prefix?` | Every tag in use with moment/habit/area counts + first/last allocated day. `prefix` reads any namespace as an index. Sorted by total usage. Not the People or Places index — see above. |
-| `get_tag_profile` | `tag` | One tag's graph neighbourhood: habits, areas, co-tags, date range, recent sample (cap 10, truncation flagged). Generic aggregation — it does not know what a person or a place is. |
-| `get_related_habits` | `habitId` | A habit's derived edges: `sharedTags` (tag signature overlap only — edges mediated by a shared person or place are not computed, since those are references now), `coOccurrence` (same-day allocation, cap 10), `areaSiblings` (active, same plot). Descriptive only — intentional relations (substitution groups, "enables") are not derivable and would be a vault shape change. |
+| `list_people` | `status?, category?` | |
+| `get_person` | `idOrKey` | |
+| `create_person` | `name, cadence?, category?, ...` | `key` derived from name via slugify. |
+| `update_person` | `idOrKey, ...fields` | |
+| `delete_person` | `idOrKey` | Does not remove key from existing moments. `destructiveHint`. |
+| `list_people_to_reach` | `category?, limit?, far?` | Outreach queue ordered by `overdueRatio`. |
 
-### Fuzzy search (entity resolution, read-only)
+### Places
 
-Pure string-ops fuzzy matching for habits, people and places. Used by the garden skills plugin to resolve natural-language entity references before planting moments. Matching strategy: exact > prefix > substring > Levenshtein (distance <= 2) > alias.
-
-| Tool | Inputs | Notes |
+| Tool | Key params | Notes |
 |---|---|---|
-| `search_habits` | `query, areaId?, includeArchived?` | Fuzzy-search habits by name or alias. Returns matches ranked by confidence with `matchedOn` (`name` or `alias`), `matchedValue`, and `matchMethod`. |
-| `search_people` | `query` | Fuzzy-search people by name or key. Returns matches ranked by confidence. Includes paused people. |
-| `search_places` | `query` | Fuzzy-search places by name, key, or parent key. Returns matches ranked by confidence. |
+| `list_places` | — | |
+| `get_place` | `idOrKey` | |
+| `create_place` | `name, parentKey?, address?, coordinates?, ...` | |
+| `update_place` | `idOrKey, ...fields` | |
+| `delete_place` | `idOrKey` | `destructiveHint`. |
 
-### Phases (`phaseConfigs.json`) — Should-have
-| Tool | Inputs | Notes |
-|---|---|---|
-| `list_phase_configs` | — | Sorted by `order`. |
-| `update_phase_config` | `id, { label?, emoji?, color?, startHour?, endHour?, isVisible?, order? }` | Configs are seeded; only update surface. |
+### Relationships
 
-### Health + outreach (derived, read-only)
-| Tool | Inputs | Notes |
+| Tool | Key params | Notes |
 |---|---|---|
-| `get_habit_health` | `habitId` | Health is never stored — recomputed on every read. |
-| `list_wilting_habits` | `areaId?, attitude?` | Habits whose current health is `wilting`. |
-| `list_people_to_reach` | `category?, limit?, far?` | The outreach queue: registry people whose `personHealth` is `wilting` against their **declared cadence** (`weekly \| monthly \| quarterly \| yearly`, day counts 7/30/91/365 — a registry fact on the person entity, never stored in zenborg) and who have **nothing already arranged** — anyone with a future-dated moment is excluded, so the queue stays quiet about someone you are already seeing on Thursday. `category` narrows to a registry category (`friend`, `family`, `lover`, `colleague`); `limit` truncates *after* sorting, so it always returns the most overdue. **Ordered by `overdueRatio` — days-since divided by the cadence bucket's day count — not by raw elapsed days.** A `weekly` friend at 20 days (2.86x) outranks a `yearly` one at 400 days (1.1x); ranking by raw days would park the long-cadence tail at the head of the queue forever and bury exactly the people the feature exists to protect. Every row carries `overdueRatio` beside `daysSinceLastContact`, so the ordering is explicable rather than mysterious. Never-contacted people (`daysSinceLastContact: null`, `overdueRatio: null`) come first. People with no cadence are `unstated`, never wilting, and never appear; `status: paused` people are likewise `unstated` — stepped back deliberately, not let slide. Rows carry the entity `key`, **no display name** — the registry owns names; fail-soft renders the key. Until wake exposes its key-resolve tool the registry list is empty and the queue returns `[]` — normal, not an error. Every row also carries `far`: whether the person's registry base place differs from where the current cycle is being lived (`Cycle.placeIds`). `far: null` means the question could not be asked — the registry has no base place for them, or the season states none — and **nobody is ever dropped by a distance that could not be checked**, so a `far` filter still returns the unknowns. |
+| `list_relationships` | `entityType?, entityId?, label?` | Filter by entity or label. |
+| `create_relationship` | `fromType, fromId, toType, toId, label` | `direction` defaults to `"mutual"`. |
+| `delete_relationship` | `id` | `destructiveHint`. |
+
+### Search
+
+| Tool | Key params | Notes |
+|---|---|---|
+| `search` | `type, query, areaId?, includeArchived?` | `type: "habit"/"person"/"place"`. Fuzzy match ranked by confidence. |
+
+### Tags (derived, read-only)
+
+| Tool | Key params | Notes |
+|---|---|---|
+| `list_tags` | `prefix?` | Every tag in use with counts + first/last day. |
+| `get_tag_profile` | `tag` | Tag's graph neighbourhood: habits, areas, co-tags, sample. |
+
+### Phases
+
+| Tool | Key params | Notes |
+|---|---|---|
+| `list_phase_configs` | — | 4 rows, sorted by order. |
+| `update_phase_config` | `id, ...fields` | Configs are seeded; update only. |
+
+### Fences (7 tools, unchanged from 0.3.0)
+
+| Tool | Key params | Notes |
+|---|---|---|
+| `set_fence` | `label, paths, areas` | Session fence: "only this stream". |
+| `set_host_block` | `host, returnsTo, unlockNote` | Standing block on a host. |
+| `set_browser_gate` | `host, returnsTo, everyMinutes, prompt` | Recurring dwell-time cue. |
+| `set_browser_transform` | `host, selectors, returnsTo` | DOM transform (hide/restyle). |
+| `seed_host_blocks` | `returnsTo, unlockNote, hosts` | Batch blocklist. Idempotent. |
+| `clear_fence` | `id` or `all` | Take fences down. `destructiveHint`. |
+| `get_fence` | — | Standing fences with crossing tallies. |
 
 ---
 
-## Invariants the MCP must enforce (shared with app)
+## Migration from 0.3.0
 
-Beyond entity-level validation, these are cross-entity rules currently enforced in services. MCP ports them:
+19 tools are deprecated. They still work (thin wrappers over new code paths) and will be removed in 0.5.0 after the transcript-verified gate.
 
-1. ~~**3-moments-per-(day, phase) cap**~~ — **lifted at the data layer 2026-08-07.** The rule survives as a *day-view display* capacity (`DAY_VIEW_PHASE_CAPACITY` in `Moment.ts`, mirrored in `validation.ts`). Allocation tools never refuse; they attach a `dayViewOverflow` notice past 3 so the `morning` and `cycle-planning` skills keep their anti-over-planning signal.
-2. **One `CyclePlan` per (cycleId, habitId)** — enforced by `allocate_from_plan` and internal callers.
-3. **Referential integrity on create** — `areaId` must exist and be non-archived; `habitId` likewise; `cycleId` must exist.
-4. **Habit-name 1–3 words** and **moment-name 1–3 words**.
-5. **Cascade on archive_habit / delete_cycle** — same fan-out as `HabitService.archiveHabit` / `CycleService.deleteCycle`.
-
----
-
-## Vault resolution
-
-Current: `--vault /path` CLI arg only. Proposal:
-
-1. `--vault /path` if passed.
-2. Else `$KAIROS_HOME` env var.
-3. Else `$ZENBORG_VAULT_DIR` env var (legacy).
-4. Else `~/.kairos/` (matches Tauri release default).
-
-**Dev vs prod:** MCP defaults to the release vault. If user is running the debug app (`~/.kairos-dev`) and the MCP against the default, they diverge silently. Fix: startup log line printing resolved vault path + warn if `~/.kairos-dev` exists but not targeted.
+| Deprecated | Use instead |
+|---|---|
+| `create_moment`, `create_standalone_moment`, `spawn_spontaneous_from_habit`, `allocate_from_plan` | `add_moment` |
+| `allocate_moment` | `update_moment { day }` |
+| `quick_create_cycle` | `plan_cycle { template }` |
+| `archive_area` / `unarchive_area` | `update_area { archived }` |
+| `archive_habit` / `unarchive_habit` | `update_habit { archived }` |
+| `get_habit_health` | `get_habit` (health in response) |
+| `list_wilting_habits` | `list_habits { health: "wilting" }` |
+| `clear_active_moment` | `set_active_moment { momentIdOrName: null }` |
+| `end_cycle` | `update_cycle { endDate }` |
+| `search_habits` / `search_people` / `search_places` | `search { type }` |
+| `get_related` | `list_relationships { entityType, entityId }` |
+| `get_related_habits` | `get_tag_profile` (related habits in response) |
 
 ---
 
-## Off-sides (explicit)
-
-- No MetricLog tools this cycle.
-- No multi-file bulk ops.
-- No LLM-in-the-loop validation — zod + domain fns only.
-- No history integration — undo stack is in-memory on desktop.
-- No `activate_cycle` — activation is date-derived.
-- No tag normalization exposure — handled inside domain fns (`normalizeTag`).
-
----
-
-## Open questions (need Rafa's call)
-
-1. **Cascade confirmation.** `archive_habit` deletes unallocated moments + plans. Desktop shows a confirm modal. MCP has no UI. Options:
-   - **(a)** Cascade silently, return `{ archived, deletedMoments: N, deletedPlans: N }` in payload. *(my recommendation — conversational LLM can narrate.)*
-   - **(b)** Two-step: `archive_habit` fails with `requires_confirm: true, preview: {...}`; caller passes `confirm: true` to proceed.
-2. **`list_moments` filter shape.** Nested object (shown above) vs flat optional args. Nested wins on clarity but zod schemas get bigger. *(My call: nested — LLM tool-calling handles nested JSON fine.)*
-3. **Dev vault safety.** Do we want the MCP to refuse to run if it detects the desktop app is writing to a different vault? That's paranoid. Alternative: just log loudly and trust the human.
-4. **`update_moment` via deck allocation.** Currently allocation is its own tool. Should `update_moment` accept `day`/`phase` too and route internally, or is keeping allocation separate the right DDD split? *(My call: separate — matches the service layer and prevents accidental allocations.)*
-
----
-
-## What I'll rip out
-
-Current `mcp-server/index.ts` reads penceive's `vault/areas/<key>.md` + YAML frontmatter. That codepath is entirely incompatible with Zenborg's JSON layout. I'll delete all of it, keep only the zod schemas + atomic write helper, and rebuild against the collection model above.
-
----
-
-**Request for Rafa:** sign off on scope (Must-have + Should-have?) and pick answers to the 4 open questions. Then I code.
-
----
-
-## Decisions (signed off 2026-04-21)
-
-| # | Question | Call |
-|---|---|---|
-| — | Scope | Must-have + Should-have both in v0.3. |
-| 1 | Cascade confirmation for `archive_habit` | **Silent cascade, return counts.** `{ archived, deletedPlans }` — allocated moments survive (derive paradigm; orphan via `habitId`). |
-| 2 | Vault resolution | **`--vault` → `$KAIROS_HOME` → `$ZENBORG_VAULT_DIR` → `~/.kairos`.** |
-| 3 | Dev vault safety | **Log loudly, trust the human.** Print resolved path + warn if `~/.kairos-dev` exists but isn't the target. |
-| 4 | Allocation via `update_moment` | **Keep allocation separate.** `allocate_moment` / `unallocate_moment` / `allocate_from_plan` stay their own tool family. |
-
-### Known-evolving invariants
-
-- ~~**3-moments-per-(day, phase) cap.**~~ **Resolved 2026-08-07.** Relaxed at the data layer, kept as a day-view display concern, per `docs/ideas/2026-06-08-calendar-zoomed-in-mode-and-phase-cap.md` (which warned the cap is load-bearing for `morning` / `cycle-planning`) and `docs/ideas/2026-06-14-remove-the-rule-of-3-moments-per-phase-only-applies-at-day-v.md`. Domain, application and MCP write paths no longer block; the timeline grid, drag validation and entity actions still cap at `DAY_VIEW_PHASE_CAPACITY`.
-
-### Habit schedules (added 2026-08-07)
-
-`Habit.schedule?: { weekdays: Weekday[], startTime: "HH:MM", durationMin: number, timezone?: string }` and
-`Moment.startTime?` / `Moment.durationMin?` are **fully optional and purely additive** — no
-migration, existing vault data stays valid, ambient habits are unaffected.
-
-- `rhythm` stays **stored, not derived.** A schedule *fills* it when absent (`{ weekly, weekdays.length }`) and is **rejected** when a weekly rhythm's `count` disagrees with `weekdays.length`. Longer periods are unconstrained — "every other Monday" is `biweekly ×1` on `[MON]`.
-- `phase` stays **stored, not derived.** A schedule fills it from the band `startTime` falls in (read from `phaseConfigs`) and rejects a phase that contradicts it.
-- Moments inherit `startTime`/`durationMin` from the habit's schedule at allocation time and may override either per instance.
-
-#### `schedule.timezone` (added 2026-08-29)
+## Habit schedules — `timezone`
 
 Optional IANA identifier — `"America/Sao_Paulo"`, `"Europe/Paris"`, or bare `"UTC"`.
 
@@ -325,4 +198,3 @@ Optional IANA identifier — `"America/Sao_Paulo"`, `"Europe/Paris"`, or bare `"
 - **Rewriting a schedule preserves the anchor.** `timezone` omitted inherits whatever was stored, so a caller that only knows how to move the hour cannot unanchor a habit as a side effect. Pass `timezone: null` to unanchor deliberately.
 
 Readers today: the calendar sidecar (`calendar-sidecar/Sources/EventStore.swift`, `resolveTimezone`) applies it to the EventKit event. `scheduleLocalStartTime()` in `src/domain/value-objects/Schedule.ts` converts for display; wiring it into the app's own cards is still open.
-

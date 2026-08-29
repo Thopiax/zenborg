@@ -113,7 +113,10 @@ function rpc(method, params) {
 }
 
 function callTool(name, args) {
-  return rpc("tools/call", { name, arguments: args });
+  return rpc("tools/call", {
+    name,
+    arguments: { response_format: "full", ...args },
+  });
 }
 
 function toolText(resp) {
@@ -237,7 +240,7 @@ try {
       phase: "MORNING",
     });
     const parsed = parseOk(resp);
-    const m = parsed.allocated;
+    const m = parsed.allocated ?? parsed.created;
     if (!m || !m.id)
       throw new Error(
         `expected allocated moment, got ${JSON.stringify(parsed)}`,
@@ -316,11 +319,12 @@ try {
   await step("list_moments allocated", async () => {
     const resp = await callTool("list_moments", {
       filter: { allocation: "allocated" },
+      response_format: "full",
     });
-    const list = parseOk(resp);
+    const envelope = parseOk(resp);
     // Only the spontaneous moment from step 6 remains (plan-linked was unallocated in 5c).
-    if (list.length !== 1)
-      throw new Error(`expected 1 allocated, got ${list.length}`);
+    if (envelope.items.length !== 1)
+      throw new Error(`expected 1 allocated, got ${envelope.items.length}`);
   });
 
   // 8. Phase cap is a day-view display concern: allocation past 3 succeeds and
@@ -473,16 +477,24 @@ try {
   await step("get_running_cycle with active cycle", async () => {
     const today = new Date();
     const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
-    const endDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-28`;
+    const endDay = new Date(today);
+    endDay.setDate(endDay.getDate() + 7);
+    const endDate = `${endDay.getFullYear()}-${String(endDay.getMonth() + 1).padStart(2, "0")}-${String(endDay.getDate()).padStart(2, "0")}`;
     const resp = await callTool("plan_cycle", {
       name: "Active Season",
       startDate,
       endDate,
       intention: "test the running cycle tool",
+      response_format: "full",
     });
     const created = parseOk(resp);
-    const parsed = parseOk(await callTool("get_running_cycle", {}));
-    if (!parsed.running) throw new Error("expected a running cycle");
+    const parsed = parseOk(
+      await callTool("get_running_cycle", { response_format: "full" }),
+    );
+    if (!parsed.running)
+      throw new Error(
+        `expected a running cycle, got: ${JSON.stringify(parsed).slice(0, 200)}`,
+      );
     if (parsed.running.name !== "Active Season")
       throw new Error(`expected "Active Season", got "${parsed.running.name}"`);
     if (parsed.running.intention !== "test the running cycle tool")
