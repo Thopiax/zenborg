@@ -378,9 +378,8 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     emoji: emoji ? emoji.trim() : null, // Trim or null
     ...(startTime !== undefined ? { startTime } : {}),
     ...(durationMin !== undefined ? { durationMin } : {}),
-    // REMOVED: attitude
     customMetric,
-    tags: tags.filter(validateTag), // Filter out invalid tags
+    tags: tags.filter(validateTag),
     // Absent, not empty: one representation of "this moment refers to nothing".
     ...(normalizedRefs.length > 0 ? { refs: normalizedRefs } : {}),
     createdAt: now,

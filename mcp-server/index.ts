@@ -756,6 +756,7 @@ defineTool(server, {
 
     habits[id] = next;
     writeCollection(VAULT_ROOT, "habits", habits);
+
     return ok({
       updated: next,
       ...(deletedPlans > 0 ? { deletedPlans } : {}),

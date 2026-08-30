@@ -46,6 +46,8 @@ export interface Habit {
    * back to those tags until the migration moves them here.
    */
   placeIds?: string[];
+  parentHabitId?: string;
+  durationMin?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -95,6 +97,8 @@ export interface CreateHabitProps {
   emoji?: string | null;
   description?: string;
   guidance?: string;
+  parentHabitId?: string;
+  durationMin?: number;
   rhythm?: Rhythm;
   schedule?: Schedule;
   /**
@@ -262,6 +266,8 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     isArchived: false,
     order,
     ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
+    ...(props.parentHabitId ? { parentHabitId: props.parentHabitId } : {}),
+    ...(props.durationMin && props.durationMin > 0 ? { durationMin: props.durationMin } : {}),
     ...(trimmedDescription ? { description: trimmedDescription } : {}),
     ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
     ...(effectiveRhythm ? { rhythm: effectiveRhythm } : {}),
@@ -335,6 +341,13 @@ export function updateHabit(
       delete merged.aliases;
     } else {
       merged.aliases = renormalized;
+    }
+  }
+  if ("durationMin" in updates) {
+    if (updates.durationMin && updates.durationMin > 0) {
+      merged.durationMin = updates.durationMin;
+    } else {
+      delete merged.durationMin;
     }
   }
   if ("schedule" in updates && updates.schedule === undefined) {

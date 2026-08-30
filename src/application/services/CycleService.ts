@@ -1058,14 +1058,13 @@ export class CycleService {
 
     const activeCycle = activeCycle$.get();
 
-    // Create spontaneous moment (cyclePlanId = null)
     const result = createMoment({
       name: habit.name,
       areaId: habit.areaId,
       emoji: habit.emoji,
       habitId: habit.id,
       cycleId: activeCycle?.id || null,
-      cyclePlanId: null, // Spontaneous
+      cyclePlanId: null,
       phase: null,
       tags: habit.tags || [],
       ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),

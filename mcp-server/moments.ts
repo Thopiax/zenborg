@@ -266,5 +266,9 @@ export function resolveAddMoment(
     updatedAt: nowIso,
   };
 
-  return { ok: true, moment, ...(dayViewOverflow ? { dayViewOverflow } : {}) };
+  return {
+    ok: true,
+    moment,
+    ...(dayViewOverflow ? { dayViewOverflow } : {}),
+  };
 }
