@@ -979,10 +979,10 @@ function VariantsSelector({
         </PopoverContent>
       </Popover>
 
-      {/* Add variant dialog — opens on top of the habit form */}
+      {/* Add variant dialog — same structure as HabitFormDialog */}
       <Dialog open={addingOpen} onOpenChange={setAddingOpen}>
         <DialogContent
-          className="p-0 gap-0 max-w-sm"
+          className="p-0 gap-0 max-w-2xl"
           onEscapeKeyDown={(e) => {
             e.preventDefault();
             setAddingOpen(false);
@@ -997,11 +997,9 @@ function VariantsSelector({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="px-6 py-6 space-y-4">
-            <div>
-              <label className="block text-xs font-mono text-stone-500 dark:text-stone-400 mb-1">
-                Name
-              </label>
+          <div className="px-6 py-6 flex-1 overflow-y-auto">
+            {/* Prominent name input — matches habit form */}
+            <div className="mb-6">
               <input
                 ref={nameRef}
                 type="text"
@@ -1015,34 +1013,51 @@ function VariantsSelector({
                     handleAddVariant();
                   }
                 }}
-                placeholder="e.g. breakfast, recovery, push"
-                className="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-transparent font-mono text-lg outline-none focus:border-stone-400 dark:focus:border-stone-500"
+                placeholder="Variant name..."
+                className="w-full text-4xl font-bold bg-transparent outline-none placeholder:text-stone-300 dark:placeholder:text-stone-600 font-mono"
               />
             </div>
-            <div>
-              <label className="block text-xs font-mono text-stone-500 dark:text-stone-400 mb-1">
-                Duration (optional)
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="1"
-                  max="480"
-                  value={draftDuration}
-                  onChange={(e) => setDraftDuration(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation();
-                      handleAddVariant();
-                    }
-                  }}
-                  placeholder="30"
-                  className="w-20 px-3 py-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-transparent font-mono text-lg outline-none focus:border-stone-400 dark:focus:border-stone-500"
-                />
-                <span className="text-sm font-mono text-stone-400">min</span>
-              </div>
+
+            {/* Duration — same chip-row pattern as habit form */}
+            <div className="flex flex-wrap gap-3 items-center">
+              {draftDuration ? (
+                <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 w-full">
+                  <Timer className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                  <input
+                    type="number"
+                    min="1"
+                    max="480"
+                    value={draftDuration}
+                    onChange={(e) => setDraftDuration(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.nativeEvent.stopImmediatePropagation();
+                        handleAddVariant();
+                      }
+                    }}
+                    className="w-16 bg-transparent font-mono text-sm outline-none"
+                  />
+                  <span className="font-mono text-sm text-stone-400">min</span>
+                  <button
+                    type="button"
+                    onClick={() => setDraftDuration("")}
+                    className="ml-auto text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDraftDuration("30")}
+                  className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                >
+                  <Timer className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  <span className="text-xs font-mono">no duration</span>
+                </button>
+              )}
             </div>
           </div>
 
