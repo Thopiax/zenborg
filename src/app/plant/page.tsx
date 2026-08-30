@@ -22,17 +22,20 @@ import { HabitService } from "@/application/services/HabitService";
 import { AreaBoardBuilder } from "@/components/AreaBoardBuilder";
 import { DraggableHabitItem } from "@/components/DraggableHabitItem";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
+import { PeopleBoardBuilder } from "@/components/PeopleBoardBuilder";
 import {
   activeAreas$,
   activeHabits$,
   areas$,
 } from "@/infrastructure/state/store";
+import { plantViewMode$ } from "@/infrastructure/state/ui-store";
 
 const PlantPage = observer(() => {
   const areaService = new AreaService();
   const habitService = new HabitService();
   const areas = use$(activeAreas$);
   const habits = use$(activeHabits$);
+  const viewMode = use$(plantViewMode$);
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -198,6 +201,17 @@ const PlantPage = observer(() => {
       return;
     }
   };
+
+  if (viewMode === "people") {
+    return (
+      <>
+        <LandscapePrompt />
+        <div className="h-full bg-background transition-colors">
+          <PeopleBoardBuilder />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

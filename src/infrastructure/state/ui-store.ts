@@ -55,6 +55,10 @@ export type CultivateZoom = "phase" | "time";
 
 export const cultivateZoom$ = observable<CultivateZoom>("phase");
 
+export type PlantViewMode = "areas" | "people";
+
+export const plantViewMode$ = observable<PlantViewMode>("areas");
+
 /**
  * Day-note inline-edit state.
  * `editingDay` is the ISO date currently being edited (null = no edit).

@@ -2,6 +2,7 @@ import { activeCycle$ } from "@/infrastructure/state/store";
 import {
   cycleDeckCollapsed$,
   isCommandPaletteOpen$,
+  plantViewMode$,
 } from "@/infrastructure/state/ui-store";
 import type { Command } from "./types";
 
@@ -31,15 +32,23 @@ export const viewCommands: Command[] = [
     },
   },
   {
-    id: "view.areas",
-    label: "Open Area Management",
-    shortcut: "shift+e",
+    id: "view.plant.areas",
+    label: "View Areas",
+    shortcut: "shift+1",
     category: "Views",
-    keywords: ["manage", "edit", "settings"],
+    keywords: ["areas", "plots", "habits", "plant"],
     action: () => {
-      // Open area management dialog/view
-      // This depends on how areas are currently managed
-      console.log("Open area management");
+      plantViewMode$.set("areas");
+    },
+  },
+  {
+    id: "view.plant.people",
+    label: "View People",
+    shortcut: "shift+2",
+    category: "Views",
+    keywords: ["people", "contacts", "friends", "family"],
+    action: () => {
+      plantViewMode$.set("people");
     },
   },
   {
