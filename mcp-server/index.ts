@@ -23,7 +23,12 @@ import {
   fenceReport,
   seedHostBlocks,
 } from "../src/application/use-cases/fences.ts";
-import { crossingTally, expandHome, fenceStore } from "./fences.js";
+import {
+  crossingTally,
+  expandHome,
+  fenceStore,
+  readFencesFile,
+} from "./fences.js";
 import { buildRelatedHabits } from "./graph.js";
 import {
   computeHealth,
@@ -2254,7 +2259,11 @@ function buildMoment(params: {
  */
 type RunAddMomentResult =
   | { err: string }
-  | { created: Moment; dayViewOverflow?: { count: number } };
+  | {
+      created: Moment;
+      dayViewOverflow?: { count: number };
+      wateringHoursAdvisory?: string;
+    };
 
 function runAddMoment(
   input: Parameters<typeof resolveAddMoment>[0],
@@ -2277,11 +2286,16 @@ function runAddMoment(
   if (!result.ok) return { err: result.error };
   moments[result.moment.id] = result.moment;
   writeCollection(VAULT_ROOT, "moments", moments);
+  const advisory = wateringHoursAdvisory(
+    result.moment.areaId,
+    result.moment.phase,
+  );
   return {
     created: result.moment,
     ...(result.dayViewOverflow
       ? { dayViewOverflow: { count: result.dayViewOverflow } }
       : {}),
+    ...(advisory ? { wateringHoursAdvisory: advisory } : {}),
   };
 }
 
@@ -2340,6 +2354,8 @@ defineTool(server, {
     const m = d.created as Moment;
     const out: Record<string, unknown> = conciseMoment(m);
     if (d.dayViewOverflow) out.dayViewOverflow = d.dayViewOverflow;
+    if (d.wateringHoursAdvisory)
+      out.wateringHoursAdvisory = d.wateringHoursAdvisory;
     if (m.cyclePlanId) {
       out.fromPlan = true;
     }
@@ -2415,7 +2431,13 @@ defineTool(server, {
     refs: z.array(z.string()).optional(),
     status: z.enum(["tentative", "accepted"]).optional(),
   },
-  concise: (p) => conciseMoment((p as any).updated),
+  concise: (p) => {
+    const d = p as Record<string, unknown>;
+    const out: Record<string, unknown> = conciseMoment(d.updated as Moment);
+    if (d.wateringHoursAdvisory)
+      out.wateringHoursAdvisory = d.wateringHoursAdvisory;
+    return out;
+  },
   handler: async (params) => {
     const { id, ...updates } = params;
     const moments = readCollection(VAULT_ROOT, "moments");
@@ -2547,7 +2569,11 @@ defineTool(server, {
     }
     moments[id] = next;
     writeCollection(VAULT_ROOT, "moments", moments);
-    return ok({ updated: next });
+    const advisory = wateringHoursAdvisory(next.areaId, next.phase);
+    return ok({
+      updated: next,
+      ...(advisory ? { wateringHoursAdvisory: advisory } : {}),
+    });
   },
 });
 
@@ -3127,6 +3153,65 @@ defineTool(server, {
 // ────────────────────────────────────────────────────────────────────────
 // Fences (fences.json) — declared rules only
 // ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Garden-surface advisory for `add_moment`/`update_moment`: is this area
+ * currently inside a declared watering-hours window? Informative only — the
+ * garden surface never refuses a planting, it just says so.
+ *
+ * Fail-soft by design: `readFencesFile` throws on genuinely malformed JSON
+ * (it's the writer's read path elsewhere), but a garbled fences.json must
+ * never turn a moment write into an error, so every failure here just means
+ * no advisory.
+ */
+function wateringHoursAdvisory(
+  areaId: string,
+  phase: string | null,
+): string | null {
+  if (!phase) return null;
+  try {
+    const fences = readFencesFile(VAULT_ROOT);
+    const now = new Date();
+    const hour = now.getHours();
+    const weekday = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][
+      now.getDay()
+    ];
+
+    for (const rule of Object.values(fences)) {
+      if (rule.scope.surface !== "garden") continue;
+      if (!rule.scope.areaIds.includes(areaId)) continue;
+
+      for (const prim of rule.primitives) {
+        if (prim.kind !== "schedule") continue;
+        const w = prim.window as {
+          fromHour: number;
+          toHour: number;
+          weekdays?: string[];
+          cutFrom?: string;
+        };
+
+        if (
+          w.weekdays &&
+          w.weekdays.length > 0 &&
+          !w.weekdays.includes(weekday)
+        ) {
+          continue;
+        }
+
+        const inWindow =
+          w.toHour <= w.fromHour
+            ? hour >= w.fromHour || hour < w.toHour
+            : hour >= w.fromHour && hour < w.toHour;
+        if (!inWindow) continue;
+
+        return `${rule.name}: this area is restricted during ${w.cutFrom || "this window"}`;
+      }
+    }
+  } catch {
+    // fail-soft: advisory is never worth an error
+  }
+  return null;
+}
 
 /**
  * The handlers below are thin adapters: construction, validation and the
