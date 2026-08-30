@@ -154,7 +154,7 @@ export function MomentCard({
             textColors.primary,
           )}
         >
-          {moment.name}
+          {moment.cultivar ? moment.cultivar.tag : moment.name}
         </p>
         <MentionSummary
           personIds={moment.personIds}
@@ -162,7 +162,11 @@ export function MomentCard({
           className={cn("flex-shrink-0", textColors.primary)}
         />
         <TagSummary
-          tags={moment.tags}
+          tags={
+            moment.cultivar
+              ? moment.tags?.filter((t) => t !== moment.cultivar!.tag)
+              : moment.tags
+          }
           className={cn("flex-shrink-0", textColors.primary)}
         />
         {moment.startTime && (
