@@ -400,7 +400,8 @@ export function closeHabitForm() {
     phase: null,
     tags: [],
     aliases: [],
-  
+    parentHabitId: null,
+    durationMin: null,
     rhythm: null,
     editingHabitId: null,
   });
