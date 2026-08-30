@@ -50,6 +50,7 @@ export interface Habit {
    * back to those tags until the migration moves them here.
    */
   placeIds?: string[];
+  parentHabitId?: string;
   durationMin?: number;
   cultivars?: Cultivar[];
   createdAt: string;
@@ -101,6 +102,7 @@ export interface CreateHabitProps {
   emoji?: string | null;
   description?: string;
   guidance?: string;
+  parentHabitId?: string;
   durationMin?: number;
   cultivars?: Cultivar[];
   rhythm?: Rhythm;
@@ -271,6 +273,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     isArchived: false,
     order,
     ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
+    ...(props.parentHabitId ? { parentHabitId: props.parentHabitId } : {}),
     ...(props.durationMin && props.durationMin > 0 ? { durationMin: props.durationMin } : {}),
     ...(normalizedCultivars.length > 0 ? { cultivars: normalizedCultivars } : {}),
     ...(trimmedDescription ? { description: trimmedDescription } : {}),

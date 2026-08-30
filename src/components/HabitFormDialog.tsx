@@ -46,7 +46,10 @@ import {
   closeHabitForm,
   habitFormState$,
   lastUsedAreaId$,
+  openHabitFormCreate,
+  openHabitFormEdit,
 } from "@/infrastructure/state/ui-store";
+import { habits$ } from "@/infrastructure/state/store";
 import {
   extractLeadingEmoji,
   suggestEmojiForAreaName,
@@ -82,6 +85,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     phase,
     tags,
     aliases,
+    parentHabitId,
     durationMin,
     cultivars,
     rhythm,
@@ -95,7 +99,6 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
   const [phaseSelectorOpen, setPhaseSelectorOpen] = useState(false);
   const [aliasesSelectorOpen, setAliasesSelectorOpen] = useState(false);
   const [rhythmSelectorOpen, setRhythmSelectorOpen] = useState(false);
-  const [variantsSelectorOpen, setVariantsSelectorOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [manualEmojiOverride, setManualEmojiOverride] = useState(false);
 
@@ -139,8 +142,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     !attitudeSelectorOpen &&
     !phaseSelectorOpen &&
     !aliasesSelectorOpen &&
-    !rhythmSelectorOpen &&
-    !variantsSelectorOpen;
+    !rhythmSelectorOpen;
 
   // Reset local UI state when dialog opens
   useEffect(() => {
@@ -218,6 +220,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       phase,
       tags: finalTags,
       aliases,
+      parentHabitId: parentHabitId ?? undefined,
       durationMin: durationMin ?? undefined,
       cultivars: cultivars.length > 0 ? cultivars : undefined,
       rhythm: rhythm ?? undefined,
@@ -276,15 +279,6 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     (e) => {
       e.preventDefault();
       setRhythmSelectorOpen(true);
-    },
-    { enabled: formHotkeysEnabled && open },
-  );
-
-  useHotkeys(
-    "v",
-    (e) => {
-      e.preventDefault();
-      setVariantsSelectorOpen(true);
     },
     { enabled: formHotkeysEnabled && open },
   );
@@ -518,29 +512,11 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
               </div>
             )}
 
-            {/* Variants - Show as button if any set */}
-            {cultivars.length > 0 && (
-              <VariantsSelector
-                open={variantsSelectorOpen}
-                value={cultivars}
-                onChange={(next) => habitFormState$.cultivars.set(next)}
-                onOpen={() => setVariantsSelectorOpen(true)}
-                onClose={() => setVariantsSelectorOpen(false)}
-                collisionBoundary={dialogRef.current}
-                trigger={
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
-                  >
-                    <Layers className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
-                    <span className="font-mono text-sm flex-1 text-left truncate">
-                      {cultivars.map((c) => c.tag).join(", ")}
-                    </span>
-                    <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex-shrink-0">
-                      V
-                    </kbd>
-                  </button>
-                }
+            {/* Variants - Show child habits if any exist (edit mode only) */}
+            {mode === "edit" && editingHabitId && (
+              <ChildHabitsList
+                parentHabitId={editingHabitId}
+                areaId={areaId}
               />
             )}
 
@@ -656,25 +632,24 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
               </button>
             )}
 
-            {/* Variants - subtle label if none */}
-            {cultivars.length === 0 && (
-              <VariantsSelector
-                open={variantsSelectorOpen}
-                value={cultivars}
-                onChange={(next) => habitFormState$.cultivars.set(next)}
-                onOpen={() => setVariantsSelectorOpen(true)}
-                onClose={() => setVariantsSelectorOpen(false)}
-                collisionBoundary={dialogRef.current}
-                trigger={
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-                  >
-                    <Layers className="w-3.5 h-3.5" strokeWidth={1.5} />
-                    <span className="text-xs font-mono">no variants</span>
-                  </button>
-                }
-              />
+            {/* Add variant - only in edit mode (need a saved habit to parent to) */}
+            {mode === "edit" && editingHabitId && (
+              <button
+                type="button"
+                onClick={() => {
+                  closeHabitForm();
+                  openHabitFormCreate({
+                    areaId,
+                    parentHabitId: editingHabitId,
+                    attitude: attitude ?? undefined,
+                    phase: phase ?? undefined,
+                  });
+                }}
+                className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <span className="text-xs font-mono">add variant</span>
+              </button>
             )}
 
             {/* Rhythm - subtle label if not selected */}
@@ -869,218 +844,44 @@ function AliasesSelector({
   );
 }
 
-interface VariantsSelectorProps {
-  open: boolean;
-  value: Array<{ tag: string; params?: Record<string, string | number> }>;
-  onChange: (next: Array<{ tag: string; params?: Record<string, string | number> }>) => void;
-  onOpen: () => void;
-  onClose: () => void;
-  trigger: React.ReactNode;
-  collisionBoundary?: Element | null | Array<Element | null>;
-}
+function ChildHabitsList({
+  parentHabitId,
+  areaId,
+}: { parentHabitId: string; areaId: string }) {
+  const allHabits = use$(habits$);
+  const children = Object.values(allHabits).filter(
+    (h) => h.parentHabitId === parentHabitId && !h.isArchived,
+  );
 
-function VariantsSelector({
-  open,
-  value,
-  onChange,
-  onOpen,
-  onClose,
-  trigger,
-}: VariantsSelectorProps) {
-  const [addingOpen, setAddingOpen] = useState(false);
-  const [draftName, setDraftName] = useState("");
-  const [draftDuration, setDraftDuration] = useState("");
-  const nameRef = useRef<HTMLInputElement>(null);
-
-  const removeAt = (index: number) => {
-    onChange(value.filter((_, i) => i !== index));
-  };
-
-  const handleAddVariant = () => {
-    const tag = draftName
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "")
-      .slice(0, 20);
-    if (!tag || value.some((c) => c.tag === tag)) return;
-
-    const mins = draftDuration ? Number.parseInt(draftDuration, 10) : undefined;
-    const params = mins && mins > 0 ? { durationMin: mins } : undefined;
-    onChange([...value, params ? { tag, params } : { tag }]);
-    setDraftName("");
-    setDraftDuration("");
-    setAddingOpen(false);
-  };
+  if (children.length === 0) return null;
 
   return (
-    <>
-      <Popover
-        open={open}
-        onOpenChange={(isOpen) => (isOpen ? onOpen() : onClose())}
-      >
-        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <PopoverContent
-          align="start"
-          className="w-80 p-3 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm"
-          side="bottom"
-          sideOffset={4}
-          onEscapeKeyDown={(e) => {
-            e.preventDefault();
-            onClose();
+    <div className="flex flex-col gap-1">
+      <span className="text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium flex items-center gap-1.5">
+        <Layers className="w-3 h-3" />
+        Variants
+      </span>
+      {children.map((child) => (
+        <button
+          key={child.id}
+          type="button"
+          onClick={() => {
+            closeHabitForm();
+            openHabitFormEdit(child.id, child);
           }}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full text-left"
         >
-          <div className="flex items-center gap-1.5 mb-2">
-            <Layers className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />
-            <span className="text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
-              Variants
+          <span className="text-base flex-shrink-0">{child.emoji}</span>
+          <span className="font-mono text-sm flex-1 min-w-0 truncate">
+            {child.name}
+          </span>
+          {child.durationMin && (
+            <span className="text-xs font-mono text-stone-400 flex-shrink-0">
+              {child.durationMin}m
             </span>
-          </div>
-
-          <div className="space-y-1.5 mb-3">
-            {value.map((cultivar, index) => (
-              <div
-                key={cultivar.tag}
-                className="flex items-center gap-2 px-2 py-1.5 rounded bg-stone-100 dark:bg-stone-800"
-              >
-                <span className="text-xs font-mono text-stone-700 dark:text-stone-300 flex-1 min-w-0 truncate">
-                  {cultivar.tag}
-                </span>
-                {typeof cultivar.params?.durationMin === "number" && (
-                  <span className="text-xs font-mono text-stone-400">
-                    {cultivar.params.durationMin}m
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => removeAt(index)}
-                  className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors flex-shrink-0"
-                  aria-label={`Remove variant ${cultivar.tag}`}
-                >
-                  <X className="w-3 h-3" strokeWidth={2} />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              setAddingOpen(true);
-              setDraftName("");
-              setDraftDuration("");
-            }}
-            className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-mono text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
-          >
-            <Plus className="w-3 h-3" />
-            add variant
-          </button>
-        </PopoverContent>
-      </Popover>
-
-      {/* Add variant dialog — same structure as HabitFormDialog */}
-      <Dialog open={addingOpen} onOpenChange={setAddingOpen}>
-        <DialogContent
-          className="p-0 gap-0 max-w-2xl"
-          onEscapeKeyDown={(e) => {
-            e.preventDefault();
-            setAddingOpen(false);
-          }}
-          onOpenAutoFocus={() => {
-            setTimeout(() => nameRef.current?.focus(), 50);
-          }}
-        >
-          <DialogHeader className="border-b border-stone-200 dark:border-stone-700">
-            <DialogTitle className="text-sm font-medium text-stone-600 dark:text-stone-400">
-              New variant
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="px-6 py-6 flex-1 overflow-y-auto">
-            {/* Prominent name input — matches habit form */}
-            <div className="mb-6">
-              <input
-                ref={nameRef}
-                type="text"
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                    handleAddVariant();
-                  }
-                }}
-                placeholder="Variant name..."
-                className="w-full text-4xl font-bold bg-transparent outline-none placeholder:text-stone-300 dark:placeholder:text-stone-600 font-mono"
-              />
-            </div>
-
-            {/* Duration — same chip-row pattern as habit form */}
-            <div className="flex flex-wrap gap-3 items-center">
-              {draftDuration ? (
-                <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 w-full">
-                  <Timer className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
-                  <input
-                    type="number"
-                    min="1"
-                    max="480"
-                    value={draftDuration}
-                    onChange={(e) => setDraftDuration(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.nativeEvent.stopImmediatePropagation();
-                        handleAddVariant();
-                      }
-                    }}
-                    className="w-16 bg-transparent font-mono text-sm outline-none"
-                  />
-                  <span className="font-mono text-sm text-stone-400">min</span>
-                  <button
-                    type="button"
-                    onClick={() => setDraftDuration("")}
-                    className="ml-auto text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setDraftDuration("30")}
-                  className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-                >
-                  <Timer className="w-3.5 h-3.5" strokeWidth={1.5} />
-                  <span className="text-xs font-mono">no duration</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter className="border-t border-stone-200 dark:border-stone-700 px-6 py-4">
-            <div className="flex gap-2 ml-auto">
-              <button
-                type="button"
-                onClick={() => setAddingOpen(false)}
-                className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-200 hover:bg-stone-300 text-stone-900 dark:bg-stone-700 dark:hover:bg-stone-600 dark:text-stone-100 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleAddVariant}
-                className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-200 dark:hover:bg-stone-300 dark:text-stone-900 transition-colors"
-              >
-                Add
-              </button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          )}
+        </button>
+      ))}
+    </div>
   );
 }
