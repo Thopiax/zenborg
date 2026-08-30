@@ -319,7 +319,7 @@ export const archivedAreas$ = observable(() => {
 export const activeHabits$ = observable(() => {
   const allHabits = habits$.get();
   return Object.values(allHabits)
-    .filter((habit) => !habit.isArchived)
+    .filter((habit) => !habit.isArchived && !habit.parentHabitId)
     .sort((a, b) => a.order - b.order);
 });
 

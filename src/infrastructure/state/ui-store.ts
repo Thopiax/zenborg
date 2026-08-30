@@ -296,6 +296,9 @@ export interface HabitFormState {
   phase: Phase | null;
   tags: string[];
   aliases: string[];
+  parentHabitId: string | null;
+  durationMin: number | null;
+
   rhythm: Rhythm | null;
   /** For edit mode: the habit ID being edited */
   editingHabitId: string | null;
@@ -311,6 +314,9 @@ export const habitFormState$ = observable<HabitFormState>({
   phase: null,
   tags: [],
   aliases: [],
+  parentHabitId: null,
+  durationMin: null,
+
   rhythm: null,
   editingHabitId: null,
 });
@@ -322,6 +328,7 @@ export function openHabitFormCreate(params?: {
   areaId?: string;
   attitude?: Attitude;
   phase?: Phase;
+  parentHabitId?: string;
 }) {
   // Use provided areaId, or fall back to last used area
   const areaId = params?.areaId || lastUsedAreaId$.peek() || "";
@@ -336,6 +343,9 @@ export function openHabitFormCreate(params?: {
     phase: params?.phase ?? null,
     tags: [],
     aliases: [],
+    parentHabitId: params?.parentHabitId ?? null,
+    durationMin: null,
+  
     rhythm: null,
     editingHabitId: null,
   });
@@ -354,6 +364,8 @@ export function openHabitFormEdit(
     phase: Phase | null;
     tags: string[];
     aliases?: string[];
+    parentHabitId?: string;
+    durationMin?: number;
     rhythm?: Rhythm | null;
   },
 ) {
@@ -367,6 +379,8 @@ export function openHabitFormEdit(
     phase: habit.phase,
     tags: habit.tags || [],
     aliases: habit.aliases ?? [],
+    parentHabitId: habit.parentHabitId ?? null,
+    durationMin: habit.durationMin ?? null,
     rhythm: habit.rhythm ?? null,
     editingHabitId: habitId,
   });
@@ -386,6 +400,7 @@ export function closeHabitForm() {
     phase: null,
     tags: [],
     aliases: [],
+  
     rhythm: null,
     editingHabitId: null,
   });
