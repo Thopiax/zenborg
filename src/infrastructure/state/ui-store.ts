@@ -55,6 +55,44 @@ export type CultivateZoom = "phase" | "time";
 
 export const cultivateZoom$ = observable<CultivateZoom>("phase");
 
+export type PlantEntity = "habits" | "people";
+export type HabitGroupBy = "area" | "attitude" | "phase" | "tag";
+export type PeopleGroupBy = "category" | "basePlace" | "status";
+export type PlantGroupBy = HabitGroupBy | PeopleGroupBy;
+
+export interface PlantViewConfig {
+  entity: PlantEntity;
+  groupBy: PlantGroupBy;
+  filter: string;
+}
+
+const ENTITY_DEFAULTS: Record<PlantEntity, PlantGroupBy> = {
+  habits: "area",
+  people: "category",
+};
+
+export const plantViewConfig$ = observable<PlantViewConfig>({
+  entity: "habits",
+  groupBy: "area",
+  filter: "",
+});
+
+export function setPlantEntity(entity: PlantEntity): void {
+  plantViewConfig$.set({
+    entity,
+    groupBy: ENTITY_DEFAULTS[entity],
+    filter: "",
+  });
+}
+
+export function setPlantGroupBy(groupBy: PlantGroupBy): void {
+  plantViewConfig$.groupBy.set(groupBy);
+}
+
+export function setPlantFilter(filter: string): void {
+  plantViewConfig$.filter.set(filter);
+}
+
 /**
  * Day-note inline-edit state.
  * `editingDay` is the ISO date currently being edited (null = no edit).
@@ -446,6 +484,92 @@ export function closeArchiveAreaDialog() {
     open: false,
     areaId: null,
     areaName: null,
+  });
+}
+
+// ============================================================================
+// Person Form State
+// ============================================================================
+
+export interface PersonFormState {
+  open: boolean;
+  mode: "create" | "edit";
+  name: string;
+  emoji: string | null;
+  aliases: string[];
+  category: string | null;
+  basePlace: string | null;
+  cadence: import("@/domain/value-objects/Cadence").Cadence | null;
+  status: "active" | "paused";
+  editingPersonId: string | null;
+}
+
+export const personFormState$ = observable<PersonFormState>({
+  open: false,
+  mode: "create",
+  name: "",
+  emoji: null,
+  aliases: [],
+  category: null,
+  basePlace: null,
+  cadence: null,
+  status: "active",
+  editingPersonId: null,
+});
+
+export function openPersonFormCreate(params?: { category?: string }) {
+  personFormState$.set({
+    open: true,
+    mode: "create",
+    name: "",
+    emoji: null,
+    aliases: [],
+    category: params?.category ?? null,
+    basePlace: null,
+    cadence: null,
+    status: "active",
+    editingPersonId: null,
+  });
+}
+
+export function openPersonFormEdit(
+  personId: string,
+  person: {
+    name: string;
+    emoji: string | null;
+    aliases?: string[];
+    category: string | null;
+    basePlace: string | null;
+    cadence: import("@/domain/value-objects/Cadence").Cadence | null;
+    status: "active" | "paused";
+  },
+) {
+  personFormState$.set({
+    open: true,
+    mode: "edit",
+    name: person.name,
+    emoji: person.emoji,
+    aliases: person.aliases ?? [],
+    category: person.category,
+    basePlace: person.basePlace,
+    cadence: person.cadence,
+    status: person.status,
+    editingPersonId: personId,
+  });
+}
+
+export function closePersonForm() {
+  personFormState$.set({
+    open: false,
+    mode: "create",
+    name: "",
+    emoji: null,
+    aliases: [],
+    category: null,
+    basePlace: null,
+    cadence: null,
+    status: "active",
+    editingPersonId: null,
   });
 }
 
