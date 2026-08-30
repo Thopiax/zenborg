@@ -1,4 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
+import type { Cultivar } from "@/domain/shared/cultivar-schema";
 import {
   allocateMoment,
   compareMoments,
@@ -307,6 +308,44 @@ describe("Moment", () => {
         expect(result.error).toBe("Moment ref is not a parseable URL: nope");
       }
     });
+  });
+});
+
+describe("Moment cultivar", () => {
+  it("snapshots cultivar and mirrors tag into tags", () => {
+    const cultivar: Cultivar = { tag: "recovery", params: { durationMin: 30 } };
+    const result = createMoment({
+      name: "Morning run",
+      areaId: "area-1",
+      cultivar,
+      tags: ["outdoor"],
+    });
+    if (isMomentError(result)) throw new Error(result.error);
+    expect(result.cultivar).toEqual(cultivar);
+    expect(result.tags).toContain("recovery");
+    expect(result.tags).toContain("outdoor");
+  });
+
+  it("does not duplicate tag if cultivar tag already in tags", () => {
+    const cultivar: Cultivar = { tag: "recovery" };
+    const result = createMoment({
+      name: "Morning run",
+      areaId: "area-1",
+      cultivar,
+      tags: ["recovery", "outdoor"],
+    });
+    if (isMomentError(result)) throw new Error(result.error);
+    const recoveryCount = result.tags!.filter((t) => t === "recovery").length;
+    expect(recoveryCount).toBe(1);
+  });
+
+  it("omits cultivar key when not provided", () => {
+    const result = createMoment({
+      name: "Morning run",
+      areaId: "area-1",
+    });
+    if (isMomentError(result)) throw new Error(result.error);
+    expect("cultivar" in result).toBe(false);
   });
 });
 

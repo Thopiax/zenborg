@@ -1,4 +1,5 @@
 import { validateTag } from "../services/TagService.ts";
+import type { Cultivar } from "../shared/cultivar-schema.ts";
 import type { CustomMetric } from "../value-objects/Attitude";
 import type { Phase } from "../value-objects/Phase";
 import { isValidStartTime } from "../value-objects/Schedule.ts";
@@ -70,6 +71,7 @@ export interface Moment {
   externalRef?: ExternalRef;
 
   emoji?: string | null; // Optional emoji override (inherits from habit or area)
+  cultivar?: Cultivar;
   customMetric?: CustomMetric; // Keep for PUSHING habit support
   tags: string[] | null; // Flexible organization labels
   refs?: readonly string[]; // URLs this moment refers to. Absent = none.
@@ -295,6 +297,7 @@ export interface CreateMomentProps {
   emoji?: string | null; // Optional emoji override
   // REMOVED: attitude (now on Habit/Area)
   tags?: string[];
+  cultivar?: Cultivar;
   customMetric?: CustomMetric; // Keep for habit-inherited PUSHING support
   startTime?: string; // "HH:MM" — usually inherited from the habit's schedule
   durationMin?: number; // positive whole minutes
@@ -378,9 +381,11 @@ export function createMoment(props: CreateMomentProps): MomentResult {
     emoji: emoji ? emoji.trim() : null, // Trim or null
     ...(startTime !== undefined ? { startTime } : {}),
     ...(durationMin !== undefined ? { durationMin } : {}),
-    // REMOVED: attitude
+    ...(props.cultivar ? { cultivar: props.cultivar } : {}),
     customMetric,
-    tags: tags.filter(validateTag), // Filter out invalid tags
+    tags: props.cultivar
+      ? Array.from(new Set([...tags.filter(validateTag), props.cultivar.tag]))
+      : tags.filter(validateTag),
     // Absent, not empty: one representation of "this moment refers to nothing".
     ...(normalizedRefs.length > 0 ? { refs: normalizedRefs } : {}),
     createdAt: now,
