@@ -1,6 +1,7 @@
 "use client";
 
 import { observer, use$ } from "@legendapp/state/react";
+import { Archive } from "lucide-react";
 import type { Habit } from "@/domain/entities/Habit";
 import type { Area } from "@/domain/entities/Area";
 import {
@@ -9,12 +10,20 @@ import {
 } from "@/domain/value-objects/Attitude";
 import { Phase } from "@/domain/value-objects/Phase";
 import { PHASE_STYLES } from "@/domain/value-objects/phaseStyles";
+import { HabitService } from "@/application/services/HabitService";
 import {
   activeAreas$,
   activeHabits$,
 } from "@/infrastructure/state/store";
-import type { HabitGroupBy } from "@/infrastructure/state/ui-store";
-import { columnWidth } from "@/lib/design-tokens";
+import {
+  closeHabitForm,
+  habitFormState$,
+  openHabitFormEdit,
+  type HabitGroupBy,
+} from "@/infrastructure/state/ui-store";
+import { HabitFormDialog } from "@/components/HabitFormDialog";
+import { TagSummary } from "@/components/TagSummary";
+import { columnWidth, getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
 const ATTITUDE_ORDER = [
@@ -125,23 +134,68 @@ function groupHabits(
   return entries.map(([key, group]) => ({ key, ...group }));
 }
 
-function HabitCard({ habit, area }: { habit: Habit; area?: Area }) {
+function StaticHabitCard({
+  habit,
+  areaColor,
+  onEdit,
+  onArchive,
+}: {
+  habit: Habit;
+  areaColor?: string;
+  onEdit: () => void;
+  onArchive: () => void;
+}) {
+  const textColors = getTextColorsForBackground(areaColor);
+
   return (
     <div
-      className="group flex items-center gap-2 px-3 py-3 rounded-md transition-colors"
-      style={{ backgroundColor: area?.color }}
+      className="group flex items-center justify-between gap-2 px-3 py-3 rounded-md transition-all hover:ring-2 hover:ring-offset-2 ring-offset-transparent"
+      style={{
+        backgroundColor: areaColor,
+        "--tw-ring-color": `${areaColor}99`,
+      } as React.CSSProperties}
+      data-habit-name={habit.name}
     >
-      <span className="text-lg flex-shrink-0">{habit.emoji}</span>
-      <div className="flex-1 min-w-0">
-        <span className="text-sm font-mono font-semibold truncate block text-stone-800 dark:text-stone-200">
-          {habit.name}
-        </span>
-        {area && (
-          <span className="text-xs font-mono text-stone-500 dark:text-stone-400 truncate block">
-            {area.emoji} {area.name}
+      <button
+        type="button"
+        onClick={onEdit}
+        className="flex-1 text-left min-w-0"
+      >
+        <div
+          className={cn(
+            "flex items-center text-sm font-mono gap-2",
+            textColors.primary,
+          )}
+        >
+          <span className="text-lg flex-shrink-0">{habit.emoji}</span>
+          <span
+            data-habit-label
+            className="text-lg font-semibold truncate flex-1 min-w-0"
+          >
+            {habit.name}
           </span>
+          <TagSummary
+            tags={habit.tags}
+            className={cn("flex-shrink-0", textColors.primary)}
+          />
+        </div>
+      </button>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onArchive();
+        }}
+        className={cn(
+          "flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity",
+          textColors.primary,
         )}
-      </div>
+        aria-label="Archive habit"
+        title="Archive"
+      >
+        <Archive className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }
@@ -151,13 +205,15 @@ function GroupColumn({
   color,
   habits,
   areas,
-  showArea,
+  onEditHabit,
+  onArchiveHabit,
 }: {
   label: string;
   color?: string;
   habits: Habit[];
   areas: Area[];
-  showArea: boolean;
+  onEditHabit: (habitId: string) => void;
+  onArchiveHabit: (habitId: string) => void;
 }) {
   return (
     <div
@@ -190,10 +246,16 @@ function GroupColumn({
           </span>
         ) : (
           habits.map((habit) => {
-            const area = showArea
-              ? areas.find((a) => a.id === habit.areaId)
-              : undefined;
-            return <HabitCard key={habit.id} habit={habit} area={area} />;
+            const area = areas.find((a) => a.id === habit.areaId);
+            return (
+              <StaticHabitCard
+                key={habit.id}
+                habit={habit}
+                areaColor={area?.color}
+                onEdit={() => onEditHabit(habit.id)}
+                onArchive={() => onArchiveHabit(habit.id)}
+              />
+            );
           })
         )}
       </div>
@@ -211,6 +273,7 @@ export const GroupedHabitView = observer(
     filter: string;
     showEmpty: boolean;
   }) => {
+    const habitService = new HabitService();
     const allHabits = use$(activeHabits$);
     const allAreas = use$(activeAreas$);
 
@@ -224,21 +287,48 @@ export const GroupedHabitView = observer(
     if (!showEmpty) {
       groups = groups.filter((g) => g.habits.length > 0);
     }
-    const showArea = groupBy !== "area";
+
+    const handleEditHabit = (habitId: string) => {
+      const habit = allHabits.find((h) => h.id === habitId);
+      if (habit) openHabitFormEdit(habitId, habit);
+    };
+
+    const handleArchiveHabit = (habitId: string) => {
+      habitService.archiveHabit(habitId);
+    };
 
     return (
-      <div className="flex gap-4 overflow-x-auto px-4 py-4 h-full snap-x snap-mandatory scroll-smooth">
-        {groups.map((g) => (
-          <GroupColumn
-            key={g.key}
-            label={g.label}
-            color={g.color}
-            habits={g.habits}
-            areas={allAreas}
-            showArea={showArea}
-          />
-        ))}
-      </div>
+      <>
+        <div className="flex gap-4 overflow-x-auto px-4 py-4 h-full snap-x snap-mandatory scroll-smooth">
+          {groups.map((g) => (
+            <GroupColumn
+              key={g.key}
+              label={g.label}
+              color={g.color}
+              habits={g.habits}
+              areas={allAreas}
+              onEditHabit={handleEditHabit}
+              onArchiveHabit={handleArchiveHabit}
+            />
+          ))}
+        </div>
+
+        <HabitFormDialog
+          onSave={(props) => {
+            const formState = habitFormState$.peek();
+            if (formState.mode === "edit" && formState.editingHabitId) {
+              habitService.updateHabit(formState.editingHabitId, props);
+            }
+          }}
+          onDelete={() => {
+            const formState = habitFormState$.peek();
+            if (formState.editingHabitId) {
+              habitService.archiveHabit(formState.editingHabitId);
+              closeHabitForm();
+            }
+          }}
+        />
+      </>
     );
   },
 );

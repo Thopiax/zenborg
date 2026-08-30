@@ -45,7 +45,7 @@ const PEOPLE_GROUPS: { value: PeopleGroupBy; label: string; icon: ReactNode }[] 
   { value: "status", label: "Status", icon: <Eye className="w-3 h-3" /> },
 ];
 
-function ChipButton({
+function GroupChip({
   active,
   onClick,
   children,
@@ -62,10 +62,10 @@ function ChipButton({
       onClick={onClick}
       title={title}
       className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs font-mono transition-colors",
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-mono transition-colors",
         active
-          ? "bg-stone-800 dark:bg-stone-200 text-stone-100 dark:text-stone-800"
-          : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800",
+          ? "bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200"
+          : "text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-400",
       )}
     >
       {children}
@@ -86,27 +86,33 @@ export const PlantToolbar = observer(
 
     return (
       <div className="flex items-center gap-2 px-4 py-1.5 border-t border-stone-200 dark:border-stone-800">
-        {/* Entity switcher */}
-        <div className="flex items-center gap-0.5">
+        {/* Entity switcher — heavier visual weight, primary action */}
+        <nav className="inline-flex items-center gap-0.5 rounded-sm bg-stone-100 dark:bg-stone-800 p-0.5">
           {ENTITIES.map((e) => (
-            <ChipButton
+            <button
               key={e.value}
-              active={config.entity === e.value}
+              type="button"
               onClick={() => setPlantEntity(e.value)}
               title={e.label}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-xs font-mono font-medium transition-colors",
+                config.entity === e.value
+                  ? "bg-white dark:bg-stone-600 text-stone-900 dark:text-stone-100 shadow-sm"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300",
+              )}
             >
               {e.icon}
               <span>{e.label}</span>
-            </ChipButton>
+            </button>
           ))}
-        </div>
+        </nav>
 
         <div className="w-px h-4 bg-stone-200 dark:bg-stone-700" />
 
-        {/* Group by */}
+        {/* Group by — lighter, secondary */}
         <div className="flex items-center gap-0.5">
           {groups.map((g) => (
-            <ChipButton
+            <GroupChip
               key={g.value}
               active={config.groupBy === g.value}
               onClick={() => setPlantGroupBy(g.value)}
@@ -114,7 +120,7 @@ export const PlantToolbar = observer(
             >
               {g.icon}
               <span className="hidden md:inline">{g.label}</span>
-            </ChipButton>
+            </GroupChip>
           ))}
         </div>
 
