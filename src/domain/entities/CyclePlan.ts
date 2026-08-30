@@ -17,6 +17,7 @@ export interface CyclePlan {
   habitId: string; // FK to Habit
   budgetedCount: number; // e.g., 6 for "6 Running cards"
   rhythmOverride?: Rhythm;
+  cultivarRotation?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -34,6 +35,7 @@ export interface CreateCyclePlanProps {
   habitId: string;
   budgetedCount: number;
   rhythmOverride?: Rhythm;
+  cultivarRotation?: string[];
 }
 
 /**
@@ -43,7 +45,8 @@ export interface CreateCyclePlanProps {
  * @returns New cycle plan or error if validation fails
  */
 export function createCyclePlan(props: CreateCyclePlanProps): CyclePlanResult {
-  const { cycleId, habitId, budgetedCount, rhythmOverride } = props;
+  const { cycleId, habitId, budgetedCount, rhythmOverride, cultivarRotation } =
+    props;
 
   if (!cycleId || !cycleId.trim()) {
     return { error: "Cycle ID cannot be empty" };
@@ -69,6 +72,7 @@ export function createCyclePlan(props: CreateCyclePlanProps): CyclePlanResult {
     habitId: habitId.trim(),
     budgetedCount,
     ...(rhythmOverride ? { rhythmOverride } : {}),
+    ...(cultivarRotation && cultivarRotation.length > 0 ? { cultivarRotation } : {}),
     createdAt: now,
     updatedAt: now,
   };
