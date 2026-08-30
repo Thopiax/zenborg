@@ -194,6 +194,7 @@ export interface Habit {
   schedule?: Schedule;
   /** Where this practice can be done. Mirrors src/domain/entities/Habit.ts. */
   placeIds?: string[];
+  durationMin?: number;
   createdAt: string;
   updatedAt: string;
 }

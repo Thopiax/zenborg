@@ -53,7 +53,7 @@ export function MentionAutocompleteInline({
       items.push({
         key: person.key,
         name: displayName(person),
-        aliases: person.aliases ?? [],
+        aliases: [person.name, ...(person.aliases ?? [])],
         emoji: person.emoji,
         type: "person",
       });
