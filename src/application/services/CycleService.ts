@@ -1,6 +1,11 @@
 import { differenceInCalendarDays } from "date-fns";
 import type { Area } from "@/domain/entities/Area";
 import {
+  type Cultivar,
+  findCultivar,
+  nextInRotation,
+} from "@/domain/shared/cultivar-schema";
+import {
   type Cycle,
   type CycleResult,
   createCycle,
@@ -417,6 +422,7 @@ export class CycleService {
     habitId: string;
     day: string;
     phase: Phase;
+    cultivar?: string;
   }): Moment | { error: string } {
     const { cycleId, habitId, day, phase } = props;
 
@@ -451,9 +457,27 @@ export class CycleService {
       return { error: `Day ${day} before cycle start ${cycle.startDate}` };
     }
 
+    let selectedCultivar: Cultivar | undefined;
+    if (props.cultivar) {
+      selectedCultivar = findCultivar(habit.cultivars ?? [], props.cultivar);
+      if (!selectedCultivar) {
+        return {
+          error: `Cultivar tag "${props.cultivar}" not found on habit "${habit.name}"`,
+        };
+      }
+    } else if (plan.cultivarRotation && plan.cultivarRotation.length > 0) {
+      const nextTag = nextInRotation(plan.cultivarRotation, allocatedCount);
+      selectedCultivar = findCultivar(habit.cultivars ?? [], nextTag);
+    }
+
     const slotMoments = Object.values(moments$.get()).filter(
       (m) => m.day === day && m.phase === phase,
     );
+
+    const tags = [
+      ...(habit.tags || []),
+      ...(selectedCultivar ? [selectedCultivar.tag] : []),
+    ].filter((t, i, a) => a.indexOf(t) === i);
 
     const created = createMoment({
       name: habit.name,
@@ -462,8 +486,9 @@ export class CycleService {
       habitId: habit.id,
       cycleId,
       cyclePlanId: plan.id,
-      tags: habit.tags || [],
+      tags,
       phase,
+      ...(selectedCultivar ? { cultivar: selectedCultivar } : {}),
       ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),
     });
     if ("error" in created) return created;
@@ -1050,24 +1075,40 @@ export class CycleService {
     day: string,
     phase: string,
     order: number,
+    cultivar?: string,
   ): MomentResult {
     const habit = habits$[habitId].get();
     if (!habit) {
       return { error: `Habit with ID ${habitId} not found` };
     }
 
+    let selectedCultivar: Cultivar | undefined;
+    if (cultivar) {
+      selectedCultivar = findCultivar(habit.cultivars ?? [], cultivar);
+      if (!selectedCultivar) {
+        return {
+          error: `Cultivar tag "${cultivar}" not found on habit "${habit.name}"`,
+        };
+      }
+    }
+
     const activeCycle = activeCycle$.get();
 
-    // Create spontaneous moment (cyclePlanId = null)
+    const tags = [
+      ...(habit.tags || []),
+      ...(selectedCultivar ? [selectedCultivar.tag] : []),
+    ].filter((t, i, a) => a.indexOf(t) === i);
+
     const result = createMoment({
       name: habit.name,
       areaId: habit.areaId,
       emoji: habit.emoji,
       habitId: habit.id,
       cycleId: activeCycle?.id || null,
-      cyclePlanId: null, // Spontaneous
+      cyclePlanId: null,
       phase: null,
-      tags: habit.tags || [],
+      tags,
+      ...(selectedCultivar ? { cultivar: selectedCultivar } : {}),
       ...(habit.schedule ? timingFromSchedule(habit.schedule) : {}),
     });
 
