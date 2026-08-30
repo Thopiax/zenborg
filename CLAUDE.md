@@ -1,23 +1,14 @@
 # zenborg — the garden
 
-> Orientation and working agreements. Two documents outrank this one and win on conflict:
-> philosophy → [`docs/principles.md`](docs/principles.md); shared contracts → [`../kairos/kernel/`](../kairos/kernel/).
-> Anything here that contradicts the code is a bug in here — the code is the truth.
+> Orientation and working agreements. [`docs/principles.md`](docs/principles.md) outranks
+> this file and wins on conflict. Anything here that contradicts the code is a bug in
+> here — the code is the truth.
 
-## Where this sits
+## What zenborg is
 
-**kairos is the umbrella; zenborg is an instrument under it.** Not a rename — renaming
-zenborg → kairos in place was decided 2026-08-03 and reversed 2026-08-06, because one name
-cannot be both the whole and a part.
-
-Zenborg keeps the garden metaphor and should. Plots, perennials, seasons, weeds — that
-vocabulary does real work. *The substrate is unified; the metaphors are not.*
-
-Sibling instruments: **keel** (attentive tech — activity log, rules, tides) and **wake**
-(journals). They share a home on disk, not a codebase. Keel is being deprecated and
-absorbed: its Claude Code plugin now lives at `plugin/` in this repo.
-
-## What it is
+**Zenborg is the product.** The app, the MCP server, the Claude Code plugin, the garden
+metaphor — one repo, one name. *Kairos* is the vault path (`~/.kairos`) and may become a
+marketing name; it is not a separate product or codebase.
 
 A macOS desktop app (Tauri 2) wrapping a Next.js static export, plus an MCP server that
 exposes the same vault to any agent. Local-first, no accounts, no server.
@@ -47,13 +38,7 @@ Anything reasoning about friction reads habits or the moment that references one
 
 ## The vault
 
-Garden state is a filesystem vault under the kairos substrate contract. **The contract is
-[`../kairos/kernel/substrate.md`](../kairos/kernel/substrate.md) and it wins on conflict** —
-what follows is only what you need to work here.
-
-```
-$KAIROS_HOME          # default ~/.kairos (release), ~/.kairos-dev (debug builds)
-```
+Garden state is a filesystem vault at `~/.kairos` (release) or `~/.kairos-dev` (debug builds).
 
 One JSON file per collection, each a **JSON object keyed by entity UUID** (not an array):
 `areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`, `moments.json`,
@@ -66,14 +51,14 @@ its own shape and its own module (`src/infrastructure/vault/active-moment.ts`). 
 another singleton is a design decision; the parity test in
 `src/infrastructure/vault/__tests__/collections-sync.test.ts` makes you declare it.
 
-The debug/release split is not a zenborg detail — running a dev build against a locally
-installed release app must not trash the real vault.
+The debug/release split matters — running a dev build against a locally installed release
+app must not trash the real vault.
 
 ### Rules you inherit
 
 - **One writer per collection.** Zenborg is the writer for all eight above, and for
-  `activeMoment`. Keel reads `areas`, `dayNotes` and `activeMoment` live. Readers never
-  mutate — not even to add a missing record.
+  `activeMoment`. The plugin reads `areas`, `dayNotes` and `activeMoment` live. Readers
+  never mutate — not even to add a missing record.
 - **`id` is a UUID.** Stable, opaque, never regenerated. The filename is the id, never a
   slug of the name.
 - **Time is UTC, ISO-8601, milliseconds.** Local time is computed at render, never stored.
@@ -129,7 +114,7 @@ src/
 └── app/             routes — plant · cultivate · harvest
 src-tauri/src/       vault/{fs,watcher,write_tracker}, mcp_install
 mcp-server/          the second vault implementation + MCP tools (TOOLS.md)
-plugin/              Claude Code plugin (ex-keel): activity log, fences, gap practice
+plugin/              Claude Code plugin: activity log, fences, gap practice, rituals
 ```
 
 Dependencies flow inward: domain ← application ← infrastructure ← UI.
@@ -220,6 +205,6 @@ ambient chips on cards.
 
 - **`README.md`** still describes the retired Next-on-Vercel era — a web app with a Compass
   and a three-day timeline. Do not build from it.
-- **The `docs/protection/` tree** documents shields and a rule engine that moved to keel,
-  whose intervention layer was then retired 2026-06-12. Dead here.
+- **The `docs/protection/` tree** documents shields and a rule engine whose intervention
+  layer was retired 2026-06-12. Dead.
 - **`docs/ideas/2026-05-31-*`** are capture stubs pointing at Things, not designs.
