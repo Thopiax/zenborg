@@ -25,7 +25,14 @@ const ATTITUDE_ORDER = [
 
 const PHASE_ORDER = [Phase.MORNING, Phase.AFTERNOON, Phase.EVENING, Phase.NIGHT];
 
-const NONE = "—";
+const NONE_KEY = "__none__";
+
+const NONE_LABELS: Record<HabitGroupBy, string> = {
+  area: "No area",
+  attitude: "No attitude",
+  phase: "No phase",
+  tag: "No tag",
+};
 
 function groupHabits(
   habits: Habit[],
@@ -48,17 +55,17 @@ function groupHabits(
         break;
       }
       case "attitude":
-        key = habit.attitude ?? NONE;
-        label = habit.attitude ?? NONE;
+        key = habit.attitude ?? NONE_KEY;
+        label = habit.attitude ?? NONE_LABELS.attitude;
         break;
       case "phase":
-        key = habit.phase ?? NONE;
-        label = habit.phase ?? NONE;
+        key = habit.phase ?? NONE_KEY;
+        label = habit.phase ?? NONE_LABELS.phase;
         break;
       case "tag": {
-        const tag = habit.tags[0] ?? NONE;
-        key = tag;
-        label = tag;
+        const tag = habit.tags[0];
+        key = tag ?? NONE_KEY;
+        label = tag ?? NONE_LABELS.tag;
         break;
       }
     }
@@ -86,8 +93,8 @@ function groupHabits(
       if (ai !== -1) return -1;
       if (bi !== -1) return 1;
     }
-    if (a === NONE) return 1;
-    if (b === NONE) return -1;
+    if (a === NONE_KEY) return 1;
+    if (b === NONE_KEY) return -1;
     return a.localeCompare(b);
   });
 

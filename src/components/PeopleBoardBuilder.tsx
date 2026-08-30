@@ -11,33 +11,43 @@ import type { PeopleGroupBy } from "@/infrastructure/state/ui-store";
 import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
-const NONE = "—";
+const NONE_KEY = "__none__";
 const CATEGORY_ORDER = ["family", "friends", "lovers"];
+
+const NONE_LABELS: Record<PeopleGroupBy, string> = {
+  category: "No category",
+  basePlace: "No place",
+  status: "No status",
+};
 
 function groupPeople(
   people: Person[],
   groupBy: PeopleGroupBy,
 ): { key: string; label: string; people: Person[] }[] {
-  const groups = new Map<string, Person[]>();
+  const groups = new Map<string, { label: string; people: Person[] }>();
 
   for (const person of people) {
     let key: string;
+    let label: string;
     switch (groupBy) {
       case "category":
-        key = person.category || NONE;
+        key = person.category || NONE_KEY;
+        label = person.category || NONE_LABELS.category;
         break;
       case "basePlace":
-        key = person.basePlace || NONE;
+        key = person.basePlace || NONE_KEY;
+        label = person.basePlace || NONE_LABELS.basePlace;
         break;
       case "status":
         key = person.status;
+        label = person.status;
         break;
     }
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(person);
+    if (!groups.has(key)) groups.set(key, { label, people: [] });
+    groups.get(key)!.people.push(person);
   }
 
-  for (const list of groups.values()) {
+  for (const { people: list } of groups.values()) {
     list.sort((a, b) => a.name.localeCompare(b.name));
   }
 
@@ -50,12 +60,12 @@ function groupPeople(
       if (ai !== -1) return -1;
       if (bi !== -1) return 1;
     }
-    if (a === NONE) return 1;
-    if (b === NONE) return -1;
+    if (a === NONE_KEY) return 1;
+    if (b === NONE_KEY) return -1;
     return a.localeCompare(b);
   });
 
-  return entries.map(([key, list]) => ({ key, label: key, people: list }));
+  return entries.map(([key, { label, people }]) => ({ key, label, people }));
 }
 
 function PersonCard({ person }: { person: Person }) {
@@ -164,7 +174,7 @@ function InlineAddPerson({
       name: trimmed,
       key: slugify(trimmed),
       emoji: emoji.trim() || null,
-      category: category === NONE ? null : category,
+      category: category === NONE_KEY ? null : category,
     });
     people$[person.id].set(person);
     setName("");
@@ -227,7 +237,7 @@ export const PeopleBoardBuilder = observer(
       return (
         <div className="flex gap-4 overflow-x-auto px-4 py-4 h-full snap-x snap-mandatory scroll-smooth">
           <PeopleColumn
-            label={NONE}
+            label={NONE_LABELS[groupBy]}
             people={[]}
             onAddPerson={(g) => setAddingToGroup(g)}
           />
