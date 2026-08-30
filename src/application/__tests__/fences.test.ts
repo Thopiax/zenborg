@@ -36,6 +36,7 @@ function deps(opts?: {
       areas: async () => opts?.areas ?? AREAS,
       activeCycleId: async () =>
         opts?.cycleId === undefined ? "cycle-1" : opts.cycleId,
+      phaseConfigs: async () => [],
     },
     newRuleId: () => "rule-1",
   };

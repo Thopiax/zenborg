@@ -19,6 +19,7 @@ import {
   declareBrowserTransform,
   declareFence,
   declareHostBlock,
+  declareWateringHours,
   fenceReport,
   seedHostBlocks,
 } from "../src/application/use-cases/fences.ts";
@@ -3158,6 +3159,14 @@ const fenceDeps: FenceDeps = {
         .sort((a, b) => b.startDate.localeCompare(a.startDate));
       return active[0]?.id ?? null;
     },
+    async phaseConfigs() {
+      const raw = readCollection(VAULT_ROOT, "phaseConfigs");
+      return Object.values(raw).map((c: any) => ({
+        phase: c.phase,
+        startHour: c.startHour,
+        endHour: c.endHour,
+      }));
+    },
   },
   newRuleId: () => crypto.randomUUID(),
 };
@@ -3371,22 +3380,110 @@ defineTool(server, {
 });
 
 defineTool(server, {
+  name: "set_watering_hours",
+  description:
+    "Declare a standing temporal attention policy — which plots get watered when, with friction for watering the wrong plot at the wrong time. Three modes: 'regular' (gentle gate friction), 'dry' (standing block, no water at all), 'by_hand' (tool-level friction, manual work passes through). One declaration generates per-surface rules with derived ids; re-declaring replaces.",
+  schema: {
+    name: z
+      .string()
+      .min(1)
+      .describe(
+        "Policy handle — shown back at every crossing, used in derived ids",
+      ),
+    mode: z
+      .enum(["regular", "dry", "by_hand"])
+      .describe(
+        "regular = gentle friction, dry = standing block, by_hand = tool-level gate",
+      ),
+    window: z.object({
+      phases: z
+        .array(z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]))
+        .optional()
+        .describe(
+          "Phase names — resolved to hours at declaration, frozen with cutFrom provenance",
+        ),
+      weekdays: z
+        .array(z.enum(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]))
+        .optional()
+        .describe("Days of the week this policy is in force"),
+      fromHour: z.number().min(0).max(23).optional(),
+      toHour: z.number().min(0).max(23).optional(),
+    }),
+    waters: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("Areas this window IS for — names or ids"),
+    restricts: z.object({
+      areas: z
+        .array(z.string().min(1))
+        .optional()
+        .describe("Areas that get friction (garden surface)"),
+      paths: z
+        .array(z.string().min(1))
+        .optional()
+        .describe("Path prefixes that get friction (session surface)"),
+      hosts: z
+        .array(z.string().min(1))
+        .optional()
+        .describe(
+          "Hosts that get friction (browser surface, deferred to slice 2)",
+        ),
+      tools: z
+        .array(z.string().min(1))
+        .optional()
+        .describe("Tool names to gate — Edit, Write (by_hand mode)"),
+    }),
+    prompt: z
+      .string()
+      .optional()
+      .describe("The gate's question (regular/by_hand modes)"),
+    unlockNote: z
+      .string()
+      .optional()
+      .describe("How the block is lifted (REQUIRED for dry mode)"),
+  },
+  handler: async (input) => {
+    const result = await declareWateringHours(fenceDeps, {
+      ...input,
+      restricts: {
+        ...input.restricts,
+        paths: input.restricts.paths?.map(expandHome),
+      },
+    });
+    if ("problems" in result) return err(result.problems.join("; "));
+    return ok({
+      declared: result.declared.map((r) => ({
+        id: r.id,
+        surface: r.scope.surface,
+      })),
+      standing: result.standing,
+    });
+  },
+});
+
+defineTool(server, {
   name: "clear_fence",
   description:
-    "Take a fence down, by id — or all of them at once. Pass exactly one of `id` or `all`. The crossing tally is plugin-owned and left alone; a cleared fence's id is never reused, so its count can never gate anything again.",
+    "Take a fence down, by id, by watering-policy name, or all of them at once. Pass exactly one of `id`, `all`, or `policy`. The crossing tally is plugin-owned and left alone; a cleared fence's id is never reused, so its count can never gate anything again.",
   schema: {
     id: z.string().optional().describe("The fence's rule id"),
     all: z.boolean().optional().describe("Take every standing fence down"),
+    policy: z
+      .string()
+      .optional()
+      .describe("Clear all rules belonging to a watering policy by name"),
   },
   annotations: { destructiveHint: true },
-  handler: async ({ id, all }) => {
-    if ((id === undefined) === (all === undefined)) {
-      return err("pass exactly one of `id` or `all`");
+  handler: async ({ id, all, policy }) => {
+    if ([id, all, policy].filter(Boolean).length !== 1) {
+      return err("pass exactly one of `id`, `all`, or `policy`");
     }
-    const result = await clearFences(
-      fenceDeps,
-      all ? { all: true } : { id: id as string },
-    );
+    const target = all
+      ? { all: true as const }
+      : policy
+        ? { policy }
+        : { id: id as string };
+    const result = await clearFences(fenceDeps, target);
     if ("problems" in result) return err(result.problems.join("; "));
     return ok({
       cleared: result.cleared.map((f) => ({ id: f.id, label: f.name })),
