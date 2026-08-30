@@ -1,7 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { AtSign, Clock, Timer, Trash2, X } from "lucide-react";
+import { AtSign, Clock, Layers, Plus, Timer, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
@@ -46,7 +46,10 @@ import {
   closeHabitForm,
   habitFormState$,
   lastUsedAreaId$,
+  openHabitFormCreate,
+  openHabitFormEdit,
 } from "@/infrastructure/state/ui-store";
+import { habits$ } from "@/infrastructure/state/store";
 import {
   extractLeadingEmoji,
   suggestEmojiForAreaName,
@@ -82,6 +85,8 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     phase,
     tags,
     aliases,
+    parentHabitId,
+    durationMin,
     rhythm,
     editingHabitId,
   } = formState;
@@ -150,6 +155,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       setPhaseSelectorOpen(false);
       setAliasesSelectorOpen(false);
       setRhythmSelectorOpen(false);
+      setVariantsSelectorOpen(false);
     }
   }, [open]);
 
@@ -213,6 +219,8 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       phase,
       tags: finalTags,
       aliases,
+      parentHabitId: parentHabitId ?? undefined,
+      durationMin: durationMin ?? undefined,
       rhythm: rhythm ?? undefined,
     });
 
@@ -467,6 +475,49 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
               />
             )}
 
+            {/* Duration - Show as button if set */}
+            {durationMin && (
+              <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 w-full">
+                <Timer className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                <input
+                  type="number"
+                  min="1"
+                  max="480"
+                  value={durationMin}
+                  onChange={(e) => {
+                    const v = e.target.value
+                      ? Number.parseInt(e.target.value, 10)
+                      : null;
+                    habitFormState$.durationMin.set(v && v > 0 ? v : null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
+                    }
+                  }}
+                  className="w-16 bg-transparent font-mono text-sm outline-none"
+                />
+                <span className="font-mono text-sm text-stone-400">min</span>
+                <button
+                  type="button"
+                  onClick={() => habitFormState$.durationMin.set(null)}
+                  className="ml-auto text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Variants - Show child habits if any exist (edit mode only) */}
+            {mode === "edit" && editingHabitId && (
+              <ChildHabitsList
+                parentHabitId={editingHabitId}
+                areaId={areaId}
+              />
+            )}
+
             {/* Rhythm Selector - Show as button if selected */}
             {rhythm && (
               <RhythmSelector
@@ -565,6 +616,38 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                   </button>
                 }
               />
+            )}
+
+            {/* Duration - subtle label if not set */}
+            {!durationMin && (
+              <button
+                type="button"
+                onClick={() => habitFormState$.durationMin.set(30)}
+                className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+              >
+                <Timer className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <span className="text-xs font-mono">no duration</span>
+              </button>
+            )}
+
+            {/* Add variant - only in edit mode (need a saved habit to parent to) */}
+            {mode === "edit" && editingHabitId && (
+              <button
+                type="button"
+                onClick={() => {
+                  closeHabitForm();
+                  openHabitFormCreate({
+                    areaId,
+                    parentHabitId: editingHabitId,
+                    attitude: attitude ?? undefined,
+                    phase: phase ?? undefined,
+                  });
+                }}
+                className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <span className="text-xs font-mono">add variant</span>
+              </button>
             )}
 
             {/* Rhythm - subtle label if not selected */}
@@ -756,5 +839,47 @@ function AliasesSelector({
         </p>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function ChildHabitsList({
+  parentHabitId,
+  areaId,
+}: { parentHabitId: string; areaId: string }) {
+  const allHabits = use$(habits$);
+  const children = Object.values(allHabits).filter(
+    (h) => h.parentHabitId === parentHabitId && !h.isArchived,
+  );
+
+  if (children.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium flex items-center gap-1.5">
+        <Layers className="w-3 h-3" />
+        Variants
+      </span>
+      {children.map((child) => (
+        <button
+          key={child.id}
+          type="button"
+          onClick={() => {
+            closeHabitForm();
+            openHabitFormEdit(child.id, child);
+          }}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full text-left"
+        >
+          <span className="text-base flex-shrink-0">{child.emoji}</span>
+          <span className="font-mono text-sm flex-1 min-w-0 truncate">
+            {child.name}
+          </span>
+          {child.durationMin && (
+            <span className="text-xs font-mono text-stone-400 flex-shrink-0">
+              {child.durationMin}m
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
   );
 }

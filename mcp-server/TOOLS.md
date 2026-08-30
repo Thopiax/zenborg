@@ -69,7 +69,7 @@ When `truncated` is true, pass `nextCursor` back with the same filters.
 |---|---|---|
 | `list_habits` | `areaId?, includeArchived?, health?, limit?, cursor?` | Paginated. `health: "wilting"` filters to wilting habits. |
 | `get_habit` | `idOrName` | Includes `health`, `daysSinceLast`, `effectiveRhythm` in response. |
-| `create_habit` | `name, areaId, order, ...` | Name 1–3 words. `schedule` fills `rhythm`+`phase`.  `schedule.timezone` is an optional IANA zone: absent = floating, present = anchored to a fixed instant. |
+| `create_habit` | `name, areaId, order, ...` | Name 1–3 words. `schedule` fills `rhythm`+`phase`. `schedule.timezone` is an optional IANA zone: absent = floating, present = anchored to a fixed instant. |
 | `update_habit` | `id, ...fields, archived?` | `archived: true` cascades: deletes cycle plans, preserves moments. A `schedule` rewrite that omits `timezone` keeps the stored anchor; `schedule.timezone: null` unanchors. |
 
 ### Moments
