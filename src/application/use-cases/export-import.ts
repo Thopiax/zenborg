@@ -25,6 +25,7 @@ import type { Moment } from "@/domain/entities/Moment";
 import type { Person } from "@/domain/entities/Person";
 import type { Place } from "@/domain/entities/Place";
 import type { Relationship } from "@/domain/entities/Relationship";
+import type { Routine } from "@/domain/entities/Routine";
 import type { DomainModelRegistry } from "@/domain/registry";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
 
@@ -53,6 +54,7 @@ export interface ZenborgExportData {
     totalPeople: number;
     totalPlaces: number;
     totalRelationships: number;
+    totalRoutines: number;
   };
 }
 
@@ -86,6 +88,7 @@ export function exportData(
   people: Record<string, Person>,
   places: Record<string, Place>,
   relationships: Record<string, Relationship>,
+  routines: Record<string, Routine>,
 ): ZenborgExportData {
   return {
     version: EXPORT_SCHEMA_VERSION,
@@ -102,6 +105,7 @@ export function exportData(
       people,
       places,
       relationships,
+      routines,
     },
     metadata: {
       totalMoments: Object.keys(moments).length,
@@ -115,6 +119,7 @@ export function exportData(
       totalPeople: Object.keys(people).length,
       totalPlaces: Object.keys(places).length,
       totalRelationships: Object.keys(relationships).length,
+      totalRoutines: Object.keys(routines).length,
     },
   };
 }
@@ -223,6 +228,13 @@ export function validateImportData(data: unknown): ImportValidationResult {
     warnings.push("Missing relationships data - will import as empty");
   }
 
+  if (
+    !exportData.data.routines ||
+    typeof exportData.data.routines !== "object"
+  ) {
+    warnings.push("Missing routines data - will import as empty");
+  }
+
   // Legacy fields — dropped silently at import, warned here for transparency.
   if (
     "crystallizedRoutines" in
@@ -284,6 +296,7 @@ export interface ImportResult {
     people: number;
     places: number;
     relationships: number;
+    routines: number;
   };
   conflicts?: {
     moments: string[];
@@ -297,6 +310,7 @@ export interface ImportResult {
     people: string[];
     places: string[];
     relationships: string[];
+    routines: string[];
   };
 }
 
@@ -328,6 +342,7 @@ export function importDataWithStrategy(
     people: importData.data.people || {},
     places: importData.data.places || {},
     relationships: importData.data.relationships || {},
+    routines: importData.data.routines || {},
   };
 
   if (strategy === "replace") {
@@ -349,6 +364,7 @@ export function importDataWithStrategy(
           people: Object.keys(safeImportData.people).length,
           places: Object.keys(safeImportData.places).length,
           relationships: Object.keys(safeImportData.relationships).length,
+          routines: Object.keys(safeImportData.routines).length,
         },
       },
     };
@@ -367,6 +383,7 @@ export function importDataWithStrategy(
     people: [] as string[],
     places: [] as string[],
     relationships: [] as string[],
+    routines: [] as string[],
   };
 
   // Merge moments (imported overwrites existing on ID conflict)
@@ -470,6 +487,15 @@ export function importDataWithStrategy(
     mergedRelationships[id] = relationship;
   }
 
+  // Merge routines
+  const mergedRoutines = { ...currentData.routines };
+  for (const [id, routine] of Object.entries(safeImportData.routines)) {
+    if (mergedRoutines[id]) {
+      conflicts.routines.push(id);
+    }
+    mergedRoutines[id] = routine;
+  }
+
   const totalConflicts =
     conflicts.moments.length +
     conflicts.areas.length +
@@ -481,7 +507,8 @@ export function importDataWithStrategy(
     conflicts.dayNotes.length +
     conflicts.people.length +
     conflicts.places.length +
-    conflicts.relationships.length;
+    conflicts.relationships.length +
+    conflicts.routines.length;
 
   return {
     moments: mergedMoments,
@@ -495,6 +522,7 @@ export function importDataWithStrategy(
     people: mergedPeople,
     places: mergedPlaces,
     relationships: mergedRelationships,
+    routines: mergedRoutines,
     result: {
       success: true,
       message:
@@ -513,6 +541,7 @@ export function importDataWithStrategy(
         people: Object.keys(safeImportData.people).length,
         places: Object.keys(safeImportData.places).length,
         relationships: Object.keys(safeImportData.relationships).length,
+        routines: Object.keys(safeImportData.routines).length,
       },
       conflicts: totalConflicts > 0 ? conflicts : undefined,
     },
