@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  CultivarSchema,
   countMomentsInPhase,
   deriveRhythmFromSchedule,
+  nextInRotation,
   normalizeRefs,
   normalizeSchedule,
   phaseForStartTime,
@@ -12,6 +14,7 @@ import {
   validateMomentTiming,
   validatePlaceUrl,
   validateRefs,
+  validateRotationAgainstHabit,
 } from "./validation.js";
 import type { Moment, PhaseConfig, Schedule } from "./vault.js";
 
@@ -322,5 +325,24 @@ describe("validatePlaceUrl", () => {
 
   it("is fine with the field being absent", () => {
     expect(validatePlaceUrl(undefined)).toBeNull();
+  });
+});
+
+describe("CultivarSchema (re-exported from shared)", () => {
+  it("parses valid cultivar", () => {
+    const result = CultivarSchema.safeParse({
+      tag: "recovery",
+      params: { durationMin: 30 },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("nextInRotation round-robins", () => {
+    expect(nextInRotation(["a", "b", "c"], 4)).toBe("b");
+  });
+
+  it("validateRotationAgainstHabit catches orphans", () => {
+    const error = validateRotationAgainstHabit(["ghost"], [{ tag: "recovery" }]);
+    expect(error).toContain("ghost");
   });
 });

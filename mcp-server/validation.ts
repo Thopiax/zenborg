@@ -23,6 +23,16 @@ import {
   type Weekday,
 } from "./vault.js";
 
+export {
+  type Cultivar,
+  CultivarSchema,
+  CultivarParamsSchema,
+  findCultivar,
+  nextInRotation,
+  normalizeCultivars,
+  validateRotationAgainstHabit,
+} from "../src/domain/shared/cultivar-schema.js";
+
 // ────────────────────────────────────────────────────────────────────────
 // Name validation (1–3 words) — used by Habit and Moment
 // ────────────────────────────────────────────────────────────────────────
