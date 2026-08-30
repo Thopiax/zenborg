@@ -21,51 +21,46 @@ import { AreaService } from "@/application/services/AreaService";
 import { HabitService } from "@/application/services/HabitService";
 import { AreaBoardBuilder } from "@/components/AreaBoardBuilder";
 import { DraggableHabitItem } from "@/components/DraggableHabitItem";
+import { GroupedHabitView } from "@/components/GroupedHabitView";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { PeopleBoardBuilder } from "@/components/PeopleBoardBuilder";
+import { PlantToolbar } from "@/components/PlantToolbar";
 import {
   activeAreas$,
   activeHabits$,
   areas$,
 } from "@/infrastructure/state/store";
-import { plantViewMode$ } from "@/infrastructure/state/ui-store";
+import type { HabitGroupBy, PeopleGroupBy } from "@/infrastructure/state/ui-store";
+import { plantViewConfig$ } from "@/infrastructure/state/ui-store";
 
 const PlantPage = observer(() => {
   const areaService = new AreaService();
   const habitService = new HabitService();
   const areas = use$(activeAreas$);
   const habits = use$(activeHabits$);
-  const viewMode = use$(plantViewMode$);
+  const config = use$(plantViewConfig$);
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Custom collision detection
+  // Custom collision detection (only used for habits-by-area DnD view)
   const customCollisionDetection = (args: any) => {
     const { active } = args;
     const activeData = active?.data?.current;
 
     if (activeData?.type === "habit") {
       const pointerCollisions = pointerWithin(args);
-      // Prefer habit-level collisions so in-area reorder resolves to a sibling
-      // habit. Falling back to the enclosing area lets cross-area drops work
-      // when the pointer is in empty column space.
       const habitCollisions = pointerCollisions.filter((collision: any) => {
         const data = collision.data?.droppableContainer?.data?.current;
         return data?.type === "habit";
       });
-      if (habitCollisions.length > 0) {
-        return habitCollisions;
-      }
+      if (habitCollisions.length > 0) return habitCollisions;
       const areaCollisions = pointerCollisions.filter((collision: any) =>
         collision.id.toString().startsWith("area-"),
       );
-      if (areaCollisions.length > 0) {
-        return areaCollisions;
-      }
+      if (areaCollisions.length > 0) return areaCollisions;
       return rectIntersection(args);
     }
 
-    // When dragging an area, only consider other area columns (not habit cards)
     if (activeData?.type === "area") {
       const allCollisions = closestCenter(args);
       const areaOnlyCollisions = allCollisions.filter((collision: any) => {
@@ -74,9 +69,7 @@ const PlantPage = observer(() => {
           data?.type === "area" || collision.id.toString().startsWith("area-")
         );
       });
-      if (areaOnlyCollisions.length > 0) {
-        return areaOnlyCollisions;
-      }
+      if (areaOnlyCollisions.length > 0) return areaOnlyCollisions;
       return allCollisions;
     }
 
@@ -117,7 +110,6 @@ const PlantPage = observer(() => {
       type?: string;
     };
 
-    // Case 1: Reorder habits within same area
     if (
       dragData?.type === "habit" &&
       dropData?.type === "habit" &&
@@ -126,26 +118,19 @@ const PlantPage = observer(() => {
     ) {
       const areaId = dragData.sourceAreaId;
       if (!areaId) return;
-
       const areaHabits = habits
         .filter((h) => h.areaId === areaId)
         .sort((a, b) => a.order - b.order);
-
       const oldIndex = areaHabits.findIndex((h) => h.id === active.id);
       const newIndex = areaHabits.findIndex((h) => h.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
-
       const reordered = arrayMove(areaHabits, oldIndex, newIndex);
       for (const [index, habit] of reordered.entries()) {
-        const result = habitService.updateHabit(habit.id, { order: index });
-        if ("error" in result) {
-          console.error(`Failed to update habit order: ${result.error}`);
-        }
+        habitService.updateHabit(habit.id, { order: index });
       }
       return;
     }
 
-    // Case 2: Drag habit onto a habit in a different area (cross-area move)
     if (
       dragData?.type === "habit" &&
       dropData?.type === "habit" &&
@@ -154,34 +139,21 @@ const PlantPage = observer(() => {
       const habitId = dragData.habitId;
       const targetAreaId = dropData.sourceAreaId;
       if (habitId && targetAreaId) {
-        const result = habitService.updateHabit(habitId, {
-          areaId: targetAreaId,
-        });
-        if ("error" in result) {
-          alert(`Failed to move habit: ${result.error}`);
-        }
+        habitService.updateHabit(habitId, { areaId: targetAreaId });
       }
       return;
     }
 
-    // Case 3: Drag habit to empty column space (targets area droppable)
     if (dragData?.type === "habit" && dropData?.targetType === "area") {
       const habitId = dragData.habitId;
       const sourceAreaId = dragData.sourceAreaId;
       const targetAreaId = dropData.targetAreaId;
-
       if (habitId && targetAreaId && sourceAreaId !== targetAreaId) {
-        const result = habitService.updateHabit(habitId, {
-          areaId: targetAreaId,
-        });
-        if ("error" in result) {
-          alert(`Failed to move habit: ${result.error}`);
-        }
+        habitService.updateHabit(habitId, { areaId: targetAreaId });
       }
       return;
     }
 
-    // Case 4: Area reordering
     if (
       dragData?.type === "area" &&
       (dropData?.type === "area" || !dropData?.type)
@@ -189,94 +161,106 @@ const PlantPage = observer(() => {
       const sortedAreas = [...areas].sort((a, b) => a.order - b.order);
       const oldIndex = sortedAreas.findIndex((area) => area.id === active.id);
       const newIndex = sortedAreas.findIndex((area) => area.id === over.id);
-
       if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-
       const reordered = arrayMove(sortedAreas, oldIndex, newIndex);
       for (const [index, area] of reordered.entries()) {
         const updated = areaService.updateArea(area.id, { order: index });
         if ("error" in updated) return;
         areas$[area.id].set(updated);
       }
-      return;
     }
   };
 
-  if (viewMode === "people") {
+  const renderContent = () => {
+    if (config.entity === "people") {
+      return (
+        <PeopleBoardBuilder
+          groupBy={config.groupBy as PeopleGroupBy}
+          filter={config.filter}
+        />
+      );
+    }
+
+    // Habits: area grouping gets the full DnD AreaBoardBuilder
+    if (config.groupBy === "area" && !config.filter) {
+      return (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={customCollisionDetection}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          autoScroll={{
+            threshold: { x: 0.05, y: 0.05 },
+            acceleration: 5,
+          }}
+        >
+          <AreaBoardBuilder />
+
+          <DragOverlay>
+            {activeId
+              ? (() => {
+                  const activeHabit = habits.find((h) => h.id === activeId);
+                  if (activeHabit) {
+                    const area = areas.find(
+                      (a) => a.id === activeHabit.areaId,
+                    );
+                    return (
+                      <DraggableHabitItem
+                        habit={activeHabit}
+                        areaColor={area?.color}
+                        onEdit={() => {}}
+                      />
+                    );
+                  }
+                  const activeArea = areas.find((a) => a.id === activeId);
+                  if (activeArea) {
+                    const areaHabits = habits.filter(
+                      (h) => h.areaId === activeArea.id,
+                    );
+                    return (
+                      <div className="w-[22.5rem] rounded-lg border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 shadow-lg opacity-90">
+                        <div className="px-4 py-3 flex items-center gap-2">
+                          <span className="text-xl">
+                            {activeArea.emoji}
+                          </span>
+                          <span className="text-sm font-mono font-medium text-stone-700 dark:text-stone-300">
+                            {activeArea.name}
+                          </span>
+                          <span className="text-xs font-mono text-stone-400 dark:text-stone-500">
+                            {areaHabits.length}
+                          </span>
+                        </div>
+                        <div
+                          className="h-[3px] mx-4"
+                          style={{ backgroundColor: activeArea.color }}
+                        />
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              : null}
+          </DragOverlay>
+        </DndContext>
+      );
+    }
+
+    // Habits grouped by attitude, phase, tag, or area with filter
     return (
-      <>
-        <LandscapePrompt />
-        <div className="h-full bg-background transition-colors">
-          <PeopleBoardBuilder />
-        </div>
-      </>
+      <GroupedHabitView
+        groupBy={config.groupBy as HabitGroupBy}
+        filter={config.filter}
+      />
     );
-  }
+  };
 
   return (
     <>
       <LandscapePrompt />
-
-      <DndContext
-        sensors={sensors}
-        collisionDetection={customCollisionDetection}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        autoScroll={{
-          threshold: { x: 0.05, y: 0.05 },
-          acceleration: 5,
-        }}
-      >
-        <div className="h-full bg-background transition-colors">
-          <AreaBoardBuilder />
-        </div>
-
-        <DragOverlay>
-          {activeId
-            ? (() => {
-                // Check if dragging a habit
-                const activeHabit = habits.find((h) => h.id === activeId);
-                if (activeHabit) {
-                  const area = areas.find((a) => a.id === activeHabit.areaId);
-                  return (
-                    <DraggableHabitItem
-                      habit={activeHabit}
-                      areaColor={area?.color}
-                      onEdit={() => {}}
-                    />
-                  );
-                }
-
-                // Check if dragging an area column
-                const activeArea = areas.find((a) => a.id === activeId);
-                if (activeArea) {
-                  const areaHabits = habits.filter(
-                    (h) => h.areaId === activeArea.id,
-                  );
-                  return (
-                    <div className="w-[22.5rem] rounded-lg border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 shadow-lg opacity-90">
-                      <div className="px-4 py-3 flex items-center gap-2">
-                        <span className="text-xl">{activeArea.emoji}</span>
-                        <span className="text-sm font-mono font-medium text-stone-700 dark:text-stone-300">
-                          {activeArea.name}
-                        </span>
-                        <span className="text-xs font-mono text-stone-400 dark:text-stone-500">
-                          {areaHabits.length}
-                        </span>
-                      </div>
-                      <div
-                        className="h-[3px] mx-4"
-                        style={{ backgroundColor: activeArea.color }}
-                      />
-                    </div>
-                  );
-                }
-
-                return null;
-              })()
-            : null}
-        </DragOverlay>
-      </DndContext>
+      <div className="h-full bg-background transition-colors flex flex-col">
+        <PlantToolbar />
+        <div className="flex-1 overflow-hidden">{renderContent()}</div>
+      </div>
     </>
   );
 });

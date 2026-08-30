@@ -55,9 +55,43 @@ export type CultivateZoom = "phase" | "time";
 
 export const cultivateZoom$ = observable<CultivateZoom>("phase");
 
-export type PlantViewMode = "areas" | "people";
+export type PlantEntity = "habits" | "people";
+export type HabitGroupBy = "area" | "attitude" | "phase" | "tag";
+export type PeopleGroupBy = "category" | "basePlace" | "status";
+export type PlantGroupBy = HabitGroupBy | PeopleGroupBy;
 
-export const plantViewMode$ = observable<PlantViewMode>("areas");
+export interface PlantViewConfig {
+  entity: PlantEntity;
+  groupBy: PlantGroupBy;
+  filter: string;
+}
+
+const ENTITY_DEFAULTS: Record<PlantEntity, PlantGroupBy> = {
+  habits: "area",
+  people: "category",
+};
+
+export const plantViewConfig$ = observable<PlantViewConfig>({
+  entity: "habits",
+  groupBy: "area",
+  filter: "",
+});
+
+export function setPlantEntity(entity: PlantEntity): void {
+  plantViewConfig$.set({
+    entity,
+    groupBy: ENTITY_DEFAULTS[entity],
+    filter: "",
+  });
+}
+
+export function setPlantGroupBy(groupBy: PlantGroupBy): void {
+  plantViewConfig$.groupBy.set(groupBy);
+}
+
+export function setPlantFilter(filter: string): void {
+  plantViewConfig$.filter.set(filter);
+}
 
 /**
  * Day-note inline-edit state.

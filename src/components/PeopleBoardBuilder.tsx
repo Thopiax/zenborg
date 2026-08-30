@@ -7,38 +7,55 @@ import { displayName, createPerson } from "@/domain/entities/Person";
 import type { Person } from "@/domain/entities/Person";
 import { slugify } from "@/domain/entities/Moment";
 import { people$, places$ } from "@/infrastructure/state/store";
+import type { PeopleGroupBy } from "@/infrastructure/state/ui-store";
 import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
-const UNCATEGORIZED = "uncategorized";
-
-function groupByCategory(people: Person[]): Record<string, Person[]> {
-  const groups: Record<string, Person[]> = {};
-  for (const person of people) {
-    const cat = person.category || UNCATEGORIZED;
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(person);
-  }
-  for (const list of Object.values(groups)) {
-    list.sort((a, b) => a.name.localeCompare(b.name));
-  }
-  return groups;
-}
-
+const NONE = "—";
 const CATEGORY_ORDER = ["family", "friends", "lovers"];
 
-function sortedCategories(groups: Record<string, Person[]>): string[] {
-  const cats = Object.keys(groups);
-  return cats.sort((a, b) => {
-    const ai = CATEGORY_ORDER.indexOf(a);
-    const bi = CATEGORY_ORDER.indexOf(b);
-    if (ai !== -1 && bi !== -1) return ai - bi;
-    if (ai !== -1) return -1;
-    if (bi !== -1) return 1;
-    if (a === UNCATEGORIZED) return 1;
-    if (b === UNCATEGORIZED) return -1;
+function groupPeople(
+  people: Person[],
+  groupBy: PeopleGroupBy,
+): { key: string; label: string; people: Person[] }[] {
+  const groups = new Map<string, Person[]>();
+
+  for (const person of people) {
+    let key: string;
+    switch (groupBy) {
+      case "category":
+        key = person.category || NONE;
+        break;
+      case "basePlace":
+        key = person.basePlace || NONE;
+        break;
+      case "status":
+        key = person.status;
+        break;
+    }
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(person);
+  }
+
+  for (const list of groups.values()) {
+    list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const entries = [...groups.entries()];
+  entries.sort(([a], [b]) => {
+    if (groupBy === "category") {
+      const ai = CATEGORY_ORDER.indexOf(a);
+      const bi = CATEGORY_ORDER.indexOf(b);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+    }
+    if (a === NONE) return 1;
+    if (b === NONE) return -1;
     return a.localeCompare(b);
   });
+
+  return entries.map(([key, list]) => ({ key, label: key, people: list }));
 }
 
 function PersonCard({ person }: { person: Person }) {
@@ -71,17 +88,15 @@ function PersonCard({ person }: { person: Person }) {
   );
 }
 
-function CategoryColumn({
-  category,
+function PeopleColumn({
+  label,
   people,
   onAddPerson,
 }: {
-  category: string;
+  label: string;
   people: Person[];
-  onAddPerson: (category: string) => void;
+  onAddPerson: (group: string) => void;
 }) {
-  const label = category === UNCATEGORIZED ? "uncategorized" : category;
-
   return (
     <div
       className={cn(
@@ -89,7 +104,6 @@ function CategoryColumn({
         columnWidth.scrollableClassName,
       )}
     >
-      {/* Header */}
       <div className="px-4 py-3 flex items-center gap-2">
         <User className="w-4 h-4 text-stone-400 dark:text-stone-500" />
         <span className="text-sm font-mono font-medium text-stone-700 dark:text-stone-300">
@@ -100,7 +114,7 @@ function CategoryColumn({
         </span>
         <button
           type="button"
-          onClick={() => onAddPerson(category)}
+          onClick={() => onAddPerson(label)}
           className="ml-auto p-1 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
           aria-label={`Add person to ${label}`}
         >
@@ -108,10 +122,8 @@ function CategoryColumn({
         </button>
       </div>
 
-      {/* Divider */}
       <div className="h-[3px] mx-4 bg-stone-300 dark:bg-stone-600" />
 
-      {/* People list */}
       <div
         className="flex flex-col gap-3 p-4 flex-1 overflow-y-auto"
         style={{ maxHeight: "calc(100vh - 16rem)" }}
@@ -119,7 +131,7 @@ function CategoryColumn({
         {people.length === 0 ? (
           <button
             type="button"
-            onClick={() => onAddPerson(category)}
+            onClick={() => onAddPerson(label)}
             className="flex items-center justify-center gap-2 py-6 text-stone-400 dark:text-stone-500 hover:text-stone-500 dark:hover:text-stone-400 transition-colors cursor-pointer"
           >
             <span className="text-sm font-mono">Add first person</span>
@@ -152,7 +164,7 @@ function InlineAddPerson({
       name: trimmed,
       key: slugify(trimmed),
       emoji: emoji.trim() || null,
-      category: category === UNCATEGORIZED ? null : category,
+      category: category === NONE ? null : category,
     });
     people$[person.id].set(person);
     setName("");
@@ -194,44 +206,53 @@ function InlineAddPerson({
   );
 }
 
-export const PeopleBoardBuilder = observer(() => {
-  const allPeople = use$(people$);
-  const [addingToCategory, setAddingToCategory] = useState<string | null>(null);
+export const PeopleBoardBuilder = observer(
+  ({ groupBy, filter }: { groupBy: PeopleGroupBy; filter: string }) => {
+    const allPeople = use$(people$);
+    const [addingToGroup, setAddingToGroup] = useState<string | null>(null);
 
-  const people = Object.values(allPeople).filter((p) => !p.isSelf);
-  const groups = groupByCategory(people);
-  const categories = sortedCategories(groups);
+    let people = Object.values(allPeople).filter((p) => !p.isSelf);
+    if (filter) {
+      const q = filter.toLowerCase();
+      people = people.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          displayName(p).toLowerCase().includes(q),
+      );
+    }
 
-  // If no people exist at all, show a single empty-state column
-  if (categories.length === 0) {
+    const groups = groupPeople(people, groupBy);
+
+    if (groups.length === 0) {
+      return (
+        <div className="flex gap-4 overflow-x-auto px-4 py-4 h-full snap-x snap-mandatory scroll-smooth">
+          <PeopleColumn
+            label={NONE}
+            people={[]}
+            onAddPerson={(g) => setAddingToGroup(g)}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="flex gap-4 overflow-x-auto px-4 py-4 h-full snap-x snap-mandatory scroll-smooth">
-        <CategoryColumn
-          category={UNCATEGORIZED}
-          people={[]}
-          onAddPerson={(cat) => setAddingToCategory(cat)}
-        />
+        {groups.map((g) => (
+          <div key={g.key} className="flex flex-col">
+            <PeopleColumn
+              label={g.label}
+              people={g.people}
+              onAddPerson={() => setAddingToGroup(g.key)}
+            />
+            {addingToGroup === g.key && (
+              <InlineAddPerson
+                category={g.label}
+                onClose={() => setAddingToGroup(null)}
+              />
+            )}
+          </div>
+        ))}
       </div>
     );
-  }
-
-  return (
-    <div className="flex gap-4 overflow-x-auto px-4 py-4 h-full snap-x snap-mandatory scroll-smooth">
-      {categories.map((cat) => (
-        <div key={cat} className="flex flex-col">
-          <CategoryColumn
-            category={cat}
-            people={groups[cat]}
-            onAddPerson={(c) => setAddingToCategory(c)}
-          />
-          {addingToCategory === cat && (
-            <InlineAddPerson
-              category={cat}
-              onClose={() => setAddingToCategory(null)}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-});
+  },
+);

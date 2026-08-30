@@ -2,7 +2,7 @@ import { activeCycle$ } from "@/infrastructure/state/store";
 import {
   cycleDeckCollapsed$,
   isCommandPaletteOpen$,
-  plantViewMode$,
+  setPlantEntity,
 } from "@/infrastructure/state/ui-store";
 import type { Command } from "./types";
 
@@ -24,7 +24,6 @@ export const viewCommands: Command[] = [
     category: "Views",
     keywords: ["show", "hide", "cycle", "deck", "collapse"],
     action: () => {
-      // Only toggle cycle deck when an active cycle exists
       const cycle = activeCycle$.peek();
       if (cycle) {
         cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
@@ -32,13 +31,13 @@ export const viewCommands: Command[] = [
     },
   },
   {
-    id: "view.plant.areas",
-    label: "View Areas",
+    id: "view.plant.habits",
+    label: "View Habits",
     shortcut: "shift+1",
     category: "Views",
     keywords: ["areas", "plots", "habits", "plant"],
     action: () => {
-      plantViewMode$.set("areas");
+      setPlantEntity("habits");
     },
   },
   {
@@ -48,7 +47,7 @@ export const viewCommands: Command[] = [
     category: "Views",
     keywords: ["people", "contacts", "friends", "family"],
     action: () => {
-      plantViewMode$.set("people");
+      setPlantEntity("people");
     },
   },
   {
@@ -58,7 +57,6 @@ export const viewCommands: Command[] = [
     category: "Views",
     keywords: ["preferences", "configure"],
     action: () => {
-      // Open settings dialog
       console.log("Open settings");
     },
   },
