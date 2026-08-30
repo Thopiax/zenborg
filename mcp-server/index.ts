@@ -36,18 +36,23 @@ import { type RegistryPerson, selectPeopleToReach } from "./people.js";
 import { searchHabits, searchPeople, searchPlaces } from "./search.js";
 import { buildTagIndex, buildTagProfile } from "./tags.js";
 import {
+  CultivarSchema,
+  type Cultivar,
   areaHasMoments,
   computeCycleCascade,
   countMomentsInPhase,
   deriveRhythmFromSchedule,
   findAreaByIdOrName,
+  findCultivar,
   findCycleByIdOrName,
   findHabitByIdOrName,
   isAllocated,
   isBudgeted,
   isInDeck,
   isSpontaneous,
+  nextInRotation,
   normalizeAliases,
+  normalizeCultivars,
   normalizeRefs,
   normalizeSchedule,
   normalizeTags,
@@ -62,6 +67,7 @@ import {
   validateOneToThreeWords,
   validatePlaceUrl,
   validateRefs,
+  validateRotationAgainstHabit,
   withResolvedTimezone,
 } from "./validation.js";
 import {
@@ -548,6 +554,7 @@ defineTool(server, {
     rhythm: RhythmSchema.optional(),
     schedule: ScheduleInputSchema.optional(),
     placeIds: z.array(z.string()).optional(),
+    cultivars: z.array(CultivarSchema).optional(),
   },
   concise: (p) => conciseHabit((p as any).created),
   handler: async (params) => {
@@ -580,6 +587,7 @@ defineTool(server, {
     const habits = readCollection(VAULT_ROOT, "habits");
     const now = nowIso();
     const normalizedAliases = normalizeAliases(params.aliases, params.name);
+    const normalizedCultivars = normalizeCultivars(params.cultivars ?? []);
     const habit: Habit = {
       id: crypto.randomUUID(),
       name: params.name.trim(),
@@ -591,6 +599,7 @@ defineTool(server, {
       isArchived: false,
       order: params.order,
       ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
+      ...(normalizedCultivars.length > 0 ? { cultivars: normalizedCultivars } : {}),
       ...(params.description?.trim()
         ? { description: params.description.trim() }
         : {}),
@@ -630,6 +639,7 @@ defineTool(server, {
     rhythm: RhythmSchema.nullable().optional(),
     schedule: ScheduleInputSchema.nullable().optional(),
     placeIds: z.array(z.string()).nullable().optional(),
+    cultivars: z.array(CultivarSchema).nullable().optional(),
     archived: z
       .boolean()
       .optional()
@@ -717,6 +727,14 @@ defineTool(server, {
         next.aliases = renormalized;
       }
     }
+    if ("cultivars" in updates) {
+      const normalized = normalizeCultivars(updates.cultivars ?? []);
+      if (normalized.length === 0) {
+        delete next.cultivars;
+      } else {
+        next.cultivars = normalized;
+      }
+    }
     if ("schedule" in updates) {
       if (updates.schedule === null) {
         delete next.schedule;
@@ -756,9 +774,32 @@ defineTool(server, {
 
     habits[id] = next;
     writeCollection(VAULT_ROOT, "habits", habits);
+
+    let rotationOrphans: { planIds: string[]; note: string } | undefined;
+    if ("cultivars" in updates) {
+      const plans = readCollection(VAULT_ROOT, "cyclePlans");
+      const cultivarTags = new Set((next.cultivars ?? []).map((c) => c.tag));
+      const orphanedPlanIds: string[] = [];
+      for (const plan of Object.values(plans)) {
+        if (
+          plan.habitId === id &&
+          plan.cultivarRotation?.some((t) => !cultivarTags.has(t))
+        ) {
+          orphanedPlanIds.push(plan.id);
+        }
+      }
+      if (orphanedPlanIds.length > 0) {
+        rotationOrphans = {
+          planIds: orphanedPlanIds,
+          note: "Some cycle plan rotations reference cultivar tags that were removed. Update the rotation or it will skip those entries.",
+        };
+      }
+    }
+
     return ok({
       updated: next,
       ...(deletedPlans > 0 ? { deletedPlans } : {}),
+      ...(rotationOrphans ? { rotationOrphans } : {}),
     });
   },
 });
@@ -2252,7 +2293,12 @@ function buildMoment(params: {
  */
 type RunAddMomentResult =
   | { err: string }
-  | { created: Moment; dayViewOverflow?: { count: number } };
+  | {
+      created: Moment;
+      dayViewOverflow?: { count: number };
+      cultivarUsed?: string;
+      rotationProgress?: { position: number; total: number };
+    };
 
 function runAddMoment(
   input: Parameters<typeof resolveAddMoment>[0],
@@ -2279,6 +2325,10 @@ function runAddMoment(
     created: result.moment,
     ...(result.dayViewOverflow
       ? { dayViewOverflow: { count: result.dayViewOverflow } }
+      : {}),
+    ...(result.cultivarUsed ? { cultivarUsed: result.cultivarUsed } : {}),
+    ...(result.rotationProgress
+      ? { rotationProgress: result.rotationProgress }
       : {}),
   };
 }
@@ -2332,12 +2382,20 @@ defineTool(server, {
     customMetric: CustomMetricSchema.optional(),
     refs: z.array(z.string()).optional(),
     status: z.enum(["tentative", "accepted"]).optional(),
+    cultivar: z
+      .union([z.string(), CultivarSchema])
+      .optional()
+      .describe(
+        "Cultivar tag (string) to resolve against the habit, or a full { tag, params? } object for standalone moments. Omit for round-robin default when a rotation exists.",
+      ),
   },
   concise: (p) => {
     const d = p as Record<string, unknown>;
     const m = d.created as Moment;
     const out: Record<string, unknown> = conciseMoment(m);
     if (d.dayViewOverflow) out.dayViewOverflow = d.dayViewOverflow;
+    if (d.cultivarUsed) out.cultivarUsed = d.cultivarUsed;
+    if (d.rotationProgress) out.rotationProgress = d.rotationProgress;
     if (m.cyclePlanId) {
       out.fromPlan = true;
     }

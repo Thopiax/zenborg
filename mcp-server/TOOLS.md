@@ -51,6 +51,17 @@ When `truncated` is true, pass `nextCursor` back with the same filters.
 
 ---
 
+## Cultivars
+
+A **cultivar** is a named session template on a habit: `{ tag, params? }`. A habit may declare several cultivars (e.g. `recovery`, `long-run`, `speed`). A CyclePlan may set a `cultivarRotation` — an ordered list of tags that rotate round-robin across allocations.
+
+- `create_habit` / `update_habit`: manage `cultivars` on the habit.
+- `add_moment { cultivar }`: pass a tag (string) to select a specific cultivar, or a full `{ tag, params? }` object for standalone moments. Omit for round-robin default when the covering CyclePlan has a `cultivarRotation`.
+- Moments snapshot the full cultivar at creation and mirror the tag into `moment.tags`, so existing tag infrastructure sees cultivar usage without changes.
+- Response includes `cultivarUsed` and `rotationProgress` when a cultivar was applied.
+
+---
+
 ## Tools by category
 
 ### Areas
@@ -69,14 +80,14 @@ When `truncated` is true, pass `nextCursor` back with the same filters.
 |---|---|---|
 | `list_habits` | `areaId?, includeArchived?, health?, limit?, cursor?` | Paginated. `health: "wilting"` filters to wilting habits. |
 | `get_habit` | `idOrName` | Includes `health`, `daysSinceLast`, `effectiveRhythm` in response. |
-| `create_habit` | `name, areaId, order, ...` | Name 1–3 words. `schedule` fills `rhythm`+`phase`.  `schedule.timezone` is an optional IANA zone: absent = floating, present = anchored to a fixed instant. |
-| `update_habit` | `id, ...fields, archived?` | `archived: true` cascades: deletes cycle plans, preserves moments. A `schedule` rewrite that omits `timezone` keeps the stored anchor; `schedule.timezone: null` unanchors. |
+| `create_habit` | `name, areaId, order, ...` | Name 1–3 words. `schedule` fills `rhythm`+`phase`. `cultivars` sets named session templates. `schedule.timezone` is an optional IANA zone: absent = floating, present = anchored to a fixed instant. |
+| `update_habit` | `id, ...fields, archived?` | `archived: true` cascades: deletes cycle plans, preserves moments. `cultivars: null` clears. Warns if removed tags orphan a CyclePlan rotation. |
 
 ### Moments
 
 | Tool | Key params | Notes |
 |---|---|---|
-| `add_moment` | `habitId?, name?, areaId?, day?, phase?, fromPlan?, ...` | **The one creation path.** `habitId` → inherit from habit. `day` → allocate. `fromPlan: true` → link to cycle budget. Reports `dayViewOverflow` past 3. |
+| `add_moment` | `habitId?, name?, areaId?, day?, phase?, fromPlan?, cultivar?, ...` | **The one creation path.** `habitId` → inherit from habit. `day` → allocate. `fromPlan: true` → link to cycle budget. `cultivar` → tag or `{ tag, params? }`. Reports `dayViewOverflow`, `cultivarUsed`, `rotationProgress`. |
 | `update_moment` | `id, day?, order?, phase?, ...` | `day` allocates/moves. `day: null` returns spontaneous moments to drawing board (refuses plan-linked — use `unallocate_moment`). |
 | `list_moments` | `filter?, limit?, cursor?` | Paginated. Filter: `areaId, habitId, cycleId, day, phase, allocation, tags`. |
 | `get_moment` | `id` | |
