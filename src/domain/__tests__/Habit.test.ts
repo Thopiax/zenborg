@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Cultivar } from "@/domain/shared/cultivar-schema";
 import type { Rhythm } from "@/domain/value-objects/Rhythm";
 import {
   archiveHabit,
@@ -297,6 +298,79 @@ describe("Habit aliases", () => {
     if (isHabitError(renamed)) throw new Error(renamed.error);
     // alias "Lorenzo" now matches name → dropped
     expect(renamed.aliases).toBeUndefined();
+  });
+});
+
+describe("Habit cultivars", () => {
+  it("createHabit stores normalized cultivars", () => {
+    const cultivars: Cultivar[] = [
+      { tag: "recovery", params: { durationMin: 30 } },
+      { tag: "speed" },
+    ];
+    const result = createHabit({
+      name: "Running",
+      areaId: "area-123",
+      order: 0,
+      cultivars,
+    });
+    if (isHabitError(result)) throw new Error(result.error);
+    expect(result.cultivars).toEqual(cultivars);
+  });
+
+  it("createHabit omits cultivars key when empty array provided", () => {
+    const result = createHabit({
+      name: "Running",
+      areaId: "area-123",
+      order: 0,
+      cultivars: [],
+    });
+    if (isHabitError(result)) throw new Error(result.error);
+    expect("cultivars" in result).toBe(false);
+  });
+
+  it("createHabit normalizes and dedupes cultivar tags", () => {
+    const result = createHabit({
+      name: "Running",
+      areaId: "area-123",
+      order: 0,
+      cultivars: [{ tag: "Recovery" }, { tag: "recovery" }],
+    });
+    if (isHabitError(result)) throw new Error(result.error);
+    expect(result.cultivars).toEqual([{ tag: "recovery" }]);
+  });
+
+  it("updateHabit can add cultivars", () => {
+    const created = createHabit({
+      name: "Running",
+      areaId: "area-123",
+      order: 0,
+    });
+    if (isHabitError(created)) throw new Error(created.error);
+
+    const updated = updateHabit(created, {
+      cultivars: [{ tag: "recovery" }],
+    });
+    if (isHabitError(updated)) throw new Error(updated.error);
+    expect(updated.cultivars).toEqual([{ tag: "recovery" }]);
+  });
+
+  it("updateHabit clears cultivars when set to empty array", () => {
+    const created = createHabit({
+      name: "Running",
+      areaId: "area-123",
+      order: 0,
+      cultivars: [{ tag: "recovery" }],
+    });
+    if (isHabitError(created)) throw new Error(created.error);
+
+    const updates: Partial<Habit> = {};
+    Object.defineProperty(updates, "cultivars", {
+      value: [],
+      enumerable: true,
+    });
+    const updated = updateHabit(created, updates);
+    if (isHabitError(updated)) throw new Error(updated.error);
+    expect("cultivars" in updated).toBe(false);
   });
 });
 

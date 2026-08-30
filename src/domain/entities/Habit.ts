@@ -1,4 +1,8 @@
 import { normalizeTag } from "@/domain/services/TagService";
+import {
+  type Cultivar,
+  normalizeCultivars,
+} from "@/domain/shared/cultivar-schema";
 import type { Attitude } from "../value-objects/Attitude";
 import type { Phase, PhaseConfig } from "../value-objects/Phase";
 import type { Rhythm } from "../value-objects/Rhythm";
@@ -46,6 +50,7 @@ export interface Habit {
    * back to those tags until the migration moves them here.
    */
   placeIds?: string[];
+  cultivars?: Cultivar[];
   createdAt: string;
   updatedAt: string;
 }
@@ -95,6 +100,7 @@ export interface CreateHabitProps {
   emoji?: string | null;
   description?: string;
   guidance?: string;
+  cultivars?: Cultivar[];
   rhythm?: Rhythm;
   schedule?: Schedule;
   /**
@@ -222,6 +228,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     []) as string[];
 
   const normalizedAliases = normalizeAliases(aliases, name);
+  const normalizedCultivars = normalizeCultivars(props.cultivars ?? []);
 
   const trimmedDescription = description?.trim();
   if (
@@ -262,6 +269,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     isArchived: false,
     order,
     ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
+    ...(normalizedCultivars.length > 0 ? { cultivars: normalizedCultivars } : {}),
     ...(trimmedDescription ? { description: trimmedDescription } : {}),
     ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
     ...(effectiveRhythm ? { rhythm: effectiveRhythm } : {}),
@@ -335,6 +343,14 @@ export function updateHabit(
       delete merged.aliases;
     } else {
       merged.aliases = renormalized;
+    }
+  }
+  if ("cultivars" in updates) {
+    const normalized = normalizeCultivars(updates.cultivars ?? []);
+    if (normalized.length === 0) {
+      delete merged.cultivars;
+    } else {
+      merged.cultivars = normalized;
     }
   }
   if ("schedule" in updates && updates.schedule === undefined) {
