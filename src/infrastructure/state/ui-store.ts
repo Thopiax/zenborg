@@ -296,6 +296,7 @@ export interface HabitFormState {
   phase: Phase | null;
   tags: string[];
   aliases: string[];
+  cultivars: Array<{ tag: string; params?: Record<string, string | number> }>;
   rhythm: Rhythm | null;
   /** For edit mode: the habit ID being edited */
   editingHabitId: string | null;
@@ -311,6 +312,7 @@ export const habitFormState$ = observable<HabitFormState>({
   phase: null,
   tags: [],
   aliases: [],
+  cultivars: [],
   rhythm: null,
   editingHabitId: null,
 });
@@ -336,6 +338,7 @@ export function openHabitFormCreate(params?: {
     phase: params?.phase ?? null,
     tags: [],
     aliases: [],
+    cultivars: [],
     rhythm: null,
     editingHabitId: null,
   });
@@ -354,6 +357,7 @@ export function openHabitFormEdit(
     phase: Phase | null;
     tags: string[];
     aliases?: string[];
+    cultivars?: Array<{ tag: string; params?: Record<string, string | number> }>;
     rhythm?: Rhythm | null;
   },
 ) {
@@ -367,6 +371,7 @@ export function openHabitFormEdit(
     phase: habit.phase,
     tags: habit.tags || [],
     aliases: habit.aliases ?? [],
+    cultivars: habit.cultivars ?? [],
     rhythm: habit.rhythm ?? null,
     editingHabitId: habitId,
   });
@@ -386,6 +391,7 @@ export function closeHabitForm() {
     phase: null,
     tags: [],
     aliases: [],
+    cultivars: [],
     rhythm: null,
     editingHabitId: null,
   });
