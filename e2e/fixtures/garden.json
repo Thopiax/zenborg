@@ -170,8 +170,8 @@
         "id": "a1b849e1-9bfd-5dae-915f-4c128d1971c1",
         "name": "linguaggio",
         "areaId": "3513c3e6-a2ae-5fbe-8b40-25b78007b4e9",
-        "attitude": null,
-        "phase": null,
+        "attitude": "BUILDING",
+        "phase": "MORNING",
         "tags": ["gap", "gap-screen", "gap-5m"],
         "emoji": "🇮🇹",
         "isArchived": false,
@@ -222,8 +222,8 @@
         "id": "89b49dad-632b-512b-b4d8-4df9b9a595ec",
         "name": "long walk",
         "areaId": "77b68395-1366-52cb-a51b-a9bd0644fa99",
-        "attitude": null,
-        "phase": null,
+        "attitude": "KEEPING",
+        "phase": "AFTERNOON",
         "tags": ["outdoor"],
         "emoji": "🥾",
         "isArchived": false,
@@ -235,7 +235,7 @@
         "id": "47b14621-75a6-5522-a82d-b902e671d2b0",
         "name": "hand plane",
         "areaId": "000cc1e2-1a83-5adb-a62a-66432f7be910",
-        "attitude": null,
+        "attitude": "BEGINNING",
         "phase": null,
         "tags": ["shop", "loud"],
         "emoji": "🪚",
@@ -249,7 +249,95 @@
     "cyclePlans": {},
     "phaseConfigs": {},
     "metricLogs": {},
-    "dayNotes": {}
+    "dayNotes": {},
+    "people": {
+      "p1-alice-family": {
+        "id": "p1-alice-family",
+        "name": "Alice",
+        "key": "alice",
+        "cadence": null,
+        "status": "active",
+        "category": "family",
+        "basePlace": "london",
+        "emoji": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "p2-bob-friends": {
+        "id": "p2-bob-friends",
+        "name": "Bob",
+        "key": "bob",
+        "cadence": null,
+        "status": "active",
+        "category": "friends",
+        "basePlace": "berlin",
+        "emoji": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "p3-carol-family": {
+        "id": "p3-carol-family",
+        "name": "Carol",
+        "key": "carol",
+        "cadence": null,
+        "status": "active",
+        "category": "family",
+        "basePlace": "london",
+        "emoji": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "p4-dana-friends": {
+        "id": "p4-dana-friends",
+        "name": "Dana",
+        "key": "dana",
+        "cadence": null,
+        "status": "paused",
+        "category": "friends",
+        "basePlace": null,
+        "emoji": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "p5-eve-nocat": {
+        "id": "p5-eve-nocat",
+        "name": "Eve",
+        "key": "eve",
+        "cadence": null,
+        "status": "active",
+        "category": null,
+        "basePlace": null,
+        "emoji": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      }
+    },
+    "places": {
+      "pl1-london": {
+        "id": "pl1-london",
+        "name": "London",
+        "key": "london",
+        "parentKey": "uk",
+        "address": null,
+        "coordinates": null,
+        "emoji": "🇬🇧",
+        "url": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "pl2-berlin": {
+        "id": "pl2-berlin",
+        "name": "Berlin",
+        "key": "berlin",
+        "parentKey": "germany",
+        "address": null,
+        "coordinates": null,
+        "emoji": "🇩🇪",
+        "url": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      }
+    }
   },
   "metadata": {
     "totalMoments": 8,
@@ -259,6 +347,8 @@
     "totalCyclePlans": 0,
     "totalPhaseConfigs": 0,
     "totalMetricLogs": 0,
-    "totalDayNotes": 0
+    "totalDayNotes": 0,
+    "totalPeople": 5,
+    "totalPlaces": 2
   }
 }
