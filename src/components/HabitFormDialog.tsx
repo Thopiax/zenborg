@@ -512,10 +512,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
 
             {/* Variants - Show child habits if any exist (edit mode only) */}
             {mode === "edit" && editingHabitId && (
-              <ChildHabitsList
-                parentHabitId={editingHabitId}
-                areaId={areaId}
-              />
+              <ChildHabitsList parentHabitId={editingHabitId} areaId={areaId} />
             )}
 
             {/* Rhythm Selector - Show as button if selected */}
@@ -845,7 +842,10 @@ function AliasesSelector({
 function ChildHabitsList({
   parentHabitId,
   areaId,
-}: { parentHabitId: string; areaId: string }) {
+}: {
+  parentHabitId: string;
+  areaId: string;
+}) {
   const allHabits = use$(habits$);
   const children = Object.values(allHabits).filter(
     (h) => h.parentHabitId === parentHabitId && !h.isArchived,

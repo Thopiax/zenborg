@@ -3483,9 +3483,10 @@ defineTool(server, {
     window: z.object({
       phases: z
         .array(z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]))
+        .max(1)
         .optional()
         .describe(
-          "Phase names — resolved to hours at declaration, frozen with cutFrom provenance",
+          "One phase name — resolved to hours at declaration, frozen with cutFrom provenance",
         ),
       weekdays: z
         .array(z.enum(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]))

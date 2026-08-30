@@ -287,17 +287,14 @@ const main = async (): Promise<void> => {
   if (!crossedFence) allow();
   const fence = crossedFence!;
 
-  const { crossings: taken, declined: passed } = tally(fence.id);
+  const { crossings: taken, declined: passed, at } = tally(fence.id);
 
   // Windowed tally reset: if last crossing is from a different day, reset
   // ponytail: daily reset; upgrade to per-window when phase boundaries matter
   let effectiveCrossings = taken;
-  if (fence.primitives[0]?.kind === "schedule") {
-    const state = tally(fence.id);
-    if (state.at > 0) {
-      const lastDate = new Date(state.at).toDateString();
-      if (lastDate !== new Date().toDateString()) effectiveCrossings = 0;
-    }
+  if (fence.primitives[0]?.kind === "schedule" && at > 0) {
+    const lastDate = new Date(at).toDateString();
+    if (lastDate !== new Date().toDateString()) effectiveCrossings = 0;
   }
 
   // The randomised decision point. A rule shipped below probability 1 must do

@@ -415,8 +415,11 @@ function exitProblems(rule: RuleSpec): string[] {
       );
       continue;
     }
-    if (primitive.kind === "cooldown") {
-      const unlock = primitive.unlockPath;
+    // A schedule wraps a gate or a cooldown; the checks below are about the
+    // wrapped primitive's exit, not about `schedule` itself.
+    const inner = primitive.kind === "schedule" ? primitive.wraps : primitive;
+    if (inner.kind === "cooldown") {
+      const unlock = inner.unlockPath;
       if (unlock.type === "out_of_band" && unlock.note.trim() === "") {
         problems.push(
           "the lift is stated nowhere — an out-of-band exit whose note is empty is unreachable, which is no exit at all",
@@ -429,10 +432,7 @@ function exitProblems(rule: RuleSpec): string[] {
         problems.push("the unlock asks nothing, so there is nothing to answer");
       }
     }
-    if (
-      primitive.kind === "gate" &&
-      primitive.proceedAffordance.label.trim() === ""
-    ) {
+    if (inner.kind === "gate" && inner.proceedAffordance.label.trim() === "") {
       problems.push(
         "the gate's exit has no label, so there is nothing to press",
       );

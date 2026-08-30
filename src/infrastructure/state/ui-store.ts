@@ -345,7 +345,7 @@ export function openHabitFormCreate(params?: {
     aliases: [],
     parentHabitId: params?.parentHabitId ?? null,
     durationMin: null,
-  
+
     rhythm: null,
     editingHabitId: null,
   });
@@ -400,7 +400,7 @@ export function closeHabitForm() {
     phase: null,
     tags: [],
     aliases: [],
-  
+
     rhythm: null,
     editingHabitId: null,
   });
