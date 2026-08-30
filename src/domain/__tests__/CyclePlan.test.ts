@@ -25,27 +25,3 @@ describe("CyclePlan rhythmOverride", () => {
     expect(result.rhythmOverride).toBeUndefined();
   });
 });
-
-describe("CyclePlan cultivarRotation", () => {
-  it("createCyclePlan accepts cultivar rotation", () => {
-    const result = createCyclePlan({
-      cycleId: "cycle-1",
-      habitId: "habit-1",
-      budgetedCount: 6,
-      cultivarRotation: ["recovery", "long", "speed"],
-    });
-    if (isCyclePlanError(result)) throw new Error(result.error);
-    expect(result.cultivarRotation).toEqual(["recovery", "long", "speed"]);
-  });
-
-  it("createCyclePlan omits cultivarRotation when empty", () => {
-    const result = createCyclePlan({
-      cycleId: "cycle-1",
-      habitId: "habit-1",
-      budgetedCount: 6,
-      cultivarRotation: [],
-    });
-    if (isCyclePlanError(result)) throw new Error(result.error);
-    expect("cultivarRotation" in result).toBe(false);
-  });
-});

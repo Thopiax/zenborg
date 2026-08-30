@@ -1,8 +1,4 @@
 import { normalizeTag } from "@/domain/services/TagService";
-import {
-  type Cultivar,
-  normalizeCultivars,
-} from "@/domain/shared/cultivar-schema";
 import type { Attitude } from "../value-objects/Attitude";
 import type { Phase, PhaseConfig } from "../value-objects/Phase";
 import type { Rhythm } from "../value-objects/Rhythm";
@@ -52,7 +48,6 @@ export interface Habit {
   placeIds?: string[];
   parentHabitId?: string;
   durationMin?: number;
-  cultivars?: Cultivar[];
   createdAt: string;
   updatedAt: string;
 }
@@ -104,7 +99,6 @@ export interface CreateHabitProps {
   guidance?: string;
   parentHabitId?: string;
   durationMin?: number;
-  cultivars?: Cultivar[];
   rhythm?: Rhythm;
   schedule?: Schedule;
   /**
@@ -232,7 +226,6 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     []) as string[];
 
   const normalizedAliases = normalizeAliases(aliases, name);
-  const normalizedCultivars = normalizeCultivars(props.cultivars ?? []);
 
   const trimmedDescription = description?.trim();
   if (
@@ -275,7 +268,6 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
     ...(props.parentHabitId ? { parentHabitId: props.parentHabitId } : {}),
     ...(props.durationMin && props.durationMin > 0 ? { durationMin: props.durationMin } : {}),
-    ...(normalizedCultivars.length > 0 ? { cultivars: normalizedCultivars } : {}),
     ...(trimmedDescription ? { description: trimmedDescription } : {}),
     ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
     ...(effectiveRhythm ? { rhythm: effectiveRhythm } : {}),
@@ -356,14 +348,6 @@ export function updateHabit(
       merged.durationMin = updates.durationMin;
     } else {
       delete merged.durationMin;
-    }
-  }
-  if ("cultivars" in updates) {
-    const normalized = normalizeCultivars(updates.cultivars ?? []);
-    if (normalized.length === 0) {
-      delete merged.cultivars;
-    } else {
-      merged.cultivars = normalized;
     }
   }
   if ("schedule" in updates && updates.schedule === undefined) {

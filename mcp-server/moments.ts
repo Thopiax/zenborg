@@ -1,9 +1,6 @@
 import * as crypto from "node:crypto";
 import {
-  type Cultivar,
   countMomentsInPhase,
-  findCultivar,
-  nextInRotation,
   normalizeRefs,
   normalizeTags,
   phaseForStartTime,
@@ -46,7 +43,6 @@ export type AddMomentInput = {
   customMetric?: Moment["customMetric"];
   refs?: string[];
   status?: "tentative" | "accepted";
-  cultivar?: string | Cultivar;
 };
 
 export type AddMomentContext = {
@@ -63,8 +59,6 @@ export type AddMomentSuccess = {
   ok: true;
   moment: Moment;
   dayViewOverflow?: number;
-  cultivarUsed?: string;
-  rotationProgress?: { position: number; total: number };
 };
 export type AddMomentFailure = { ok: false; error: string };
 export type AddMomentResult = AddMomentSuccess | AddMomentFailure;
@@ -221,59 +215,10 @@ export function resolveAddMoment(
     cyclePlanId = plan.id;
   }
 
-  // 6b. Cultivar resolution
-  let selectedCultivar: Cultivar | undefined;
-  let cultivarUsed: string | undefined;
-  let rotationProgress: { position: number; total: number } | undefined;
-  if (input.cultivar) {
-    if (typeof input.cultivar === "string") {
-      if (!habit)
-        return fail(
-          "cultivar tag requires habitId — use a full { tag, params? } object for standalone moments",
-        );
-      selectedCultivar = findCultivar(habit.cultivars ?? [], input.cultivar);
-      if (!selectedCultivar)
-        return fail(
-          `Cultivar tag "${input.cultivar}" not found on habit "${habit.name}"`,
-        );
-    } else {
-      selectedCultivar = input.cultivar;
-    }
-  } else if (
-    input.fromPlan &&
-    cyclePlanId &&
-    habit
-  ) {
-    const plan = Object.values(ctx.cyclePlans).find(
-      (p) => p.id === cyclePlanId,
-    );
-    if (plan?.cultivarRotation && plan.cultivarRotation.length > 0) {
-      let allocatedForPlanCount = 0;
-      for (const m of Object.values(ctx.moments)) {
-        if (m.cyclePlanId === plan.id && m.day !== null) allocatedForPlanCount++;
-      }
-      const nextTag = nextInRotation(
-        plan.cultivarRotation,
-        allocatedForPlanCount,
-      );
-      selectedCultivar = findCultivar(habit.cultivars ?? [], nextTag);
-      if (selectedCultivar) {
-        rotationProgress = {
-          position: allocatedForPlanCount % plan.cultivarRotation.length,
-          total: plan.cultivarRotation.length,
-        };
-      }
-    }
-  }
-  if (selectedCultivar) cultivarUsed = selectedCultivar.tag;
-
   // 7. Allocation
   const nowIso = ctx.now.toISOString();
   const refs = normalizeRefs(input.refs);
   const tags = normalizeTags(effectiveTags);
-  if (selectedCultivar && !tags.includes(selectedCultivar.tag)) {
-    tags.push(selectedCultivar.tag);
-  }
   const placeIds =
     input.placeIds?.map(slugify).filter((k) => k.length > 0) ?? [];
 
@@ -315,7 +260,6 @@ export function resolveAddMoment(
     ...(placeIds.length > 0 ? { placeIds } : {}),
     ...(input.placeUrl !== undefined ? { placeUrl: input.placeUrl } : {}),
     ...(input.customMetric ? { customMetric: input.customMetric } : {}),
-    ...(selectedCultivar ? { cultivar: selectedCultivar } : {}),
     ...(refs.length > 0 ? { refs } : {}),
     ...(input.status !== undefined ? { status: input.status } : {}),
     createdAt: nowIso,
@@ -326,7 +270,5 @@ export function resolveAddMoment(
     ok: true,
     moment,
     ...(dayViewOverflow ? { dayViewOverflow } : {}),
-    ...(cultivarUsed ? { cultivarUsed } : {}),
-    ...(rotationProgress ? { rotationProgress } : {}),
   };
 }

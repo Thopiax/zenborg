@@ -23,7 +23,6 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { z } from "zod";
-import type { Cultivar } from "../src/domain/shared/cultivar-schema.js";
 import type { Cadence } from "./cadence.js";
 
 // ────────────────────────────────────────────────────────────────────────
@@ -196,7 +195,6 @@ export interface Habit {
   /** Where this practice can be done. Mirrors src/domain/entities/Habit.ts. */
   placeIds?: string[];
   durationMin?: number;
-  cultivars?: Cultivar[];
   createdAt: string;
   updatedAt: string;
 }
@@ -230,7 +228,6 @@ export interface CyclePlan {
   habitId: string;
   budgetedCount: number;
   rhythmOverride?: Rhythm;
-  cultivarRotation?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -248,7 +245,6 @@ export interface Moment {
   startTime?: string; // "HH:MM" — inherited from the habit's schedule, overridable
   durationMin?: number; // positive whole minutes
   emoji?: string | null;
-  cultivar?: Cultivar;
   customMetric?: CustomMetric;
   tags: string[] | null;
   /**

@@ -39,7 +39,6 @@ persistence path.
 | **CyclePlan** | a plot's budget for the season — one per (cycleId, habitId) |
 | **Phase** | time-of-day band — MORNING / AFTERNOON / EVENING / NIGHT |
 | **Attitude** | relationship mode — BEGINNING → RETURNING → KEEPING → BUILDING → PUSHING → BEING |
-| **Cultivar** | a named session template on a habit: tag + optional parameters (value object) |
 | **Rhythm / Health** | declared cadence, and the wilting signal derived from it |
 | **DayNote, MetricLog, HistoryEntry, Meta** | supporting records |
 
@@ -88,10 +87,6 @@ installed release app must not trash the real vault.
 and write the vault independently. **Any change to the vault's structured shape costs two
 implementations.** Weigh that before adding a format — it is the reason the sidecar
 convention below carries no structured state.
-
-`src/domain/shared/cultivar-schema.ts` is the first shared module imported by both
-the app (`src/domain/`) and the MCP server (`mcp-server/`), following the fences
-precedent. Future shape additions should consider this pattern over mirrored copies.
 
 Root resolution: `vault_root()` in `fs.rs`, mirrored in `resolveVault()` in `vault.ts`.
 They must stay in lockstep; they have drifted before.

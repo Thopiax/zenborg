@@ -87,7 +87,6 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     aliases,
     parentHabitId,
     durationMin,
-    cultivars,
     rhythm,
     editingHabitId,
   } = formState;
@@ -222,7 +221,6 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       aliases,
       parentHabitId: parentHabitId ?? undefined,
       durationMin: durationMin ?? undefined,
-      cultivars: cultivars.length > 0 ? cultivars : undefined,
       rhythm: rhythm ?? undefined,
     });
 
