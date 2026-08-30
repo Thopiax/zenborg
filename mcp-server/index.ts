@@ -89,6 +89,8 @@ import {
   type Relationship,
   RelationshipDirectionSchema,
   type Rhythm,
+  type Routine,
+  type RoutineEntry,
   RhythmSchema,
   readActiveMoment,
   readCollection,
@@ -136,6 +138,12 @@ import {
   stripNulls,
 } from "./serialize.js";
 import { defineTool, err, ok, type ToolResult } from "./tooling.js";
+import {
+  boundaryKey,
+  conciseRoutine,
+  VALID_BOUNDARIES,
+  validateRoutine,
+} from "./routines.js";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -1398,6 +1406,151 @@ defineTool(server, {
     delete rels[id];
     writeCollection(VAULT_ROOT, "relationships", rels);
     return ok({ deleted: removed });
+  },
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// ROUTINES — ordered habit sequences at phase boundaries
+// ────────────────────────────────────────────────────────────────────────
+
+defineTool(server, {
+  name: "list_routines",
+  description:
+    "List all routines. Each routine is an ordered sequence of habits that carries the day across a phase boundary.",
+  schema: {},
+  annotations: { readOnlyHint: true },
+  concise: (p) =>
+    (p as unknown[]).map((x) => conciseRoutine(x as Routine)),
+  handler: async () => {
+    const list = Object.values(readCollection(VAULT_ROOT, "routines"));
+    list.sort(
+      (a, b) =>
+        VALID_BOUNDARIES.indexOf(boundaryKey(a)) -
+        VALID_BOUNDARIES.indexOf(boundaryKey(b)),
+    );
+    return ok(list);
+  },
+});
+
+defineTool(server, {
+  name: "get_routine",
+  description:
+    'Get a routine by id or boundary key (e.g. "NIGHT->MORNING").',
+  schema: { idOrBoundary: z.string() },
+  annotations: { readOnlyHint: true },
+  concise: (p) => conciseRoutine(p as Routine),
+  handler: async ({ idOrBoundary }) => {
+    const routines = readCollection(VAULT_ROOT, "routines");
+    const routine =
+      routines[idOrBoundary] ??
+      Object.values(routines).find(
+        (r) => boundaryKey(r) === idOrBoundary,
+      );
+    if (!routine) return err(`Routine not found: ${idOrBoundary}`);
+    return ok(routine);
+  },
+});
+
+defineTool(server, {
+  name: "create_routine",
+  description: `Create a routine — an ordered habit sequence at a phase boundary. One routine per boundary (4 max). Valid boundaries: ${VALID_BOUNDARIES.join(", ")}. Each entry is { habitId, order }.`,
+  schema: {
+    name: z.string(),
+    from: PhaseSchema,
+    to: PhaseSchema,
+    entries: z.array(
+      z.object({ habitId: z.string(), order: z.number().int() }),
+    ),
+  },
+  concise: (p) => conciseRoutine((p as any).created),
+  handler: async ({ name, from, to, entries }) => {
+    const routines = readCollection(VAULT_ROOT, "routines");
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const problems = validateRoutine(
+      { from, to, entries },
+      habits,
+      routines,
+    );
+    if (problems.length > 0) return err(problems.join("; "));
+    const id = crypto.randomUUID();
+    const now = nowIso();
+    const routine: Routine = {
+      id,
+      name: name.trim(),
+      from,
+      to,
+      entries: [...entries].sort((a, b) => a.order - b.order),
+      createdAt: now,
+      updatedAt: now,
+    };
+    routines[id] = routine;
+    writeCollection(VAULT_ROOT, "routines", routines);
+    return ok({ created: routine });
+  },
+});
+
+defineTool(server, {
+  name: "update_routine",
+  description:
+    "Update a routine by id or boundary key. Provide `entries` to replace the full entry list. Other fields are patched.",
+  schema: {
+    idOrBoundary: z.string(),
+    name: z.string().optional(),
+    from: PhaseSchema.optional(),
+    to: PhaseSchema.optional(),
+    entries: z
+      .array(z.object({ habitId: z.string(), order: z.number().int() }))
+      .optional(),
+  },
+  concise: (p) => conciseRoutine((p as any).updated),
+  handler: async ({ idOrBoundary, ...updates }) => {
+    const routines = readCollection(VAULT_ROOT, "routines");
+    const found =
+      routines[idOrBoundary] ??
+      Object.values(routines).find(
+        (r) => boundaryKey(r) === idOrBoundary,
+      );
+    if (!found) return err(`Routine not found: ${idOrBoundary}`);
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const patched = { ...found };
+    if (updates.name !== undefined) patched.name = updates.name.trim();
+    if (updates.from !== undefined) patched.from = updates.from;
+    if (updates.to !== undefined) patched.to = updates.to;
+    if (updates.entries !== undefined) {
+      patched.entries = [...updates.entries].sort(
+        (a, b) => a.order - b.order,
+      );
+    }
+    const problems = validateRoutine(
+      { from: patched.from, to: patched.to, entries: patched.entries as RoutineEntry[] },
+      habits,
+      routines,
+      found.id,
+    );
+    if (problems.length > 0) return err(problems.join("; "));
+    patched.updatedAt = nowIso();
+    routines[found.id] = patched;
+    writeCollection(VAULT_ROOT, "routines", routines);
+    return ok({ updated: patched });
+  },
+});
+
+defineTool(server, {
+  name: "delete_routine",
+  description: "Remove a routine by id or boundary key.",
+  schema: { idOrBoundary: z.string() },
+  annotations: { destructiveHint: true },
+  handler: async ({ idOrBoundary }) => {
+    const routines = readCollection(VAULT_ROOT, "routines");
+    const found =
+      routines[idOrBoundary] ??
+      Object.values(routines).find(
+        (r) => boundaryKey(r) === idOrBoundary,
+      );
+    if (!found) return err(`Routine not found: ${idOrBoundary}`);
+    delete routines[found.id];
+    writeCollection(VAULT_ROOT, "routines", routines);
+    return ok({ deleted: found });
   },
 });
 

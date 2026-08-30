@@ -1,0 +1,75 @@
+import type { Habit, Phase, Routine, RoutineEntry } from "./vault.js";
+
+const PHASE_ORDER: readonly Phase[] = [
+  "MORNING",
+  "AFTERNOON",
+  "EVENING",
+  "NIGHT",
+];
+
+function phaseIndex(p: Phase): number {
+  return PHASE_ORDER.indexOf(p);
+}
+
+export function isAdjacentBoundary(from: Phase, to: Phase): boolean {
+  const fi = phaseIndex(from);
+  const ti = phaseIndex(to);
+  return (fi + 1) % PHASE_ORDER.length === ti;
+}
+
+export function boundaryKey(r: { from: Phase; to: Phase }): string {
+  return `${r.from}->${r.to}`;
+}
+
+export const VALID_BOUNDARIES = PHASE_ORDER.map((p, i) =>
+  boundaryKey({ from: p, to: PHASE_ORDER[(i + 1) % PHASE_ORDER.length] }),
+);
+
+export function validateRoutine(
+  input: { from: Phase; to: Phase; entries: RoutineEntry[] },
+  habits: Record<string, Habit>,
+  existingRoutines: Record<string, Routine>,
+  excludeId?: string,
+): string[] {
+  const problems: string[] = [];
+
+  if (!isAdjacentBoundary(input.from, input.to)) {
+    problems.push(
+      `${input.from}->${input.to} is not an adjacent boundary. Valid: ${VALID_BOUNDARIES.join(", ")}`,
+    );
+  }
+
+  const key = boundaryKey(input);
+  for (const r of Object.values(existingRoutines)) {
+    if (r.id !== excludeId && boundaryKey(r) === key) {
+      problems.push(
+        `Boundary ${key} already has a routine: "${r.name}" (${r.id})`,
+      );
+    }
+  }
+
+  const seenOrders = new Set<number>();
+  for (const entry of input.entries) {
+    const habit = habits[entry.habitId];
+    if (!habit) {
+      problems.push(`Habit not found: ${entry.habitId}`);
+    } else if (habit.isArchived) {
+      problems.push(`Habit "${habit.name}" (${entry.habitId}) is archived`);
+    }
+    if (seenOrders.has(entry.order)) {
+      problems.push(`Duplicate order: ${entry.order}`);
+    }
+    seenOrders.add(entry.order);
+  }
+
+  return problems;
+}
+
+export function conciseRoutine(r: Routine): Record<string, unknown> {
+  return {
+    id: r.id,
+    name: r.name,
+    boundary: boundaryKey(r),
+    entries: r.entries.length,
+  };
+}
