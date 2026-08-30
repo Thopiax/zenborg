@@ -50,6 +50,7 @@ export interface Habit {
    * back to those tags until the migration moves them here.
    */
   placeIds?: string[];
+  durationMin?: number;
   cultivars?: Cultivar[];
   createdAt: string;
   updatedAt: string;
@@ -100,6 +101,7 @@ export interface CreateHabitProps {
   emoji?: string | null;
   description?: string;
   guidance?: string;
+  durationMin?: number;
   cultivars?: Cultivar[];
   rhythm?: Rhythm;
   schedule?: Schedule;
@@ -269,6 +271,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     isArchived: false,
     order,
     ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
+    ...(props.durationMin && props.durationMin > 0 ? { durationMin: props.durationMin } : {}),
     ...(normalizedCultivars.length > 0 ? { cultivars: normalizedCultivars } : {}),
     ...(trimmedDescription ? { description: trimmedDescription } : {}),
     ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
@@ -343,6 +346,13 @@ export function updateHabit(
       delete merged.aliases;
     } else {
       merged.aliases = renormalized;
+    }
+  }
+  if ("durationMin" in updates) {
+    if (updates.durationMin && updates.durationMin > 0) {
+      merged.durationMin = updates.durationMin;
+    } else {
+      delete merged.durationMin;
     }
   }
   if ("cultivars" in updates) {

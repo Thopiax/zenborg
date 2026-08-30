@@ -1,7 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { AtSign, Clock, Layers, Timer, Trash2, X } from "lucide-react";
+import { AtSign, Clock, Layers, Plus, Timer, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
@@ -82,6 +82,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     phase,
     tags,
     aliases,
+    durationMin,
     cultivars,
     rhythm,
     editingHabitId,
@@ -217,6 +218,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       phase,
       tags: finalTags,
       aliases,
+      durationMin: durationMin ?? undefined,
       cultivars: cultivars.length > 0 ? cultivars : undefined,
       rhythm: rhythm ?? undefined,
     });
@@ -481,6 +483,41 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
               />
             )}
 
+            {/* Duration - Show as button if set */}
+            {durationMin && (
+              <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 w-full">
+                <Timer className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                <input
+                  type="number"
+                  min="1"
+                  max="480"
+                  value={durationMin}
+                  onChange={(e) => {
+                    const v = e.target.value
+                      ? Number.parseInt(e.target.value, 10)
+                      : null;
+                    habitFormState$.durationMin.set(v && v > 0 ? v : null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
+                    }
+                  }}
+                  className="w-16 bg-transparent font-mono text-sm outline-none"
+                />
+                <span className="font-mono text-sm text-stone-400">min</span>
+                <button
+                  type="button"
+                  onClick={() => habitFormState$.durationMin.set(null)}
+                  className="ml-auto text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             {/* Variants - Show as button if any set */}
             {cultivars.length > 0 && (
               <VariantsSelector
@@ -605,6 +642,18 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
                   </button>
                 }
               />
+            )}
+
+            {/* Duration - subtle label if not set */}
+            {!durationMin && (
+              <button
+                type="button"
+                onClick={() => habitFormState$.durationMin.set(30)}
+                className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+              >
+                <Timer className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <span className="text-xs font-mono">no duration</span>
+              </button>
             )}
 
             {/* Variants - subtle label if none */}
@@ -837,143 +886,186 @@ function VariantsSelector({
   onOpen,
   onClose,
   trigger,
-  collisionBoundary,
 }: VariantsSelectorProps) {
-  const [draft, setDraft] = useState("");
-
-  const commitDraft = () => {
-    const tag = draft
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "")
-      .slice(0, 20);
-    if (!tag) {
-      setDraft("");
-      return;
-    }
-    if (value.some((c) => c.tag === tag)) {
-      setDraft("");
-      return;
-    }
-    onChange([...value, { tag }]);
-    setDraft("");
-  };
+  const [addingOpen, setAddingOpen] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [draftDuration, setDraftDuration] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
 
   const removeAt = (index: number) => {
     onChange(value.filter((_, i) => i !== index));
   };
 
-  const setDuration = (index: number, mins: number | undefined) => {
-    const next = value.map((c, i) => {
-      if (i !== index) return c;
-      if (mins === undefined) {
-        const { durationMin: _, ...rest } = c.params ?? {};
-        return Object.keys(rest).length > 0 ? { tag: c.tag, params: rest } : { tag: c.tag };
-      }
-      return { ...c, params: { ...c.params, durationMin: mins } };
-    });
-    onChange(next);
+  const handleAddVariant = () => {
+    const tag = draftName
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .slice(0, 20);
+    if (!tag || value.some((c) => c.tag === tag)) return;
+
+    const mins = draftDuration ? Number.parseInt(draftDuration, 10) : undefined;
+    const params = mins && mins > 0 ? { durationMin: mins } : undefined;
+    onChange([...value, params ? { tag, params } : { tag }]);
+    setDraftName("");
+    setDraftDuration("");
+    setAddingOpen(false);
   };
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(isOpen) => {
-        if (isOpen) {
-          onOpen();
-        } else {
-          commitDraft();
-          onClose();
-        }
-      }}
-    >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-80 p-3 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm"
-        collisionBoundary={collisionBoundary}
-        side="bottom"
-        sideOffset={4}
-        onEscapeKeyDown={(e) => {
-          e.preventDefault();
-          setDraft("");
-          onClose();
-        }}
+    <>
+      <Popover
+        open={open}
+        onOpenChange={(isOpen) => (isOpen ? onOpen() : onClose())}
       >
-        <div className="flex items-center gap-1.5 mb-2">
-          <Layers className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />
-          <span className="text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
-            Variants
-          </span>
-        </div>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-80 p-3 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm"
+          side="bottom"
+          sideOffset={4}
+          onEscapeKeyDown={(e) => {
+            e.preventDefault();
+            onClose();
+          }}
+        >
+          <div className="flex items-center gap-1.5 mb-2">
+            <Layers className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />
+            <span className="text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
+              Variants
+            </span>
+          </div>
 
-        <div className="space-y-1.5 mb-2">
-          {value.map((cultivar, index) => (
-            <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: stable within edit session
-              key={`${cultivar.tag}-${index}`}
-              className="flex items-center gap-2 px-2 py-1.5 rounded bg-stone-100 dark:bg-stone-800"
-            >
-              <span className="text-xs font-mono text-stone-700 dark:text-stone-300 flex-1 min-w-0 truncate">
-                {cultivar.tag}
-              </span>
+          <div className="space-y-1.5 mb-3">
+            {value.map((cultivar, index) => (
+              <div
+                key={cultivar.tag}
+                className="flex items-center gap-2 px-2 py-1.5 rounded bg-stone-100 dark:bg-stone-800"
+              >
+                <span className="text-xs font-mono text-stone-700 dark:text-stone-300 flex-1 min-w-0 truncate">
+                  {cultivar.tag}
+                </span>
+                {typeof cultivar.params?.durationMin === "number" && (
+                  <span className="text-xs font-mono text-stone-400">
+                    {cultivar.params.durationMin}m
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeAt(index)}
+                  className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors flex-shrink-0"
+                  aria-label={`Remove variant ${cultivar.tag}`}
+                >
+                  <X className="w-3 h-3" strokeWidth={2} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              setAddingOpen(true);
+              setDraftName("");
+              setDraftDuration("");
+            }}
+            className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-mono text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors"
+          >
+            <Plus className="w-3 h-3" />
+            add variant
+          </button>
+        </PopoverContent>
+      </Popover>
+
+      {/* Add variant dialog — opens on top of the habit form */}
+      <Dialog open={addingOpen} onOpenChange={setAddingOpen}>
+        <DialogContent
+          className="p-0 gap-0 max-w-sm"
+          onEscapeKeyDown={(e) => {
+            e.preventDefault();
+            setAddingOpen(false);
+          }}
+          onOpenAutoFocus={() => {
+            setTimeout(() => nameRef.current?.focus(), 50);
+          }}
+        >
+          <DialogHeader className="border-b border-stone-200 dark:border-stone-700">
+            <DialogTitle className="text-sm font-medium text-stone-600 dark:text-stone-400">
+              New variant
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="px-6 py-6 space-y-4">
+            <div>
+              <label className="block text-xs font-mono text-stone-500 dark:text-stone-400 mb-1">
+                Name
+              </label>
               <input
-                type="number"
-                min="1"
-                max="480"
-                placeholder="min"
-                value={
-                  typeof cultivar.params?.durationMin === "number"
-                    ? cultivar.params.durationMin
-                    : ""
-                }
-                onChange={(e) => {
-                  const v = e.target.value ? Number.parseInt(e.target.value, 10) : undefined;
-                  setDuration(index, v && v > 0 ? v : undefined);
-                }}
+                ref={nameRef}
+                type="text"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
                     e.stopPropagation();
                     e.nativeEvent.stopImmediatePropagation();
+                    handleAddVariant();
                   }
                 }}
-                className="w-14 bg-transparent border-b border-stone-300 dark:border-stone-600 text-xs font-mono text-stone-600 dark:text-stone-400 text-right outline-none placeholder:text-stone-400"
+                placeholder="e.g. breakfast, recovery, push"
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-transparent font-mono text-lg outline-none focus:border-stone-400 dark:focus:border-stone-500"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-stone-500 dark:text-stone-400 mb-1">
+                Duration (optional)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max="480"
+                  value={draftDuration}
+                  onChange={(e) => setDraftDuration(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
+                      handleAddVariant();
+                    }
+                  }}
+                  placeholder="30"
+                  className="w-20 px-3 py-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-transparent font-mono text-lg outline-none focus:border-stone-400 dark:focus:border-stone-500"
+                />
+                <span className="text-sm font-mono text-stone-400">min</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-stone-200 dark:border-stone-700 px-6 py-4">
+            <div className="flex gap-2 ml-auto">
               <button
                 type="button"
-                onClick={() => removeAt(index)}
-                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors flex-shrink-0"
-                aria-label={`Remove variant ${cultivar.tag}`}
+                onClick={() => setAddingOpen(false)}
+                className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-200 hover:bg-stone-300 text-stone-900 dark:bg-stone-700 dark:hover:bg-stone-600 dark:text-stone-100 transition-colors"
               >
-                <X className="w-3 h-3" strokeWidth={2} />
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddVariant}
+                className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-200 dark:hover:bg-stone-300 dark:text-stone-900 transition-colors"
+              >
+                Add
               </button>
             </div>
-          ))}
-        </div>
-
-        <input
-          type="text"
-          value={draft}
-          autoCapitalize="none"
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === ",") {
-              e.preventDefault();
-              e.stopPropagation();
-              e.nativeEvent.stopImmediatePropagation();
-              commitDraft();
-            }
-          }}
-          placeholder="Add variant…"
-          className="w-full bg-transparent border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1.5 text-xs font-mono text-stone-700 dark:text-stone-300 placeholder:text-stone-400 focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
-        />
-
-        <p className="mt-2 text-[11px] font-mono text-stone-400 dark:text-stone-500">
-          Enter to add. Named session types for this habit.
-        </p>
-      </PopoverContent>
-    </Popover>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
