@@ -135,6 +135,30 @@ describe("declareWateringHours", () => {
     expect(Object.keys(stored()).length).toBe(countAfterFirst);
   });
 
+  it("re-declaring with fewer surfaces clears the stale ones", async () => {
+    const { d, stored } = deps();
+    await declareWateringHours(d, {
+      name: "test",
+      mode: "regular",
+      window: { phases: [Phase.MORNING] },
+      waters: ["Wellness"],
+      restricts: { areas: ["Craft"], paths: ["/Users/rafa/Developer/themia"] },
+    });
+    expect(stored()["watering:test:session"]).toBeDefined();
+
+    const result = await declareWateringHours(d, {
+      name: "test",
+      mode: "regular",
+      window: { phases: [Phase.MORNING] },
+      waters: ["Wellness"],
+      restricts: { areas: ["Craft"] },
+    });
+    if ("problems" in result) throw new Error(result.problems.join("; "));
+
+    expect(stored()["watering:test:session"]).toBeUndefined();
+    expect(stored()["watering:test:garden"]).toBeDefined();
+  });
+
   it("dry mode requires unlockNote", async () => {
     const { d } = deps();
     const result = await declareWateringHours(d, {

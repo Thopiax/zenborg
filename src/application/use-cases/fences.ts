@@ -272,7 +272,8 @@ export async function declareWateringHours(
 
   let window: WateringHoursWindow;
   if (input.window.phases && input.window.phases.length > 0) {
-    const phaseConfigs = await deps.garden.phaseConfigs();
+    const phaseConfigs: readonly PhaseConfigRef[] =
+      await deps.garden.phaseConfigs();
     const phase = input.window.phases[0];
     const config = phaseConfigs.find((c) => c.phase === phase);
     if (!config) {
@@ -327,7 +328,11 @@ export async function declareWateringHours(
   if (problems.length > 0) return { problems };
 
   const all = await deps.store.read();
-  const next = { ...all };
+  const prefix = `watering:${input.name.trim()}:`;
+  const next: Record<string, RuleSpec> = {};
+  for (const [id, rule] of Object.entries(all)) {
+    if (!id.startsWith(prefix)) next[id] = rule;
+  }
   for (const rule of rules) next[rule.id] = rule;
   await deps.store.write(next);
   return { declared: rules, standing: Object.keys(next).length };
