@@ -6,8 +6,14 @@ import { useState } from "react";
 import { displayName, createPerson } from "@/domain/entities/Person";
 import type { Person } from "@/domain/entities/Person";
 import { slugify } from "@/domain/entities/Moment";
+import { PersonFormDialog } from "@/components/PersonFormDialog";
 import { people$, places$ } from "@/infrastructure/state/store";
-import type { PeopleGroupBy } from "@/infrastructure/state/ui-store";
+import {
+  closePersonForm,
+  openPersonFormEdit,
+  personFormState$,
+  type PeopleGroupBy,
+} from "@/infrastructure/state/ui-store";
 import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +81,11 @@ function PersonCard({ person }: { person: Person }) {
     : null;
 
   return (
-    <div className="group flex items-center gap-2 px-3 py-3 rounded-md bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors">
+    <button
+      type="button"
+      onClick={() => openPersonFormEdit(person.id, person)}
+      className="group w-full flex items-center gap-2 px-3 py-3 rounded-md bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors text-left"
+    >
       <span className="text-lg flex-shrink-0">
         {person.emoji || "👤"}
       </span>
@@ -94,7 +104,79 @@ function PersonCard({ person }: { person: Person }) {
           paused
         </span>
       )}
-    </div>
+    </button>
+  );
+}
+
+function EmptyCategoryColumn({
+  onCreateCategory,
+}: {
+  onCreateCategory: (name: string) => void;
+}) {
+  const [isCreating, setIsCreating] = useState(false);
+  const [name, setName] = useState("");
+
+  const handleSave = () => {
+    if (name.trim()) {
+      onCreateCategory(name.trim());
+    }
+    setIsCreating(false);
+    setName("");
+  };
+
+  if (isCreating) {
+    return (
+      <div
+        className={cn(
+          "flex flex-col snap-start rounded-lg overflow-hidden",
+          columnWidth.scrollableClassName,
+        )}
+      >
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <User className="w-4 h-4 text-stone-400 flex-shrink-0" />
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); handleSave(); }
+                if (e.key === "Escape") { setIsCreating(false); setName(""); }
+              }}
+              autoFocus
+              placeholder="Category name..."
+              className="flex-1 min-w-0 bg-transparent text-sm font-mono font-medium text-stone-700 dark:text-stone-300 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+            />
+          </div>
+        </div>
+        <div className="h-[3px] mx-4 bg-stone-300 dark:bg-stone-600" />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setIsCreating(true)}
+      className={cn(
+        "group flex flex-col snap-start rounded-lg overflow-hidden text-left transition-colors cursor-pointer",
+        columnWidth.scrollableClassName,
+      )}
+    >
+      <div className="px-4 py-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="text-xl flex-shrink-0 w-8 h-8 flex items-center justify-center rounded group-hover:bg-stone-100 dark:group-hover:bg-stone-800 transition-colors">
+            <Plus className="w-5 h-5 text-stone-400 dark:text-stone-500 group-hover:text-stone-600 dark:group-hover:text-stone-300 transition-colors" />
+          </div>
+          <h3 className="text-sm font-mono font-medium text-stone-400 dark:text-stone-500 group-hover:text-stone-600 dark:group-hover:text-stone-300 transition-colors truncate">
+            New category
+          </h3>
+        </div>
+      </div>
+      <div className="h-[3px] mx-4 mb-2 bg-stone-200/60 dark:bg-stone-700/40 group-hover:bg-stone-300 dark:group-hover:bg-stone-600 transition-colors" />
+      <div className="flex-1 p-4 min-h-[200px]" />
+    </button>
   );
 }
 
@@ -244,19 +326,13 @@ export const PeopleBoardBuilder = observer(
       groups = groups.filter((g) => g.people.length > 0);
     }
 
-    if (groups.length === 0) {
-      return (
-        <div className="flex gap-4 overflow-x-auto px-4 py-4 h-full snap-x snap-mandatory scroll-smooth">
-          <PeopleColumn
-            label={NONE_LABELS[groupBy]}
-            people={[]}
-            onAddPerson={(g) => setAddingToGroup(g)}
-          />
-        </div>
-      );
-    }
+    const handleCreateCategory = (categoryName: string) => {
+      // Creating a category just opens the add-person form for that category
+      setAddingToGroup(categoryName);
+    };
 
     return (
+      <>
       <div className="flex gap-4 overflow-x-auto px-4 py-4 h-full snap-x snap-mandatory scroll-smooth">
         {groups.map((g) => (
           <div key={g.key} className="flex flex-col">
@@ -273,7 +349,46 @@ export const PeopleBoardBuilder = observer(
             )}
           </div>
         ))}
+
+        {groupBy === "category" && (
+          <EmptyCategoryColumn onCreateCategory={handleCreateCategory} />
+        )}
       </div>
+
+      <PersonFormDialog
+        onSave={(props) => {
+          const formState = personFormState$.peek();
+          if (formState.mode === "edit" && formState.editingPersonId) {
+            const key = slugify(props.name);
+            people$[formState.editingPersonId].set({
+              ...people$[formState.editingPersonId].peek(),
+              ...props,
+              key,
+              updatedAt: new Date().toISOString(),
+            });
+          } else {
+            const person = createPerson({
+              name: props.name,
+              key: slugify(props.name),
+              emoji: props.emoji,
+              aliases: props.aliases,
+              category: props.category,
+              basePlace: props.basePlace,
+              cadence: props.cadence,
+            });
+            people$[person.id].set(person);
+          }
+          closePersonForm();
+        }}
+        onDelete={() => {
+          const formState = personFormState$.peek();
+          if (formState.editingPersonId) {
+            people$[formState.editingPersonId].delete();
+            closePersonForm();
+          }
+        }}
+      />
+    </>
     );
   },
 );

@@ -471,6 +471,92 @@ export function closeArchiveAreaDialog() {
   });
 }
 
+// ============================================================================
+// Person Form State
+// ============================================================================
+
+export interface PersonFormState {
+  open: boolean;
+  mode: "create" | "edit";
+  name: string;
+  emoji: string | null;
+  aliases: string[];
+  category: string | null;
+  basePlace: string | null;
+  cadence: import("@/domain/value-objects/Cadence").Cadence | null;
+  status: "active" | "paused";
+  editingPersonId: string | null;
+}
+
+export const personFormState$ = observable<PersonFormState>({
+  open: false,
+  mode: "create",
+  name: "",
+  emoji: null,
+  aliases: [],
+  category: null,
+  basePlace: null,
+  cadence: null,
+  status: "active",
+  editingPersonId: null,
+});
+
+export function openPersonFormCreate(params?: { category?: string }) {
+  personFormState$.set({
+    open: true,
+    mode: "create",
+    name: "",
+    emoji: null,
+    aliases: [],
+    category: params?.category ?? null,
+    basePlace: null,
+    cadence: null,
+    status: "active",
+    editingPersonId: null,
+  });
+}
+
+export function openPersonFormEdit(
+  personId: string,
+  person: {
+    name: string;
+    emoji: string | null;
+    aliases?: string[];
+    category: string | null;
+    basePlace: string | null;
+    cadence: import("@/domain/value-objects/Cadence").Cadence | null;
+    status: "active" | "paused";
+  },
+) {
+  personFormState$.set({
+    open: true,
+    mode: "edit",
+    name: person.name,
+    emoji: person.emoji,
+    aliases: person.aliases ?? [],
+    category: person.category,
+    basePlace: person.basePlace,
+    cadence: person.cadence,
+    status: person.status,
+    editingPersonId: personId,
+  });
+}
+
+export function closePersonForm() {
+  personFormState$.set({
+    open: false,
+    mode: "create",
+    name: "",
+    emoji: null,
+    aliases: [],
+    category: null,
+    basePlace: null,
+    cadence: null,
+    status: "active",
+    editingPersonId: null,
+  });
+}
+
 /**
  * Command Palette visibility
  * Ephemeral - not persisted
