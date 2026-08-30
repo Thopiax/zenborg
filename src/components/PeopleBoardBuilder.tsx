@@ -3,7 +3,11 @@
 import { observer, use$ } from "@legendapp/state/react";
 import { Plus, User } from "lucide-react";
 import { useState } from "react";
-import { displayName, createPerson } from "@/domain/entities/Person";
+import {
+  displayName,
+  createPerson,
+  normalizeAliases,
+} from "@/domain/entities/Person";
 import type { Person } from "@/domain/entities/Person";
 import { slugify } from "@/domain/entities/Moment";
 import { PersonFormDialog } from "@/components/PersonFormDialog";
@@ -358,20 +362,31 @@ export const PeopleBoardBuilder = observer(
       <PersonFormDialog
         onSave={(props) => {
           const formState = personFormState$.peek();
+          const name = props.name.trim();
+          if (!name) return;
+          const key = slugify(name);
+          const aliases = normalizeAliases(props.aliases, name);
+
           if (formState.mode === "edit" && formState.editingPersonId) {
-            const key = slugify(props.name);
+            const existing = people$[formState.editingPersonId].peek();
             people$[formState.editingPersonId].set({
-              ...people$[formState.editingPersonId].peek(),
-              ...props,
+              ...existing,
+              name,
               key,
+              aliases: aliases.length > 0 ? aliases : undefined,
+              emoji: props.emoji,
+              category: props.category,
+              basePlace: props.basePlace,
+              cadence: props.cadence,
+              status: props.status,
               updatedAt: new Date().toISOString(),
             });
           } else {
             const person = createPerson({
-              name: props.name,
-              key: slugify(props.name),
+              name,
+              key,
               emoji: props.emoji,
-              aliases: props.aliases,
+              aliases,
               category: props.category,
               basePlace: props.basePlace,
               cadence: props.cadence,

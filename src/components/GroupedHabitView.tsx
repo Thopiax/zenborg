@@ -350,6 +350,8 @@ function GroupColumn({
   );
 }
 
+const DND_ENABLED_GROUPS: HabitGroupBy[] = ["attitude", "phase", "area"];
+
 function applyGroupChange(
   habitService: HabitService,
   habitId: string,
@@ -363,14 +365,6 @@ function applyGroupChange(
       break;
     case "phase":
       habitService.updateHabit(habitId, { phase: value as Phase | null });
-      break;
-    case "tag":
-      // ponytail: tag DnD replaces first tag only, add multi-tag drag if needed
-      if (value) {
-        habitService.updateHabit(habitId, { tags: [value] });
-      } else {
-        habitService.updateHabit(habitId, { tags: [] });
-      }
       break;
     case "area":
       if (value) habitService.updateHabit(habitId, { areaId: value });
@@ -440,6 +434,7 @@ export const GroupedHabitView = observer(
       };
 
       if (dragData?.type !== "grouped-habit") return;
+      if (!DND_ENABLED_GROUPS.includes(groupBy)) return;
 
       const targetGroupKey =
         overData?.targetGroupKey ?? overData?.sourceGroupKey;
@@ -481,7 +476,7 @@ export const GroupedHabitView = observer(
           <DragOverlay>
             {activeHabit ? (
               <div
-                className="flex items-center gap-2 px-3 py-3 rounded-md shadow-lg opacity-90"
+                className="flex items-center gap-2 px-3 py-3 rounded-md border border-stone-300 dark:border-stone-600 opacity-90"
                 style={{ backgroundColor: activeArea?.color, width: "22.5rem" }}
               >
                 <span className="text-lg">{activeHabit.emoji}</span>
