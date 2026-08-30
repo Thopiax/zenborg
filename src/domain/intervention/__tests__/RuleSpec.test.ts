@@ -1,6 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { type RuleSpec, validateRuleSpec } from "../RuleSpec";
 
+function ruleWithScope(scope: any): RuleSpec {
+  return {
+    id: "test-rule",
+    name: "test",
+    description: "test",
+    scope,
+    mechanism: "friction",
+    fadeEligibility: "manual",
+    outcome: {
+      claim: "attention returns",
+      measure: { kind: "next_span_in", areaIds: ["area-1"] },
+      windowMs: 600_000,
+    },
+    serves: { cycleId: "c-1", areaId: "area-1" },
+    deliveryProbability: 1,
+    primitives: [
+      {
+        kind: "gate",
+        trigger: { type: "entry" },
+        frictionType: { type: "confirmation" },
+        proceedAffordance: { label: "Cross", action: { type: "continue" } },
+      },
+    ],
+  };
+}
+
 const rule: RuleSpec = {
   id: "rule-area-drift",
   name: "area drift",
@@ -86,5 +112,39 @@ describe("validateRuleSpec", () => {
       deliveryProbability: 2,
     });
     expect(problems.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("validateRuleSpec — garden scope", () => {
+  it("accepts a garden scope with non-empty areaIds", () => {
+    const rule = ruleWithScope({ surface: "garden", areaIds: ["area-craft"] });
+    expect(validateRuleSpec(rule)).toEqual([]);
+  });
+
+  it("rejects a garden scope with empty areaIds", () => {
+    const rule = ruleWithScope({ surface: "garden", areaIds: [] });
+    expect(validateRuleSpec(rule)).toContainEqual(
+      expect.stringContaining("areaIds"),
+    );
+  });
+});
+
+describe("validateRuleSpec — session scope with tools", () => {
+  it("accepts a session scope with match and tools", () => {
+    const rule = ruleWithScope({
+      surface: "session",
+      paths: ["/Users/rafa/Developer"],
+      match: "inside",
+      tools: ["Edit", "Write"],
+    });
+    expect(validateRuleSpec(rule)).toEqual([]);
+  });
+
+  it("accepts a session scope without match (defaults to outside)", () => {
+    const rule = ruleWithScope({
+      surface: "session",
+      paths: ["/Users/rafa/Developer"],
+    });
+    expect(validateRuleSpec(rule)).toEqual([]);
   });
 });
