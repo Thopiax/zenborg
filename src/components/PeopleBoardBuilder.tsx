@@ -217,7 +217,15 @@ function InlineAddPerson({
 }
 
 export const PeopleBoardBuilder = observer(
-  ({ groupBy, filter }: { groupBy: PeopleGroupBy; filter: string }) => {
+  ({
+    groupBy,
+    filter,
+    showEmpty,
+  }: {
+    groupBy: PeopleGroupBy;
+    filter: string;
+    showEmpty: boolean;
+  }) => {
     const allPeople = use$(people$);
     const [addingToGroup, setAddingToGroup] = useState<string | null>(null);
 
@@ -231,7 +239,10 @@ export const PeopleBoardBuilder = observer(
       );
     }
 
-    const groups = groupPeople(people, groupBy);
+    let groups = groupPeople(people, groupBy);
+    if (!showEmpty) {
+      groups = groups.filter((g) => g.people.length > 0);
+    }
 
     if (groups.length === 0) {
       return (

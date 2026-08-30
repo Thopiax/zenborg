@@ -3,8 +3,12 @@
 import { observer, use$ } from "@legendapp/state/react";
 import type { Habit } from "@/domain/entities/Habit";
 import type { Area } from "@/domain/entities/Area";
-import { Attitude } from "@/domain/value-objects/Attitude";
+import {
+  Attitude,
+  ATTITUDE_METADATA,
+} from "@/domain/value-objects/Attitude";
 import { Phase } from "@/domain/value-objects/Phase";
+import { PHASE_STYLES } from "@/domain/value-objects/phaseStyles";
 import {
   activeAreas$,
   activeHabits$,
@@ -34,6 +38,34 @@ const NONE_LABELS: Record<HabitGroupBy, string> = {
   tag: "No tag",
 };
 
+function attitudeLabel(key: string): string {
+  if (key === NONE_KEY) return NONE_LABELS.attitude;
+  const meta = ATTITUDE_METADATA[key as Attitude];
+  return meta ? `${meta.icon} ${meta.label}` : key;
+}
+
+function phaseLabel(key: string): string {
+  if (key === NONE_KEY) return NONE_LABELS.phase;
+  const style = PHASE_STYLES[key as Phase];
+  return style ? `${style.emoji} ${style.phase.charAt(0)}${style.phase.slice(1).toLowerCase()}` : key;
+}
+
+function groupLabel(groupBy: HabitGroupBy, key: string, areas: Area[]): string {
+  switch (groupBy) {
+    case "area": {
+      if (key === NONE_KEY) return NONE_LABELS.area;
+      const area = areas.find((a) => a.id === key);
+      return area ? `${area.emoji} ${area.name}` : "Unknown";
+    }
+    case "attitude":
+      return attitudeLabel(key);
+    case "phase":
+      return phaseLabel(key);
+    case "tag":
+      return key === NONE_KEY ? NONE_LABELS.tag : `#${key}`;
+  }
+}
+
 function groupHabits(
   habits: Habit[],
   groupBy: HabitGroupBy,
@@ -43,40 +75,32 @@ function groupHabits(
 
   for (const habit of habits) {
     let key: string;
-    let label: string;
     let color: string | undefined;
 
     switch (groupBy) {
       case "area": {
         const area = areas.find((a) => a.id === habit.areaId);
         key = habit.areaId;
-        label = area?.name ?? "Unknown";
         color = area?.color;
         break;
       }
       case "attitude":
         key = habit.attitude ?? NONE_KEY;
-        label = habit.attitude ?? NONE_LABELS.attitude;
         break;
       case "phase":
         key = habit.phase ?? NONE_KEY;
-        label = habit.phase ?? NONE_LABELS.phase;
         break;
-      case "tag": {
-        const tag = habit.tags[0];
-        key = tag ?? NONE_KEY;
-        label = tag ?? NONE_LABELS.tag;
+      case "tag":
+        key = habit.tags[0] ?? NONE_KEY;
         break;
-      }
     }
 
     if (!groups.has(key)) {
-      groups.set(key, { label, color, habits: [] });
+      groups.set(key, { label: groupLabel(groupBy, key, areas), color, habits: [] });
     }
     groups.get(key)!.habits.push(habit);
   }
 
-  // Sort groups by a sensible order
   const entries = [...groups.entries()];
   entries.sort(([a], [b]) => {
     if (groupBy === "attitude") {
@@ -178,7 +202,15 @@ function GroupColumn({
 }
 
 export const GroupedHabitView = observer(
-  ({ groupBy, filter }: { groupBy: HabitGroupBy; filter: string }) => {
+  ({
+    groupBy,
+    filter,
+    showEmpty,
+  }: {
+    groupBy: HabitGroupBy;
+    filter: string;
+    showEmpty: boolean;
+  }) => {
     const allHabits = use$(activeHabits$);
     const allAreas = use$(activeAreas$);
 
@@ -188,7 +220,10 @@ export const GroupedHabitView = observer(
         )
       : allHabits;
 
-    const groups = groupHabits(filtered, groupBy, allAreas);
+    let groups = groupHabits(filtered, groupBy, allAreas);
+    if (!showEmpty) {
+      groups = groups.filter((g) => g.habits.length > 0);
+    }
     const showArea = groupBy !== "area";
 
     return (

@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { observer, use$ } from "@legendapp/state/react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AreaService } from "@/application/services/AreaService";
 import { HabitService } from "@/application/services/HabitService";
 import { AreaBoardBuilder } from "@/components/AreaBoardBuilder";
@@ -41,6 +41,8 @@ const PlantPage = observer(() => {
   const config = use$(plantViewConfig$);
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [showEmpty, setShowEmpty] = useState(true);
+  const toggleEmpty = useCallback(() => setShowEmpty((v) => !v), []);
 
   // Custom collision detection (only used for habits-by-area DnD view)
   const customCollisionDetection = (args: any) => {
@@ -177,6 +179,7 @@ const PlantPage = observer(() => {
         <PeopleBoardBuilder
           groupBy={config.groupBy as PeopleGroupBy}
           filter={config.filter}
+          showEmpty={showEmpty}
         />
       );
     }
@@ -250,6 +253,7 @@ const PlantPage = observer(() => {
       <GroupedHabitView
         groupBy={config.groupBy as HabitGroupBy}
         filter={config.filter}
+        showEmpty={showEmpty}
       />
     );
   };
@@ -258,8 +262,8 @@ const PlantPage = observer(() => {
     <>
       <LandscapePrompt />
       <div className="h-full bg-background transition-colors flex flex-col">
-        <PlantToolbar />
         <div className="flex-1 overflow-hidden">{renderContent()}</div>
+        <PlantToolbar showEmpty={showEmpty} onToggleEmpty={toggleEmpty} />
       </div>
     </>
   );
