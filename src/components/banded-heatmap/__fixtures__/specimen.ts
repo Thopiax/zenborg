@@ -23,7 +23,7 @@ export const specimenAreas: Area[] = [
     color: "oklch(0.72 0.16 150)",
     emoji: "🌿",
     isDefault: false,
-    isArchived: false,
+
     order: 0,
     createdAt: ts,
     updatedAt: ts,
@@ -36,7 +36,7 @@ export const specimenAreas: Area[] = [
     color: "oklch(0.68 0.18 255)",
     emoji: "🧠",
     isDefault: false,
-    isArchived: false,
+
     order: 1,
     createdAt: ts,
     updatedAt: ts,
@@ -49,7 +49,7 @@ export const specimenAreas: Area[] = [
     color: "oklch(0.72 0.18 15)",
     emoji: "🏠",
     isDefault: false,
-    isArchived: false,
+
     order: 2,
     createdAt: ts,
     updatedAt: ts,
@@ -62,7 +62,7 @@ export const specimenAreas: Area[] = [
     color: "oklch(0.78 0.14 75)",
     emoji: "🛠️",
     isDefault: false,
-    isArchived: false,
+
     order: 3,
     createdAt: ts,
     updatedAt: ts,
@@ -75,7 +75,7 @@ export const specimenAreas: Area[] = [
     color: "oklch(0.70 0.14 295)",
     emoji: "✨",
     isDefault: false,
-    isArchived: false,
+
     order: 4,
     createdAt: ts,
     updatedAt: ts,
