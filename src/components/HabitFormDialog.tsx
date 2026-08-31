@@ -139,6 +139,7 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
     !areaSelectorOpen &&
     !emojiPickerOpen &&
     !taggedField.isAutocompleteOpen &&
+    !taggedField.isMentionOpen &&
     !attitudeSelectorOpen &&
     !phaseSelectorOpen &&
     !aliasesSelectorOpen &&
