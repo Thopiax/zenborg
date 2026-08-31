@@ -284,15 +284,20 @@ export function useTaggedNameField(
         // Clean display value
         const cleanedValue = currentValue
           .replace(/#[a-z0-9-]+/g, "")
+          .replace(/@[a-z0-9-]*/g, "")
           .replace(/\s+/g, " ")
           .trim();
         state$.displayValue.set(cleanedValue);
         state$.name.set(cleanedValue);
         finalName = cleanedValue;
       } else {
-        // Just sync name with display value
-        finalName = currentValue.trim();
+        // Just sync name with display value — also strip stale @mention fragments
+        finalName = currentValue
+          .replace(/@[a-z0-9-]*/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
         finalTags = currentTags;
+        state$.displayValue.set(finalName);
         state$.name.set(finalName);
       }
 
