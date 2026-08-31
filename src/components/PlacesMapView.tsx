@@ -93,9 +93,9 @@ export const PlacesMapView = observer(() => {
         <ZoomableGroup>
           <Geographies geography={GEO_URL}>
             {({ geographies }) =>
-              geographies.map((geo) => (
+              geographies.map((geo, i) => (
                 <Geography
-                  key={geo.rpiKey}
+                  key={geo.rpiKey ?? i}
                   geography={geo}
                   fill="currentColor"
                   className="text-stone-200 dark:text-stone-700"
