@@ -26,8 +26,10 @@ import {
   type SelectorOption,
   SelectorPopover,
 } from "@/components/SelectorPopover";
+import { TaggedNameInput } from "@/components/TaggedNameInput";
 import type { Cadence } from "@/domain/value-objects/Cadence";
 import { createRelationship, type EntityType } from "@/domain/entities/Relationship";
+import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import {
   closePersonForm,
   personFormState$,
@@ -56,9 +58,8 @@ interface PersonFormDialogProps {
     name: string;
     emoji: string | null;
     aliases: string[];
-    category: string | null;
+    tags: string[];
     cadence: Cadence | null;
-    status: "active" | "paused";
     basePlaceId: string | null;
   }) => void;
   onDelete?: () => void;
@@ -72,9 +73,8 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
     name,
     emoji,
     aliases,
-    category,
+    tags,
     cadence,
-    status,
     editingPersonId,
   } = formState;
 
@@ -87,8 +87,20 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
   const [cadenceSelectorOpen, setCadenceSelectorOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [basePlaceId, setBasePlaceId] = useState<string | null>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+
+  const taggedField = useTaggedNameField(name, tags);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seeds form state when the dialog opens
+  useEffect(() => {
+    if (!open) return;
+    taggedField.reinitialize(name, tags);
+  }, [open, editingPersonId]);
+
+  useEffect(() => {
+    if (!open) return;
+    personFormState$.name.set(taggedField.displayValue);
+  }, [taggedField.displayValue, open]);
 
   useEffect(() => {
     if (open) {
@@ -97,7 +109,6 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
       setAliasesOpen(false);
       setPlaceSelectorOpen(false);
       setCadenceSelectorOpen(false);
-      setTimeout(() => nameInputRef.current?.focus(), 50);
 
       if (mode === "edit" && editingPersonId) {
         const existing = Object.values(allRelationships).find(
@@ -118,24 +129,23 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
   }, [open, mode, editingPersonId, allRelationships]);
 
   const handleSave = () => {
-    const trimmed = name.trim();
-    if (!trimmed) {
+    const { name: cleanName, tags: finalTags } = taggedField.extractRemainingTags();
+    if (!cleanName) {
       setValidationError("Name cannot be empty");
       return;
     }
     onSave({
-      name: trimmed,
+      name: cleanName,
       emoji: emoji || null,
       aliases,
-      category: category?.trim() || null,
+      tags: finalTags,
       cadence,
-      status,
       basePlaceId,
     });
     closePersonForm();
   };
 
-  const hotkeysEnabled = !emojiPickerOpen && !aliasesOpen && !placeSelectorOpen && !cadenceSelectorOpen && open;
+  const hotkeysEnabled = !emojiPickerOpen && !aliasesOpen && !placeSelectorOpen && !cadenceSelectorOpen && !taggedField.isAutocompleteOpen && open;
 
   useHotkeys(
     "enter",
@@ -183,7 +193,7 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
         </DialogHeader>
 
         <div className="px-6 py-6 flex-1 overflow-y-auto overflow-x-hidden">
-          {/* Name + Emoji */}
+          {/* Name + Emoji + Tags (inline, same as habits) */}
           <div className="relative mb-6 w-full">
             <div className="flex items-baseline gap-3 min-w-0">
               <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
@@ -211,13 +221,15 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
                 </PopoverContent>
               </Popover>
 
-              <input
-                ref={nameInputRef}
-                type="text"
-                value={name}
-                onChange={(e) => personFormState$.name.set(e.target.value)}
-                placeholder="Name..."
-                className="flex-1 min-w-0 text-4xl font-bold bg-transparent text-stone-900 dark:text-stone-100 placeholder:text-stone-300 dark:placeholder:text-stone-600 focus:outline-none"
+              <TaggedNameInput
+                field={taggedField}
+                placeholder="Name... #friend #family"
+                autoFocus={true}
+                className="flex-1 text-4xl font-bold"
+                collisionBoundary={dialogRef.current}
+                maxSuggestions={5}
+                showTags={true}
+                showMentions={false}
               />
             </div>
             {validationError && (
@@ -225,20 +237,6 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
                 {validationError}
               </p>
             )}
-          </div>
-
-          {/* Category */}
-          <div className="mb-6">
-            <label className="block text-xs font-mono text-stone-500 dark:text-stone-400 mb-2">
-              Category
-            </label>
-            <input
-              type="text"
-              value={category ?? ""}
-              onChange={(e) => personFormState$.category.set(e.target.value || null)}
-              placeholder="friends, family, lovers..."
-              className="w-full px-3 py-2 text-sm font-mono bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:border-stone-400"
-            />
           </div>
 
           {/* Filled selectors (shown when value is set) */}
@@ -376,24 +374,6 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
                 }
               />
             )}
-
-            {/* Status toggle */}
-            <button
-              type="button"
-              onClick={() =>
-                personFormState$.status.set(
-                  status === "active" ? "paused" : "active",
-                )
-              }
-              className={cn(
-                "px-2.5 py-1 rounded-sm text-xs font-mono transition-colors",
-                status === "active"
-                  ? "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400"
-                  : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
-              )}
-            >
-              {status}
-            </button>
           </div>
         </div>
 

@@ -151,6 +151,34 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+// category → tags migration for Person records from older vaults
+function migratePerson(p: Person & { category?: string | null }): Person {
+  if (!p.tags) {
+    const legacy = (p as any).category;
+    const migrated = legacy ? normalizeTags([legacy]) : [];
+    (p as any).tags = migrated;
+  }
+  return p;
+}
+
+// tags field backfill for Place records from older vaults
+function migratePlace(p: Place): Place {
+  if (!p.tags) (p as any).tags = [];
+  return p;
+}
+
+function readPeople(): Record<string, Person> {
+  const raw = readCollection(VAULT_ROOT, "people");
+  for (const p of Object.values(raw)) migratePerson(p);
+  return raw;
+}
+
+function readPlaces(): Record<string, Place> {
+  const raw = readCollection(VAULT_ROOT, "places");
+  for (const p of Object.values(raw)) migratePlace(p);
+  return raw;
+}
+
 /**
  * Reconciles a habit's schedule with the two fields it overlaps.
  *
@@ -965,30 +993,29 @@ defineTool(server, {
 defineTool(server, {
   name: "list_people_to_reach",
   description:
-    "The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by registry `category` (friend, family, lover, colleague), or by `far` — whether they are based somewhere other than where the current cycle is being lived. Every row carries `far`; `null` means unknown, either because the registry has no base place for them or because the season states none, and nobody is ever dropped by a distance that could not be checked.",
+    "The outreach queue: people who have gone quiet past their declared cadence (weekly | monthly | quarterly | yearly, a registry fact) and have nothing already arranged. Ordered by `overdueRatio` (days-since divided by the cadence bucket, so 2.86 means nearly three buckets of silence), NOT by raw elapsed days — a weekly friend at 20 days outranks a yearly one at 400. Never-contacted people come first. Rows carry entity keys, not names: the registry owns display names, so render the key. Until wake exposes its key-resolve tool the registry is empty and the queue is an empty list — normal, not an error. Filter by `tag` (friend, family, lover, colleague), or by `far` — whether they are based somewhere other than where the current cycle is being lived. Every row carries `far`; `null` means unknown, either because the registry has no base place for them or because the season states none, and nobody is ever dropped by a distance that could not be checked.",
   schema: {
-    category: z.string().optional(),
+    tag: z.string().optional(),
     limit: z.number().int().positive().optional(),
     far: z.boolean().optional(),
   },
   annotations: { readOnlyHint: true },
-  handler: async ({ category, limit, far }) => {
-    const people = readCollection(VAULT_ROOT, "people");
-    const places = readCollection(VAULT_ROOT, "places");
+  handler: async ({ tag, limit, far }) => {
+    const people = readPeople();
+    const places = readPlaces();
     const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
     const basePlaceMap = buildBasePlaceKeyMap(rels, people, places);
     const registryPeople: RegistryPerson[] = Object.values(people).map((p) => ({
       key: p.key,
       cadence: p.cadence,
-      status: p.status,
-      category: p.category,
+      tags: p.tags,
       favorite: false,
       basePlace: basePlaceMap.get(p.id) ?? p.basePlace,
     }));
     const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
     return ok(
       selectPeopleToReach(registryPeople, moments, new Date(), {
-        category,
+        tag,
         limit,
         here: currentPlaceIds(),
         ...(far !== undefined ? { far } : {}),
@@ -1002,21 +1029,18 @@ defineTool(server, {
 // ────────────────────────────────────────────────────────────────────────
 
 const CadenceSchema = z.enum(["weekly", "monthly", "quarterly", "yearly"]);
-const PersonStatusSchema = z.enum(["active", "paused"]);
 
 defineTool(server, {
   name: "list_people",
-  description: "List all people in the registry. Filter by status or category.",
+  description: "List all people in the registry. Filter by tag.",
   schema: {
-    status: PersonStatusSchema.optional(),
-    category: z.string().optional(),
+    tag: z.string().optional(),
   },
   annotations: { readOnlyHint: true },
   concise: (p) => (p as unknown[]).map((x) => concisePerson(x as Person)),
-  handler: async ({ status, category }) => {
-    let list = Object.values(readCollection(VAULT_ROOT, "people"));
-    if (status) list = list.filter((p) => p.status === status);
-    if (category) list = list.filter((p) => p.category === category);
+  handler: async ({ tag }) => {
+    let list = Object.values(readPeople());
+    if (tag) list = list.filter((p) => p.tags.includes(tag));
     list.sort((a, b) => a.name.localeCompare(b.name));
     return ok(list);
   },
@@ -1029,7 +1053,7 @@ defineTool(server, {
   annotations: { readOnlyHint: true },
   concise: (p) => concisePerson(p as Person),
   handler: async ({ idOrKey }) => {
-    const people = readCollection(VAULT_ROOT, "people");
+    const people = readPeople();
     const person =
       people[idOrKey] ?? Object.values(people).find((p) => p.key === idOrKey);
     if (!person) return err(`Person not found: ${idOrKey}`);
@@ -1040,21 +1064,20 @@ defineTool(server, {
 defineTool(server, {
   name: "create_person",
   description:
-    'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `aliases` are nicknames or relational terms (e.g. ["mom", "mama"]). `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key — creates a "based-in" relationship to the matching place entity.',
+    'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `aliases` are nicknames or relational terms (e.g. ["mom", "mama"]). `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `tags` classify the person (e.g. ["friend"], ["family", "paris"]). `basePlace` is a place key — creates a "based-in" relationship to the matching place entity.',
   schema: {
     name: z.string(),
     key: z.string().optional(),
     aliases: z.array(z.string()).optional(),
     cadence: CadenceSchema.nullable().optional(),
-    status: PersonStatusSchema.optional(),
-    category: z.string().nullable().optional(),
+    tags: z.array(z.string()).optional(),
     basePlace: z.string().nullable().optional(),
     emoji: z.string().nullable().optional(),
     isSelf: z.boolean().optional(),
   },
   concise: (p) => concisePerson((p as any).created),
   handler: async (params) => {
-    const people = readCollection(VAULT_ROOT, "people");
+    const people = readPeople();
     const key = params.key ? slugify(params.key) : slugify(params.name);
     if (!key) return err("Name produces an empty key");
     const existing = Object.values(people).find((p) => p.key === key);
@@ -1076,8 +1099,7 @@ defineTool(server, {
       key,
       ...(normalized.length > 0 ? { aliases: normalized } : {}),
       cadence: params.cadence ?? null,
-      status: params.status ?? "active",
-      category: params.category ?? null,
+      tags: normalizeTags(params.tags ?? []),
       basePlace: null,
       emoji: params.emoji ?? null,
       ...(params.isSelf ? { isSelf: true } : {}),
@@ -1089,7 +1111,7 @@ defineTool(server, {
 
     if (params.basePlace) {
       const placeKey = slugify(params.basePlace);
-      const places = readCollection(VAULT_ROOT, "places");
+      const places = readPlaces();
       const place = Object.values(places).find((p) => p.key === placeKey);
       if (place) {
         const rels = readCollection(VAULT_ROOT, "relationships");
@@ -1116,21 +1138,20 @@ defineTool(server, {
 defineTool(server, {
   name: "update_person",
   description:
-    'Update a person by id or key. Only provided fields are changed. Pass `aliases` to set nicknames (e.g. ["mom", "mama"]); pass `[]` to clear.',
+    'Update a person by id or key. Only provided fields are changed. Pass `aliases` to set nicknames (e.g. ["mom", "mama"]); pass `[]` to clear. Pass `tags` to set classification (e.g. ["friend"]); pass `[]` to clear.',
   schema: {
     idOrKey: z.string(),
     name: z.string().optional(),
     aliases: z.array(z.string()).optional(),
     cadence: CadenceSchema.nullable().optional(),
-    status: PersonStatusSchema.optional(),
-    category: z.string().nullable().optional(),
+    tags: z.array(z.string()).optional(),
     basePlace: z.string().nullable().optional(),
     emoji: z.string().nullable().optional(),
     isSelf: z.boolean().optional(),
   },
   concise: (p) => concisePerson((p as any).updated),
   handler: async ({ idOrKey, ...updates }) => {
-    const people = readCollection(VAULT_ROOT, "people");
+    const people = readPeople();
     const id =
       people[idOrKey]?.id ??
       Object.values(people).find((p) => p.key === idOrKey)?.id;
@@ -1156,9 +1177,7 @@ defineTool(server, {
       }
     }
     if ("cadence" in updates) person.cadence = updates.cadence ?? null;
-    if ("status" in updates && updates.status !== undefined)
-      person.status = updates.status;
-    if ("category" in updates) person.category = updates.category ?? null;
+    if ("tags" in updates) person.tags = normalizeTags(updates.tags ?? []);
     if ("basePlace" in updates) {
       person.basePlace = null;
       const rels = readCollection(VAULT_ROOT, "relationships");
@@ -1171,7 +1190,7 @@ defineTool(server, {
       if (existingRel) delete rels[existingRel.id];
       if (updates.basePlace) {
         const placeKey = slugify(updates.basePlace);
-        const places = readCollection(VAULT_ROOT, "places");
+        const places = readPlaces();
         const place = Object.values(places).find((p) => p.key === placeKey);
         if (place) {
           const relId = crypto.randomUUID();
@@ -1217,7 +1236,7 @@ defineTool(server, {
   schema: { idOrKey: z.string() },
   annotations: { destructiveHint: true },
   handler: async ({ idOrKey }) => {
-    const people = readCollection(VAULT_ROOT, "people");
+    const people = readPeople();
     const id =
       people[idOrKey]?.id ??
       Object.values(people).find((p) => p.key === idOrKey)?.id;
@@ -1240,7 +1259,7 @@ defineTool(server, {
   annotations: { readOnlyHint: true },
   concise: (p) => (p as unknown[]).map((x) => concisePlace(x as Place)),
   handler: async () => {
-    const list = Object.values(readCollection(VAULT_ROOT, "places"));
+    const list = Object.values(readPlaces());
     list.sort((a, b) => a.name.localeCompare(b.name));
     return ok(list);
   },
@@ -1253,7 +1272,7 @@ defineTool(server, {
   annotations: { readOnlyHint: true },
   concise: (p) => concisePlace(p as Place),
   handler: async ({ idOrKey }) => {
-    const places = readCollection(VAULT_ROOT, "places");
+    const places = readPlaces();
     const place =
       places[idOrKey] ?? Object.values(places).find((p) => p.key === idOrKey);
     if (!place) return err(`Place not found: ${idOrKey}`);
@@ -1264,11 +1283,12 @@ defineTool(server, {
 defineTool(server, {
   name: "create_place",
   description:
-    'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `address` is a street/postal address for calendar event locations. `coordinates` is `{ lat, lng }` for map pins. `url` is a map link.',
+    'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `tags` classify the place (e.g. ["country"], ["city"], ["place"]). `address` is a street/postal address for calendar event locations. `coordinates` is `{ lat, lng }` for map pins. `url` is a map link.',
   schema: {
     name: z.string(),
     key: z.string().optional(),
     parentKey: z.string().nullable().optional(),
+    tags: z.array(z.string()).optional(),
     address: z.string().nullable().optional(),
     coordinates: z
       .object({ lat: z.number(), lng: z.number() })
@@ -1279,7 +1299,7 @@ defineTool(server, {
   },
   concise: (p) => concisePlace((p as any).created),
   handler: async (params) => {
-    const places = readCollection(VAULT_ROOT, "places");
+    const places = readPlaces();
     const key = params.key ? slugify(params.key) : slugify(params.name);
     if (!key) return err("Name produces an empty key");
     const existing = Object.values(places).find((p) => p.key === key);
@@ -1292,6 +1312,7 @@ defineTool(server, {
       name: params.name,
       key,
       parentKey: params.parentKey ? slugify(params.parentKey) : null,
+      tags: normalizeTags(params.tags ?? []),
       address: params.address ?? null,
       coordinates: params.coordinates ?? null,
       emoji: params.emoji ?? null,
@@ -1312,6 +1333,7 @@ defineTool(server, {
     idOrKey: z.string(),
     name: z.string().optional(),
     parentKey: z.string().nullable().optional(),
+    tags: z.array(z.string()).optional(),
     address: z.string().nullable().optional(),
     coordinates: z
       .object({ lat: z.number(), lng: z.number() })
@@ -1322,7 +1344,7 @@ defineTool(server, {
   },
   concise: (p) => concisePlace((p as any).updated),
   handler: async ({ idOrKey, ...updates }) => {
-    const places = readCollection(VAULT_ROOT, "places");
+    const places = readPlaces();
     const id =
       places[idOrKey]?.id ??
       Object.values(places).find((p) => p.key === idOrKey)?.id;
@@ -1334,6 +1356,7 @@ defineTool(server, {
     }
     if ("parentKey" in updates)
       place.parentKey = updates.parentKey ? slugify(updates.parentKey) : null;
+    if ("tags" in updates) place.tags = normalizeTags(updates.tags ?? []);
     if ("address" in updates) place.address = updates.address ?? null;
     if ("coordinates" in updates)
       place.coordinates = updates.coordinates ?? null;
@@ -1353,7 +1376,7 @@ defineTool(server, {
   schema: { idOrKey: z.string() },
   annotations: { destructiveHint: true },
   handler: async ({ idOrKey }) => {
-    const places = readCollection(VAULT_ROOT, "places");
+    const places = readPlaces();
     const id =
       places[idOrKey]?.id ??
       Object.values(places).find((p) => p.key === idOrKey)?.id;
@@ -1751,8 +1774,8 @@ defineTool(server, {
   annotations: { readOnlyHint: true },
   handler: async ({ entityType, entityId, label }) => {
     const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
-    const people = readCollection(VAULT_ROOT, "people");
-    const places = readCollection(VAULT_ROOT, "places");
+    const people = readPeople();
+    const places = readPlaces();
     const habits = readCollection(VAULT_ROOT, "habits");
     const areas = readCollection(VAULT_ROOT, "areas");
 
@@ -1813,8 +1836,8 @@ defineTool(server, {
     const moment = moments[momentId];
     if (!moment) return err(`Moment not found: ${momentId}`);
 
-    const people = readCollection(VAULT_ROOT, "people");
-    const places = readCollection(VAULT_ROOT, "places");
+    const people = readPeople();
+    const places = readPlaces();
     const peopleByKey = new Map(Object.values(people).map((p) => [p.key, p]));
     const placesByKey = new Map(Object.values(places).map((p) => [p.key, p]));
 
@@ -3336,7 +3359,7 @@ defineTool(server, {
 defineTool(server, {
   name: "list_tags",
   description:
-    "The tag index: every tag in use with counts across moments, habits and areas, plus first/last allocated day. Filter with `prefix` to read any namespace as an index. Sorted by total usage. People and places are NOT here: they are entity keys in `Moment.personIds`, `Moment.placeIds`, `Habit.placeIds` and `Cycle.placeIds` — ask those fields, or `list_people_to_reach`. A `person-` or `place-` tag surfacing in this index is a habit the migration has not reached, not the index for that type.",
+    "The tag index: every tag in use with counts across moments, habits, areas, people and places, plus first/last allocated day. Filter with `prefix` to read any namespace as an index. Sorted by total usage.",
   schema: {
     prefix: z.string().optional(),
   },
@@ -3345,7 +3368,9 @@ defineTool(server, {
     const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
     const habits = Object.values(readCollection(VAULT_ROOT, "habits"));
     const areas = Object.values(readCollection(VAULT_ROOT, "areas"));
-    return ok(buildTagIndex(moments, habits, areas, prefix));
+    const people = Object.values(readPeople());
+    const places = Object.values(readPlaces());
+    return ok(buildTagIndex(moments, habits, areas, people, places, prefix));
   },
 });
 
@@ -3425,22 +3450,21 @@ defineTool(server, {
       );
     }
     if (type === "person") {
-      const people = readCollection(VAULT_ROOT, "people");
+      const people = readPeople();
       const results = searchPeople(query, people);
       return ok(
         results.map((r) => ({
           personKey: r.person.key,
           name: r.person.name,
           emoji: r.person.emoji,
-          category: r.person.category,
-          status: r.person.status,
-          matchedOn: r.matchedOn,
+          tags: r.person.tags,
+            matchedOn: r.matchedOn,
           matchedValue: r.matchedValue,
           matchMethod: r.method,
         })),
       );
     }
-    const places = readCollection(VAULT_ROOT, "places");
+    const places = readPlaces();
     const results = searchPlaces(query, places);
     return ok(
       results.map((r) => ({
@@ -3506,15 +3530,14 @@ defineTool(server, {
   },
   annotations: { readOnlyHint: true },
   handler: async ({ query }) => {
-    const people = readCollection(VAULT_ROOT, "people");
+    const people = readPeople();
     const results = searchPeople(query, people);
     return ok(
       results.map((r) => ({
         personKey: r.person.key,
         name: r.person.name,
         emoji: r.person.emoji,
-        category: r.person.category,
-        status: r.person.status,
+        tags: r.person.tags,
         matchedOn: r.matchedOn,
         matchedValue: r.matchedValue,
         matchMethod: r.method,
@@ -3534,7 +3557,7 @@ defineTool(server, {
   },
   annotations: { readOnlyHint: true },
   handler: async ({ query }) => {
-    const places = readCollection(VAULT_ROOT, "places");
+    const places = readPlaces();
     const results = searchPlaces(query, places);
     return ok(
       results.map((r) => ({

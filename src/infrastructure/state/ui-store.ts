@@ -57,7 +57,7 @@ export const cultivateZoom$ = observable<CultivateZoom>("phase");
 
 export type PlantEntity = "habits" | "people";
 export type HabitGroupBy = "area" | "attitude" | "phase" | "tag";
-export type PeopleGroupBy = "category" | "place" | "status";
+export type PeopleGroupBy = "tag" | "place";
 export type PlantGroupBy = HabitGroupBy | PeopleGroupBy;
 
 export interface PlantViewConfig {
@@ -68,7 +68,7 @@ export interface PlantViewConfig {
 
 const ENTITY_DEFAULTS: Record<PlantEntity, PlantGroupBy> = {
   habits: "area",
-  people: "category",
+  people: "tag",
 };
 
 export const plantViewConfig$ = observable<PlantViewConfig>({
@@ -497,9 +497,8 @@ export interface PersonFormState {
   name: string;
   emoji: string | null;
   aliases: string[];
-  category: string | null;
+  tags: string[];
   cadence: import("@/domain/value-objects/Cadence").Cadence | null;
-  status: "active" | "paused";
   editingPersonId: string | null;
 }
 
@@ -509,22 +508,20 @@ export const personFormState$ = observable<PersonFormState>({
   name: "",
   emoji: null,
   aliases: [],
-  category: null,
+  tags: [],
   cadence: null,
-  status: "active",
   editingPersonId: null,
 });
 
-export function openPersonFormCreate(params?: { category?: string }) {
+export function openPersonFormCreate(params?: { tag?: string }) {
   personFormState$.set({
     open: true,
     mode: "create",
     name: "",
     emoji: null,
     aliases: [],
-    category: params?.category ?? null,
+    tags: params?.tag ? [params.tag] : [],
     cadence: null,
-    status: "active",
     editingPersonId: null,
   });
 }
@@ -535,9 +532,8 @@ export function openPersonFormEdit(
     name: string;
     emoji: string | null;
     aliases?: string[];
-    category: string | null;
+    tags: string[];
     cadence: import("@/domain/value-objects/Cadence").Cadence | null;
-    status: "active" | "paused";
   },
 ) {
   personFormState$.set({
@@ -546,9 +542,8 @@ export function openPersonFormEdit(
     name: person.name,
     emoji: person.emoji,
     aliases: person.aliases ?? [],
-    category: person.category,
+    tags: person.tags ?? [],
     cadence: person.cadence,
-    status: person.status,
     editingPersonId: personId,
   });
 }
@@ -560,9 +555,8 @@ export function closePersonForm() {
     name: "",
     emoji: null,
     aliases: [],
-    category: null,
+    tags: [],
     cadence: null,
-    status: "active",
     editingPersonId: null,
   });
 }

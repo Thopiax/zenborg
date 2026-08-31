@@ -290,8 +290,7 @@ export interface Person {
   key: string;
   aliases?: string[];
   cadence: Cadence | null;
-  status: "active" | "paused";
-  category: string | null;
+  tags: string[];
   basePlace: string | null;
   emoji: string | null;
   isSelf?: boolean;
@@ -309,6 +308,7 @@ export interface Place {
   name: string;
   key: string;
   parentKey: string | null;
+  tags: string[];
   address: string | null;
   coordinates: Coordinates | null;
   emoji: string | null;

@@ -127,13 +127,9 @@ export function daysSinceLastContact(
 export function personHealth(
   personKey: string,
   cadence: Cadence | null,
-  status: "active" | "paused",
   moments: Moment[],
   now: Date,
 ): Health {
-  if (status === "paused") {
-    return "unstated";
-  }
   if (cadence === null) {
     return "unstated";
   }
@@ -163,15 +159,14 @@ export function overdueRank(ratio: number | null): number {
 export interface RegistryPerson {
   key: string;
   cadence: Cadence | null;
-  status: "active" | "paused";
-  category: string | null;
+  tags: string[];
   favorite: boolean;
   basePlace: string | null;
 }
 
 export interface PersonToReach {
   key: string;
-  category: string | null;
+  tags: string[];
   cadence: Cadence | null;
   daysSinceLastContact: number | null;
   overdueRatio: number | null;
@@ -220,22 +215,22 @@ export function selectPeopleToReach(
   moments: Moment[],
   now: Date,
   opts: {
-    category?: string;
+    tag?: string;
     limit?: number;
     here?: string[];
     far?: boolean;
   } = {},
 ): PersonToReach[] {
-  const { category, limit, here, far } = opts;
+  const { tag, limit, here, far } = opts;
   const results: PersonToReach[] = [];
 
   for (const person of people) {
-    if (category && person.category !== category) {
+    if (tag && !person.tags.includes(tag)) {
       continue;
     }
     // Paused and cadence-less people are "unstated", never wilting.
     if (
-      personHealth(person.key, person.cadence, person.status, moments, now) !==
+      personHealth(person.key, person.cadence, moments, now) !==
       "wilting"
     ) {
       continue;
@@ -256,7 +251,7 @@ export function selectPeopleToReach(
     const daysSince = daysSinceLastContact(person.key, moments, now);
     results.push({
       key: person.key,
-      category: person.category,
+      tags: person.tags,
       cadence: person.cadence,
       daysSinceLastContact: daysSince,
       overdueRatio:
