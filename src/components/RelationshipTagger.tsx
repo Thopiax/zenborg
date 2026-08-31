@@ -8,6 +8,7 @@ import {
   type EntityType,
 } from "@/domain/entities/Relationship";
 import { displayName } from "@/domain/entities/Person";
+import { normalizeMention } from "@/domain/services/MentionService";
 import {
   areas$,
   habits$,
@@ -185,6 +186,7 @@ export function useRelationshipFromMention(
 ) {
   const allPeople = use$(people$);
   const allPlaces = use$(places$);
+  const allAreas = use$(areas$);
   const allRelationships = use$(relationships$);
 
   return useCallback(
@@ -206,6 +208,15 @@ export function useRelationshipFromMention(
           if (place.key === key) {
             targetId = place.id;
             targetType = "place";
+            break;
+          }
+        }
+      }
+      if (!targetId) {
+        for (const area of Object.values(allAreas)) {
+          if (normalizeMention(area.name) === key) {
+            targetId = area.id;
+            targetType = "area";
             break;
           }
         }
@@ -233,6 +244,6 @@ export function useRelationshipFromMention(
       });
       relationships$[rel.id].set(rel);
     },
-    [entityType, entityId, allPeople, allPlaces, allRelationships],
+    [entityType, entityId, allPeople, allPlaces, allAreas, allRelationships],
   );
 }
