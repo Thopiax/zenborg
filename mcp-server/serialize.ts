@@ -70,7 +70,6 @@ export function conciseArea(a: Area): Record<string, unknown> {
   };
   if (a.attitude) base.attitude = a.attitude;
   if (a.tags && a.tags.length > 0) base.tags = a.tags;
-  if (a.isArchived) base.isArchived = true;
   return base;
 }
 
@@ -97,6 +96,7 @@ export function concisePerson(p: Person): Record<string, unknown> {
   if (p.tags && p.tags.length > 0) base.tags = p.tags;
   if (p.basePlace) base.basePlace = p.basePlace;
   if (p.emoji) base.emoji = p.emoji;
+  if (p.isArchived) base.isArchived = true;
   if (p.isSelf) base.isSelf = true;
   return base;
 }
@@ -113,6 +113,7 @@ export function concisePlace(p: Place): Record<string, unknown> {
   if (p.coordinates) base.coordinates = p.coordinates;
   if (p.emoji) base.emoji = p.emoji;
   if (p.url) base.url = p.url;
+  if (p.isArchived) base.isArchived = true;
   return base;
 }
 
