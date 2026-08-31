@@ -105,18 +105,6 @@ milliseconds. The write path is the cost.
 
 ## Layout
 
-```
-src/
-├── domain/          pure TS — entities, value-objects, services. No framework imports
-├── application/     use-case services: Area, Habit, Cycle, DayNote, MomentCreation, MomentUpdate
-├── infrastructure/  Legend State stores, vault sync, integrations
-├── components/      React. Inline editing, no modals
-└── app/             routes — plant · cultivate · harvest
-src-tauri/src/       vault/{fs,watcher,write_tracker}, mcp_install
-mcp-server/          the second vault implementation + MCP tools (TOOLS.md)
-plugin/              Claude Code plugin: activity log, fences, gap practice, rituals
-```
-
 Dependencies flow inward: domain ← application ← infrastructure ← UI.
 
 `src/domain/registry.ts` is the type-level registry of persisted collections. Add a collection
@@ -134,36 +122,7 @@ UI preferences (`activeCycleId`, `lastUsedAreaId`, TRMNL settings) always go to 
 are per-device, not per-vault. `ui-store.ts` holds ephemeral form state and is deliberately not
 persisted; `store.ts` holds domain collections as `Record<uuid, Entity>`.
 
-### Command palette
-
-`src/commands/` is the palette registry (cmdk) — flat list of `{ id, label, shortcut, category,
-action }`. Keyboard handling is component-local (palette, dialogs, autocompletes).
-
-### Entity forms read the store, not props
-
-Habit and Moment forms follow one pattern — deviate only with a reason:
-
-- Form state lives in `infrastructure/state/ui-store.ts` (`habitFormState$` / `momentFormState$`),
-  never in component state. Fields are set directly (`habitFormState$.name.set(v)`).
-- Open via the helpers — `openHabitFormCreate({ areaId })` / `openHabitFormEdit(id, habit)` — not by
-  toggling an `open` prop.
-- The dialog takes **only** `onSave` and `onDelete`. See `components/HabitFormDialog.tsx`.
-- Local state is for popovers and validation only.
-
-**Areas are the exception**: inline editing, not dialogs, per the "no modals, flat UI" constraint —
-simple properties contextual to one card, so local state is correct there.
-
 ## Commands
-
-```bash
-pnpm dev            # Next dev server
-pnpm dev:tauri      # the actual app
-pnpm build:tauri    # bundle
-pnpm build:export   # static export the Tauri bundle wraps
-pnpm test           # vitest — node env, src/**/*.test.{ts,tsx}
-pnpm test -- src/domain/services/__tests__/HabitHealthService.test.ts   # single file
-pnpm lint           # biome check (not eslint/prettier); pnpm format to write
-```
 
 pnpm only — never npm or yarn. Running `pnpm dev` and building to verify a change is fine.
 
