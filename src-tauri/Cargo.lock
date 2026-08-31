@@ -185,6 +185,7 @@ dependencies = [
  "tauri-plugin-global-shortcut",
  "tauri-plugin-log",
  "tauri-plugin-notification",
+ "tauri-plugin-playwright",
  "tauri-plugin-process",
  "tauri-plugin-store",
  "tauri-plugin-updater",
@@ -5443,6 +5444,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-playwright"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c7577aaa3dd19b31b2b5b378d6264861672d07c22bd2215069ed4238adac43a"
+dependencies = [
+ "cairo-rs",
+ "gio",
+ "glib",
+ "gtk",
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "tokio",
+ "webkit2gtk",
+]
+
+[[package]]
 name = "tauri-plugin-process"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5759,6 +5779,7 @@ dependencies = [
  "libc",
  "mio 1.1.0",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",
