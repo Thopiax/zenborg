@@ -222,6 +222,18 @@ function isInWindow(window: ScheduleSpec["window"]): boolean {
   return hour >= fromHour && hour < toHour;
 }
 
+/** Unwrap a schedule primitive: if the current hour is inside the window,
+ * return the wrapped primitive. If outside, return null for "inactive" or
+ * the wrapped primitive for "passthrough". Recurses for nested schedules. */
+function unwrapSchedule(p: Primitive): Primitive | null {
+  if (p.kind !== "schedule") return p;
+  const s = p as ScheduleSpec;
+  if (!isInWindow(s.window)) {
+    return s.outsideWindow === "passthrough" ? unwrapSchedule(s.wraps) : null;
+  }
+  return unwrapSchedule(s.wraps);
+}
+
 /** Is `path` inside ANY classic (outside-match) fence's enclosure? */
 function inside(allFences: RuleSpec[], path: string): boolean {
   if (!path) return false;
@@ -305,19 +317,17 @@ const main = async (): Promise<void> => {
     allow();
   }
 
-  let rung = rungFor(fence, effectiveCrossings);
+  const rung = rungFor(fence, effectiveCrossings);
   if (!rung) allow();
 
-  // Unwrap schedule to get the actual gate/cooldown
-  if (rung!.kind === "schedule") {
-    const sched = rung as unknown as ScheduleSpec;
-    if (!isInWindow(sched.window)) allow();
-    rung = sched.wraps;
-  }
+  const effective = unwrapSchedule(rung!);
+  if (
+    !effective ||
+    (effective.kind !== "gate" && effective.kind !== "cooldown")
+  )
+    allow();
 
-  if (rung!.kind !== "gate" && rung!.kind !== "cooldown") allow();
-
-  const wait = dwellMs(rung!);
+  const wait = dwellMs(effective);
   if (wait > 0) {
     // Real time, sat through. A message about waiting is not a wait.
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
@@ -329,7 +339,7 @@ const main = async (): Promise<void> => {
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
         permissionDecision: "ask",
-        permissionDecisionReason: reason(fence, rung!, path),
+        permissionDecisionReason: reason(fence, effective, path),
       },
     }),
   );
