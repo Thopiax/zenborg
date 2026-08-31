@@ -37,7 +37,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#10b981",
     emoji: "🧘",
     isDefault: true,
-
     order: 0,
   },
   {
@@ -47,7 +46,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#3b82f6",
     emoji: "🎨",
     isDefault: true,
-
     order: 1,
   },
   {
@@ -57,7 +55,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#f97316",
     emoji: "🤝",
     isDefault: true,
-
     order: 2,
   },
   {
@@ -67,7 +64,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#eab308",
     emoji: "😄",
     isDefault: true,
-
     order: 3,
   },
   {
@@ -77,7 +73,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#6b7280",
     emoji: "🤔",
     isDefault: true,
-
     order: 4,
   },
   {
@@ -87,7 +82,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#8b5cf6",
     emoji: "🧹",
     isDefault: true,
-
     order: 5,
   },
 ];
@@ -155,7 +149,6 @@ export function createArea(props: CreateAreaProps): AreaResult {
     color: color.toLowerCase(),
     emoji: emoji?.trim(),
     isDefault: false,
-
     order,
     createdAt: now,
     updatedAt: now,

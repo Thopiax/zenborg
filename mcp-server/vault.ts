@@ -292,7 +292,7 @@ export interface Person {
   tags: string[];
   basePlace: string | null;
   emoji: string | null;
-  isArchived?: boolean;
+  isArchived: boolean;
   isSelf?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -313,7 +313,7 @@ export interface Place {
   coordinates: Coordinates | null;
   emoji: string | null;
   url: string | null;
-  isArchived?: boolean;
+  isArchived: boolean;
   createdAt: string;
   updatedAt: string;
 }

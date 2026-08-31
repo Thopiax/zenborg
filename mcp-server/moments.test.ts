@@ -235,8 +235,7 @@ describe("resolveAddMoment", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error).toContain("not found");
     });
-
-});
+  });
 
   describe("phase derivation", () => {
     it("uses explicit phase", () => {
