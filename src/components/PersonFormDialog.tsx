@@ -159,16 +159,61 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
   const selectedPlace = basePlaceId ? allPlaces[basePlaceId] : null;
 
   const placeOptions: SelectorOption<string | null>[] = useMemo(() => {
-    const sorted = Object.values(allPlaces).sort((a, b) => a.name.localeCompare(b.name));
-    return [
+    const places = Object.values(allPlaces);
+    const byKey = new Map(places.map((p) => [p.key, p]));
+
+    const parentName = (p: { parentKey: string | null }): string => {
+      if (!p.parentKey) return "";
+      const parent = byKey.get(p.parentKey);
+      if (!parent) return p.parentKey;
+      const grandparent = parent.parentKey ? byKey.get(parent.parentKey) : null;
+      return grandparent ? `${grandparent.name} › ${parent.name}` : parent.name;
+    };
+
+    const roots = places.filter((p) => !p.parentKey).sort((a, b) => a.name.localeCompare(b.name));
+    const childrenOf = (key: string) =>
+      places.filter((p) => p.parentKey === key).sort((a, b) => a.name.localeCompare(b.name));
+
+    const grouped: SelectorOption<string | null>[] = [
       { value: null, label: "No place", icon: "—", className: "font-mono text-stone-500 dark:text-stone-400", hotkey: "0" },
-      ...sorted.map((p) => ({
-        value: p.id,
-        label: p.name,
-        icon: p.emoji || "📍",
-        className: "font-mono text-stone-700 dark:text-stone-300",
-      })),
     ];
+
+    const addTree = (place: typeof places[number], group: string) => {
+      const children = childrenOf(place.key);
+      if (children.length === 0) {
+        grouped.push({
+          value: place.id,
+          label: place.name,
+          icon: place.emoji || "📍",
+          className: "font-mono text-stone-700 dark:text-stone-300",
+          group,
+        });
+      } else {
+        for (const child of children) {
+          grouped.push({
+            value: child.id,
+            label: child.name,
+            icon: child.emoji || "📍",
+            description: parentName(child) || undefined,
+            className: "font-mono text-stone-700 dark:text-stone-300",
+            group,
+          });
+          for (const venue of childrenOf(child.key)) {
+            grouped.push({
+              value: venue.id,
+              label: venue.name,
+              icon: venue.emoji || "📍",
+              description: parentName(venue) || undefined,
+              className: "font-mono text-stone-700 dark:text-stone-300 pl-4",
+              group,
+            });
+          }
+        }
+      }
+    };
+
+    for (const root of roots) addTree(root, root.name);
+    return grouped;
   }, [allPlaces]);
 
   return (
