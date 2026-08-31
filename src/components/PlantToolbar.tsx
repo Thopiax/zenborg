@@ -18,6 +18,7 @@ import type { ReactNode } from "react";
 import {
   type HabitGroupBy,
   type PeopleGroupBy,
+  type PlacesGroupBy,
   type PlantEntity,
   type PlantGroupBy,
   plantViewConfig$,
@@ -30,6 +31,7 @@ import { cn } from "@/lib/utils";
 const ENTITIES: { value: PlantEntity; label: string; icon: ReactNode }[] = [
   { value: "habits", label: "Habits", icon: <Sprout className="w-3.5 h-3.5" /> },
   { value: "people", label: "People", icon: <Users className="w-3.5 h-3.5" /> },
+  { value: "places", label: "Places", icon: <MapPin className="w-3.5 h-3.5" /> },
 ];
 
 const HABIT_GROUPS: { value: HabitGroupBy; label: string; icon: ReactNode }[] = [
@@ -42,6 +44,10 @@ const HABIT_GROUPS: { value: HabitGroupBy; label: string; icon: ReactNode }[] = 
 const PEOPLE_GROUPS: { value: PeopleGroupBy; label: string; icon: ReactNode }[] = [
   { value: "tag", label: "Tag", icon: <Hash className="w-3 h-3" /> },
   { value: "place", label: "Place", icon: <MapPin className="w-3 h-3" /> },
+];
+
+const PLACES_GROUPS: { value: PlacesGroupBy; label: string; icon: ReactNode }[] = [
+  { value: "tree", label: "Tree", icon: <MapPin className="w-3 h-3" /> },
 ];
 
 function GroupChip({
@@ -81,7 +87,12 @@ export const PlantToolbar = observer(
     onToggleEmpty: () => void;
   }) => {
     const config = use$(plantViewConfig$);
-    const groups = config.entity === "habits" ? HABIT_GROUPS : PEOPLE_GROUPS;
+    const groups =
+      config.entity === "habits"
+        ? HABIT_GROUPS
+        : config.entity === "people"
+          ? PEOPLE_GROUPS
+          : PLACES_GROUPS;
 
     return (
       <div className="flex items-center gap-2 px-4 py-1.5 border-t border-stone-200 dark:border-stone-800">

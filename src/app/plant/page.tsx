@@ -24,6 +24,7 @@ import { DraggableHabitItem } from "@/components/DraggableHabitItem";
 import { GroupedHabitView } from "@/components/GroupedHabitView";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { PeopleBoardBuilder } from "@/components/PeopleBoardBuilder";
+import { PlacesTreeView } from "@/components/PlacesTreeView";
 import { PlantToolbar } from "@/components/PlantToolbar";
 import {
   activeAreas$,
@@ -174,6 +175,10 @@ const PlantPage = observer(() => {
   };
 
   const renderContent = () => {
+    if (config.entity === "places") {
+      return <PlacesTreeView filter={config.filter} />;
+    }
+
     if (config.entity === "people") {
       return (
         <PeopleBoardBuilder

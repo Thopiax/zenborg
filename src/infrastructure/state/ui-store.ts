@@ -55,10 +55,11 @@ export type CultivateZoom = "phase" | "time";
 
 export const cultivateZoom$ = observable<CultivateZoom>("phase");
 
-export type PlantEntity = "habits" | "people";
+export type PlantEntity = "habits" | "people" | "places";
 export type HabitGroupBy = "area" | "attitude" | "phase" | "tag";
 export type PeopleGroupBy = "tag" | "place";
-export type PlantGroupBy = HabitGroupBy | PeopleGroupBy;
+export type PlacesGroupBy = "tree";
+export type PlantGroupBy = HabitGroupBy | PeopleGroupBy | PlacesGroupBy;
 
 export interface PlantViewConfig {
   entity: PlantEntity;
@@ -69,6 +70,7 @@ export interface PlantViewConfig {
 const ENTITY_DEFAULTS: Record<PlantEntity, PlantGroupBy> = {
   habits: "area",
   people: "tag",
+  places: "tree",
 };
 
 export const plantViewConfig$ = observable<PlantViewConfig>({
