@@ -1,7 +1,7 @@
 {
-  "name": "zenborg - habit cultivation",
-  "short_name": "zenborg",
-  "description": "A habit cultivation app focused on mindfulness and personal growth.",
+  "name": "Zenborg",
+  "short_name": "Zenborg",
+  "description": "A garden for cultivating intentions — plant habits, tend moments, watch them flourish.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fafaf9",
