@@ -13,6 +13,7 @@ export interface Place {
   coordinates: Coordinates | null;
   emoji: string | null;
   url: string | null;
+  isArchived: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,6 +39,7 @@ export function createPlace(props: {
     coordinates: props.coordinates ?? null,
     emoji: props.emoji ?? null,
     url: props.url ?? null,
+    isArchived: false,
     createdAt: now,
     updatedAt: now,
   };

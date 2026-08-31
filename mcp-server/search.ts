@@ -139,10 +139,13 @@ export interface PersonMatch {
 export function searchPeople(
   query: string,
   people: Record<string, Person>,
+  opts: { includeArchived?: boolean } = {},
 ): PersonMatch[] {
+  const { includeArchived = false } = opts;
   const results: PersonMatch[] = [];
 
   for (const person of Object.values(people)) {
+    if (!includeArchived && person.isArchived) continue;
     const nameMatches = fuzzyMatch(query, [person.name]);
     if (nameMatches.length > 0) {
       const m = nameMatches[0];
@@ -202,10 +205,13 @@ export interface PlaceMatch {
 export function searchPlaces(
   query: string,
   places: Record<string, Place>,
+  opts: { includeArchived?: boolean } = {},
 ): PlaceMatch[] {
+  const { includeArchived = false } = opts;
   const results: PlaceMatch[] = [];
 
   for (const place of Object.values(places)) {
+    if (!includeArchived && place.isArchived) continue;
     const nameMatches = fuzzyMatch(query, [place.name]);
     if (nameMatches.length > 0) {
       const m = nameMatches[0];
