@@ -29,8 +29,17 @@ export type RuleScope =
       readonly domain: string;
       readonly matches: readonly string[];
     }
-  | { readonly surface: "session"; readonly paths: readonly string[] }
-  | { readonly surface: "desktop"; readonly apps: readonly string[] };
+  | {
+      readonly surface: "session";
+      readonly paths: readonly string[];
+      readonly match?: "outside" | "inside";
+      readonly tools?: readonly string[];
+    }
+  | { readonly surface: "desktop"; readonly apps: readonly string[] }
+  | {
+      readonly surface: "garden";
+      readonly areaIds: readonly string[];
+    };
 
 export interface RuleSpec {
   readonly id: RuleId;
@@ -126,6 +135,12 @@ export function validateRuleSpec(rule: RuleSpec): readonly string[] {
     }
     if (rule.scope.matches.includes("*://*/*")) {
       problems.push("scope.matches must not be global");
+    }
+  }
+
+  if (rule.scope.surface === "garden") {
+    if (rule.scope.areaIds.length === 0) {
+      problems.push("scope.areaIds must be non-empty for a garden-scoped rule");
     }
   }
 

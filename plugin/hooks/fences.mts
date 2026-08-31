@@ -48,7 +48,12 @@ import {
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { shouldDeliver } from "../domain/intervention/Delivery.ts";
-import type { GateSpec, Primitive } from "../domain/intervention/Primitive.ts";
+import type {
+  GateSpec,
+  Primitive,
+  ScheduleSpec,
+  CooldownSpec,
+} from "../domain/intervention/Primitive.ts";
 import type { RuleSpec } from "../domain/intervention/RuleSpec.ts";
 import { rungFor } from "../domain/intervention/rules/sessionFence.ts";
 
@@ -118,15 +123,20 @@ function loadFences(): RuleSpec[] {
 
 /** This fence's tally: gates the person actually saw, and decision points the
  * randomiser declined. One read, because two would let the pair disagree. */
-function tally(id: string): { crossings: number; declined: number } {
+function tally(id: string): {
+  crossings: number;
+  declined: number;
+  at: number;
+} {
   try {
     const rec = JSON.parse(readFileSync(STATE, "utf8"))?.[id];
     return {
       crossings: Number(rec?.crossings) || 0,
       declined: Number(rec?.declined) || 0,
+      at: Number(rec?.at) || 0,
     };
   } catch {
-    return { crossings: 0, declined: 0 };
+    return { crossings: 0, declined: 0, at: 0 };
   }
 }
 
@@ -188,61 +198,138 @@ function reason(fence: RuleSpec, rung: Primitive, at: string): string {
   return `${head}. You fenced this stream yourself. ${exit}.`;
 }
 
+// ── Schedule window evaluation ──────────────────────────────────────────
+
+const WEEKDAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+function currentWeekday(): string {
+  return WEEKDAY_NAMES[new Date().getDay()];
+}
+
+function isInWindow(window: ScheduleSpec["window"]): boolean {
+  const now = new Date();
+  const hour = now.getHours();
+
+  if (window.weekdays && window.weekdays.length > 0) {
+    if (!window.weekdays.includes(currentWeekday() as any)) return false;
+  }
+
+  const { fromHour, toHour } = window;
+  if (toHour <= fromHour) {
+    // Wraps midnight: e.g. 22→06 means [22,24) ∪ [0,6)
+    return hour >= fromHour || hour < toHour;
+  }
+  return hour >= fromHour && hour < toHour;
+}
+
+/** Is `path` inside ANY classic (outside-match) fence's enclosure? */
+function inside(allFences: RuleSpec[], path: string): boolean {
+  if (!path) return false;
+  return allFences
+    .filter((f) => (f.scope as any).match !== "inside")
+    .some((f) =>
+      ((f.scope as { paths: readonly string[] }).paths ?? []).some((p) =>
+        under(path, p),
+      ),
+    );
+}
+
 const main = async (): Promise<void> => {
   const input = await readStdin();
   const fences = loadFences();
   if (fences.length === 0) allow();
 
   const path = String(input?.tool_input?.file_path || input?.cwd || "").trim();
-  if (path === "") allow();
+  const toolName = String(input?.tool_name || "").trim();
+  if (path === "" && toolName === "") allow();
 
   // In force only inside a declared root. Outside them — a temp dir, a config
   // file in $HOME — nothing is being crossed, and imposing friction on a path
   // the fence was never about is how a commitment device turns into noise.
-  if (!ROOTS.some((r) => under(path, r))) allow();
+  if (path && !ROOTS.some((r) => under(path, r))) allow();
 
-  // Inside any fence's enclosure is inside. Several fences can stand at once and
-  // the person is on-stream if any of them contains this path.
-  const inside = fences.some((f) =>
-    (f.scope as { paths: readonly string[] }).paths.some((p) => under(path, p)),
-  );
-  if (inside) allow();
+  let crossedFence: RuleSpec | null = null;
 
-  // Crossed. The first fence answers — a second one would be a second prompt
-  // for a single act, which teaches nothing the first did not.
-  const fence = fences[0];
-  const { crossings: taken, declined: passed } = tally(fence.id);
+  for (const fence of fences) {
+    const scope = fence.scope as {
+      paths: readonly string[];
+      match?: "outside" | "inside";
+      tools?: readonly string[];
+    };
+    const matchDir = scope.match ?? "outside";
+
+    // Tool filter: if the rule scopes to specific tools, skip non-matching
+    if (scope.tools && scope.tools.length > 0) {
+      if (!scope.tools.includes(toolName)) continue;
+    }
+
+    const insidePaths = path ? scope.paths.some((p) => under(path, p)) : false;
+
+    if (matchDir === "outside") {
+      // Classic session fence: friction when OUTSIDE the enclosed paths
+      if (inside(fences, path)) continue; // inside any fence → no crossing
+      crossedFence = fence;
+      break;
+    }
+
+    // match: "inside" — watering hours: friction when INSIDE the restricted paths
+    if (insidePaths) {
+      // Only fire if the schedule window is active
+      const firstPrim = fence.primitives[0];
+      if (firstPrim?.kind === "schedule") {
+        if (!isInWindow((firstPrim as ScheduleSpec).window)) continue;
+      }
+      crossedFence = fence;
+      break;
+    }
+  }
+
+  if (!crossedFence) allow();
+  const fence = crossedFence!;
+
+  const { crossings: taken, declined: passed, at } = tally(fence.id);
+
+  // Windowed tally reset: if last crossing is from a different day, reset
+  // ponytail: daily reset; upgrade to per-window when phase boundaries matter
+  let effectiveCrossings = taken;
+  if (fence.primitives[0]?.kind === "schedule" && at > 0) {
+    const lastDate = new Date(at).toDateString();
+    if (lastDate !== new Date().toDateString()) effectiveCrossings = 0;
+  }
 
   // The randomised decision point. A rule shipped below probability 1 must do
   // nothing at some eligible crossings, or its proximal outcome has nothing to be
-  // read against — this is what replaced the step 2 baseline as the control on
-  // derived rules. `deliveryProbability` is the rule's own field, so a rule that
-  // wants to interrupt every time simply says 1, as a session fence does.
+  // read against.
   if (!shouldDeliver(Number(fence.deliveryProbability), Math.random())) {
-    // The decline is recorded and the crossing tally is NOT advanced. Escalation
-    // answers what the person was actually shown; charging them a harsher rung
-    // for an interruption that never happened would make the ladder a function of
-    // a coin they never saw.
     recordCrossing(fence.id, taken, passed + 1);
     allow();
   }
 
-  const rung = rungFor(fence, taken);
-  if (!rung || (rung.kind !== "gate" && rung.kind !== "cooldown")) allow();
+  let rung = rungFor(fence, effectiveCrossings);
+  if (!rung) allow();
 
-  const wait = dwellMs(rung);
+  // Unwrap schedule to get the actual gate/cooldown
+  if (rung!.kind === "schedule") {
+    const sched = rung as unknown as ScheduleSpec;
+    if (!isInWindow(sched.window)) allow();
+    rung = sched.wraps;
+  }
+
+  if (rung!.kind !== "gate" && rung!.kind !== "cooldown") allow();
+
+  const wait = dwellMs(rung!);
   if (wait > 0) {
     // Real time, sat through. A message about waiting is not a wait.
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
   }
-  recordCrossing(fence.id, taken + 1, passed);
+  recordCrossing(fence.id, effectiveCrossings + 1, passed);
 
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
         permissionDecision: "ask",
-        permissionDecisionReason: reason(fence, rung, path),
+        permissionDecisionReason: reason(fence, rung!, path),
       },
     }),
   );

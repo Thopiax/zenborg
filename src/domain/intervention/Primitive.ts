@@ -15,6 +15,9 @@
  * is not who armed the thing, it is that every armed thing can be got out of.
  */
 
+import type { Weekday } from "../value-objects/Schedule";
+import type { Phase } from "../value-objects/Phase";
+
 /**
  * A chain of selectors for one logical target: the primary, plus fallbacks to
  * emit alongside it. Selectors rot — a site's build-time class names change
@@ -181,7 +184,12 @@ export interface ObserveSpec {
 
 export interface ScheduleSpec {
   readonly kind: "schedule";
-  readonly window: { readonly fromHour: number; readonly toHour: number };
+  readonly window: {
+    readonly fromHour: number;
+    readonly toHour: number;
+    readonly weekdays?: readonly Weekday[];
+    readonly cutFrom?: Phase;
+  };
   readonly wraps: Primitive;
   readonly outsideWindow: "inactive" | "passthrough";
 }
