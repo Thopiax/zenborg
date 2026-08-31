@@ -7,7 +7,7 @@ async function loadLib() {
 }
 
 export const test = base.extend<{ tauriPage: any }>({
-  tauriPage: async ({}, use) => {
+  tauriPage: async ({}, use: (page: any) => Promise<void>) => {
     const { PluginClient, TauriPage } = await loadLib();
     const client = new PluginClient(SOCKET);
     await client.connect();
