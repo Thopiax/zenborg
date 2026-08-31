@@ -621,6 +621,12 @@ export function closePlaceForm() {
 }
 
 /**
+ * Settings modal visibility
+ * Ephemeral - not persisted
+ */
+export const isSettingsOpen$ = observable<boolean>(false);
+
+/**
  * Command Palette visibility
  * Ephemeral - not persisted
  */
