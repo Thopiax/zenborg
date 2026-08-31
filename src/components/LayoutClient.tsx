@@ -6,7 +6,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
 import { ModeSelector } from "@/components/ModeSelector";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
-import { SettingsModal } from "@/components/SettingsDrawer";
+import { SettingsModal } from "@/components/SettingsModal";
 import { TodayButton } from "@/components/TodayButton";
 import { UpdateNotification } from "@/components/UpdateNotification";
 import {
