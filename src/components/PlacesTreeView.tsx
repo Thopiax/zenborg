@@ -3,14 +3,10 @@
 import { observer, use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
-import { PlaceFormDialog } from "@/components/PlaceFormDialog";
 import type { Place } from "@/domain/entities/Place";
-import { createPlace } from "@/domain/entities/Place";
 import { activeHabits$, places$ } from "@/infrastructure/state/store";
 import {
-  closePlaceForm,
   openPlaceFormEdit,
-  placeFormState$,
 } from "@/infrastructure/state/ui-store";
 import { cn } from "@/lib/utils";
 
@@ -52,15 +48,6 @@ function subtreeMatchesFilter(node: TreeNode, filter: string): boolean {
   )
     return true;
   return node.children.some((c) => subtreeMatchesFilter(c, filter));
-}
-
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }
 
 function PlaceNode({
@@ -202,51 +189,6 @@ export const PlacesTreeView = observer(
             />
           ))}
         </div>
-
-        <PlaceFormDialog
-          onSave={(props) => {
-            const formState = placeFormState$.peek();
-            const name = props.name.trim();
-            if (!name) return;
-            const key = slugify(name);
-
-            if (formState.mode === "edit" && formState.editingPlaceId) {
-              const existing = places$[formState.editingPlaceId].peek();
-              places$[formState.editingPlaceId].set({
-                ...existing,
-                name,
-                key,
-                emoji: props.emoji,
-                parentKey: props.parentKey,
-                coordinates: props.coordinates,
-                address: props.address,
-                url: props.url,
-                tags: props.tags,
-                updatedAt: new Date().toISOString(),
-              });
-            } else {
-              const place = createPlace({
-                name,
-                key,
-                emoji: props.emoji,
-                parentKey: props.parentKey,
-                coordinates: props.coordinates,
-                address: props.address,
-                url: props.url,
-                tags: props.tags,
-              });
-              places$[place.id].set(place);
-            }
-            closePlaceForm();
-          }}
-          onDelete={() => {
-            const formState = placeFormState$.peek();
-            if (formState.editingPlaceId) {
-              places$[formState.editingPlaceId].delete();
-              closePlaceForm();
-            }
-          }}
-        />
       </div>
     );
   },
