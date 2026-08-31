@@ -321,15 +321,22 @@ fn spawn_loop(app: AppHandle) {
             if np_enabled {
                 let is_playing = get_now_playing_application_is_playing()
                     .unwrap_or(false);
-                let bundle_id = get_now_playing_client_bundle_identifier()
-                    .unwrap_or_default();
-
-                let title = get_now_playing_info()
-                    .and_then(|info| {
-                        info.get("kMRMediaRemoteNowPlayingInfoTitle")
-                            .and_then(|v| if let InfoTypes::String(s) = v { Some(s.clone()) } else { None })
-                    })
-                    .unwrap_or_default();
+                // media-remote 0.5.2 soundness bug: get_now_playing_info()
+                // declares NonNull<CFDictionary> but Apple sends null when
+                // nothing is playing → SIGSEGV. Skip both calls when idle.
+                let (bundle_id, title) = if is_playing {
+                    let bid = get_now_playing_client_bundle_identifier()
+                        .unwrap_or_default();
+                    let t = get_now_playing_info()
+                        .and_then(|info| {
+                            info.get("kMRMediaRemoteNowPlayingInfoTitle")
+                                .and_then(|v| if let InfoTypes::String(s) = v { Some(s.clone()) } else { None })
+                        })
+                        .unwrap_or_default();
+                    (bid, t)
+                } else {
+                    (String::new(), String::new())
+                };
 
                 let bundle_name = bundle_id
                     .rsplit('.')
