@@ -33,12 +33,16 @@ tauri-plugin-fs = "2.4.4"
 tauri-plugin-store = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-playwright = { version = "0.4", optional = true }
 
 # The desktop observer. Pure logic in observer-core; sensors + Tauri wiring here.
 observer-core = { path = "crates/observer-core" }
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
+
+[features]
+e2e-testing = ["tauri-plugin-playwright"]
 
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

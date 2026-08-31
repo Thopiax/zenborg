@@ -33,6 +33,8 @@
     ".next",
     "out",
     "packages",
-    "mcp-server"
+    "mcp-server",
+    "e2e",
+    "playwright.tauri.config.ts"
   ]
 }
