@@ -117,6 +117,15 @@ function groupPeople(
     groups.get(key)!.people.push(person);
   }
 
+  if (groupBy === "place") {
+    for (const place of Object.values(allPlaces)) {
+      if (!groups.has(place.id)) {
+        const label = place.emoji ? `${place.emoji} ${place.name}` : place.name;
+        groups.set(place.id, { label, people: [] });
+      }
+    }
+  }
+
   for (const { people: list } of groups.values()) {
     list.sort((a, b) => a.name.localeCompare(b.name));
   }
