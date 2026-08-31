@@ -24,6 +24,9 @@ interface TaggedNameInputProps {
   showTags?: boolean;
   /** Show mention badges below input */
   showMentions?: boolean;
+  /** Override mention selection — called instead of storing mention key.
+   *  Text cleanup still happens; the key is NOT added to mentionIds. */
+  onMentionSelect?: (key: string) => void;
   /** Custom tag badge className */
   tagBadgesClassName?: string;
 }
@@ -51,6 +54,7 @@ export function TaggedNameInput({
   maxSuggestions = 8,
   showTags = true,
   showMentions = true,
+  onMentionSelect,
   tagBadgesClassName,
 }: TaggedNameInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -101,7 +105,14 @@ export function TaggedNameInput({
           <MentionAutocompleteInline
             open={field.isMentionOpen}
             searchValue={field.mentionSearch}
-            onSelectMention={field.selectMention}
+            onSelectMention={onMentionSelect
+              ? (key) => {
+                  field.selectMention(key);
+                  field.removeMention(key);
+                  onMentionSelect(key);
+                }
+              : field.selectMention
+            }
             onRemoveMention={field.removeMention}
             onClose={() => {}}
             existingMentions={field.mentionIds}

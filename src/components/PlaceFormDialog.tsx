@@ -3,7 +3,7 @@
 import { use$ } from "@legendapp/state/react";
 import { Trash2 } from "lucide-react";
 import { RelationshipTagger } from "@/components/RelationshipTagger";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
   Dialog,
@@ -39,7 +39,6 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
     formState;
 
   const allPlaces = use$(places$);
-  const dialogRef = useRef<HTMLDivElement>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
@@ -108,7 +107,7 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closePlaceForm()}>
-      <DialogContent ref={dialogRef} className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-mono text-sm">
             {mode === "edit" ? "Edit Place" : "New Place"}
@@ -214,7 +213,6 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
               <RelationshipTagger
                 entityType="place"
                 entityId={editingPlaceId}
-                collisionBoundary={dialogRef.current}
               />
             </div>
           )}

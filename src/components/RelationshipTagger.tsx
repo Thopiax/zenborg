@@ -1,14 +1,8 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import Fuse from "fuse.js";
 import { Link2, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createRelationship,
   type EntityType,
@@ -21,28 +15,17 @@ import {
   places$,
   relationships$,
 } from "@/infrastructure/state/store";
-import { cn } from "@/lib/utils";
-
-interface SearchableEntity {
-  id: string;
-  type: EntityType;
-  name: string;
-  searchTerms: string[];
-  emoji: string | null;
-}
 
 interface RelationshipTaggerProps {
   entityType: EntityType;
   entityId: string;
   excludeLabels?: string[];
-  collisionBoundary?: Element | null | Array<Element | null>;
 }
 
 export function RelationshipTagger({
   entityType,
   entityId,
   excludeLabels = [],
-  collisionBoundary,
 }: RelationshipTaggerProps) {
   const allRelationships = use$(relationships$);
   const allAreas = use$(areas$);
@@ -50,12 +33,8 @@ export function RelationshipTagger({
   const allPlaces = use$(places$);
   const allHabits = use$(habits$);
 
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [labelDraft, setLabelDraft] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
 
   const entityRels = useMemo(() => {
@@ -75,120 +54,6 @@ export function RelationshipTagger({
     }
     return [...labels].sort();
   }, [allRelationships]);
-
-  const allEntities = useMemo((): SearchableEntity[] => {
-    const items: SearchableEntity[] = [];
-
-    for (const area of Object.values(allAreas)) {
-      items.push({
-        id: area.id,
-        type: "area",
-        name: area.name,
-        searchTerms: [area.name],
-        emoji: area.emoji,
-      });
-    }
-    for (const person of Object.values(allPeople)) {
-      if (person.id === entityId && entityType === "person") continue;
-      items.push({
-        id: person.id,
-        type: "person",
-        name: displayName(person),
-        searchTerms: [person.name, ...(person.aliases ?? [])],
-        emoji: person.emoji,
-      });
-    }
-    for (const place of Object.values(allPlaces)) {
-      if (place.id === entityId && entityType === "place") continue;
-      items.push({
-        id: place.id,
-        type: "place",
-        name: place.name,
-        searchTerms: [place.name],
-        emoji: place.emoji,
-      });
-    }
-    for (const habit of Object.values(allHabits)) {
-      if (habit.isArchived) continue;
-      if (habit.id === entityId && entityType === "habit") continue;
-      items.push({
-        id: habit.id,
-        type: "habit",
-        name: habit.name,
-        searchTerms: [habit.name, ...(habit.aliases ?? [])],
-        emoji: habit.emoji,
-      });
-    }
-
-    return items;
-  }, [allAreas, allPeople, allPlaces, allHabits, entityType, entityId]);
-
-  const alreadyLinkedIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const r of entityRels) {
-      const otherId = (r.fromType === entityType && r.fromId === entityId)
-        ? r.toId
-        : r.fromId;
-      ids.add(otherId);
-    }
-    return ids;
-  }, [entityRels, entityType, entityId]);
-
-  const filteredEntities = useMemo(() => {
-    const available = allEntities.filter((e) => !alreadyLinkedIds.has(e.id));
-    const trimmed = search.trim().toLowerCase();
-
-    if (!trimmed) return available.slice(0, 8);
-
-    const exact: SearchableEntity[] = [];
-    const prefix: SearchableEntity[] = [];
-    const contains: SearchableEntity[] = [];
-
-    for (const item of available) {
-      const terms = item.searchTerms.map((t) => t.toLowerCase());
-      if (terms.some((t) => t === trimmed)) {
-        exact.push(item);
-      } else if (terms.some((t) => t.startsWith(trimmed))) {
-        prefix.push(item);
-      } else if (terms.some((t) => t.includes(trimmed))) {
-        contains.push(item);
-      }
-    }
-
-    const searched = new Set([...exact, ...prefix, ...contains]);
-    const remaining = available.filter((i) => !searched.has(i));
-
-    let fuzzy: SearchableEntity[] = [];
-    if (remaining.length > 0) {
-      const fuse = new Fuse(remaining, {
-        keys: ["name", "searchTerms"],
-        threshold: 0.4,
-        distance: 100,
-      });
-      fuzzy = fuse.search(trimmed).map((r) => r.item);
-    }
-
-    return [...exact, ...prefix, ...contains, ...fuzzy].slice(0, 8);
-  }, [search, allEntities, alreadyLinkedIds]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [filteredEntities.length]);
-
-  const handleAddRelationship = (target: SearchableEntity) => {
-    const rel = createRelationship({
-      fromType: entityType,
-      fromId: entityId,
-      toType: target.type,
-      toId: target.id,
-      label: "",
-    });
-    relationships$[rel.id].set(rel);
-    setSearch("");
-    setSearchOpen(false);
-    setEditingLabelId(rel.id);
-    setLabelDraft("");
-  };
 
   const handleRemove = (relId: string) => {
     relationships$[relId].delete();
@@ -237,14 +102,7 @@ export function RelationshipTagger({
     }
   }, [editingLabelId]);
 
-  const typeLabel = (t: EntityType) => {
-    switch (t) {
-      case "area": return "area";
-      case "person": return "person";
-      case "place": return "place";
-      case "habit": return "habit";
-    }
-  };
+  if (entityRels.length === 0) return null;
 
   return (
     <div>
@@ -253,166 +111,132 @@ export function RelationshipTagger({
         Relationships
       </label>
 
-      {entityRels.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {entityRels.map((r) => {
-            const end = otherEnd(r);
-            const entity = resolveEntity(end.type, end.id);
-            const isEditingLabel = editingLabelId === r.id;
+      <div className="flex flex-wrap gap-1.5">
+        {entityRels.map((r) => {
+          const end = otherEnd(r);
+          const entity = resolveEntity(end.type, end.id);
+          const isEditingLabel = editingLabelId === r.id;
 
-            return (
-              <span
-                key={r.id}
-                className="flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-xs font-mono text-stone-700 dark:text-stone-300"
-              >
-                {entity?.emoji && <span>{entity.emoji}</span>}
-                {isEditingLabel ? (
-                  <span className="relative">
-                    <input
-                      ref={labelInputRef}
-                      type="text"
-                      value={labelDraft}
-                      onChange={(e) => setLabelDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          e.nativeEvent.stopImmediatePropagation();
-                          commitLabel(r.id);
-                        }
-                        if (e.key === "Escape") {
-                          e.preventDefault();
-                          setEditingLabelId(null);
-                        }
-                      }}
-                      onBlur={() => commitLabel(r.id)}
-                      placeholder="label…"
-                      className="w-20 bg-transparent text-xs font-mono text-stone-500 dark:text-stone-400 placeholder:text-stone-400 focus:outline-none border-b border-stone-300 dark:border-stone-600"
-                      list={`rel-labels-${r.id}`}
-                    />
-                    <datalist id={`rel-labels-${r.id}`}>
-                      {labelSuggestions.map((l) => (
-                        <option key={l} value={l} />
-                      ))}
-                    </datalist>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingLabelId(r.id);
-                      setLabelDraft(r.label);
+          return (
+            <span
+              key={r.id}
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-xs font-mono text-stone-700 dark:text-stone-300"
+            >
+              {entity?.emoji && <span>{entity.emoji}</span>}
+              {isEditingLabel ? (
+                <span className="relative">
+                  <input
+                    ref={labelInputRef}
+                    type="text"
+                    value={labelDraft}
+                    onChange={(e) => setLabelDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.nativeEvent.stopImmediatePropagation();
+                        commitLabel(r.id);
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setEditingLabelId(null);
+                      }
                     }}
-                    className="text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-                    title="Click to edit label"
-                  >
-                    {r.label || "…"}
-                  </button>
-                )}
-                <span>{entity?.name ?? end.id}</span>
-                <span className="text-stone-400 dark:text-stone-500">({typeLabel(end.type)})</span>
+                    onBlur={() => commitLabel(r.id)}
+                    placeholder="label…"
+                    className="w-20 bg-transparent text-xs font-mono text-stone-500 dark:text-stone-400 placeholder:text-stone-400 focus:outline-none border-b border-stone-300 dark:border-stone-600"
+                    list={`rel-labels-${r.id}`}
+                  />
+                  <datalist id={`rel-labels-${r.id}`}>
+                    {labelSuggestions.map((l) => (
+                      <option key={l} value={l} />
+                    ))}
+                  </datalist>
+                </span>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => handleRemove(r.id)}
-                  className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors ml-0.5"
-                  aria-label="Remove relationship"
+                  onClick={() => {
+                    setEditingLabelId(r.id);
+                    setLabelDraft(r.label);
+                  }}
+                  className="text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                  title="Click to edit label"
                 >
-                  <X className="w-3 h-3" strokeWidth={2} />
+                  {r.label || "…"}
                 </button>
-              </span>
-            );
-          })}
-        </div>
-      )}
-
-      <Popover
-        open={searchOpen}
-        onOpenChange={(isOpen) => {
-          setSearchOpen(isOpen);
-          if (isOpen) {
-            setSearch("");
-            setTimeout(() => searchInputRef.current?.focus(), 50);
-          }
-        }}
-      >
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="text-xs font-mono text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-          >
-            + add relationship
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          className="w-72 p-2 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm"
-          collisionBoundary={collisionBoundary}
-          side="bottom"
-          sideOffset={4}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setSelectedIndex((prev) =>
-                  prev < filteredEntities.length - 1 ? prev + 1 : 0,
-                );
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setSelectedIndex((prev) =>
-                  prev > 0 ? prev - 1 : filteredEntities.length - 1,
-                );
-              } else if (e.key === "Enter" && filteredEntities[selectedIndex]) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.nativeEvent.stopImmediatePropagation();
-                handleAddRelationship(filteredEntities[selectedIndex]);
-              } else if (e.key === "Escape") {
-                e.preventDefault();
-                setSearchOpen(false);
-              }
-            }}
-            placeholder="Search people, places, areas…"
-            className="w-full px-2 py-1.5 text-xs font-mono bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-md text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none mb-1"
-          />
-          <div className="flex flex-col gap-0.5 max-h-48 overflow-auto">
-            {filteredEntities.map((item, index) => (
+              )}
+              <span>{entity?.name ?? end.id}</span>
               <button
-                key={`${item.type}-${item.id}`}
                 type="button"
-                onClick={() => handleAddRelationship(item)}
-                className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors cursor-pointer",
-                  "text-stone-600 dark:text-stone-400",
-                  index === selectedIndex
-                    ? "bg-stone-200 dark:bg-stone-700"
-                    : "hover:bg-stone-100 dark:hover:bg-stone-800",
-                )}
+                onClick={() => handleRemove(r.id)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors ml-0.5"
+                aria-label="Remove relationship"
               >
-                {item.emoji && (
-                  <span className="text-xs flex-shrink-0">{item.emoji}</span>
-                )}
-                <span className="text-xs font-mono flex-1 min-w-0 truncate">
-                  {item.name}
-                </span>
-                <span className="text-[10px] text-stone-400 dark:text-stone-500 flex-shrink-0 uppercase">
-                  {typeLabel(item.type)}
-                </span>
+                <X className="w-3 h-3" strokeWidth={2} />
               </button>
-            ))}
-            {filteredEntities.length === 0 && (
-              <span className="text-xs font-mono text-stone-400 dark:text-stone-500 px-2 py-1.5">
-                No matches
-              </span>
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
+            </span>
+          );
+        })}
+      </div>
     </div>
+  );
+}
+
+export function useRelationshipFromMention(
+  entityType: EntityType,
+  entityId: string | null,
+) {
+  const allPeople = use$(people$);
+  const allPlaces = use$(places$);
+  const allRelationships = use$(relationships$);
+
+  return useCallback(
+    (key: string) => {
+      if (!entityId) return;
+
+      let targetId: string | null = null;
+      let targetType: EntityType = "person";
+
+      for (const person of Object.values(allPeople)) {
+        if (person.key === key) {
+          targetId = person.id;
+          targetType = "person";
+          break;
+        }
+      }
+      if (!targetId) {
+        for (const place of Object.values(allPlaces)) {
+          if (place.key === key) {
+            targetId = place.id;
+            targetType = "place";
+            break;
+          }
+        }
+      }
+
+      if (!targetId || (targetType === entityType && targetId === entityId)) return;
+
+      let label = "";
+      if (entityType === "person" && targetType === "place") {
+        const hasBasedIn = Object.values(allRelationships).some(
+          (r) =>
+            r.label === "based-in" &&
+            ((r.fromType === "person" && r.fromId === entityId) ||
+             (r.toType === "person" && r.toId === entityId && r.direction === "mutual")),
+        );
+        if (!hasBasedIn) label = "based-in";
+      }
+
+      const rel = createRelationship({
+        fromType: entityType,
+        fromId: entityId,
+        toType: targetType,
+        toId: targetId,
+        label,
+      });
+      relationships$[rel.id].set(rel);
+    },
+    [entityType, entityId, allPeople, allPlaces, allRelationships],
   );
 }

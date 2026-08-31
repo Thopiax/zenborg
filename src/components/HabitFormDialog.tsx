@@ -520,7 +520,6 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
               <RelationshipTagger
                 entityType="habit"
                 entityId={editingHabitId}
-                collisionBoundary={dialogRef.current}
               />
             )}
 
