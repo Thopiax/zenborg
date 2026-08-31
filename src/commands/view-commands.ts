@@ -2,6 +2,7 @@ import { activeCycle$ } from "@/infrastructure/state/store";
 import {
   cycleDeckCollapsed$,
   isCommandPaletteOpen$,
+  isSettingsOpen$,
   setPlantEntity,
 } from "@/infrastructure/state/ui-store";
 import type { Command } from "./types";
@@ -57,7 +58,7 @@ export const viewCommands: Command[] = [
     category: "Views",
     keywords: ["preferences", "configure"],
     action: () => {
-      console.log("Open settings");
+      isSettingsOpen$.set(!isSettingsOpen$.peek());
     },
   },
 ];
