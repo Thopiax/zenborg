@@ -85,6 +85,31 @@ function getPersonBasePlace(
   return null;
 }
 
+function buildPlacesByKey(allPlaces: Record<string, Place>): Map<string, Place> {
+  const m = new Map<string, Place>();
+  for (const p of Object.values(allPlaces)) m.set(p.key, p);
+  return m;
+}
+
+function resolveCountry(
+  place: Place,
+  byKey: Map<string, Place>,
+): Place {
+  let current = place;
+  const seen = new Set<string>();
+  while (current.parentKey && !seen.has(current.id)) {
+    seen.add(current.id);
+    const parent = byKey.get(current.parentKey);
+    if (!parent) break;
+    current = parent;
+  }
+  return current;
+}
+
+function placeLabel(place: Place): string {
+  return place.emoji ? `${place.emoji} ${place.name}` : place.name;
+}
+
 function groupPeople(
   people: Person[],
   groupBy: PeopleGroupBy,
@@ -92,6 +117,7 @@ function groupPeople(
   allPlaces: Record<string, Place>,
 ): { key: string; label: string; people: Person[] }[] {
   const groups = new Map<string, { label: string; people: Person[] }>();
+  const byKey = groupBy === "place" ? buildPlacesByKey(allPlaces) : null;
 
   for (const person of people) {
     let key: string;
@@ -103,8 +129,9 @@ function groupPeople(
         break;
       case "place": {
         const place = getPersonBasePlace(person.id, basePlaceMap, person, allPlaces);
-        key = place?.id || NONE_KEY;
-        label = place ? (place.emoji ? `${place.emoji} ${place.name}` : place.name) : NONE_LABELS.place;
+        const country = place ? resolveCountry(place, byKey!) : null;
+        key = country?.id || NONE_KEY;
+        label = country ? placeLabel(country) : NONE_LABELS.place;
         break;
       }
     }
@@ -114,9 +141,9 @@ function groupPeople(
 
   if (groupBy === "place") {
     for (const place of Object.values(allPlaces)) {
+      if (place.parentKey !== null) continue;
       if (!groups.has(place.id)) {
-        const label = place.emoji ? `${place.emoji} ${place.name}` : place.name;
-        groups.set(place.id, { label, people: [] });
+        groups.set(place.id, { label: placeLabel(place), people: [] });
       }
     }
   }
