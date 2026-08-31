@@ -19,13 +19,11 @@ import {
 interface RelationshipTaggerProps {
   entityType: EntityType;
   entityId: string;
-  excludeLabels?: string[];
 }
 
 export function RelationshipTagger({
   entityType,
   entityId,
-  excludeLabels = [],
 }: RelationshipTaggerProps) {
   const allRelationships = use$(relationships$);
   const allAreas = use$(areas$);
@@ -38,14 +36,12 @@ export function RelationshipTagger({
   const labelInputRef = useRef<HTMLInputElement>(null);
 
   const entityRels = useMemo(() => {
-    const excludeSet = new Set(excludeLabels);
     return Object.values(allRelationships).filter((r) => {
-      if (excludeSet.has(r.label)) return false;
       if (r.fromType === entityType && r.fromId === entityId) return true;
       if (r.toType === entityType && r.toId === entityId && r.direction === "mutual") return true;
       return false;
     });
-  }, [allRelationships, entityType, entityId, excludeLabels]);
+  }, [allRelationships, entityType, entityId]);
 
   const existingLabels = useMemo(() => {
     const labels = new Set<string>();

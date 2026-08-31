@@ -192,7 +192,7 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
 
               <TaggedNameInput
                 field={taggedField}
-                placeholder="Name... @mention #tag"
+                placeholder={mode === "edit" ? "Name... @mention #tag" : "Name... #tag"}
                 autoFocus={true}
                 className="flex-1 text-4xl font-bold"
                 collisionBoundary={dialogRef.current}
