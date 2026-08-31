@@ -35,6 +35,7 @@ import { PersonFormDialog } from "@/components/PersonFormDialog";
 import { people$, places$, relationships$ } from "@/infrastructure/state/store";
 import {
   closePersonForm,
+  openPersonFormCreate,
   openPersonFormEdit,
   personFormState$,
   type PeopleGroupBy,
@@ -139,13 +140,9 @@ function groupPeople(
 
 function DraggablePersonCard({
   person,
-  basePlaceMap,
-  allPlaces,
   groupKey,
 }: {
   person: Person;
-  basePlaceMap: Map<string, Place>;
-  allPlaces: Record<string, Place>;
   groupKey: string;
 }) {
   const {
@@ -160,8 +157,6 @@ function DraggablePersonCard({
     data: { personId: person.id, sourceGroupKey: groupKey, type: "person-card" },
   });
 
-  const basePlace = getPersonBasePlace(person.id, basePlaceMap, person, allPlaces);
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -173,7 +168,7 @@ function DraggablePersonCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="group w-full flex items-center gap-2 px-3 py-3 rounded-md bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors text-left"
+      className="group flex items-center justify-between gap-2 px-3 py-3 rounded-md bg-stone-100 dark:bg-stone-800 transition-all hover:ring-2 hover:ring-offset-2 ring-offset-transparent hover:ring-stone-300 dark:hover:ring-stone-600"
       {...attributes}
       {...listeners}
     >
@@ -183,27 +178,20 @@ function DraggablePersonCard({
           e.stopPropagation();
           openPersonFormEdit(person.id, person);
         }}
-        className="flex-1 flex items-center gap-2 min-w-0"
+        className="flex-1 text-left min-w-0"
       >
-        <span className="text-lg flex-shrink-0">
-          {person.emoji || "👤"}
-        </span>
-        <div className="flex-1 min-w-0">
-          <span className="text-sm font-mono font-semibold text-stone-800 dark:text-stone-200 truncate block">
+        <div className="flex items-center text-sm font-mono gap-2 text-stone-800 dark:text-stone-200">
+          <span className="text-lg flex-shrink-0">{person.emoji || "👤"}</span>
+          <span className="text-lg font-semibold truncate flex-1 min-w-0">
             {displayName(person)}
           </span>
-          {basePlace && (
-            <span className="text-xs font-mono text-stone-500 dark:text-stone-400 truncate block">
-              {basePlace.emoji ? `${basePlace.emoji} ` : ""}{basePlace.name}
+          {person.status === "paused" && (
+            <span className="text-xs text-stone-400 dark:text-stone-500 flex-shrink-0">
+              paused
             </span>
           )}
         </div>
       </button>
-      {person.status === "paused" && (
-        <span className="text-xs font-mono text-stone-400 dark:text-stone-500">
-          paused
-        </span>
-      )}
     </div>
   );
 }
@@ -284,16 +272,12 @@ function PeopleColumn({
   groupKey,
   label,
   people,
-  basePlaceMap,
-  allPlaces,
   onAddPerson,
 }: {
   groupKey: string;
   label: string;
   people: Person[];
-  basePlaceMap: Map<string, Place>;
-  allPlaces: Record<string, Place>;
-  onAddPerson: (group: string) => void;
+  onAddPerson: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `group-${groupKey}`,
@@ -319,7 +303,7 @@ function PeopleColumn({
         </span>
         <button
           type="button"
-          onClick={() => onAddPerson(label)}
+          onClick={onAddPerson}
           className="ml-auto p-1 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
           aria-label={`Add person to ${label}`}
         >
@@ -340,7 +324,7 @@ function PeopleColumn({
           {people.length === 0 ? (
             <button
               type="button"
-              onClick={() => onAddPerson(label)}
+              onClick={onAddPerson}
               className="flex items-center justify-center gap-2 py-6 text-stone-400 dark:text-stone-500 hover:text-stone-500 dark:hover:text-stone-400 transition-colors cursor-pointer"
             >
               <span className="text-sm font-mono">Add first person</span>
@@ -350,8 +334,6 @@ function PeopleColumn({
               <DraggablePersonCard
                 key={person.id}
                 person={person}
-                basePlaceMap={basePlaceMap}
-                allPlaces={allPlaces}
                 groupKey={groupKey}
               />
             ))
@@ -362,65 +344,6 @@ function PeopleColumn({
   );
 }
 
-function InlineAddPerson({
-  category,
-  onClose,
-}: {
-  category: string;
-  onClose: () => void;
-}) {
-  const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState("");
-
-  const handleSubmit = () => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-
-    const person = createPerson({
-      name: trimmed,
-      key: slugify(trimmed),
-      emoji: emoji.trim() || null,
-      category: category === NONE_KEY ? null : category,
-    });
-    people$[person.id].set(person);
-    setName("");
-    setEmoji("");
-    onClose();
-  };
-
-  return (
-    <div className="flex gap-2 px-4 pb-4">
-      <input
-        type="text"
-        value={emoji}
-        onChange={(e) => setEmoji(e.target.value)}
-        placeholder="👤"
-        className="w-10 text-center bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-md text-sm px-1 py-1.5"
-        maxLength={2}
-      />
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleSubmit();
-          if (e.key === "Escape") onClose();
-        }}
-        placeholder="Name..."
-        className="flex-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-md text-sm px-3 py-1.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
-        autoFocus
-      />
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={!name.trim()}
-        className="px-2 py-1.5 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 rounded-md transition-colors disabled:opacity-40"
-      >
-        <Plus className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-      </button>
-    </div>
-  );
-}
 
 function findBasedInRel(personId: string): string | null {
   const allRels = relationships$.peek();
@@ -494,7 +417,6 @@ export const PeopleBoardBuilder = observer(
     const allPeople = use$(people$);
     const allPlaces = use$(places$);
     const allRelationships = use$(relationships$);
-    const [addingToGroup, setAddingToGroup] = useState<string | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
 
     const basePlaceMap = useMemo(
@@ -518,8 +440,8 @@ export const PeopleBoardBuilder = observer(
     }
 
     const sensors = useSensors(
-      useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-      useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+      useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+      useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
       useSensor(KeyboardSensor),
     );
 
@@ -553,10 +475,6 @@ export const PeopleBoardBuilder = observer(
       applyDragGroupChange(dragData.personId, groupBy, targetGroupKey);
     };
 
-    const handleCreateCategory = (categoryName: string) => {
-      setAddingToGroup(categoryName);
-    };
-
     const activePerson = activeId ? allPeople[activeId] : null;
 
     return (
@@ -568,26 +486,21 @@ export const PeopleBoardBuilder = observer(
         >
           <div className="flex gap-4 overflow-x-auto px-4 py-4 h-full snap-x snap-mandatory scroll-smooth">
             {groups.map((g) => (
-              <div key={g.key} className="flex flex-col">
-                <PeopleColumn
-                  groupKey={g.key}
-                  label={g.label}
-                  people={g.people}
-                  basePlaceMap={basePlaceMap}
-                  allPlaces={allPlaces}
-                  onAddPerson={() => setAddingToGroup(g.key)}
-                />
-                {addingToGroup === g.key && (
-                  <InlineAddPerson
-                    category={g.label}
-                    onClose={() => setAddingToGroup(null)}
-                  />
-                )}
-              </div>
+              <PeopleColumn
+                key={g.key}
+                groupKey={g.key}
+                label={g.label}
+                people={g.people}
+                onAddPerson={() => openPersonFormCreate({
+                  category: groupBy === "category" && g.key !== NONE_KEY ? g.key : undefined,
+                })}
+              />
             ))}
 
             {groupBy === "category" && (
-              <EmptyCategoryColumn onCreateCategory={handleCreateCategory} />
+              <EmptyCategoryColumn onCreateCategory={(name) =>
+                openPersonFormCreate({ category: name })
+              } />
             )}
           </div>
 
