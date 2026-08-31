@@ -5,6 +5,7 @@ import {
   conciseRoutine,
   isAdjacentBoundary,
   planMaterialization,
+  resolveBoundaries,
   VALID_BOUNDARIES,
   validateRoutine,
 } from "./routines.js";
@@ -314,6 +315,78 @@ describe("routines", () => {
       expect(plan[0].habitId).toBe("h1");
       expect(plan[1].habitId).toBe("h2");
       expect(plan[0].phase).toBe("NIGHT");
+    });
+  });
+
+  describe("resolveBoundaries", () => {
+    const defaultConfigs = [
+      { phase: "MORNING" as const, startHour: 6, order: 0 },
+      { phase: "AFTERNOON" as const, startHour: 12, order: 1 },
+      { phase: "EVENING" as const, startHour: 18, order: 2 },
+      { phase: "NIGHT" as const, startHour: 22, order: 3 },
+    ];
+
+    it("derives four boundaries from default phaseConfigs", () => {
+      const b = resolveBoundaries(defaultConfigs);
+      expect(b).toEqual([
+        { from: "MORNING", to: "AFTERNOON", hour: 12 },
+        { from: "AFTERNOON", to: "EVENING", hour: 18 },
+        { from: "EVENING", to: "NIGHT", hour: 22 },
+        { from: "NIGHT", to: "MORNING", hour: 6 },
+      ]);
+    });
+
+    it("adjusts wake and onset boundaries with sleep anchors", () => {
+      const b = resolveBoundaries(defaultConfigs, {
+        wakeAnchor: 7,
+        onsetAnchor: 23,
+      });
+      expect(b[3]).toEqual({ from: "NIGHT", to: "MORNING", hour: 7 });
+      expect(b[2]).toEqual({ from: "EVENING", to: "NIGHT", hour: 23 });
+      // mid-day boundaries unaffected
+      expect(b[0].hour).toBe(12);
+      expect(b[1].hour).toBe(18);
+    });
+
+    it("handles fractional sleep anchors", () => {
+      const b = resolveBoundaries(defaultConfigs, {
+        wakeAnchor: 6.5,
+        onsetAnchor: 22.75,
+      });
+      expect(b[3].hour).toBe(6.5);
+      expect(b[2].hour).toBe(22.75);
+    });
+
+    it("works with custom phase configs (shifted schedule)", () => {
+      const shifted = [
+        { phase: "MORNING" as const, startHour: 8, order: 0 },
+        { phase: "AFTERNOON" as const, startHour: 13, order: 1 },
+        { phase: "EVENING" as const, startHour: 19, order: 2 },
+        { phase: "NIGHT" as const, startHour: 23, order: 3 },
+      ];
+      const b = resolveBoundaries(shifted);
+      expect(b[0].hour).toBe(13);
+      expect(b[1].hour).toBe(19);
+      expect(b[2].hour).toBe(23);
+      expect(b[3].hour).toBe(8);
+    });
+
+    it("sorts by order regardless of input order", () => {
+      const shuffled = [
+        { phase: "NIGHT" as const, startHour: 22, order: 3 },
+        { phase: "MORNING" as const, startHour: 6, order: 0 },
+        { phase: "EVENING" as const, startHour: 18, order: 2 },
+        { phase: "AFTERNOON" as const, startHour: 12, order: 1 },
+      ];
+      const b = resolveBoundaries(shuffled);
+      expect(b[0]).toEqual({ from: "MORNING", to: "AFTERNOON", hour: 12 });
+      expect(b[3]).toEqual({ from: "NIGHT", to: "MORNING", hour: 6 });
+    });
+
+    it("without anchors, sleep boundaries use phaseConfig startHours", () => {
+      const b = resolveBoundaries(defaultConfigs);
+      expect(b[2].hour).toBe(22); // EVENING→NIGHT = NIGHT.startHour
+      expect(b[3].hour).toBe(6); // NIGHT→MORNING = MORNING.startHour
     });
   });
 });

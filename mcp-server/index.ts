@@ -142,6 +142,7 @@ import {
   boundaryKey,
   conciseRoutine,
   planMaterialization,
+  resolveBoundaries,
   VALID_BOUNDARIES,
   validateRoutine,
 } from "./routines.js";
@@ -1647,6 +1648,40 @@ defineTool(server, {
     if (r.skipped.length) parts.push(`${r.skipped.length} already planted`);
     if (r.errors?.length) parts.push(`${r.errors.length} errors`);
     return parts.join(", ");
+  },
+});
+
+defineTool(server, {
+  name: "get_boundaries",
+  description:
+    "Return the four phase-boundary transition times for today, derived from phaseConfigs. Pass sleepAnchors (wakeAnchor + onsetAnchor as clock hours) to adjust NIGHT→MORNING and EVENING→NIGHT boundaries with observed sleep data.",
+  schema: {
+    wakeAnchor: z
+      .number()
+      .optional()
+      .describe("Wake hour from Garmin sleep (e.g. 6.5 = 06:30)."),
+    onsetAnchor: z
+      .number()
+      .optional()
+      .describe("Sleep onset hour from Garmin sleep (e.g. 22.5 = 22:30)."),
+  },
+  annotations: { readOnlyHint: true },
+  handler: async ({ wakeAnchor, onsetAnchor }) => {
+    const configs = Object.values(
+      readCollection(VAULT_ROOT, "phaseConfigs"),
+    );
+    const anchors =
+      wakeAnchor != null && onsetAnchor != null
+        ? { wakeAnchor, onsetAnchor }
+        : undefined;
+    const boundaries = resolveBoundaries(configs, anchors);
+    return ok(
+      boundaries.map((b) => ({
+        boundary: boundaryKey(b),
+        hour: b.hour,
+        time: `${String(Math.floor(b.hour)).padStart(2, "0")}:${String(Math.round((b.hour % 1) * 60)).padStart(2, "0")}`,
+      })),
+    );
   },
 });
 

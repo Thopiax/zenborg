@@ -103,6 +103,38 @@ export function planMaterialization(
   return planned;
 }
 
+export interface ResolvedBoundary {
+  readonly from: Phase;
+  readonly to: Phase;
+  readonly hour: number;
+}
+
+export function resolveBoundaries(
+  phaseConfigs: readonly {
+    phase: Phase;
+    startHour: number;
+    order: number;
+  }[],
+  sleepAnchors?: { wakeAnchor: number; onsetAnchor: number },
+): ResolvedBoundary[] {
+  const sorted = [...phaseConfigs].sort((a, b) => a.order - b.order);
+
+  return sorted.map((from, i) => {
+    const to = sorted[(i + 1) % sorted.length];
+    let hour = to.startHour;
+
+    if (sleepAnchors) {
+      if (from.phase === "NIGHT" && to.phase === "MORNING") {
+        hour = sleepAnchors.wakeAnchor;
+      } else if (from.phase === "EVENING" && to.phase === "NIGHT") {
+        hour = sleepAnchors.onsetAnchor;
+      }
+    }
+
+    return { from: from.phase, to: to.phase, hour };
+  });
+}
+
 export function conciseRoutine(r: Routine): Record<string, unknown> {
   return {
     id: r.id,
