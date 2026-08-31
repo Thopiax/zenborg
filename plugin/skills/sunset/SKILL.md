@@ -27,6 +27,10 @@ Do NOT trigger for:
 
 ## Workflow
 
+### 0. Materialize bedtime routine
+
+Before reading the day, call `mcp__zenborg__materialize_routine { boundary: "EVENING->NIGHT" }` to plant any bedtime routine entries that haven't been planted yet today. Report what was created vs. already planted.
+
 ### 1. Read the day's record
 
 Fetch today's state in parallel:

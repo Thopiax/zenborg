@@ -63,6 +63,7 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "people",
     "places",
     "relationships",
+    "routines",
     "activeMoment",
 ];
 

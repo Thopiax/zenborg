@@ -28,6 +28,7 @@ import type { Moment } from "@/domain/entities/Moment";
 import type { Person } from "@/domain/entities/Person";
 import type { Place } from "@/domain/entities/Place";
 import type { Relationship } from "@/domain/entities/Relationship";
+import type { Routine } from "@/domain/entities/Routine";
 import type { PhaseConfig } from "@/domain/value-objects/Phase";
 import { isTauri } from "../vault/is-tauri.ts";
 import { syncedVaultCollection } from "../vault/synced-vault.ts";
@@ -45,6 +46,7 @@ import {
   phaseConfigs$,
   places$,
   relationships$,
+  routines$,
 } from "./store";
 import { lastUsedAreaId$ } from "./ui-store.ts";
 
@@ -99,6 +101,7 @@ function configureVaultSync(): void {
     relationships$,
     syncedVaultCollection<Relationship>("relationships"),
   );
+  syncObservable(routines$, syncedVaultCollection<Routine>("routines"));
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -123,6 +126,7 @@ function configureIdbOnly(): void {
           "people",
           "places",
           "relationships",
+          "routines",
         ],
       }),
     },
@@ -171,6 +175,10 @@ function configureIdbOnly(): void {
   syncObservable(
     relationships$,
     persistIndexedDBOptions({ persist: { name: "relationships" } }),
+  );
+  syncObservable(
+    routines$,
+    persistIndexedDBOptions({ persist: { name: "routines" } }),
   );
 }
 

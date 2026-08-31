@@ -367,6 +367,21 @@ export interface DayNote {
   updatedAt: string;
 }
 
+export interface RoutineEntry {
+  habitId: string;
+  order: number;
+}
+
+export interface Routine {
+  id: string;
+  name: string;
+  from: Phase;
+  to: Phase;
+  entries: RoutineEntry[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Collection registry (mirrors src/domain/registry.ts)
 // ────────────────────────────────────────────────────────────────────────
@@ -383,6 +398,7 @@ export const COLLECTION_NAMES = [
   "people",
   "places",
   "relationships",
+  "routines",
 ] as const;
 export type CollectionName = (typeof COLLECTION_NAMES)[number];
 
@@ -398,6 +414,7 @@ export interface CollectionTypeMap {
   people: Person;
   places: Place;
   relationships: Relationship;
+  routines: Routine;
 }
 
 // ────────────────────────────────────────────────────────────────────────

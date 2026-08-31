@@ -124,6 +124,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       expect(exported.version).toBe(EXPORT_SCHEMA_VERSION);
@@ -143,6 +144,7 @@ describe("Export/Import System", () => {
         samplePhaseConfigs,
         sampleMetricLogs,
         sampleDayNotes,
+        {},
         {},
         {},
         {},
@@ -169,6 +171,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       expect(exported.metadata.totalMoments).toBe(2);
@@ -181,7 +184,7 @@ describe("Export/Import System", () => {
     });
 
     it("should handle empty data", () => {
-      const exported = exportData({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {});
+      const exported = exportData({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {});
 
       expect(exported.metadata.totalMoments).toBe(0);
       expect(exported.metadata.totalAreas).toBe(0);
@@ -204,6 +207,7 @@ describe("Export/Import System", () => {
         samplePhaseConfigs,
         sampleMetricLogs,
         sampleDayNotes,
+        {},
         {},
         {},
         {},
@@ -445,6 +449,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -475,6 +480,7 @@ describe("Export/Import System", () => {
         people: {},
         places: {},
         relationships: {},
+        routines: {},
       };
 
       const { moments, areas, cycles, phaseConfigs, result } =
@@ -501,6 +507,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -515,6 +522,7 @@ describe("Export/Import System", () => {
         people: {},
         places: {},
         relationships: {},
+        routines: {},
       };
 
       const { result } = importDataWithStrategy(
@@ -559,6 +567,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -573,6 +582,7 @@ describe("Export/Import System", () => {
         people: {},
         places: {},
         relationships: {},
+        routines: {},
       };
 
       const { moments, result } = importDataWithStrategy(
@@ -607,6 +617,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -621,6 +632,7 @@ describe("Export/Import System", () => {
         people: {},
         places: {},
         relationships: {},
+        routines: {},
       };
 
       const { moments, result } = importDataWithStrategy(
@@ -649,6 +661,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -663,6 +676,7 @@ describe("Export/Import System", () => {
         people: {},
         places: {},
         relationships: {},
+        routines: {},
       };
 
       const { moments, areas, cycles, phaseConfigs } = importDataWithStrategy(
@@ -690,6 +704,7 @@ describe("Export/Import System", () => {
         {},
         {},
         {},
+        {},
       );
 
       const existingData = {
@@ -704,6 +719,7 @@ describe("Export/Import System", () => {
         people: {},
         places: {},
         relationships: {},
+        routines: {},
       };
 
       const { result } = importDataWithStrategy(
@@ -790,6 +806,7 @@ describe("Export/Import System", () => {
         samplePhaseConfigs,
         sampleMetricLogs,
         sampleDayNotes,
+        {},
         {},
         {},
         {},
@@ -884,6 +901,7 @@ describe("Export/Import System", () => {
         people: {},
         places: {},
         relationships: {},
+        routines: {},
       };
 
       const {
@@ -981,6 +999,7 @@ describe("Export/Import System", () => {
         people: {},
         places: {},
         relationships: {},
+        routines: {},
       };
 
       const imported = importDataWithStrategy(
