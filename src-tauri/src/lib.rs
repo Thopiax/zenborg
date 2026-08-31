@@ -59,7 +59,8 @@ pub fn run() {
     let background = observer_config.enabled;
     let start_hidden = observer_config.start_hidden;
 
-    tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .manage(VaultState::new())
         .manage(ObserverState::new(observer_config))
         .plugin(tauri_plugin_process::init())
@@ -67,7 +68,14 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_dialog::init());
+
+    #[cfg(feature = "e2e-testing")]
+    {
+        builder = builder.plugin(tauri_plugin_playwright::init());
+    }
+
+    builder
         .invoke_handler(tauri::generate_handler![
             vault::vault_read_collection,
             vault::vault_write_collection,

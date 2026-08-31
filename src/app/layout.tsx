@@ -19,9 +19,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Zenborg - Intention Compass",
+  title: "Zenborg",
   description:
-    "An attention orchestration system for budgeting moments toward personal flourishing",
+    "A garden for cultivating intentions — plant habits, tend moments, watch them flourish.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
