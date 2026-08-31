@@ -84,6 +84,7 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [aliasesOpen, setAliasesOpen] = useState(false);
   const [placeSelectorOpen, setPlaceSelectorOpen] = useState(false);
+  const [placeSearch, setPlaceSearch] = useState("");
   const [cadenceSelectorOpen, setCadenceSelectorOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [basePlaceId, setBasePlaceId] = useState<string | null>(null);
@@ -108,6 +109,7 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
       setEmojiPickerOpen(false);
       setAliasesOpen(false);
       setPlaceSelectorOpen(false);
+      setPlaceSearch("");
       setCadenceSelectorOpen(false);
 
       if (mode === "edit" && editingPersonId) {
@@ -216,6 +218,42 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
     return grouped;
   }, [allPlaces]);
 
+  const filteredPlaceOptions = useMemo(() => {
+    const term = placeSearch.trim().toLowerCase();
+    if (!term) return placeOptions;
+    return placeOptions.filter((o) =>
+      o.value === null
+        ? false
+        : o.label.toLowerCase().includes(term) ||
+          (o.description?.toLowerCase().includes(term) ?? false) ||
+          (o.group?.toLowerCase().includes(term) ?? false),
+    );
+  }, [placeOptions, placeSearch]);
+
+  const placeSearchInput = (
+    <input
+      type="text"
+      value={placeSearch}
+      onChange={(e) => setPlaceSearch(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          e.nativeEvent.stopImmediatePropagation();
+          const first = filteredPlaceOptions.find((o) => o.value !== null);
+          if (first) {
+            setBasePlaceId(first.value);
+            setPlaceSelectorOpen(false);
+            setPlaceSearch("");
+          }
+        }
+      }}
+      placeholder="Search places…"
+      className="w-full text-sm font-mono bg-transparent text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+      autoFocus
+    />
+  );
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closePersonForm()}>
       <DialogContent
@@ -290,11 +328,13 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
             {selectedPlace && (
               <SelectorPopover
                 open={placeSelectorOpen}
-                options={placeOptions}
+                options={filteredPlaceOptions}
                 selectedValue={basePlaceId}
-                onSelect={setBasePlaceId}
-                onClose={() => setPlaceSelectorOpen(false)}
-                onOpen={() => setPlaceSelectorOpen(true)}
+                onSelect={(v) => { setBasePlaceId(v); setPlaceSearch(""); }}
+                onClose={() => { setPlaceSelectorOpen(false); setPlaceSearch(""); }}
+                onOpen={() => { setPlaceSelectorOpen(true); setPlaceSearch(""); }}
+                enableHotkeys={false}
+                beforeOptions={placeSearchInput}
                 collisionBoundary={dialogRef.current}
                 trigger={
                   <button
@@ -380,11 +420,13 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
             {!selectedPlace && (
               <SelectorPopover
                 open={placeSelectorOpen}
-                options={placeOptions}
+                options={filteredPlaceOptions}
                 selectedValue={basePlaceId}
-                onSelect={setBasePlaceId}
-                onClose={() => setPlaceSelectorOpen(false)}
-                onOpen={() => setPlaceSelectorOpen(true)}
+                onSelect={(v) => { setBasePlaceId(v); setPlaceSearch(""); }}
+                onClose={() => { setPlaceSelectorOpen(false); setPlaceSearch(""); }}
+                onOpen={() => { setPlaceSelectorOpen(true); setPlaceSearch(""); }}
+                enableHotkeys={false}
+                beforeOptions={placeSearchInput}
                 collisionBoundary={dialogRef.current}
                 trigger={
                   <button
