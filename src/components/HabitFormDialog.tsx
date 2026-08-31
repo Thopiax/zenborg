@@ -2,6 +2,7 @@
 
 import { use$ } from "@legendapp/state/react";
 import { AtSign, Clock, Layers, Plus, Timer, Trash2, X } from "lucide-react";
+import { RelationshipTagger } from "@/components/RelationshipTagger";
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { AreaSelector } from "@/components/AreaSelector";
@@ -512,6 +513,15 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
             {/* Variants - Show child habits if any exist (edit mode only) */}
             {mode === "edit" && editingHabitId && (
               <ChildHabitsList parentHabitId={editingHabitId} areaId={areaId} />
+            )}
+
+            {/* Relationships (edit mode only) */}
+            {mode === "edit" && editingHabitId && (
+              <RelationshipTagger
+                entityType="habit"
+                entityId={editingHabitId}
+                collisionBoundary={dialogRef.current}
+              />
             )}
 
             {/* Rhythm Selector - Show as button if selected */}
