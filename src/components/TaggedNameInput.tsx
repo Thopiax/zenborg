@@ -27,6 +27,8 @@ interface TaggedNameInputProps {
   /** Override mention selection — called instead of storing mention key.
    *  Text cleanup still happens; the key is NOT added to mentionIds. */
   onMentionSelect?: (key: string) => void;
+  /** Include areas in @mention search */
+  includeAreas?: boolean;
   /** Custom tag badge className */
   tagBadgesClassName?: string;
 }
@@ -55,6 +57,7 @@ export function TaggedNameInput({
   showTags = true,
   showMentions = true,
   onMentionSelect,
+  includeAreas = false,
   tagBadgesClassName,
 }: TaggedNameInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +121,7 @@ export function TaggedNameInput({
             existingMentions={field.mentionIds}
             maxSuggestions={maxSuggestions}
             collisionBoundary={collisionBoundary}
+            includeAreas={includeAreas}
             trigger={inputElement}
           />
         }
