@@ -22,6 +22,7 @@ import type { Moment } from "./entities/Moment";
 import type { Person } from "./entities/Person";
 import type { Place } from "./entities/Place";
 import type { Relationship } from "./entities/Relationship";
+import type { Routine } from "./entities/Routine";
 import type { PhaseConfig } from "./value-objects/Phase";
 
 /**
@@ -46,6 +47,7 @@ export interface DomainModelRegistry {
   people: Record<string, Person>;
   places: Record<string, Place>;
   relationships: Record<string, Relationship>;
+  routines: Record<string, Routine>;
 }
 
 /**
@@ -64,6 +66,7 @@ export const EXPORTABLE_MODELS = [
   "people",
   "places",
   "relationships",
+  "routines",
 ] as const;
 
 /**
@@ -145,5 +148,11 @@ export const COLLECTION_METADATA: Record<
     displayName: "Relationships",
     singularName: "Relationship",
     description: "Edges connecting entities (person, place, habit, area)",
+  },
+  routines: {
+    displayName: "Routines",
+    singularName: "Routine",
+    description:
+      "Ordered habit sequences carrying the day across a phase boundary",
   },
 };
