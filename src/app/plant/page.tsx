@@ -24,15 +24,24 @@ import { DraggableHabitItem } from "@/components/DraggableHabitItem";
 import { GroupedHabitView } from "@/components/GroupedHabitView";
 import { LandscapePrompt } from "@/components/LandscapePrompt";
 import { PeopleBoardBuilder } from "@/components/PeopleBoardBuilder";
+import { PlaceFormDialog } from "@/components/PlaceFormDialog";
+import { PlacesMapView } from "@/components/PlacesMapView";
 import { PlacesTreeView } from "@/components/PlacesTreeView";
 import { PlantToolbar } from "@/components/PlantToolbar";
+import { slugify } from "@/domain/entities/Moment";
+import { createPlace } from "@/domain/entities/Place";
 import {
   activeAreas$,
   activeHabits$,
   areas$,
+  places$,
 } from "@/infrastructure/state/store";
 import type { HabitGroupBy, PeopleGroupBy } from "@/infrastructure/state/ui-store";
-import { plantViewConfig$ } from "@/infrastructure/state/ui-store";
+import {
+  closePlaceForm,
+  placeFormState$,
+  plantViewConfig$,
+} from "@/infrastructure/state/ui-store";
 
 const PlantPage = observer(() => {
   const areaService = new AreaService();
@@ -176,7 +185,55 @@ const PlantPage = observer(() => {
 
   const renderContent = () => {
     if (config.entity === "places") {
-      return <PlacesTreeView filter={config.filter} />;
+      return (
+        <>
+          {config.groupBy === "map" ? <PlacesMapView /> : <PlacesTreeView filter={config.filter} />}
+          <PlaceFormDialog
+            onSave={(props) => {
+              const formState = placeFormState$.peek();
+              const name = props.name.trim();
+              if (!name) return;
+              const key = slugify(name);
+
+              if (formState.mode === "edit" && formState.editingPlaceId) {
+                const existing = places$[formState.editingPlaceId].peek();
+                places$[formState.editingPlaceId].set({
+                  ...existing,
+                  name,
+                  key,
+                  emoji: props.emoji,
+                  parentKey: props.parentKey,
+                  coordinates: props.coordinates,
+                  address: props.address,
+                  url: props.url,
+                  tags: props.tags,
+                  updatedAt: new Date().toISOString(),
+                });
+              } else {
+                const place = createPlace({
+                  name,
+                  key,
+                  emoji: props.emoji,
+                  parentKey: props.parentKey,
+                  coordinates: props.coordinates,
+                  address: props.address,
+                  url: props.url,
+                  tags: props.tags,
+                });
+                places$[place.id].set(place);
+              }
+              closePlaceForm();
+            }}
+            onDelete={() => {
+              const formState = placeFormState$.peek();
+              if (formState.editingPlaceId) {
+                places$[formState.editingPlaceId].delete();
+                closePlaceForm();
+              }
+            }}
+          />
+        </>
+      );
     }
 
     if (config.entity === "people") {
