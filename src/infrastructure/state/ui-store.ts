@@ -383,7 +383,7 @@ export function openHabitFormCreate(params?: {
     aliases: [],
     parentHabitId: params?.parentHabitId ?? null,
     durationMin: null,
-  
+
     rhythm: null,
     editingHabitId: null,
   });

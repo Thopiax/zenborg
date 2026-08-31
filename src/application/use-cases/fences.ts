@@ -21,7 +21,19 @@ import {
   rungFor,
   sessionFenceRule,
 } from "../../domain/intervention/rules/sessionFence.ts";
-import type { AreaRef, CrossingRecord, FenceDeps } from "../ports";
+import {
+  wateringHoursRules,
+  type WateringHoursMode,
+  type WateringHoursWindow,
+} from "../../domain/intervention/rules/wateringHours.ts";
+import type { Phase } from "../../domain/value-objects/Phase.ts";
+import type { Weekday } from "../../domain/value-objects/Schedule.ts";
+import type {
+  AreaRef,
+  CrossingRecord,
+  FenceDeps,
+  PhaseConfigRef,
+} from "../ports";
 
 /**
  * Declaring, taking down, and reading back fences — the conversational writer
@@ -58,7 +70,8 @@ export type DeclareFenceResult =
 
 export type ClearFencesTarget =
   | { readonly id: RuleId }
-  | { readonly all: true };
+  | { readonly all: true }
+  | { readonly policy: string };
 
 export type ClearFencesResult =
   | { readonly cleared: readonly RuleSpec[] }
@@ -185,6 +198,146 @@ export async function declareFence(
   return { declared: fence, standing: Object.keys(all).length + 1 };
 }
 
+// ── Watering hours ────────────────────────────────────────────────────
+//
+// A standing temporal attention policy: which plots get watered when, with
+// friction for watering the wrong plot at the wrong time. One declaration
+// generates per-surface rules with derived ids; re-declaring replaces.
+
+export interface WateringHoursDeclaration {
+  readonly name: string;
+  readonly mode: WateringHoursMode;
+  readonly window: {
+    readonly phases?: readonly Phase[];
+    readonly weekdays?: readonly Weekday[];
+    readonly fromHour?: number;
+    readonly toHour?: number;
+  };
+  readonly waters: readonly string[];
+  readonly restricts: {
+    readonly areas?: readonly string[];
+    readonly paths?: readonly string[];
+    readonly hosts?: readonly string[];
+    readonly tools?: readonly string[];
+  };
+  readonly prompt?: string;
+  readonly unlockNote?: string;
+}
+
+export type DeclareWateringHoursResult =
+  | { readonly declared: readonly RuleSpec[]; readonly standing: number }
+  | { readonly problems: readonly string[] };
+
+export async function declareWateringHours(
+  deps: FenceDeps,
+  input: WateringHoursDeclaration,
+): Promise<DeclareWateringHoursResult> {
+  const problems: string[] = [];
+
+  if (input.name.trim().length === 0) {
+    problems.push("name must identify this watering policy");
+  }
+
+  if (
+    input.mode === "dry" &&
+    (!input.unlockNote || input.unlockNote.trim() === "")
+  ) {
+    problems.push(
+      "dry mode requires unlockNote — a block that names no way out is refused (invariant 6)",
+    );
+  }
+
+  const areas = await deps.garden.areas();
+
+  const returnsTo: AreaId[] = [];
+  for (const ref of input.waters) {
+    const resolved = resolveArea(areas, ref);
+    if ("problem" in resolved) problems.push(resolved.problem);
+    else returnsTo.push(resolved.id);
+  }
+
+  const restrictedAreaIds: AreaId[] = [];
+  for (const ref of input.restricts.areas ?? []) {
+    const resolved = resolveArea(areas, ref);
+    if ("problem" in resolved) problems.push(resolved.problem);
+    else restrictedAreaIds.push(resolved.id);
+  }
+
+  const cycleId = await deps.garden.activeCycleId();
+  if (cycleId === null) {
+    problems.push(
+      "no season is running — watering hours serve the season's intention, so open a cycle first",
+    );
+  }
+
+  let window: WateringHoursWindow;
+  if (input.window.phases && input.window.phases.length > 0) {
+    const phaseConfigs: readonly PhaseConfigRef[] =
+      await deps.garden.phaseConfigs();
+    const phase = input.window.phases[0];
+    const config = phaseConfigs.find((c) => c.phase === phase);
+    if (!config) {
+      problems.push(`phase "${phase}" not found in phase configs`);
+      window = { fromHour: 0, toHour: 24 };
+    } else {
+      window = {
+        fromHour: config.startHour,
+        toHour: config.endHour,
+        cutFrom: phase,
+        ...(input.window.weekdays ? { weekdays: input.window.weekdays } : {}),
+      };
+    }
+  } else if (
+    input.window.fromHour !== undefined &&
+    input.window.toHour !== undefined
+  ) {
+    window = {
+      fromHour: input.window.fromHour,
+      toHour: input.window.toHour,
+      ...(input.window.weekdays ? { weekdays: input.window.weekdays } : {}),
+    };
+  } else {
+    problems.push("window must specify either phases or fromHour/toHour");
+    window = { fromHour: 0, toHour: 24 };
+  }
+
+  if (problems.length > 0 || cycleId === null || returnsTo.length === 0) {
+    return { problems };
+  }
+
+  const rules = wateringHoursRules({
+    policyName: input.name.trim(),
+    mode: input.mode,
+    window,
+    serves: { cycleId, areaId: returnsTo[0] },
+    returnsTo,
+    restricts: {
+      ...(restrictedAreaIds.length > 0 ? { areas: restrictedAreaIds } : {}),
+      ...(input.restricts.paths ? { paths: [...input.restricts.paths] } : {}),
+      ...(input.restricts.hosts ? { hosts: [...input.restricts.hosts] } : {}),
+      ...(input.restricts.tools ? { tools: [...input.restricts.tools] } : {}),
+    },
+    prompt: input.prompt,
+    unlockNote: input.unlockNote,
+  });
+
+  for (const rule of rules) {
+    const bad = [...validateRuleSpec(rule), ...exitProblems(rule)];
+    if (bad.length > 0) problems.push(...bad);
+  }
+  if (problems.length > 0) return { problems };
+
+  const all = await deps.store.read();
+  const prefix = `watering:${input.name.trim()}:`;
+  const next: Record<string, RuleSpec> = {};
+  for (const [id, rule] of Object.entries(all)) {
+    if (!id.startsWith(prefix)) next[id] = rule;
+  }
+  for (const rule of rules) next[rule.id] = rule;
+  await deps.store.write(next);
+  return { declared: rules, standing: Object.keys(next).length };
+}
+
 // ── Browser-scoped fences ──────────────────────────────────────────────
 //
 // Migration step 5 is "flip the readers", and it could not be flipped without
@@ -262,8 +415,11 @@ function exitProblems(rule: RuleSpec): string[] {
       );
       continue;
     }
-    if (primitive.kind === "cooldown") {
-      const unlock = primitive.unlockPath;
+    // A schedule wraps a gate or a cooldown; the checks below are about the
+    // wrapped primitive's exit, not about `schedule` itself.
+    const inner = primitive.kind === "schedule" ? primitive.wraps : primitive;
+    if (inner.kind === "cooldown") {
+      const unlock = inner.unlockPath;
       if (unlock.type === "out_of_band" && unlock.note.trim() === "") {
         problems.push(
           "the lift is stated nowhere — an out-of-band exit whose note is empty is unreachable, which is no exit at all",
@@ -276,10 +432,7 @@ function exitProblems(rule: RuleSpec): string[] {
         problems.push("the unlock asks nothing, so there is nothing to answer");
       }
     }
-    if (
-      primitive.kind === "gate" &&
-      primitive.proceedAffordance.label.trim() === ""
-    ) {
+    if (inner.kind === "gate" && inner.proceedAffordance.label.trim() === "") {
       problems.push(
         "the gate's exit has no label, so there is nothing to press",
       );
@@ -608,6 +761,21 @@ export async function clearFences(
   if ("all" in target) {
     const cleared = Object.values(all);
     if (cleared.length > 0) await deps.store.write({});
+    return { cleared };
+  }
+
+  if ("policy" in target) {
+    const prefix = `watering:${target.policy}:`;
+    const cleared: RuleSpec[] = [];
+    const rest: Record<string, RuleSpec> = {};
+    for (const [id, rule] of Object.entries(all)) {
+      if (id.startsWith(prefix)) cleared.push(rule);
+      else rest[id] = rule;
+    }
+    if (cleared.length === 0) {
+      return { problems: [`no watering hours with policy "${target.policy}"`] };
+    }
+    await deps.store.write(rest);
     return { cleared };
   }
 

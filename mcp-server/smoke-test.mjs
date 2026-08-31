@@ -360,6 +360,77 @@ try {
     }
   });
 
+  // 8a. wateringHoursAdvisory: a garden-scoped watering-hours rule surfaces an
+  // advisory on add_moment/update_moment for the restricted area — never a
+  // refusal. fromHour: 0, toHour: 0 wraps to "always in window", so this
+  // doesn't depend on the clock. Exercises both response_format paths since
+  // the advisory is threaded through `concise` separately from `full`.
+  await step(
+    "wateringHoursAdvisory on add_moment and update_moment",
+    async () => {
+      // declareWateringHours requires a season covering *today* (real wall
+      // clock) — Sprint 1 above covers the fictional 2026-04 dates the rest of
+      // this script plants moments on, not today. A short-lived real-today
+      // cycle satisfies that without disturbing Sprint 1's date range.
+      const today = new Date();
+      const iso = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const seasonId = parseOk(
+        await callTool("plan_cycle", {
+          name: "watering-hours smoke season",
+          startDate: iso(today),
+          endDate: iso(tomorrow),
+        }),
+      ).created.id;
+
+      const declared = parseOk(
+        await callTool("set_watering_hours", {
+          name: "smoke-watering",
+          mode: "regular",
+          window: { fromHour: 0, toHour: 0 },
+          waters: [areaId],
+          restricts: { areas: [areaId] },
+        }),
+      );
+      if (!declared.declared?.length)
+        throw new Error(`expected set_watering_hours to declare a rule`);
+
+      const created = parseOk(
+        await callTool("add_moment", {
+          name: "Advisory Test",
+          areaId,
+          day: "2026-04-23",
+          phase: "EVENING",
+          response_format: "concise",
+        }),
+      );
+      if (!created.wateringHoursAdvisory) {
+        throw new Error(
+          `expected add_moment (concise) to carry wateringHoursAdvisory, got: ${JSON.stringify(created)}`,
+        );
+      }
+
+      const updated = parseOk(
+        await callTool("update_moment", {
+          id: created.id,
+          order: 0,
+          response_format: "full",
+        }),
+      );
+      if (!updated.wateringHoursAdvisory) {
+        throw new Error(
+          `expected update_moment (full) to carry wateringHoursAdvisory, got: ${JSON.stringify(updated)}`,
+        );
+      }
+
+      await callTool("delete_moment", { id: created.id });
+      await callTool("clear_fence", { policy: "smoke-watering" });
+      await callTool("delete_cycle", { id: seasonId });
+    },
+  );
+
   // 8b. Habit schedules: additive, reconciled against rhythm and phase.
   await step(
     "habit schedule fills rhythm + phase and is inherited by moments",
