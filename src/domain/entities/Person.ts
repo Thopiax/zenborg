@@ -6,8 +6,7 @@ export interface Person {
   key: string;
   aliases?: string[];
   cadence: Cadence | null;
-  status: "active" | "paused";
-  category: string | null;
+  tags: string[];
   basePlace: string | null;
   emoji: string | null;
   isSelf?: boolean;
@@ -44,7 +43,7 @@ export function createPerson(props: {
   key: string;
   aliases?: string[];
   emoji?: string | null;
-  category?: string | null;
+  tags?: string[];
   cadence?: Cadence | null;
   basePlace?: string | null;
 }): Person {
@@ -56,8 +55,7 @@ export function createPerson(props: {
     key: props.key,
     ...(normalized.length > 0 ? { aliases: normalized } : {}),
     cadence: props.cadence ?? null,
-    status: "active",
-    category: props.category ?? null,
+    tags: props.tags ?? [],
     basePlace: props.basePlace ?? null,
     emoji: props.emoji ?? null,
     createdAt: now,

@@ -44,13 +44,12 @@ import { columnWidth } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 
 const NONE_KEY = "__none__";
-const CATEGORY_ORDER = ["family", "friends", "lovers"];
+const TAG_ORDER = ["family", "friends", "lovers"];
 const BASED_IN_LABEL = "based-in";
 
 const NONE_LABELS: Record<PeopleGroupBy, string> = {
-  category: "No category",
+  tag: "No tag",
   place: "No place",
-  status: "No status",
 };
 
 function buildBasePlaceMap(
@@ -98,9 +97,9 @@ function groupPeople(
     let key: string;
     let label: string;
     switch (groupBy) {
-      case "category":
-        key = person.category || NONE_KEY;
-        label = person.category || NONE_LABELS.category;
+      case "tag":
+        key = person.tags?.[0] || NONE_KEY;
+        label = person.tags?.[0] || NONE_LABELS.tag;
         break;
       case "place": {
         const place = getPersonBasePlace(person.id, basePlaceMap, person, allPlaces);
@@ -108,10 +107,6 @@ function groupPeople(
         label = place ? (place.emoji ? `${place.emoji} ${place.name}` : place.name) : NONE_LABELS.place;
         break;
       }
-      case "status":
-        key = person.status;
-        label = person.status;
-        break;
     }
     if (!groups.has(key)) groups.set(key, { label, people: [] });
     groups.get(key)!.people.push(person);
@@ -132,9 +127,9 @@ function groupPeople(
 
   const entries = [...groups.entries()];
   entries.sort(([a], [b]) => {
-    if (groupBy === "category") {
-      const ai = CATEGORY_ORDER.indexOf(a);
-      const bi = CATEGORY_ORDER.indexOf(b);
+    if (groupBy === "tag") {
+      const ai = TAG_ORDER.indexOf(a);
+      const bi = TAG_ORDER.indexOf(b);
       if (ai !== -1 && bi !== -1) return ai - bi;
       if (ai !== -1) return -1;
       if (bi !== -1) return 1;
@@ -194,28 +189,23 @@ function DraggablePersonCard({
           <span className="text-lg font-semibold truncate flex-1 min-w-0">
             {displayName(person)}
           </span>
-          {person.status === "paused" && (
-            <span className="text-xs text-stone-400 dark:text-stone-500 flex-shrink-0">
-              paused
-            </span>
-          )}
         </div>
       </button>
     </div>
   );
 }
 
-function EmptyCategoryColumn({
-  onCreateCategory,
+function EmptyTagColumn({
+  onCreateTag,
 }: {
-  onCreateCategory: (name: string) => void;
+  onCreateTag: (name: string) => void;
 }) {
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState("");
 
   const handleSave = () => {
     if (name.trim()) {
-      onCreateCategory(name.trim());
+      onCreateTag(name.trim());
     }
     setIsCreating(false);
     setName("");
@@ -242,7 +232,7 @@ function EmptyCategoryColumn({
                 if (e.key === "Escape") { setIsCreating(false); setName(""); }
               }}
               autoFocus
-              placeholder="Category name..."
+              placeholder="Tag name..."
               className="flex-1 min-w-0 bg-transparent text-sm font-mono font-medium text-stone-700 dark:text-stone-300 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
             />
           </div>
@@ -267,7 +257,7 @@ function EmptyCategoryColumn({
             <Plus className="w-5 h-5 text-stone-400 dark:text-stone-500 group-hover:text-stone-600 dark:group-hover:text-stone-300 transition-colors" />
           </div>
           <h3 className="text-sm font-mono font-medium text-stone-400 dark:text-stone-500 group-hover:text-stone-600 dark:group-hover:text-stone-300 transition-colors truncate">
-            New category
+            New tag
           </h3>
         </div>
       </div>
@@ -393,17 +383,14 @@ function applyDragGroupChange(
   targetGroupKey: string,
 ) {
   switch (groupBy) {
-    case "category": {
-      const val = targetGroupKey === NONE_KEY ? null : targetGroupKey;
-      people$[personId].category.set(val);
+    case "tag": {
+      const current = people$[personId].tags.peek() ?? [];
+      const oldTag = current[0];
+      const newTag = targetGroupKey === NONE_KEY ? undefined : targetGroupKey;
+      const updated = oldTag ? current.filter((t: string) => t !== oldTag) : [...current];
+      if (newTag) updated.unshift(newTag);
+      people$[personId].tags.set(updated);
       people$[personId].updatedAt.set(new Date().toISOString());
-      break;
-    }
-    case "status": {
-      if (targetGroupKey === "active" || targetGroupKey === "paused") {
-        people$[personId].status.set(targetGroupKey);
-        people$[personId].updatedAt.set(new Date().toISOString());
-      }
       break;
     }
     case "place": {
@@ -501,14 +488,14 @@ export const PeopleBoardBuilder = observer(
                 label={g.label}
                 people={g.people}
                 onAddPerson={() => openPersonFormCreate({
-                  category: groupBy === "category" && g.key !== NONE_KEY ? g.key : undefined,
+                  tag: groupBy === "tag" && g.key !== NONE_KEY ? g.key : undefined,
                 })}
               />
             ))}
 
-            {groupBy === "category" && (
-              <EmptyCategoryColumn onCreateCategory={(name) =>
-                openPersonFormCreate({ category: name })
+            {groupBy === "tag" && (
+              <EmptyTagColumn onCreateTag={(name) =>
+                openPersonFormCreate({ tag: name })
               } />
             )}
           </div>
@@ -546,9 +533,8 @@ export const PeopleBoardBuilder = observer(
                 key,
                 aliases: aliases.length > 0 ? aliases : undefined,
                 emoji: props.emoji,
-                category: props.category,
+                tags: props.tags,
                 cadence: props.cadence,
-                status: props.status,
                 updatedAt: new Date().toISOString(),
               });
             } else {
@@ -557,7 +543,7 @@ export const PeopleBoardBuilder = observer(
                 key,
                 emoji: props.emoji,
                 aliases,
-                category: props.category,
+                tags: props.tags,
                 cadence: props.cadence,
               });
               personId = person.id;

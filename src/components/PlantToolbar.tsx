@@ -40,9 +40,8 @@ const HABIT_GROUPS: { value: HabitGroupBy; label: string; icon: ReactNode }[] = 
 ];
 
 const PEOPLE_GROUPS: { value: PeopleGroupBy; label: string; icon: ReactNode }[] = [
-  { value: "category", label: "Category", icon: <Hash className="w-3 h-3" /> },
+  { value: "tag", label: "Tag", icon: <Hash className="w-3 h-3" /> },
   { value: "place", label: "Place", icon: <MapPin className="w-3 h-3" /> },
-  { value: "status", label: "Status", icon: <Eye className="w-3 h-3" /> },
 ];
 
 function GroupChip({

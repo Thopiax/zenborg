@@ -98,13 +98,15 @@ const areas = [
 
 describe("buildTagIndex", () => {
   it("counts tag usage across moments, habits and areas with a day range", () => {
-    const index = buildTagIndex(gymWithAda, habits, areas);
+    const index = buildTagIndex(gymWithAda, habits, areas, [], []);
     const atlantis = index.find((e) => e.tag === "place-atlantis");
     expect(atlantis).toEqual({
       tag: "place-atlantis",
       moments: 3,
       habits: 1,
       areas: 0,
+      people: 0,
+      places: 0,
       firstDay: "2025-03-10",
       lastDay: "2025-05-02",
     });
@@ -113,7 +115,7 @@ describe("buildTagIndex", () => {
   });
 
   it("filters by prefix — the People index", () => {
-    const people = buildTagIndex(gymWithAda, habits, areas, "person-");
+    const people = buildTagIndex(gymWithAda, habits, areas, [], [], "person-");
     expect(people.map((e) => e.tag).sort()).toEqual([
       "person-ada",
       "person-bea",
@@ -123,13 +125,13 @@ describe("buildTagIndex", () => {
   });
 
   it("sorts by total usage descending", () => {
-    const index = buildTagIndex(gymWithAda, habits, areas);
+    const index = buildTagIndex(gymWithAda, habits, areas, [], []);
     expect(index[0]?.tag).toBe("place-atlantis");
   });
 
   it("tolerates null tags and empty collections", () => {
-    expect(buildTagIndex([], [], [])).toEqual([]);
-    expect(buildTagIndex([moment({ tags: null })], [], [])).toEqual([]);
+    expect(buildTagIndex([], [], [], [], [])).toEqual([]);
+    expect(buildTagIndex([moment({ tags: null })], [], [], [], [])).toEqual([]);
   });
 });
 
