@@ -2,6 +2,7 @@
 
 import { use$ } from "@legendapp/state/react";
 import { Trash2 } from "lucide-react";
+import { RelationshipTagger } from "@/components/RelationshipTagger";
 import { useEffect, useMemo, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
@@ -205,6 +206,16 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
               className={inputClass}
             />
           </div>
+
+          {/* Relationships (edit mode only) */}
+          {mode === "edit" && editingPlaceId && (
+            <div className="mt-4">
+              <RelationshipTagger
+                entityType="place"
+                entityId={editingPlaceId}
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex items-center justify-between sm:justify-between">
