@@ -8,6 +8,7 @@ import type {
   MomentId,
   RuleId,
 } from "../domain/attention/ids";
+import type { Phase } from "../domain/value-objects/Phase";
 import type { SpanDerivationConfig } from "../domain/attention/SpanDerivation";
 import type { RuleSpec } from "../domain/intervention/RuleSpec";
 
@@ -144,11 +145,19 @@ export interface FenceGardenPort {
   areas(): Promise<readonly AreaRef[]>;
   /** The cycle containing today, or null when no season is running. */
   activeCycleId(): Promise<CycleId | null>;
+  /** Phase time boundaries, for resolving phase names to hours. */
+  phaseConfigs(): Promise<readonly PhaseConfigRef[]>;
 }
 
 export interface AreaRef {
   readonly id: AreaId;
   readonly name: string;
+}
+
+export interface PhaseConfigRef {
+  readonly phase: Phase;
+  readonly startHour: number;
+  readonly endHour: number;
 }
 
 export interface FenceDeps {

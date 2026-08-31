@@ -267,7 +267,9 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     order,
     ...(normalizedAliases.length > 0 ? { aliases: normalizedAliases } : {}),
     ...(props.parentHabitId ? { parentHabitId: props.parentHabitId } : {}),
-    ...(props.durationMin && props.durationMin > 0 ? { durationMin: props.durationMin } : {}),
+    ...(props.durationMin && props.durationMin > 0
+      ? { durationMin: props.durationMin }
+      : {}),
     ...(trimmedDescription ? { description: trimmedDescription } : {}),
     ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
     ...(effectiveRhythm ? { rhythm: effectiveRhythm } : {}),

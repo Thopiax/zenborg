@@ -15,6 +15,9 @@
  * is not who armed the thing, it is that every armed thing can be got out of.
  */
 
+import type { Weekday } from "../../../src/domain/value-objects/Schedule.ts";
+import type { Phase } from "../../../src/domain/value-objects/Phase.ts";
+
 export interface TransformSpec {
   readonly kind: "transform";
   readonly replacement:
@@ -162,7 +165,12 @@ export interface ObserveSpec {
 
 export interface ScheduleSpec {
   readonly kind: "schedule";
-  readonly window: { readonly fromHour: number; readonly toHour: number };
+  readonly window: {
+    readonly fromHour: number;
+    readonly toHour: number;
+    readonly weekdays?: readonly Weekday[];
+    readonly cutFrom?: Phase;
+  };
   readonly wraps: Primitive;
   readonly outsideWindow: "inactive" | "passthrough";
 }
