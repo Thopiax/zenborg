@@ -554,6 +554,8 @@ defineTool(server, {
     rhythm: RhythmSchema.optional(),
     schedule: ScheduleInputSchema.optional(),
     placeIds: z.array(z.string()).optional(),
+    parentHabitId: z.string().optional().describe("ID of the parent habit — makes this a variant (e.g. 'guided meditation' under 'Vipassana')."),
+    durationMin: z.number().int().positive().optional().describe("Default duration in minutes for moments spawned from this habit."),
   },
   concise: (p) => conciseHabit((p as any).created),
   handler: async (params) => {
@@ -563,6 +565,15 @@ defineTool(server, {
     const areas = readCollection(VAULT_ROOT, "areas");
     const areaCheck = requireActiveArea(areas, params.areaId);
     if (typeof areaCheck === "string") return err(areaCheck);
+
+    const habits = readCollection(VAULT_ROOT, "habits");
+
+    if (params.parentHabitId) {
+      const parent = habits[params.parentHabitId];
+      if (!parent) return err(`Parent habit not found: ${params.parentHabitId}`);
+      if (parent.isArchived) return err("Parent habit is archived.");
+      if ((parent as any).parentHabitId) return err("Variants cannot nest — parent is already a variant.");
+    }
 
     let schedule: Schedule | undefined;
     let rhythm = params.rhythm;
@@ -583,7 +594,6 @@ defineTool(server, {
       phase = reconciled.phase;
     }
 
-    const habits = readCollection(VAULT_ROOT, "habits");
     const now = nowIso();
     const normalizedAliases = normalizeAliases(params.aliases, params.name);
     const habit: Habit = {
@@ -608,6 +618,8 @@ defineTool(server, {
             placeIds: params.placeIds.map(slugify).filter((k) => k.length > 0),
           }
         : {}),
+      ...(params.parentHabitId ? { parentHabitId: params.parentHabitId } : {}),
+      ...(params.durationMin && params.durationMin > 0 ? { durationMin: params.durationMin } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -636,6 +648,8 @@ defineTool(server, {
     rhythm: RhythmSchema.nullable().optional(),
     schedule: ScheduleInputSchema.nullable().optional(),
     placeIds: z.array(z.string()).nullable().optional(),
+    parentHabitId: z.string().nullable().optional().describe("Set parent habit ID to make this a variant; null to detach."),
+    durationMin: z.number().int().positive().nullable().optional().describe("Default duration in minutes; null to clear."),
     archived: z
       .boolean()
       .optional()
@@ -659,6 +673,14 @@ defineTool(server, {
       const areas = readCollection(VAULT_ROOT, "areas");
       const areaCheck = requireActiveArea(areas, updates.areaId);
       if (typeof areaCheck === "string") return err(areaCheck);
+    }
+
+    if ("parentHabitId" in updates && updates.parentHabitId !== null) {
+      const parent = habits[updates.parentHabitId!];
+      if (!parent) return err(`Parent habit not found: ${updates.parentHabitId}`);
+      if (parent.isArchived) return err("Parent habit is archived.");
+      if ((parent as any).parentHabitId) return err("Variants cannot nest — parent is already a variant.");
+      if (updates.parentHabitId === id) return err("A habit cannot be its own parent.");
     }
 
     const nextName =
@@ -703,6 +725,20 @@ defineTool(server, {
         delete next.placeIds;
       } else {
         next.placeIds = keys;
+      }
+    }
+    if ("parentHabitId" in updates) {
+      if (updates.parentHabitId === null) {
+        delete next.parentHabitId;
+      } else if (updates.parentHabitId) {
+        next.parentHabitId = updates.parentHabitId;
+      }
+    }
+    if ("durationMin" in updates) {
+      if (updates.durationMin === null) {
+        delete next.durationMin;
+      } else if (updates.durationMin && updates.durationMin > 0) {
+        next.durationMin = updates.durationMin;
       }
     }
     if ("aliases" in updates) {

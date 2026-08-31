@@ -155,7 +155,6 @@ export function HabitFormDialog({ onSave, onDelete }: HabitFormDialogProps) {
       setPhaseSelectorOpen(false);
       setAliasesSelectorOpen(false);
       setRhythmSelectorOpen(false);
-      setVariantsSelectorOpen(false);
     }
   }, [open]);
 
