@@ -245,7 +245,41 @@
         "updatedAt": "2026-08-21T09:00:00.000Z"
       }
     },
-    "cycles": {},
+    "cycles": {
+      "cy1-london-summer": {
+        "id": "cy1-london-summer",
+        "name": "London Summer",
+        "startDate": "2026-06-01",
+        "endDate": "2026-08-15",
+        "intention": "settling in",
+        "reflection": null,
+        "placeIds": ["pl1-london"],
+        "createdAt": "2026-06-01T09:00:00.000Z",
+        "updatedAt": "2026-06-01T09:00:00.000Z"
+      },
+      "cy2-berlin-spring": {
+        "id": "cy2-berlin-spring",
+        "name": "Berlin Spring",
+        "startDate": "2026-03-01",
+        "endDate": "2026-05-31",
+        "intention": "language immersion",
+        "reflection": null,
+        "placeIds": ["pl2-berlin"],
+        "createdAt": "2026-03-01T09:00:00.000Z",
+        "updatedAt": "2026-03-01T09:00:00.000Z"
+      },
+      "cy3-sao-paulo-winter": {
+        "id": "cy3-sao-paulo-winter",
+        "name": "São Paulo Winter",
+        "startDate": "2026-01-05",
+        "endDate": "2026-02-28",
+        "intention": "family time",
+        "reflection": null,
+        "placeIds": ["pl5-sao-paulo"],
+        "createdAt": "2026-01-05T09:00:00.000Z",
+        "updatedAt": "2026-01-05T09:00:00.000Z"
+      }
+    },
     "cyclePlans": {},
     "phaseConfigs": {},
     "metricLogs": {},
@@ -313,14 +347,41 @@
       }
     },
     "places": {
+      "pl3-uk": {
+        "id": "pl3-uk",
+        "name": "United Kingdom",
+        "key": "uk",
+        "parentKey": null,
+        "tags": [],
+        "address": null,
+        "coordinates": { "lat": 54.0, "lng": -2.0 },
+        "emoji": "🇬🇧",
+        "url": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
       "pl1-london": {
         "id": "pl1-london",
         "name": "London",
         "key": "london",
         "parentKey": "uk",
+        "tags": [],
         "address": null,
-        "coordinates": null,
-        "emoji": "🇬🇧",
+        "coordinates": { "lat": 51.5074, "lng": -0.1278 },
+        "emoji": null,
+        "url": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "pl4-germany": {
+        "id": "pl4-germany",
+        "name": "Germany",
+        "key": "germany",
+        "parentKey": null,
+        "tags": [],
+        "address": null,
+        "coordinates": { "lat": 51.1657, "lng": 10.4515 },
+        "emoji": "🇩🇪",
         "url": null,
         "createdAt": "2026-08-21T09:00:00.000Z",
         "updatedAt": "2026-08-21T09:00:00.000Z"
@@ -330,9 +391,49 @@
         "name": "Berlin",
         "key": "berlin",
         "parentKey": "germany",
+        "tags": [],
         "address": null,
-        "coordinates": null,
-        "emoji": "🇩🇪",
+        "coordinates": { "lat": 52.52, "lng": 13.405 },
+        "emoji": null,
+        "url": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "pl6-brazil": {
+        "id": "pl6-brazil",
+        "name": "Brazil",
+        "key": "brazil",
+        "parentKey": null,
+        "tags": [],
+        "address": null,
+        "coordinates": { "lat": -14.235, "lng": -51.9253 },
+        "emoji": "🇧🇷",
+        "url": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "pl5-sao-paulo": {
+        "id": "pl5-sao-paulo",
+        "name": "São Paulo",
+        "key": "sao-paulo",
+        "parentKey": "brazil",
+        "tags": [],
+        "address": null,
+        "coordinates": { "lat": -23.5505, "lng": -46.6333 },
+        "emoji": null,
+        "url": null,
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "pl7-tokyo": {
+        "id": "pl7-tokyo",
+        "name": "Tokyo",
+        "key": "tokyo",
+        "parentKey": null,
+        "tags": [],
+        "address": null,
+        "coordinates": { "lat": 35.6762, "lng": 139.6503 },
+        "emoji": "🇯🇵",
         "url": null,
         "createdAt": "2026-08-21T09:00:00.000Z",
         "updatedAt": "2026-08-21T09:00:00.000Z"
@@ -343,12 +444,12 @@
     "totalMoments": 8,
     "totalAreas": 3,
     "totalHabits": 6,
-    "totalCycles": 0,
+    "totalCycles": 3,
     "totalCyclePlans": 0,
     "totalPhaseConfigs": 0,
     "totalMetricLogs": 0,
     "totalDayNotes": 0,
     "totalPeople": 5,
-    "totalPlaces": 2
+    "totalPlaces": 7
   }
 }
