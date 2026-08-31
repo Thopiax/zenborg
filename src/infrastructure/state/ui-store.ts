@@ -445,42 +445,28 @@ export function closeHabitForm() {
   });
 }
 
-/**
- * Archive area confirmation dialog state
- * Controls the area archival confirmation modal
- * Ephemeral - not persisted
- *
- * Note: Areas are never truly deleted - they are archived to preserve
- * data integrity for historical moments that reference them.
- */
-export interface ArchiveAreaDialogState {
+export interface DeleteAreaDialogState {
   open: boolean;
   areaId: string | null;
   areaName: string | null;
 }
 
-export const archiveAreaDialogState$ = observable<ArchiveAreaDialogState>({
+export const deleteAreaDialogState$ = observable<DeleteAreaDialogState>({
   open: false,
   areaId: null,
   areaName: null,
 });
 
-/**
- * Helper function to open archive area dialog
- */
-export function openArchiveAreaDialog(areaId: string, areaName: string) {
-  archiveAreaDialogState$.set({
+export function openDeleteAreaDialog(areaId: string, areaName: string) {
+  deleteAreaDialogState$.set({
     open: true,
     areaId,
     areaName,
   });
 }
 
-/**
- * Helper function to close archive area dialog
- */
-export function closeArchiveAreaDialog() {
-  archiveAreaDialogState$.set({
+export function closeDeleteAreaDialog() {
+  deleteAreaDialogState$.set({
     open: false,
     areaId: null,
     areaName: null,
