@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { observer, use$ } from "@legendapp/state/react";
-import { Archive } from "lucide-react";
+import { Archive, ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { Habit } from "@/domain/entities/Habit";
 import type { Area } from "@/domain/entities/Area";
@@ -33,6 +33,7 @@ import { HabitService } from "@/application/services/HabitService";
 import {
   activeAreas$,
   activeHabits$,
+  childHabitsByParent$,
 } from "@/infrastructure/state/store";
 import {
   closeHabitForm,
@@ -279,12 +280,117 @@ function DraggableHabitCard({
   );
 }
 
+function VariantCard({
+  habit,
+  areaColor,
+  onEdit,
+}: {
+  habit: Habit;
+  areaColor?: string;
+  onEdit: () => void;
+}) {
+  const textColors = getTextColorsForBackground(areaColor);
+
+  return (
+    <button
+      type="button"
+      onClick={onEdit}
+      className="flex items-center gap-2 pl-9 pr-3 py-2 rounded-md transition-colors hover:bg-black/5 dark:hover:bg-white/5 text-left w-full"
+      style={{ backgroundColor: areaColor ? `${areaColor}88` : undefined }}
+    >
+      <span className="text-sm flex-shrink-0">{habit.emoji}</span>
+      <span
+        className={cn(
+          "text-sm font-mono font-medium truncate flex-1 min-w-0",
+          textColors.primary,
+        )}
+      >
+        {habit.name}
+      </span>
+      {habit.phase && (
+        <PhaseIcon
+          phase={habit.phase as Phase}
+          className={cn("w-3 h-3 flex-shrink-0", textColors.secondary)}
+        />
+      )}
+    </button>
+  );
+}
+
+function HabitStack({
+  habit,
+  children: childHabits,
+  areaColor,
+  groupKey,
+  onEditHabit,
+  onArchiveHabit,
+}: {
+  habit: Habit;
+  children: Habit[];
+  areaColor?: string;
+  groupKey: string;
+  onEditHabit: (habitId: string) => void;
+  onArchiveHabit: (habitId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const hasChildren = childHabits.length > 0;
+  const textColors = getTextColorsForBackground(areaColor);
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center gap-0">
+        {hasChildren && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded((v) => !v);
+            }}
+            className={cn(
+              "flex-shrink-0 p-1 rounded transition-colors",
+              textColors.secondary,
+            )}
+            aria-label={expanded ? "Collapse variants" : "Expand variants"}
+          >
+            {expanded ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
+          </button>
+        )}
+        <div className={cn("flex-1 min-w-0", !hasChildren && "ml-6")}>
+          <DraggableHabitCard
+            habit={habit}
+            areaColor={areaColor}
+            groupKey={groupKey}
+            onEdit={() => onEditHabit(habit.id)}
+            onArchive={() => onArchiveHabit(habit.id)}
+          />
+        </div>
+      </div>
+
+      {expanded &&
+        childHabits.map((child) => (
+          <VariantCard
+            key={child.id}
+            habit={child}
+            areaColor={areaColor}
+            onEdit={() => onEditHabit(child.id)}
+          />
+        ))}
+    </div>
+  );
+}
+
 function GroupColumn({
   groupKey,
   groupBy,
   color,
   habits,
   areas,
+  childHabitsMap,
   onEditHabit,
   onArchiveHabit,
 }: {
@@ -293,6 +399,7 @@ function GroupColumn({
   color?: string;
   habits: Habit[];
   areas: Area[];
+  childHabitsMap: Record<string, Habit[]>;
   onEditHabit: (habitId: string) => void;
   onArchiveHabit: (habitId: string) => void;
 }) {
@@ -333,13 +440,14 @@ function GroupColumn({
             habits.map((habit) => {
               const area = areas.find((a) => a.id === habit.areaId);
               return (
-                <DraggableHabitCard
+                <HabitStack
                   key={habit.id}
                   habit={habit}
+                  children={childHabitsMap[habit.id] || []}
                   areaColor={area?.color}
                   groupKey={groupKey}
-                  onEdit={() => onEditHabit(habit.id)}
-                  onArchive={() => onArchiveHabit(habit.id)}
+                  onEditHabit={onEditHabit}
+                  onArchiveHabit={onArchiveHabit}
                 />
               );
             })
@@ -385,6 +493,7 @@ export const GroupedHabitView = observer(
     const habitService = new HabitService();
     const allHabits = use$(activeHabits$);
     const allAreas = use$(activeAreas$);
+    const childHabitsMap = use$(childHabitsByParent$);
     const [activeId, setActiveId] = useState<string | null>(null);
 
     const filtered = filter
@@ -399,7 +508,14 @@ export const GroupedHabitView = observer(
     }
 
     const handleEditHabit = (habitId: string) => {
-      const habit = allHabits.find((h) => h.id === habitId);
+      // Check root habits first, then children
+      let habit = allHabits.find((h) => h.id === habitId);
+      if (!habit) {
+        for (const children of Object.values(childHabitsMap)) {
+          habit = children.find((h) => h.id === habitId);
+          if (habit) break;
+        }
+      }
       if (habit) openHabitFormEdit(habitId, habit);
     };
 
@@ -467,6 +583,7 @@ export const GroupedHabitView = observer(
                 color={g.color}
                 habits={g.habits}
                 areas={allAreas}
+                childHabitsMap={childHabitsMap}
                 onEditHabit={handleEditHabit}
                 onArchiveHabit={handleArchiveHabit}
               />
