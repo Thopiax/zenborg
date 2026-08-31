@@ -199,6 +199,7 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
                 maxSuggestions={5}
                 showTags={true}
                 showMentions={false}
+                includeAreas={true}
                 onMentionSelect={mode === "edit" ? addRelFromMention : undefined}
               />
             </div>
