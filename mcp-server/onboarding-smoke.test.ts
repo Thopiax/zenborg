@@ -167,8 +167,8 @@ describe("onboarding smoke test", () => {
 
     // ── Phase 3: Create people and places ──────────────────────────
     const personSpecs = [
-      { name: "Ada", category: "friend", cadence: "monthly" as const },
-      { name: "Marco", category: "family", cadence: "weekly" as const },
+      { name: "Ada", tags: ["friend"], cadence: "monthly" as const },
+      { name: "Marco", tags: ["family"], cadence: "weekly" as const },
     ];
 
     const people = readCollection(root, "people");
@@ -179,7 +179,7 @@ describe("onboarding smoke test", () => {
         key,
         name: spec.name,
         emoji: null,
-        category: spec.category,
+        tags: spec.tags,
         cadence: spec.cadence,
         basePlace: null,
         status: "active",

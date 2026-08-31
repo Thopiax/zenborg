@@ -158,6 +158,7 @@ function migratePerson(p: Person & { category?: string | null }): Person {
     const migrated = legacy ? normalizeTags([legacy]) : [];
     (p as any).tags = migrated;
   }
+  delete (p as any).category;
   return p;
 }
 
@@ -169,7 +170,12 @@ function migratePlace(p: Place): Place {
 
 function readPeople(): Record<string, Person> {
   const raw = readCollection(VAULT_ROOT, "people");
-  for (const p of Object.values(raw)) migratePerson(p);
+  let dirty = false;
+  for (const p of Object.values(raw)) {
+    if ((p as any).category !== undefined) dirty = true;
+    migratePerson(p);
+  }
+  if (dirty) writeCollection(VAULT_ROOT, "people", raw);
   return raw;
 }
 
