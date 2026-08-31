@@ -135,6 +135,32 @@ export function resolveBoundaries(
   });
 }
 
+function wrap24(h: number): number {
+  return ((h % 24) + 24) % 24;
+}
+
+export interface BoundaryWindow {
+  readonly boundary: string;
+  readonly fromHour: number;
+  readonly toHour: number;
+}
+
+/** Derive ScheduleSpec-compatible time windows around each phase boundary.
+ * Default margin: 30 min before, 60 min after the transition hour. */
+export function deriveBoundaryWindows(
+  boundaries: readonly ResolvedBoundary[],
+  options?: { beforeMinutes?: number; afterMinutes?: number },
+): BoundaryWindow[] {
+  const before = (options?.beforeMinutes ?? 30) / 60;
+  const after = (options?.afterMinutes ?? 60) / 60;
+
+  return boundaries.map((b) => ({
+    boundary: boundaryKey(b),
+    fromHour: wrap24(b.hour - before),
+    toHour: wrap24(b.hour + after),
+  }));
+}
+
 export function conciseRoutine(r: Routine): Record<string, unknown> {
   return {
     id: r.id,

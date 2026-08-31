@@ -246,3 +246,74 @@ test("windowed tally resets when the last crossing was on a different day", () =
     "should have reset to rung 0 (confirmation), not stayed at rung 1 (delay)",
   );
 });
+
+// ── ScheduleSpec-wrapped gates (outside-match fences) ─────────────────
+
+const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const OTHER_DAY = WEEKDAYS[(new Date().getDay() + 3) % 7];
+
+function scheduleFenced(outsideWindow = "inactive", inWindow = true) {
+  const vault = mkdtempSync(join(tmpdir(), "kairos-fences-"));
+  const roots = mkdtempSync(join(tmpdir(), "kairos-roots-"));
+  const onStream = join(roots, "on-stream");
+  mkdirSync(onStream, { recursive: true });
+
+  const window = inWindow
+    ? { fromHour: 0, toHour: 24 }
+    : { fromHour: 0, toHour: 24, weekdays: [OTHER_DAY] };
+
+  const rule = {
+    id: "fence-sched",
+    name: "scheduled merge",
+    description: "a scheduled fence",
+    scope: { surface: "session", paths: [onStream] },
+    mechanism: "friction",
+    fadeEligibility: "manual",
+    outcome: {
+      claim: "test",
+      measure: { kind: "next_span_in", areaIds: ["area-1"] },
+      windowMs: 600000,
+    },
+    serves: { cycleId: "c1", areaId: "area-1" },
+    deliveryProbability: 1,
+    primitives: [
+      {
+        kind: "schedule",
+        window,
+        outsideWindow,
+        wraps: {
+          kind: "gate",
+          trigger: { type: "entry" },
+          frictionType: { type: "confirmation" },
+          proceedAffordance: {
+            label: "Cross anyway",
+            action: { type: "continue" },
+          },
+          abortAffordance: { label: "Stay" },
+        },
+      },
+    ],
+  };
+  writeFileSync(join(vault, "fences.json"), JSON.stringify([rule]));
+  return { vault, roots, onStream };
+}
+
+test("a schedule-wrapped gate fires when the current hour is inside the window", () => {
+  const f = scheduleFenced("inactive", true);
+  const out = runFences(f, join(f.roots, "elsewhere", "file.ts"));
+  const decision = JSON.parse(out).hookSpecificOutput;
+  assert.equal(decision.permissionDecision, "ask");
+  assert.match(decision.permissionDecisionReason, /scheduled merge/);
+});
+
+test("a schedule-wrapped gate is silent when outside the window and outsideWindow is inactive", () => {
+  const f = scheduleFenced("inactive", false);
+  assert.equal(runFences(f, join(f.roots, "elsewhere", "file.ts")), "");
+});
+
+test("a schedule-wrapped gate fires when outside the window but outsideWindow is passthrough", () => {
+  const f = scheduleFenced("passthrough", false);
+  const out = runFences(f, join(f.roots, "elsewhere", "file.ts"));
+  const decision = JSON.parse(out).hookSpecificOutput;
+  assert.equal(decision.permissionDecision, "ask");
+});

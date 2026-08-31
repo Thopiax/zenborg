@@ -3,6 +3,7 @@ import type { Habit, Moment, Routine, RoutineEntry } from "./vault.js";
 import {
   boundaryKey,
   conciseRoutine,
+  deriveBoundaryWindows,
   isAdjacentBoundary,
   planMaterialization,
   resolveBoundaries,
@@ -387,6 +388,93 @@ describe("routines", () => {
       const b = resolveBoundaries(defaultConfigs);
       expect(b[2].hour).toBe(22); // EVENING→NIGHT = NIGHT.startHour
       expect(b[3].hour).toBe(6); // NIGHT→MORNING = MORNING.startHour
+    });
+  });
+
+  describe("deriveBoundaryWindows", () => {
+    const defaultConfigs = [
+      { phase: "MORNING" as const, startHour: 6, order: 0 },
+      { phase: "AFTERNOON" as const, startHour: 12, order: 1 },
+      { phase: "EVENING" as const, startHour: 18, order: 2 },
+      { phase: "NIGHT" as const, startHour: 22, order: 3 },
+    ];
+
+    it("derives windows with default margins (30 min before, 60 min after)", () => {
+      const boundaries = resolveBoundaries(defaultConfigs);
+      const windows = deriveBoundaryWindows(boundaries);
+      expect(windows).toEqual([
+        { boundary: "MORNING->AFTERNOON", fromHour: 11.5, toHour: 13 },
+        { boundary: "AFTERNOON->EVENING", fromHour: 17.5, toHour: 19 },
+        { boundary: "EVENING->NIGHT", fromHour: 21.5, toHour: 23 },
+        { boundary: "NIGHT->MORNING", fromHour: 5.5, toHour: 7 },
+      ]);
+    });
+
+    it("accepts custom margins", () => {
+      const boundaries = resolveBoundaries(defaultConfigs);
+      const windows = deriveBoundaryWindows(boundaries, {
+        beforeMinutes: 15,
+        afterMinutes: 45,
+      });
+      expect(windows[0]).toEqual({
+        boundary: "MORNING->AFTERNOON",
+        fromHour: 11.75,
+        toHour: 12.75,
+      });
+    });
+
+    it("wraps around midnight for late-night boundaries", () => {
+      const boundaries = resolveBoundaries(defaultConfigs);
+      const windows = deriveBoundaryWindows(boundaries, {
+        beforeMinutes: 60,
+        afterMinutes: 120,
+      });
+      // EVENING→NIGHT at 22: from 21, to 0 (midnight)
+      expect(windows[2]).toEqual({
+        boundary: "EVENING->NIGHT",
+        fromHour: 21,
+        toHour: 0,
+      });
+    });
+
+    it("wraps around midnight for early-morning boundaries", () => {
+      const shifted = [
+        { phase: "MORNING" as const, startHour: 5, order: 0 },
+        { phase: "AFTERNOON" as const, startHour: 12, order: 1 },
+        { phase: "EVENING" as const, startHour: 18, order: 2 },
+        { phase: "NIGHT" as const, startHour: 22, order: 3 },
+      ];
+      const boundaries = resolveBoundaries(shifted);
+      const windows = deriveBoundaryWindows(boundaries, {
+        beforeMinutes: 360,
+        afterMinutes: 60,
+      });
+      // NIGHT→MORNING at 5: from 23, to 6
+      expect(windows[3]).toEqual({
+        boundary: "NIGHT->MORNING",
+        fromHour: 23,
+        toHour: 6,
+      });
+    });
+
+    it("works with sleep-anchored boundaries", () => {
+      const boundaries = resolveBoundaries(defaultConfigs, {
+        wakeAnchor: 7,
+        onsetAnchor: 23,
+      });
+      const windows = deriveBoundaryWindows(boundaries);
+      // NIGHT→MORNING shifted to 7: from 6.5, to 8
+      expect(windows[3]).toEqual({
+        boundary: "NIGHT->MORNING",
+        fromHour: 6.5,
+        toHour: 8,
+      });
+      // EVENING→NIGHT shifted to 23: from 22.5, to 0
+      expect(windows[2]).toEqual({
+        boundary: "EVENING->NIGHT",
+        fromHour: 22.5,
+        toHour: 0,
+      });
     });
   });
 });
