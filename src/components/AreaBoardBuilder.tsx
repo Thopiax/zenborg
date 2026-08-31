@@ -23,6 +23,7 @@ import {
 import {
   closeHabitForm,
   habitFormState$,
+  openDeleteAreaDialog,
   openHabitFormCreate,
   openHabitFormEdit,
 } from "@/infrastructure/state/ui-store";
@@ -75,10 +76,10 @@ export const AreaBoardBuilder = observer(() => {
     }
   };
 
-  const handleArchiveArea = (areaId: string) => {
-    const result = areaService.archiveArea(areaId);
-    if ("error" in result) {
-      alert(`Failed to archive area: ${result.error}`);
+  const handleDeleteArea = (areaId: string) => {
+    const area = areas.find((a) => a.id === areaId);
+    if (area) {
+      openDeleteAreaDialog(areaId, area.name);
     }
   };
 
@@ -160,7 +161,7 @@ export const AreaBoardBuilder = observer(() => {
               habits={habitsByArea[area.id] || []}
               archivedHabits={archivedByArea[area.id] || []}
               onUpdateArea={handleUpdateArea}
-              onArchiveArea={handleArchiveArea}
+              onDeleteArea={handleDeleteArea}
               onEditHabit={handleEditHabit}
               onArchiveHabit={handleArchiveHabit}
               onUnarchiveHabit={handleUnarchiveHabit}

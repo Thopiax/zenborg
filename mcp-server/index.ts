@@ -336,8 +336,7 @@ defineTool(server, {
 
 defineTool(server, {
   name: "update_area",
-  description:
-    "Partially update an area. Pass only fields you want to change. Set archived: true to soft-delete (hides from active lists), archived: false to restore.",
+  description: "Partially update an area. Pass only fields you want to change.",
   schema: {
     idOrName: z.string(),
     name: z.string().min(1).optional(),
@@ -349,25 +348,12 @@ defineTool(server, {
     order: z.number().int().nonnegative().optional(),
     attitude: AttitudeSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
-    archived: z
-      .boolean()
-      .optional()
-      .describe("true to archive (soft-delete), false to restore."),
   },
   concise: (p) => conciseArea((p as any).updated),
   handler: async (params) => {
     const { idOrName, ...updates } = params;
     const areas = readCollection(VAULT_ROOT, "areas");
-    let area = findAreaByIdOrName(areas, idOrName);
-    if (!area && updates.archived === false) {
-      area =
-        areas[idOrName] ??
-        Object.values(areas).find(
-          (a) =>
-            a.isArchived && a.name.toLowerCase() === idOrName.toLowerCase(),
-        ) ??
-        null;
-    }
+    const area = findAreaByIdOrName(areas, idOrName);
     if (!area) return err(`Area not found or ambiguous: ${idOrName}`);
     const next: Area = {
       ...area,
@@ -379,9 +365,6 @@ defineTool(server, {
       ...(updates.tags !== undefined
         ? { tags: normalizeTags(updates.tags) }
         : {}),
-      ...(updates.archived !== undefined
-        ? { isArchived: updates.archived }
-        : {}),
       updatedAt: nowIso(),
     };
     areas[area.id] = next;
@@ -391,49 +374,9 @@ defineTool(server, {
 });
 
 defineTool(server, {
-  name: "archive_area",
-  description:
-    "DEPRECATED — use update_area { archived: true } instead. Soft-delete an area.",
-  schema: { idOrName: z.string() },
-  handler: async ({ idOrName }) => {
-    const areas = readCollection(VAULT_ROOT, "areas");
-    const area = findAreaByIdOrName(areas, idOrName);
-    if (!area) return err(`Area not found or ambiguous: ${idOrName}`);
-    areas[area.id] = { ...area, isArchived: true, updatedAt: nowIso() };
-    writeCollection(VAULT_ROOT, "areas", areas);
-    return ok({
-      archived: area.id,
-      deprecated: "use update_area { archived: true }",
-    });
-  },
-});
-
-defineTool(server, {
-  name: "unarchive_area",
-  description:
-    "DEPRECATED — use update_area { archived: false } instead. Restore an archived area.",
-  schema: { idOrName: z.string() },
-  handler: async ({ idOrName }) => {
-    const areas = readCollection(VAULT_ROOT, "areas");
-    const area =
-      areas[idOrName] ??
-      Object.values(areas).find(
-        (a) => a.isArchived && a.name.toLowerCase() === idOrName.toLowerCase(),
-      );
-    if (!area) return err(`Archived area not found: ${idOrName}`);
-    areas[area.id] = { ...area, isArchived: false, updatedAt: nowIso() };
-    writeCollection(VAULT_ROOT, "areas", areas);
-    return ok({
-      unarchived: area.id,
-      deprecated: "use update_area { archived: false }",
-    });
-  },
-});
-
-defineTool(server, {
   name: "delete_area",
   description:
-    "Permanently delete an archived area. Only allowed if the area has no moments.",
+    "Permanently delete an area. Only allowed if the area has no moments or habits.",
   schema: { idOrName: z.string() },
   annotations: { destructiveHint: true },
   handler: async ({ idOrName }) => {
@@ -444,8 +387,15 @@ defineTool(server, {
         (a) => a.name.toLowerCase() === idOrName.toLowerCase(),
       );
     if (!area) return err(`Area not found: ${idOrName}`);
-    if (!area.isArchived)
-      return err(`Area must be archived first: ${area.name}`);
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const areaHabits = Object.values(habits).filter(
+      (h) => h.areaId === area.id,
+    );
+    if (areaHabits.length > 0) {
+      return err(
+        `Area has ${areaHabits.length} habit(s); cannot delete. Move or delete them first.`,
+      );
+    }
     const moments = readCollection(VAULT_ROOT, "moments");
     if (areaHasMoments(area.id, moments)) {
       return err(

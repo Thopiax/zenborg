@@ -304,19 +304,6 @@ export const activeAreas$ = observable(() => {
     .sort((a, b) => a.order - b.order);
 });
 
-/**
- * All archived areas, sorted by updatedAt (most recently archived first)
- * Computed from areas$ - automatically updates when areas change
- */
-export const archivedAreas$ = observable(() => {
-  const allAreas = areas$.get();
-  return Object.values(allAreas)
-    .filter((area) => area.isArchived)
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
-});
 
 /**
  * All active (non-archived) habits, sorted by order
