@@ -973,15 +973,17 @@ defineTool(server, {
   },
   annotations: { readOnlyHint: true },
   handler: async ({ category, limit, far }) => {
-    const registryPeople: RegistryPerson[] = Object.values(
-      readCollection(VAULT_ROOT, "people"),
-    ).map((p) => ({
+    const people = readCollection(VAULT_ROOT, "people");
+    const places = readCollection(VAULT_ROOT, "places");
+    const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
+    const basePlaceMap = buildBasePlaceKeyMap(rels, people, places);
+    const registryPeople: RegistryPerson[] = Object.values(people).map((p) => ({
       key: p.key,
       cadence: p.cadence,
       status: p.status,
       category: p.category,
       favorite: false,
-      basePlace: p.basePlace,
+      basePlace: basePlaceMap.get(p.id) ?? p.basePlace,
     }));
     const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
     return ok(
@@ -1038,7 +1040,7 @@ defineTool(server, {
 defineTool(server, {
   name: "create_person",
   description:
-    'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `aliases` are nicknames or relational terms (e.g. ["mom", "mama"]). `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key for distance filtering.',
+    'Add a person to the registry. `name` is the display name (e.g. "Elias"); `key` is derived via slugify if omitted. `aliases` are nicknames or relational terms (e.g. ["mom", "mama"]). `cadence` sets the outreach rhythm (weekly | monthly | quarterly | yearly). `category` is freeform (friend, family, colleague, etc). `basePlace` is a place key — creates a "based-in" relationship to the matching place entity.',
   schema: {
     name: z.string(),
     key: z.string().optional(),
@@ -1076,7 +1078,7 @@ defineTool(server, {
       cadence: params.cadence ?? null,
       status: params.status ?? "active",
       category: params.category ?? null,
-      basePlace: params.basePlace ? slugify(params.basePlace) : null,
+      basePlace: null,
       emoji: params.emoji ?? null,
       ...(params.isSelf ? { isSelf: true } : {}),
       createdAt: now,
@@ -1084,6 +1086,29 @@ defineTool(server, {
     };
     people[id] = person;
     writeCollection(VAULT_ROOT, "people", people);
+
+    if (params.basePlace) {
+      const placeKey = slugify(params.basePlace);
+      const places = readCollection(VAULT_ROOT, "places");
+      const place = Object.values(places).find((p) => p.key === placeKey);
+      if (place) {
+        const rels = readCollection(VAULT_ROOT, "relationships");
+        const relId = crypto.randomUUID();
+        rels[relId] = {
+          id: relId,
+          fromType: "person",
+          fromId: id,
+          toType: "place",
+          toId: place.id,
+          label: BASED_IN_LABEL,
+          direction: "directed" as const,
+          createdAt: now,
+          updatedAt: now,
+        };
+        writeCollection(VAULT_ROOT, "relationships", rels);
+      }
+    }
+
     return ok({ created: person });
   },
 });
@@ -1134,8 +1159,37 @@ defineTool(server, {
     if ("status" in updates && updates.status !== undefined)
       person.status = updates.status;
     if ("category" in updates) person.category = updates.category ?? null;
-    if ("basePlace" in updates)
-      person.basePlace = updates.basePlace ? slugify(updates.basePlace) : null;
+    if ("basePlace" in updates) {
+      person.basePlace = null;
+      const rels = readCollection(VAULT_ROOT, "relationships");
+      const existingRel = Object.values(rels).find(
+        (r) =>
+          r.label === BASED_IN_LABEL &&
+          ((r.fromType === "person" && r.fromId === id && r.toType === "place") ||
+           (r.toType === "person" && r.toId === id && r.fromType === "place" && r.direction === "mutual")),
+      );
+      if (existingRel) delete rels[existingRel.id];
+      if (updates.basePlace) {
+        const placeKey = slugify(updates.basePlace);
+        const places = readCollection(VAULT_ROOT, "places");
+        const place = Object.values(places).find((p) => p.key === placeKey);
+        if (place) {
+          const relId = crypto.randomUUID();
+          rels[relId] = {
+            id: relId,
+            fromType: "person",
+            fromId: id,
+            toType: "place",
+            toId: place.id,
+            label: BASED_IN_LABEL,
+            direction: "directed" as const,
+            createdAt: nowIso(),
+            updatedAt: nowIso(),
+          };
+        }
+      }
+      writeCollection(VAULT_ROOT, "relationships", rels);
+    }
     if ("emoji" in updates) person.emoji = updates.emoji ?? null;
     if ("isSelf" in updates && updates.isSelf !== undefined) {
       if (updates.isSelf) {
@@ -2005,6 +2059,32 @@ function isCycleActive(cycle: Cycle, todayMs: number): boolean {
  * and nothing has to ask an operating system. Empty when no cycle is running or
  * the running one states no place, and an empty "here" excludes nobody.
  */
+const BASED_IN_LABEL = "based-in";
+
+function buildBasePlaceKeyMap(
+  rels: Relationship[],
+  people: Record<string, Person>,
+  places: Record<string, Place>,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const r of rels) {
+    if (r.label !== BASED_IN_LABEL) continue;
+    let personId: string | null = null;
+    let placeId: string | null = null;
+    if (r.fromType === "person" && r.toType === "place") {
+      personId = r.fromId;
+      placeId = r.toId;
+    } else if (r.toType === "person" && r.fromType === "place" && r.direction === "mutual") {
+      personId = r.toId;
+      placeId = r.fromId;
+    }
+    if (personId && placeId && places[placeId]) {
+      map.set(personId, places[placeId].key);
+    }
+  }
+  return map;
+}
+
 function currentPlaceIds(): string[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
