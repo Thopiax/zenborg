@@ -16,7 +16,6 @@ export interface Area {
   color: string; // hex color
   emoji: string;
   isDefault: boolean; // true for the 5 seeded defaults
-  isArchived: boolean;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -38,7 +37,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#10b981",
     emoji: "🧘",
     isDefault: true,
-    isArchived: false,
     order: 0,
   },
   {
@@ -48,7 +46,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#3b82f6",
     emoji: "🎨",
     isDefault: true,
-    isArchived: false,
     order: 1,
   },
   {
@@ -58,7 +55,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#f97316",
     emoji: "🤝",
     isDefault: true,
-    isArchived: false,
     order: 2,
   },
   {
@@ -68,7 +64,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#eab308",
     emoji: "😄",
     isDefault: true,
-    isArchived: false,
     order: 3,
   },
   {
@@ -78,7 +73,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#6b7280",
     emoji: "🤔",
     isDefault: true,
-    isArchived: false,
     order: 4,
   },
   {
@@ -88,7 +82,6 @@ export const DEFAULT_AREAS: Omit<Area, "id" | "createdAt" | "updatedAt">[] = [
     color: "#8b5cf6",
     emoji: "🧹",
     isDefault: true,
-    isArchived: false,
     order: 5,
   },
 ];
@@ -156,7 +149,6 @@ export function createArea(props: CreateAreaProps): AreaResult {
     color: color.toLowerCase(),
     emoji: emoji?.trim(),
     isDefault: false,
-    isArchived: false,
     order,
     createdAt: now,
     updatedAt: now,
@@ -164,7 +156,7 @@ export function createArea(props: CreateAreaProps): AreaResult {
 }
 
 export type UpdateAreaProps = Partial<
-  Omit<Area, "id" | "isDefault" | "isArchived" | "createdAt" | "updatedAt">
+  Omit<Area, "id" | "isDefault" | "createdAt" | "updatedAt">
 >;
 
 /**

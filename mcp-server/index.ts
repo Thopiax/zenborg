@@ -274,14 +274,13 @@ Your life is the garden. You are the gardener. Zenborg is the toolshed.
 defineTool(server, {
   name: "list_areas",
   description:
-    "List active (non-archived) areas, sorted by order. Pass includeArchived=true to include archived.",
-  schema: { includeArchived: z.boolean().optional() },
+    "List all areas, sorted by order.",
+  schema: {},
   annotations: { readOnlyHint: true },
   concise: (p) => (p as unknown[]).map((a) => conciseArea(a as Area)),
-  handler: async ({ includeArchived }) => {
+  handler: async () => {
     const areas = readCollection(VAULT_ROOT, "areas");
     const list = Object.values(areas)
-      .filter((a) => includeArchived || !a.isArchived)
       .sort((a, b) => a.order - b.order);
     return ok(list);
   },
@@ -327,7 +326,6 @@ defineTool(server, {
       color,
       emoji: emoji.trim(),
       isDefault: false,
-      isArchived: false,
       order,
       attitude: attitude ?? null,
       tags: normalizeTags(tags),
@@ -961,7 +959,7 @@ defineTool(server, {
     const places = readPlaces();
     const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
     const basePlaceMap = buildBasePlaceKeyMap(rels, people, places);
-    const registryPeople: RegistryPerson[] = Object.values(people).map((p) => ({
+    const registryPeople: RegistryPerson[] = Object.values(people).filter((p) => !p.isArchived).map((p) => ({
       key: p.key,
       cadence: p.cadence,
       tags: p.tags,
@@ -988,14 +986,16 @@ const CadenceSchema = z.enum(["weekly", "monthly", "quarterly", "yearly"]);
 
 defineTool(server, {
   name: "list_people",
-  description: "List all people in the registry. Filter by tag.",
+  description: "List all people in the registry. Filter by tag. Archived people are hidden by default; pass includeArchived=true to show them.",
   schema: {
     tag: z.string().optional(),
+    includeArchived: z.boolean().optional().describe("Include archived people (default false)"),
   },
   annotations: { readOnlyHint: true },
   concise: (p) => (p as unknown[]).map((x) => concisePerson(x as Person)),
-  handler: async ({ tag }) => {
+  handler: async ({ tag, includeArchived }) => {
     let list = Object.values(readPeople());
+    if (!includeArchived) list = list.filter((p) => !p.isArchived);
     if (tag) list = list.filter((p) => p.tags.includes(tag));
     list.sort((a, b) => a.name.localeCompare(b.name));
     return ok(list);
@@ -1058,6 +1058,7 @@ defineTool(server, {
       tags: normalizeTags(params.tags ?? []),
       basePlace: null,
       emoji: params.emoji ?? null,
+      isArchived: false,
       ...(params.isSelf ? { isSelf: true } : {}),
       createdAt: now,
       updatedAt: now,
@@ -1094,7 +1095,7 @@ defineTool(server, {
 defineTool(server, {
   name: "update_person",
   description:
-    'Update a person by id or key. Only provided fields are changed. Pass `aliases` to set nicknames (e.g. ["mom", "mama"]); pass `[]` to clear. Pass `tags` to set classification (e.g. ["friend"]); pass `[]` to clear.',
+    'Update a person by id or key. Only provided fields are changed. Pass `aliases` to set nicknames (e.g. ["mom", "mama"]); pass `[]` to clear. Pass `tags` to set classification (e.g. ["friend"]); pass `[]` to clear. Set archived: true to archive, archived: false to restore.',
   schema: {
     idOrKey: z.string(),
     name: z.string().optional(),
@@ -1104,6 +1105,7 @@ defineTool(server, {
     basePlace: z.string().nullable().optional(),
     emoji: z.string().nullable().optional(),
     isSelf: z.boolean().optional(),
+    archived: z.boolean().optional().describe("true to archive, false to restore"),
   },
   concise: (p) => concisePerson((p as any).updated),
   handler: async ({ idOrKey, ...updates }) => {
@@ -1166,6 +1168,7 @@ defineTool(server, {
       writeCollection(VAULT_ROOT, "relationships", rels);
     }
     if ("emoji" in updates) person.emoji = updates.emoji ?? null;
+    if (updates.archived !== undefined) person.isArchived = updates.archived;
     if ("isSelf" in updates && updates.isSelf !== undefined) {
       if (updates.isSelf) {
         const selfExists = Object.values(people).find(
@@ -1210,12 +1213,15 @@ defineTool(server, {
 
 defineTool(server, {
   name: "list_places",
-  description: "List all places in the registry.",
-  schema: {},
+  description: "List all places in the registry. Archived places are hidden by default; pass includeArchived=true to show them.",
+  schema: {
+    includeArchived: z.boolean().optional().describe("Include archived places (default false)"),
+  },
   annotations: { readOnlyHint: true },
   concise: (p) => (p as unknown[]).map((x) => concisePlace(x as Place)),
-  handler: async () => {
-    const list = Object.values(readPlaces());
+  handler: async ({ includeArchived }) => {
+    let list = Object.values(readPlaces());
+    if (!includeArchived) list = list.filter((p) => !p.isArchived);
     list.sort((a, b) => a.name.localeCompare(b.name));
     return ok(list);
   },
@@ -1273,6 +1279,7 @@ defineTool(server, {
       coordinates: params.coordinates ?? null,
       emoji: params.emoji ?? null,
       url: params.url ?? null,
+      isArchived: false,
       createdAt: now,
       updatedAt: now,
     };
@@ -1284,7 +1291,7 @@ defineTool(server, {
 
 defineTool(server, {
   name: "update_place",
-  description: "Update a place by id or key. Only provided fields are changed.",
+  description: "Update a place by id or key. Only provided fields are changed. Set archived: true to archive, archived: false to restore.",
   schema: {
     idOrKey: z.string(),
     name: z.string().optional(),
@@ -1297,6 +1304,7 @@ defineTool(server, {
       .optional(),
     emoji: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
+    archived: z.boolean().optional().describe("true to archive, false to restore"),
   },
   concise: (p) => concisePlace((p as any).updated),
   handler: async ({ idOrKey, ...updates }) => {
@@ -1318,6 +1326,7 @@ defineTool(server, {
       place.coordinates = updates.coordinates ?? null;
     if ("emoji" in updates) place.emoji = updates.emoji ?? null;
     if ("url" in updates) place.url = updates.url ?? null;
+    if (updates.archived !== undefined) place.isArchived = updates.archived;
     place.updatedAt = nowIso();
     places[id] = place;
     writeCollection(VAULT_ROOT, "places", places);
@@ -3376,7 +3385,7 @@ defineTool(server, {
 defineTool(server, {
   name: "search",
   description:
-    "Fuzzy-search habits, people, or places by name. Returns matches ranked by confidence (exact > prefix > substring > levenshtein). Use to resolve natural-language entity references. Pass areaId/includeArchived only for habit searches.",
+    "Fuzzy-search habits, people, or places by name. Returns matches ranked by confidence (exact > prefix > substring > levenshtein). Use to resolve natural-language entity references. Pass areaId only for habit searches. includeArchived works for all entity types.",
   schema: {
     type: z.enum(["habit", "person", "place"]),
     query: z.string().describe("Name, alias, or approximate spelling"),
@@ -3384,7 +3393,7 @@ defineTool(server, {
     includeArchived: z
       .boolean()
       .optional()
-      .describe("habit only: include archived (default false)"),
+      .describe("Include archived entities (default false)"),
   },
   annotations: { readOnlyHint: true },
   handler: async ({ type, query, areaId, includeArchived }) => {
@@ -3407,7 +3416,7 @@ defineTool(server, {
     }
     if (type === "person") {
       const people = readPeople();
-      const results = searchPeople(query, people);
+      const results = searchPeople(query, people, { includeArchived });
       return ok(
         results.map((r) => ({
           personKey: r.person.key,
@@ -3421,7 +3430,7 @@ defineTool(server, {
       );
     }
     const places = readPlaces();
-    const results = searchPlaces(query, places);
+    const results = searchPlaces(query, places, { includeArchived });
     return ok(
       results.map((r) => ({
         placeKey: r.place.key,
@@ -3609,7 +3618,6 @@ const fenceDeps: FenceDeps = {
   garden: {
     async areas() {
       return Object.values(readCollection(VAULT_ROOT, "areas"))
-        .filter((a) => !a.isArchived)
         .map((a) => ({ id: a.id, name: a.name }));
     },
     async activeCycleId() {

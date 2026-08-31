@@ -293,14 +293,11 @@ export const visiblePhases$ = observable(() => {
 });
 
 /**
- * All active (non-archived) areas, sorted by order
- * Computed from areas$ - automatically updates when areas change
- * Archived areas are filtered out to keep the UI clean
+ * All areas, sorted by order
  */
 export const activeAreas$ = observable(() => {
   const allAreas = areas$.get();
   return Object.values(allAreas)
-    .filter((area) => !area.isArchived)
     .sort((a, b) => a.order - b.order);
 });
 
