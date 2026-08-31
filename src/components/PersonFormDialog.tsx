@@ -129,7 +129,7 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
     closePersonForm();
   };
 
-  const hotkeysEnabled = !emojiPickerOpen && !aliasesOpen && !cadenceSelectorOpen && !taggedField.isAutocompleteOpen && open;
+  const hotkeysEnabled = !emojiPickerOpen && !aliasesOpen && !cadenceSelectorOpen && !taggedField.isAutocompleteOpen && !taggedField.isMentionOpen && open;
 
   useHotkeys(
     "enter",
