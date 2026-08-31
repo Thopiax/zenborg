@@ -66,8 +66,7 @@ function registryPerson(over: Partial<RegistryPerson> = {}): RegistryPerson {
   return {
     key: "ada",
     cadence: "weekly",
-    status: "active",
-    category: "friend",
+    tags: ["friend"],
     favorite: false,
     basePlace: null,
     ...over,
@@ -251,39 +250,29 @@ describe("daysSinceLastContact", () => {
  */
 describe("personHealth", () => {
   it("is unstated without a cadence — a roster is not a commitment", () => {
-    expect(personHealth("ada", null, "active", [], NOW)).toBe("unstated");
-  });
-
-  // Spec verification 7: "I stepped back deliberately" is not "I let this
-  // slide". A paused person never wilts, however long the silence.
-  it("is unstated when paused, regardless of cadence and silence", () => {
-    const silent = [moment({ day: dayBefore(NOW, 400), personIds: ["ada"] })];
-    expect(personHealth("ada", "weekly", "paused", silent, NOW)).toBe(
-      "unstated",
-    );
-    expect(personHealth("ada", "weekly", "paused", [], NOW)).toBe("unstated");
+    expect(personHealth("ada", null, [], NOW)).toBe("unstated");
   });
 
   it("is wilting when there is a cadence but no contact at all", () => {
-    expect(personHealth("ada", "weekly", "active", [], NOW)).toBe("wilting");
+    expect(personHealth("ada", "weekly", [], NOW)).toBe("wilting");
   });
 
   it("is blooming inside the cadence bucket", () => {
     const ms = [moment({ day: dayBefore(NOW, 2), personIds: ["ada"] })];
-    expect(personHealth("ada", "weekly", "active", ms, NOW)).toBe("blooming");
+    expect(personHealth("ada", "weekly", ms, NOW)).toBe("blooming");
   });
 
   it("is wilting past the cadence bucket", () => {
     const ms = [moment({ day: dayBefore(NOW, 40), personIds: ["ada"] })];
-    expect(personHealth("ada", "weekly", "active", ms, NOW)).toBe("wilting");
+    expect(personHealth("ada", "weekly", ms, NOW)).toBe("wilting");
   });
 
   it("counts a moment shared with several people for each of them", () => {
     const ms = [
       moment({ day: dayBefore(NOW, 2), personIds: ["ada", "bea", "cai"] }),
     ];
-    expect(personHealth("ada", "weekly", "active", ms, NOW)).toBe("blooming");
-    expect(personHealth("bea", "weekly", "active", ms, NOW)).toBe("blooming");
+    expect(personHealth("ada", "weekly", ms, NOW)).toBe("blooming");
+    expect(personHealth("bea", "weekly", ms, NOW)).toBe("blooming");
   });
 });
 
@@ -294,55 +283,37 @@ describe("personHealth", () => {
  */
 describe("personHealth — silence threshold arithmetic", () => {
   it("blooms when silence equals the threshold exactly (<=, not <)", () => {
-    // MIDNIGHT as `now` is the only way to make daysSince land on exactly 7.0 —
-    // from a mid-day `now` the fraction is never zero and `<` would still pass.
     const ms = [moment({ day: dayBefore(MIDNIGHT, 7), personIds: ["ada"] })];
-    expect(personHealth("ada", "weekly", "active", ms, MIDNIGHT)).toBe(
-      "blooming",
-    );
+    expect(personHealth("ada", "weekly", ms, MIDNIGHT)).toBe("blooming");
   });
 
   it("wilts one day past the threshold", () => {
     const ms = [moment({ day: dayBefore(MIDNIGHT, 8), personIds: ["ada"] })];
-    expect(personHealth("ada", "weekly", "active", ms, MIDNIGHT)).toBe(
-      "wilting",
-    );
+    expect(personHealth("ada", "weekly", ms, MIDNIGHT)).toBe("wilting");
   });
 
   it("blooms just inside the threshold and wilts just outside it", () => {
     const inside = [moment({ day: dayBefore(NOW, 6), personIds: ["ada"] })];
     const outside = [moment({ day: dayBefore(NOW, 7), personIds: ["ada"] })];
-    expect(personHealth("ada", "weekly", "active", inside, NOW)).toBe(
-      "blooming",
-    );
-    expect(personHealth("ada", "weekly", "active", outside, NOW)).toBe(
-      "wilting",
-    );
+    expect(personHealth("ada", "weekly", inside, NOW)).toBe("blooming");
+    expect(personHealth("ada", "weekly", outside, NOW)).toBe("wilting");
   });
 
   it("stretches the threshold for a longer bucket — monthly tolerates 20 days", () => {
     const ms = [moment({ day: dayBefore(NOW, 20), personIds: ["ada"] })];
-    expect(personHealth("ada", "monthly", "active", ms, NOW)).toBe("blooming");
-    expect(personHealth("ada", "weekly", "active", ms, NOW)).toBe("wilting");
+    expect(personHealth("ada", "monthly", ms, NOW)).toBe("blooming");
+    expect(personHealth("ada", "weekly", ms, NOW)).toBe("wilting");
   });
 
   it("tolerates a quarter of silence quarterly, and a year yearly", () => {
     const ninety = [moment({ day: dayBefore(NOW, 90), personIds: ["ada"] })];
-    expect(personHealth("ada", "quarterly", "active", ninety, NOW)).toBe(
-      "blooming",
-    );
-    expect(personHealth("ada", "monthly", "active", ninety, NOW)).toBe(
-      "wilting",
-    );
+    expect(personHealth("ada", "quarterly", ninety, NOW)).toBe("blooming");
+    expect(personHealth("ada", "monthly", ninety, NOW)).toBe("wilting");
     const threeHundred = [
       moment({ day: dayBefore(NOW, 300), personIds: ["ada"] }),
     ];
-    expect(personHealth("ada", "yearly", "active", threeHundred, NOW)).toBe(
-      "blooming",
-    );
-    expect(personHealth("ada", "quarterly", "active", threeHundred, NOW)).toBe(
-      "wilting",
-    );
+    expect(personHealth("ada", "yearly", threeHundred, NOW)).toBe("blooming");
+    expect(personHealth("ada", "quarterly", threeHundred, NOW)).toBe("wilting");
   });
 });
 
@@ -364,14 +335,14 @@ describe("overdueRank", () => {
 
 describe("selectPeopleToReach", () => {
   // ada and fay are a deliberately sharp pair: identical -30d contact, same
-  // cadence, same category. The ONLY difference is fay's future moment.
-  const cai = registryPerson({ key: "cai", category: "family" });
-  const dot = registryPerson({ key: "dot", category: "family" });
+  // cadence, same tags. The ONLY difference is fay's future moment.
+  const cai = registryPerson({ key: "cai", tags: ["family"] });
+  const dot = registryPerson({ key: "dot", tags: ["family"] });
   const ada = registryPerson({ key: "ada" });
   const bea = registryPerson({ key: "bea" });
   const fay = registryPerson({ key: "fay" });
   const gil = registryPerson({ key: "gil", cadence: null }); // no cadence
-  const hob = registryPerson({ key: "hob", status: "paused" });
+  const hob = registryPerson({ key: "hob", cadence: null }); // no cadence = excluded
   const ines = registryPerson({ key: "ines", cadence: "monthly" });
 
   const PEOPLE = [cai, dot, ada, bea, fay, gil, hob, ines];
@@ -393,7 +364,7 @@ describe("selectPeopleToReach", () => {
     expect(row?.daysSinceLastContact).toBe(30);
     expect(row?.overdueRatio).toBe(4.29);
     expect(row?.cadence).toBe("weekly");
-    expect(row?.category).toBe("friend");
+    expect(row?.tags).toEqual(["friend"]);
   });
 
   it("2. excludes someone still inside their cadence", () => {
@@ -430,30 +401,30 @@ describe("selectPeopleToReach", () => {
     expect(keys(queue())).not.toContain("gil");
   });
 
-  it("7. excludes a paused person who would otherwise qualify", () => {
+  it("7. excludes a person with no cadence who would otherwise qualify", () => {
     expect(keys(queue())).not.toContain("hob");
-    const resumed = PEOPLE.map((p) =>
-      p.key === "hob" ? { ...p, status: "active" as const } : p,
+    const withCadence = PEOPLE.map((p) =>
+      p.key === "hob" ? { ...p, cadence: "weekly" as const } : p,
     );
-    expect(keys(selectPeopleToReach(resumed, MOMENTS, NOW, {}))).toContain(
+    expect(keys(selectPeopleToReach(withCadence, MOMENTS, NOW, {}))).toContain(
       "hob",
     );
   });
 
-  it("8. filters by category", () => {
+  it("8. filters by tag", () => {
     expect(
-      keys(selectPeopleToReach(PEOPLE, MOMENTS, NOW, { category: "family" })),
+      keys(selectPeopleToReach(PEOPLE, MOMENTS, NOW, { tag: "family" })),
     ).toEqual(["cai", "dot"]);
     expect(
-      keys(selectPeopleToReach(PEOPLE, MOMENTS, NOW, { category: "friend" })),
+      keys(selectPeopleToReach(PEOPLE, MOMENTS, NOW, { tag: "friend" })),
     ).toEqual(["ada", "ines"]);
   });
 
-  it("8b. a null-category person matches no category filter but stays in the open queue", () => {
-    const juno = registryPerson({ key: "juno", category: null });
+  it("8b. a tagless person matches no tag filter but stays in the open queue", () => {
+    const juno = registryPerson({ key: "juno", tags: [] });
     const people = [...PEOPLE, juno];
     expect(
-      keys(selectPeopleToReach(people, MOMENTS, NOW, { category: "friend" })),
+      keys(selectPeopleToReach(people, MOMENTS, NOW, { tag: "friend" })),
     ).not.toContain("juno");
     expect(keys(selectPeopleToReach(people, MOMENTS, NOW, {}))).toContain(
       "juno",

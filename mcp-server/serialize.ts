@@ -91,11 +91,10 @@ export function concisePerson(p: Person): Record<string, unknown> {
     id: p.id,
     name: p.name,
     key: p.key,
-    status: p.status,
   };
   if (p.aliases && p.aliases.length > 0) base.aliases = p.aliases;
   if (p.cadence) base.cadence = p.cadence;
-  if (p.category) base.category = p.category;
+  if (p.tags && p.tags.length > 0) base.tags = p.tags;
   if (p.basePlace) base.basePlace = p.basePlace;
   if (p.emoji) base.emoji = p.emoji;
   if (p.isSelf) base.isSelf = true;
@@ -109,6 +108,7 @@ export function concisePlace(p: Place): Record<string, unknown> {
     key: p.key,
   };
   if (p.parentKey) base.parentKey = p.parentKey;
+  if (p.tags && p.tags.length > 0) base.tags = p.tags;
   if (p.address) base.address = p.address;
   if (p.coordinates) base.coordinates = p.coordinates;
   if (p.emoji) base.emoji = p.emoji;

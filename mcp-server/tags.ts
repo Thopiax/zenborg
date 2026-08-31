@@ -1,4 +1,4 @@
-import type { Area, Habit, Moment } from "./vault.js";
+import type { Area, Habit, Moment, Person, Place } from "./vault.js";
 
 /**
  * Tag aggregation — the derived people/place/theme index.
@@ -14,6 +14,8 @@ export interface TagIndexEntry {
   moments: number;
   habits: number;
   areas: number;
+  people: number;
+  places: number;
   firstDay: string | null;
   lastDay: string | null;
 }
@@ -55,6 +57,8 @@ export function buildTagIndex(
   moments: Moment[],
   habits: Habit[],
   areas: Area[],
+  people: Person[],
+  places: Place[],
   prefix?: string,
 ): TagIndexEntry[] {
   const entries = new Map<
@@ -71,6 +75,8 @@ export function buildTagIndex(
         moments: 0,
         habits: 0,
         areas: 0,
+        people: 0,
+        places: 0,
         firstDay: null,
         lastDay: null,
         range: { firstDay: null, lastDay: null },
@@ -93,6 +99,15 @@ export function buildTagIndex(
   for (const a of areas) {
     for (const tag of a.tags ?? []) entry(tag).areas += 1;
   }
+  for (const p of people) {
+    for (const tag of p.tags ?? []) entry(tag).people += 1;
+  }
+  for (const p of places) {
+    for (const tag of p.tags ?? []) entry(tag).places += 1;
+  }
+
+  const total = (e: TagIndexEntry) =>
+    e.moments + e.habits + e.areas + e.people + e.places;
 
   return Array.from(entries.values())
     .filter((e) => (prefix ? e.tag.startsWith(prefix) : true))
@@ -101,11 +116,7 @@ export function buildTagIndex(
       firstDay: range.firstDay,
       lastDay: range.lastDay,
     }))
-    .sort(
-      (a, b) =>
-        b.moments + b.habits + b.areas - (a.moments + a.habits + a.areas) ||
-        a.tag.localeCompare(b.tag),
-    );
+    .sort((a, b) => total(b) - total(a) || a.tag.localeCompare(b.tag));
 }
 
 export function buildTagProfile(
