@@ -27,12 +27,12 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useUpdater } from "@/hooks/useUpdater";
 import {
   exportGardenData,
@@ -46,24 +46,17 @@ import { PeoplePlacesSection } from "./PeoplePlacesSection";
 import { TrmnlSettingsSection } from "./TrmnlSettingsSection";
 import { VaultStatusSection } from "./VaultStatusSection";
 
-interface SettingsDrawerProps {
+interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
   onOpenPhaseSettings: () => void;
 }
 
-/**
- * Settings Drawer - Professional settings interface
- * - Right-sliding drawer (desktop sidebar, mobile full-screen landscape)
- * - Accordion sections for organization
- * - Integrated area management
- * - Monochromatic stone design
- */
-export const SettingsDrawer = observer(function SettingsDrawer({
+export const SettingsModal = observer(function SettingsModal({
   open,
   onClose,
   onOpenPhaseSettings,
-}: SettingsDrawerProps) {
+}: SettingsModalProps) {
   const [importMessage, setImportMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -190,18 +183,16 @@ export const SettingsDrawer = observer(function SettingsDrawer({
   };
 
   return (
-    <Drawer open={open} onOpenChange={onClose} direction="right">
-      <DrawerContent className="w-full md:w-[400px] h-full md:h-auto bg-stone-50 dark:bg-stone-900 border-l border-stone-200 dark:border-stone-700">
-        <DrawerHeader className="border-b border-stone-200 dark:border-stone-700">
-          <DrawerTitle className="text-stone-900 dark:text-stone-100">
-            Settings
-          </DrawerTitle>
-          <DrawerDescription className="text-stone-600 dark:text-stone-400">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="p-0 md:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Settings</DialogTitle>
+          <DialogDescription className="text-stone-600 dark:text-stone-400">
             Configure your Zenborg experience
-          </DrawerDescription>
-        </DrawerHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="overflow-y-auto px-6 pb-6" style={{ maxHeight: "calc(90dvh - 6rem)" }}>
           <Accordion type="single" collapsible className="space-y-2">
             {/* Phase Settings Section (Link Button) */}
             <AccordionItem
@@ -732,7 +723,7 @@ export const SettingsDrawer = observer(function SettingsDrawer({
             </AccordionItem>
           </Accordion>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 });

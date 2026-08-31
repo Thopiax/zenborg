@@ -6,7 +6,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { HamburgerMenuButton } from "@/components/HamburgerMenuButton";
 import { ModeSelector } from "@/components/ModeSelector";
 import { PhaseSettingsModal } from "@/components/PhaseSettingsModal";
-import { SettingsDrawer } from "@/components/SettingsDrawer";
+import { SettingsModal } from "@/components/SettingsDrawer";
 import { TodayButton } from "@/components/TodayButton";
 import { UpdateNotification } from "@/components/UpdateNotification";
 import {
@@ -21,6 +21,7 @@ import {
   deleteAreaDialogState$,
   closeDeleteAreaDialog,
   isCommandPaletteOpen$,
+  isSettingsOpen$,
   resetCommandPaletteState,
 } from "@/infrastructure/state/ui-store";
 import { isTauri } from "@/lib/tauri-utils";
@@ -51,12 +52,10 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Settings state
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPhaseSettingsOpen, setIsPhaseSettingsOpen] = useState(false);
 
+  const isSettingsOpen = useSelector(() => isSettingsOpen$.get());
   const deleteAreaState = use$(deleteAreaDialogState$);
-
   const isCommandPaletteOpen = useSelector(() => isCommandPaletteOpen$.get());
 
   const handleConfirmDeleteArea = () => {
@@ -96,7 +95,7 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
           <div className="ml-2">
             <HamburgerMenuButton
               isOpen={isSettingsOpen}
-              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              onClick={() => isSettingsOpen$.set(!isSettingsOpen)}
             />
           </div>
         </div>
@@ -108,13 +107,13 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
       {/* Update Notification - Auto-checks on mount */}
       <UpdateNotification />
 
-      {/* Settings Drawer - Triggered by Mod+, or hamburger menu */}
-      <SettingsDrawer
+      {/* Settings Modal - Triggered by Mod+, or settings button */}
+      <SettingsModal
         open={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={() => isSettingsOpen$.set(false)}
         onOpenPhaseSettings={() => {
           setIsPhaseSettingsOpen(true);
-          setIsSettingsOpen(false);
+          isSettingsOpen$.set(false);
         }}
       />
 
