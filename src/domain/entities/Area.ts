@@ -7,10 +7,6 @@ import type { Moment } from "./Moment";
  *
  * Areas represent different aspects of life (Wellness, Craft, Social, etc.)
  * Each area has a color and emoji for visual identification.
- *
- * Areas are never truly deleted - they are archived instead to preserve
- * historical data integrity. Archived areas are filtered out from the UI
- * but remain in the database for moments that reference them.
  */
 export interface Area {
   readonly id: string;
@@ -20,7 +16,7 @@ export interface Area {
   color: string; // hex color
   emoji: string;
   isDefault: boolean; // true for the 5 seeded defaults
-  isArchived: boolean; // archived areas are hidden from UI but preserved for data integrity
+  isArchived: boolean;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -215,59 +211,12 @@ export function updateArea(area: Area, updates: UpdateAreaProps): AreaResult {
   };
 }
 
-/**
- * Archives an area (soft delete)
- *
- * Areas are never truly deleted to preserve data integrity.
- * Archived areas are hidden from the UI but remain accessible
- * for moments that reference them.
- *
- * @param area - Area to archive
- * @returns Updated area with isArchived = true
- */
-export function archiveArea(area: Area): Area {
-  return {
-    ...area,
-    isArchived: true,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-/**
- * Unarchives an area (restore from archive)
- *
- * @param area - Area to unarchive
- * @returns Updated area with isArchived = false
- */
-export function unarchiveArea(area: Area): Area {
-  return {
-    ...area,
-    isArchived: false,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-/**
- * Checks if an area has any moments assigned to it
- *
- * @param area - Area to check
- * @param moments - All moments in the system
- * @returns True if the area has moments assigned
- */
 export function hasAreaMoments(area: Area, moments: Moment[]): boolean {
   return moments.some((moment) => moment.areaId === area.id);
 }
 
-/**
- * Checks if an archived area can be permanently deleted
- * Only archived areas with no moments can be deleted
- *
- * @param area - Area to check
- * @param moments - All moments in the system
- * @returns True if the area can be permanently deleted
- */
-export function canDeleteArchivedArea(area: Area, moments: Moment[]): boolean {
-  return area.isArchived && !hasAreaMoments(area, moments);
+export function canDeleteArea(area: Area, moments: Moment[]): boolean {
+  return !hasAreaMoments(area, moments);
 }
 
 /**

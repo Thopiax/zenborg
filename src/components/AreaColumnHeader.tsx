@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/a11y/noAutofocus: inline edit opens from a keyboard action, so focus has to follow it */
 "use client";
 
-import { Archive, MoreVertical, Plus } from "lucide-react";
+import { MoreVertical, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { ColorPicker } from "@/components/ColorPicker";
@@ -29,7 +29,7 @@ interface AreaColumnHeaderProps {
   area: Area;
   habitCount: number;
   onUpdateArea: (areaId: string, updates: Partial<Area>) => void;
-  onArchiveArea: (areaId: string) => void;
+  onDeleteArea: (areaId: string) => void;
   onCreateHabit?: () => void;
 }
 
@@ -37,7 +37,7 @@ export function AreaColumnHeader({
   area,
   habitCount,
   onUpdateArea,
-  onArchiveArea,
+  onDeleteArea,
   onCreateHabit,
 }: AreaColumnHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false);
@@ -178,11 +178,11 @@ export function AreaColumnHeader({
 
             {/* Archive */}
             <DropdownMenuItem
-              onSelect={() => onArchiveArea(area.id)}
-              className="text-stone-600 dark:text-stone-400"
+              onSelect={() => onDeleteArea(area.id)}
+              className="text-red-600 dark:text-red-400"
             >
-              <Archive className="w-4 h-4 mr-2" />
-              Archive area
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete area
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

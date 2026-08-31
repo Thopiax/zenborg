@@ -15,12 +15,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { archiveArea } from "@/domain/entities/Area";
+import { AreaService } from "@/application/services/AreaService";
 import { useGlobalKeyboard } from "@/hooks/useGlobalKeyboard";
-import { areas$ } from "@/infrastructure/state/store";
 import {
-  archiveAreaDialogState$,
-  closeArchiveAreaDialog,
+  deleteAreaDialogState$,
+  closeDeleteAreaDialog,
   isCommandPaletteOpen$,
   resetCommandPaletteState,
 } from "@/infrastructure/state/ui-store";
@@ -56,25 +55,20 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPhaseSettingsOpen, setIsPhaseSettingsOpen] = useState(false);
 
-  const archiveAreaState = use$(archiveAreaDialogState$);
+  const deleteAreaState = use$(deleteAreaDialogState$);
 
-  // Command Palette state
   const isCommandPaletteOpen = useSelector(() => isCommandPaletteOpen$.get());
 
-  // Archive area handler
-  const handleConfirmArchiveArea = () => {
-    if (!archiveAreaState.areaId) return;
+  const handleConfirmDeleteArea = () => {
+    if (!deleteAreaState.areaId) return;
 
-    const area = areas$.get()[archiveAreaState.areaId];
-    if (!area) {
-      closeArchiveAreaDialog();
-      return;
+    const areaService = new AreaService();
+    const result = areaService.deleteArea(deleteAreaState.areaId);
+    if ("error" in result) {
+      alert(result.error);
     }
 
-    const archivedArea = archiveArea(area);
-    areas$[archiveAreaState.areaId].set(archivedArea);
-
-    closeArchiveAreaDialog();
+    closeDeleteAreaDialog();
   };
 
   return (
@@ -130,33 +124,32 @@ export function LayoutClient({ children }: { children: React.ReactNode }) {
         onClose={() => setIsPhaseSettingsOpen(false)}
       />
 
-      {/* Archive Area Confirmation - Simple Dialog */}
-      {archiveAreaState.open && archiveAreaState.areaName && (
-        <Dialog open={true} onOpenChange={closeArchiveAreaDialog}>
+      {/* Delete Area Confirmation */}
+      {deleteAreaState.open && deleteAreaState.areaName && (
+        <Dialog open={true} onOpenChange={closeDeleteAreaDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Archive {archiveAreaState.areaName}?</DialogTitle>
+              <DialogTitle>Delete {deleteAreaState.areaName}?</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-stone-600 dark:text-stone-400">
-                This area will be hidden from selectors, but all habits assigned
-                to it will remain intact. You can unarchive it later from Area
-                Management.
+                This area will be permanently removed. Areas with habits or
+                moments cannot be deleted.
               </p>
               <div className="flex gap-2 justify-end">
                 <button
                   type="button"
-                  onClick={closeArchiveAreaDialog}
+                  onClick={closeDeleteAreaDialog}
                   className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-200 hover:bg-stone-300 text-stone-900 dark:bg-stone-700 dark:hover:bg-stone-600 dark:text-stone-100 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={handleConfirmArchiveArea}
-                  className="px-4 py-2 rounded-lg font-mono text-sm bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-200 dark:hover:bg-stone-300 dark:text-stone-900 transition-colors"
+                  onClick={handleConfirmDeleteArea}
+                  className="px-4 py-2 rounded-lg font-mono text-sm bg-red-600 hover:bg-red-700 text-white dark:bg-red-500 dark:hover:bg-red-600 transition-colors"
                 >
-                  Archive
+                  Delete
                 </button>
               </div>
             </div>
