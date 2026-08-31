@@ -59,9 +59,18 @@ export const PlacesMapView = observer(() => {
 
   const allPlaces = useMemo(() => Object.values(places), [places]);
 
+  const parentKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const p of allPlaces) {
+      if (p.parentKey) keys.add(p.parentKey);
+    }
+    return keys;
+  }, [allPlaces]);
+
+  // ponytail: leaves only — zoom-dependent parent↔child clustering when clutter warrants it
   const placesWithCoords = useMemo(
-    () => allPlaces.filter((p) => p.coordinates != null),
-    [allPlaces],
+    () => allPlaces.filter((p) => p.coordinates != null && !parentKeys.has(p.key)),
+    [allPlaces, parentKeys],
   );
 
   const weights = useMemo(() => computeWeights(allPlaces, cycles), [allPlaces, cycles]);
