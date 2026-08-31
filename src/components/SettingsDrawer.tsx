@@ -21,16 +21,9 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import type { ImportStrategy } from "@/application/use-cases/export-import";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useUpdater } from "@/hooks/useUpdater";
@@ -41,10 +34,32 @@ import {
 import { resetStore } from "@/infrastructure/state/initialize";
 import { getPWAInstructions, isPWA } from "@/lib/pwa-utils";
 import { isTauri } from "@/lib/tauri-utils";
+import { cn } from "@/lib/utils";
 import { ConfirmableAction } from "./ConfirmableAction";
 import { PeoplePlacesSection } from "./PeoplePlacesSection";
 import { TrmnlSettingsSection } from "./TrmnlSettingsSection";
 import { VaultStatusSection } from "./VaultStatusSection";
+
+type SettingsPane =
+  | "phases"
+  | "people-places"
+  | "data"
+  | "integrations"
+  | "appearance"
+  | "about";
+
+const navigationItems: readonly {
+  id: SettingsPane;
+  label: string;
+  icon: typeof Settings2;
+}[] = [
+  { id: "phases", label: "Phases", icon: Settings2 },
+  { id: "people-places", label: "People & Places", icon: User },
+  { id: "data", label: "Data", icon: Download },
+  { id: "integrations", label: "E-Ink Display", icon: Tv },
+  { id: "appearance", label: "Appearance", icon: Sun },
+  { id: "about", label: "About", icon: Info },
+];
 
 interface SettingsModalProps {
   open: boolean;
@@ -57,6 +72,7 @@ export const SettingsModal = observer(function SettingsModal({
   onClose,
   onOpenPhaseSettings,
 }: SettingsModalProps) {
+  const [activePane, setActivePane] = useState<SettingsPane>("appearance");
   const [importMessage, setImportMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -65,11 +81,9 @@ export const SettingsModal = observer(function SettingsModal({
   const [isResetting, setIsResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Theme management
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Updater (no auto-check — manual only from settings)
   const {
     update,
     checking,
@@ -87,14 +101,12 @@ export const SettingsModal = observer(function SettingsModal({
     setHasChecked(true);
   };
 
-  // PWA state
   const [pwaInstalled, setPwaInstalled] = useState(false);
   const [pwaInstructions, setPwaInstructions] = useState<{
     platform: "ios" | "android" | "desktop" | "unknown";
     instructions: string[];
   }>({ platform: "unknown", instructions: [] });
 
-  // Avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
     setPwaInstalled(isPWA());
@@ -104,17 +116,12 @@ export const SettingsModal = observer(function SettingsModal({
   const handleExport = () => {
     try {
       exportGardenData();
-      setImportMessage({
-        type: "success",
-        text: "Data exported successfully",
-      });
+      setImportMessage({ type: "success", text: "Data exported successfully" });
       setTimeout(() => setImportMessage(null), 3000);
     } catch (error) {
       setImportMessage({
         type: "error",
-        text: `Export failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+        text: `Export failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       });
     }
   };
@@ -133,29 +140,19 @@ export const SettingsModal = observer(function SettingsModal({
 
       try {
         const result = await importGardenData(file, strategy);
-
         if (result.success) {
-          setImportMessage({
-            type: "success",
-            text: result.message,
-          });
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          setImportMessage({ type: "success", text: result.message });
+          setTimeout(() => window.location.reload(), 1500);
         } else {
           setImportMessage({
             type: "error",
-            text:
-              result.message +
-              (result.errors ? `: ${result.errors.join(", ")}` : ""),
+            text: result.message + (result.errors ? `: ${result.errors.join(", ")}` : ""),
           });
         }
       } catch (error) {
         setImportMessage({
           type: "error",
-          text: `Import failed: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
+          text: `Import failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         });
       } finally {
         setIsImporting(false);
@@ -171,557 +168,310 @@ export const SettingsModal = observer(function SettingsModal({
       await resetStore();
       window.location.reload();
     } catch (error) {
-      console.error("[SettingsDrawer] Failed to reset store:", error);
+      console.error("[SettingsModal] Failed to reset store:", error);
       setIsResetting(false);
       setImportMessage({
         type: "error",
-        text: `Reset failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+        text: `Reset failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       });
     }
   };
 
+  const showPwa = !isTauri() && !isPWA();
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="p-0 md:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-          <DialogDescription className="text-stone-600 dark:text-stone-400">
-            Configure your Zenborg experience
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="overflow-hidden p-0 md:max-h-[600px] md:max-w-[700px]" showCloseButton={false}>
+        <DialogTitle className="sr-only">Settings</DialogTitle>
+        <DialogDescription className="sr-only">
+          Configure your Zenborg experience
+        </DialogDescription>
 
-        <div className="overflow-y-auto px-6 pb-6" style={{ maxHeight: "calc(90dvh - 6rem)" }}>
-          <Accordion type="single" collapsible className="space-y-2">
-            {/* Phase Settings Section (Link Button) */}
-            <AccordionItem
-              value="phases"
-              className="border-stone-200 dark:border-stone-700"
-            >
+        <div className="flex h-[min(600px,80dvh)]">
+          {/* Sidebar nav */}
+          <nav className="hidden md:flex w-48 shrink-0 flex-col border-r border-stone-200 dark:border-stone-700 bg-stone-100/50 dark:bg-stone-800/50 py-2">
+            {navigationItems.map((item) => (
               <button
-                onClick={onOpenPhaseSettings}
-                className="flex w-full items-center justify-between px-2 py-4 text-left text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                key={item.id}
                 type="button"
+                onClick={() => {
+                  if (item.id === "phases") {
+                    onOpenPhaseSettings();
+                  } else {
+                    setActivePane(item.id);
+                  }
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 text-sm transition-colors text-left w-full",
+                  activePane === item.id && item.id !== "phases"
+                    ? "bg-stone-200/80 dark:bg-stone-700/80 text-stone-900 dark:text-stone-100"
+                    : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-200/40 dark:hover:bg-stone-700/40",
+                )}
               >
-                <div className="flex items-center gap-2">
-                  <Settings2 className="w-4 h-4" />
-                  <span>Phase Settings</span>
-                </div>
-                <ChevronRight className="w-4 h-4" />
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span>{item.label}</span>
+                {item.id === "phases" && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
               </button>
-            </AccordionItem>
+            ))}
 
-            {/* People & Places Section */}
-            <AccordionItem
-              value="people-places"
-              className="border-stone-200 dark:border-stone-700"
-            >
-              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  <span>People & Places</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <PeoplePlacesSection />
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Data Management Section */}
-            <AccordionItem
-              value="data"
-              className="border-stone-200 dark:border-stone-700"
-            >
-              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
-                <div className="flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  <span>Data Management</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3 px-2">
-                  {/* Vault status (Tauri only — self-hides in web mode) */}
-                  <VaultStatusSection />
-
-                  {/* Export Button */}
-                  <button
-                    type="button"
-                    onClick={handleExport}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left"
-                  >
-                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-stone-100 dark:bg-stone-800">
-                      <Download className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                        Export Data
-                      </div>
-                      <div className="text-xs text-stone-500 dark:text-stone-500">
-                        Download as JSON
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Import (Merge) Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleImport("merge")}
-                    disabled={isImporting}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-stone-100 dark:bg-stone-800">
-                      <Upload className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                        Import (Merge)
-                      </div>
-                      <div className="text-xs text-stone-500 dark:text-stone-500">
-                        Combine with existing
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Import (Replace) Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleImport("replace")}
-                    disabled={isImporting}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-stone-100 dark:bg-stone-800">
-                      <Upload className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                        Import (Replace)
-                      </div>
-                      <div className="text-xs text-stone-500 dark:text-stone-500">
-                        Replace all data
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Status Message */}
-                  {importMessage && (
-                    <div
-                      className={`mt-3 px-3 py-2 rounded-lg text-sm ${
-                        importMessage.type === "success"
-                          ? "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300"
-                          : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
-                      }`}
-                    >
-                      {importMessage.text}
-                    </div>
-                  )}
-
-                  {isImporting && (
-                    <div className="mt-3 text-center text-sm text-stone-500 dark:text-stone-500">
-                      Importing data...
-                    </div>
-                  )}
-
-                  {/* Danger Zone - Reset */}
-                  <div className="pt-3 mt-3 border-t border-red-200 dark:border-red-900/30">
-                    <h4 className="text-xs font-medium text-red-900 dark:text-red-200 mb-2">
-                      Danger Zone
-                    </h4>
-                    <p className="text-xs text-stone-500 dark:text-stone-500 mb-3">
-                      Reset all data to factory defaults
-                    </p>
-
-                    {!showResetConfirm ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowResetConfirm(true)}
-                        disabled={isResetting}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 border border-red-300 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/20">
-                          <RotateCcw className="w-4 h-4 text-red-700 dark:text-red-400" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-red-900 dark:text-red-200">
-                            Reset All Data
-                          </div>
-                        </div>
-                      </button>
-                    ) : (
-                      <div className="space-y-2">
-                        {isResetting ? (
-                          <div className="text-center py-3 text-sm text-stone-500 dark:text-stone-500 font-mono">
-                            Resetting...
-                          </div>
-                        ) : (
-                          <>
-                            <ConfirmableAction
-                              buttonLabel="Reset Everything"
-                              confirmText="RESET"
-                              variant="danger"
-                              description="Type RESET below:"
-                              onConfirm={handleReset}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowResetConfirm(false)}
-                              className="w-full px-3 py-2 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* E-Ink Display Integration */}
-            <AccordionItem
-              value="integrations"
-              className="border-stone-200 dark:border-stone-700"
-            >
-              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
-                <div className="flex items-center gap-2">
-                  <Tv className="w-4 h-4" />
-                  <span>E-Ink Display</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <TrmnlSettingsSection />
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* PWA Installation Section */}
-            {!isTauri() && !isPWA() && (
-              <AccordionItem
-                value="pwa"
-                className="border-stone-200 dark:border-stone-700"
+            {showPwa && (
+              <button
+                type="button"
+                onClick={() => setActivePane("about")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 text-sm transition-colors text-left w-full",
+                  "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-200/40 dark:hover:bg-stone-700/40",
+                )}
               >
-                <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
-                  <div className="flex items-center gap-2">
-                    <Smartphone className="w-4 h-4" />
-                    <span>Install App</span>
+                <Smartphone className="w-4 h-4 shrink-0" />
+                <span>Install App</span>
+              </button>
+            )}
+          </nav>
+
+          {/* Content pane */}
+          <main className="flex-1 overflow-y-auto p-6">
+            {activePane === "people-places" && <PeoplePlacesSection />}
+
+            {activePane === "data" && (
+              <div className="space-y-3">
+                <VaultStatusSection />
+
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 border border-stone-200 dark:border-stone-700 rounded hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left"
+                >
+                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded bg-stone-100 dark:bg-stone-800">
+                    <Download className="w-4 h-4 text-stone-600 dark:text-stone-400" />
                   </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-4 px-2">
-                    {mounted ? (
-                      pwaInstalled ? (
-                        // Already installed
-                        <div className="p-4 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-stone-900 dark:bg-stone-100 flex items-center justify-center">
-                              <Smartphone className="w-5 h-5 text-stone-50 dark:text-stone-900" />
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-1">
-                                App Installed
-                              </h4>
-                              <p className="text-xs text-stone-600 dark:text-stone-400">
-                                You're using Zenborg as a standalone app. Enjoy
-                                the full-screen experience!
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        // Not installed - show instructions
-                        <div className="space-y-3">
-                          <div>
-                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-2">
-                              Why install Zenborg?
-                            </h4>
-                            <ul className="space-y-1.5 text-sm text-stone-600 dark:text-stone-400">
-                              <li className="flex items-start gap-2">
-                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
-                                  ✓
-                                </span>
-                                <span>Full-screen without browser chrome</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
-                                  ✓
-                                </span>
-                                <span>Faster access from home screen</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <span className="text-stone-900 dark:text-stone-100 font-bold flex-shrink-0">
-                                  ✓
-                                </span>
-                                <span>Works offline with local data</span>
-                              </li>
-                            </ul>
-                          </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-stone-900 dark:text-stone-100">Export Data</div>
+                    <div className="text-xs text-stone-500">Download as JSON</div>
+                  </div>
+                </button>
 
-                          <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
-                            <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 mb-3">
-                              How to install:
-                            </h4>
-                            <ol className="space-y-2.5">
-                              {pwaInstructions.instructions.map(
-                                (instruction, index) => (
-                                  <li
-                                    key={`pwa-instruction-${index + 1}`}
-                                    className="flex items-start gap-3 text-sm text-stone-700 dark:text-stone-300"
-                                  >
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-stone-900 dark:bg-stone-100 text-stone-50 dark:text-stone-900 flex items-center justify-center text-xs font-bold">
-                                      {index + 1}
-                                    </span>
-                                    <span className="pt-0.5">
-                                      {instruction}
-                                    </span>
-                                  </li>
-                                ),
-                              )}
-                            </ol>
-                          </div>
+                <button
+                  type="button"
+                  onClick={() => handleImport("merge")}
+                  disabled={isImporting}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 border border-stone-200 dark:border-stone-700 rounded hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded bg-stone-100 dark:bg-stone-800">
+                    <Upload className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-stone-900 dark:text-stone-100">Import (Merge)</div>
+                    <div className="text-xs text-stone-500">Combine with existing</div>
+                  </div>
+                </button>
 
-                          {pwaInstructions.platform === "ios" && (
-                            <div className="p-3 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
-                              <p className="text-xs text-stone-600 dark:text-stone-400">
-                                <strong className="text-stone-900 dark:text-stone-100">
-                                  Note:
-                                </strong>{" "}
-                                On iOS, you must use Safari to install the app.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    ) : (
-                      <div className="text-center py-6 text-sm text-stone-500 dark:text-stone-500">
-                        Loading...
-                      </div>
+                <button
+                  type="button"
+                  onClick={() => handleImport("replace")}
+                  disabled={isImporting}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 border border-stone-200 dark:border-stone-700 rounded hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded bg-stone-100 dark:bg-stone-800">
+                    <Upload className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-stone-900 dark:text-stone-100">Import (Replace)</div>
+                    <div className="text-xs text-stone-500">Replace all data</div>
+                  </div>
+                </button>
+
+                {importMessage && (
+                  <div
+                    className={cn(
+                      "mt-3 px-3 py-2 rounded text-sm",
+                      importMessage.type === "success"
+                        ? "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300"
+                        : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800",
                     )}
+                  >
+                    {importMessage.text}
                   </div>
-                </AccordionContent>
-              </AccordionItem>
+                )}
+
+                {isImporting && (
+                  <div className="mt-3 text-center text-sm text-stone-500">Importing data...</div>
+                )}
+
+                <div className="pt-3 mt-3 border-t border-red-200 dark:border-red-900/30">
+                  <h4 className="text-xs font-medium text-red-900 dark:text-red-200 mb-2">Danger Zone</h4>
+                  <p className="text-xs text-stone-500 mb-3">Reset all data to factory defaults</p>
+
+                  {!showResetConfirm ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowResetConfirm(true)}
+                      disabled={isResetting}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 border border-red-300 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded bg-red-100 dark:bg-red-900/20">
+                        <RotateCcw className="w-4 h-4 text-red-700 dark:text-red-400" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-red-900 dark:text-red-200">Reset All Data</div>
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      {isResetting ? (
+                        <div className="text-center py-3 text-sm text-stone-500 font-mono">Resetting...</div>
+                      ) : (
+                        <>
+                          <ConfirmableAction
+                            buttonLabel="Reset Everything"
+                            confirmText="RESET"
+                            variant="danger"
+                            description="Type RESET below:"
+                            onConfirm={handleReset}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowResetConfirm(false)}
+                            className="w-full px-3 py-2 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
 
-            {/* Appearance Section */}
-            <AccordionItem
-              value="appearance"
-              className="border-stone-200 dark:border-stone-700"
-            >
-              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
-                <div className="flex items-center gap-2">
-                  <Sun className="w-4 h-4" />
-                  <span>Appearance</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-2 px-2">
-                  {mounted ? (
-                    <>
-                      {/* Light Theme */}
+            {activePane === "integrations" && <TrmnlSettingsSection />}
+
+            {activePane === "appearance" && (
+              <div className="space-y-2">
+                {mounted ? (
+                  <>
+                    {([
+                      { value: "light" as const, label: "Light", Icon: Sun },
+                      { value: "dark" as const, label: "Dark", Icon: Moon },
+                      { value: "system" as const, label: "System", Icon: Monitor },
+                    ] as const).map(({ value, label, Icon }) => (
                       <button
+                        key={value}
                         type="button"
-                        onClick={() => setTheme("light")}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 border rounded-lg transition-colors text-left ${
-                          theme === "light"
+                        onClick={() => setTheme(value)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2.5 border rounded transition-colors text-left",
+                          theme === value
                             ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
-                            : "border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800"
-                        }`}
+                            : "border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800",
+                        )}
                       >
                         <div
-                          className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg ${
-                            theme === "light"
+                          className={cn(
+                            "flex-shrink-0 w-8 h-8 flex items-center justify-center rounded",
+                            theme === value
                               ? "bg-stone-200 dark:bg-stone-700"
-                              : "bg-stone-100 dark:bg-stone-800"
-                          }`}
+                              : "bg-stone-100 dark:bg-stone-800",
+                          )}
                         >
-                          <Sun className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                          <Icon className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                            Light
-                          </div>
+                          <div className="text-sm font-medium text-stone-900 dark:text-stone-100">{label}</div>
                         </div>
-                        {theme === "light" && (
+                        {theme === value && (
                           <div className="w-2 h-2 rounded-full bg-stone-900 dark:bg-stone-100" />
                         )}
                       </button>
+                    ))}
+                  </>
+                ) : (
+                  <div className="text-center py-6 text-sm text-stone-500">Loading...</div>
+                )}
+              </div>
+            )}
 
-                      {/* Dark Theme */}
-                      <button
-                        type="button"
-                        onClick={() => setTheme("dark")}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 border rounded-lg transition-colors text-left ${
-                          theme === "dark"
-                            ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
-                            : "border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800"
-                        }`}
-                      >
-                        <div
-                          className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg ${
-                            theme === "dark"
-                              ? "bg-stone-200 dark:bg-stone-700"
-                              : "bg-stone-100 dark:bg-stone-800"
-                          }`}
-                        >
-                          <Moon className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                            Dark
-                          </div>
-                        </div>
-                        {theme === "dark" && (
-                          <div className="w-2 h-2 rounded-full bg-stone-900 dark:bg-stone-100" />
-                        )}
-                      </button>
-
-                      {/* System Theme */}
-                      <button
-                        type="button"
-                        onClick={() => setTheme("system")}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 border rounded-lg transition-colors text-left ${
-                          theme === "system"
-                            ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
-                            : "border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800"
-                        }`}
-                      >
-                        <div
-                          className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg ${
-                            theme === "system"
-                              ? "bg-stone-200 dark:bg-stone-700"
-                              : "bg-stone-100 dark:bg-stone-800"
-                          }`}
-                        >
-                          <Monitor className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                            System
-                          </div>
-                        </div>
-                        {theme === "system" && (
-                          <div className="w-2 h-2 rounded-full bg-stone-900 dark:bg-stone-100" />
-                        )}
-                      </button>
-                    </>
-                  ) : (
-                    <div className="text-center py-6 text-sm text-stone-500 dark:text-stone-500">
-                      Loading...
-                    </div>
-                  )}
+            {activePane === "about" && (
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-medium text-stone-900 dark:text-stone-100 mb-1">Zenborg</h3>
+                  <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">
+                    An attention orchestration system for budgeting moments toward personal flourishing.
+                  </p>
+                  <p className="text-xs text-stone-500 font-mono">
+                    Version {process.env.NEXT_PUBLIC_APP_VERSION ?? "0.3.1"}
+                  </p>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
 
-            {/* About Section */}
-            <AccordionItem
-              value="about"
-              className="border-stone-200 dark:border-stone-700"
-            >
-              <AccordionTrigger className="text-stone-900 dark:text-stone-100 hover:no-underline px-2">
-                <div className="flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  <span>About</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3 px-2">
-                  <div>
-                    <h3 className="text-sm font-medium text-stone-900 dark:text-stone-100 mb-1">
-                      Zenborg
-                    </h3>
-                    <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">
-                      An attention orchestration system for budgeting moments
-                      toward personal flourishing.
-                    </p>
-                    <p className="text-xs text-stone-500 dark:text-stone-500 font-mono">
-                      Version {process.env.NEXT_PUBLIC_APP_VERSION ?? "0.3.1"}
-                    </p>
-                  </div>
-
-                  {/* Check for Updates (Tauri only) */}
-                  {isTauri() && (
-                    <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
-                      <div className="space-y-2">
-                        <button
-                          type="button"
-                          onClick={handleCheckForUpdate}
-                          disabled={checking || downloading}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 border border-stone-200 dark:border-stone-700 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-stone-100 dark:bg-stone-800">
-                            {checking ? (
-                              <Loader2 className="w-4 h-4 text-stone-600 dark:text-stone-400 animate-spin" />
-                            ) : (
-                              <RefreshCw className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                              {checking ? "Checking..." : "Check for Updates"}
-                            </div>
-                          </div>
-                        </button>
-
-                        {/* Update available */}
-                        {hasChecked && update && !downloading && (
-                          <div className="p-3 rounded-lg border border-stone-300 dark:border-stone-600 bg-stone-100 dark:bg-stone-800">
-                            <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                              Version {update.version} available
-                            </p>
-                            <button
-                              type="button"
-                              onClick={downloadAndInstall}
-                              className="mt-2 w-full rounded bg-stone-900 dark:bg-stone-100 px-3 py-2 text-sm font-medium text-stone-50 dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
-                            >
-                              Install Update
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Downloading progress */}
-                        {downloading && (
-                          <div className="p-3 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800">
-                            <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
-                              <div
-                                className="h-full bg-stone-900 dark:bg-stone-100 transition-all duration-300"
-                                style={{ width: `${downloadProgress}%` }}
-                              />
-                            </div>
-                            <p className="mt-1.5 text-xs text-stone-600 dark:text-stone-400">
-                              Downloading... {Math.round(downloadProgress)}%
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Up to date */}
-                        {hasChecked && !update && !checking && !updateError && (
-                          <p className="px-3 text-xs text-stone-500 dark:text-stone-500">
-                            You're on the latest version.
-                          </p>
-                        )}
-
-                        {/* Error */}
-                        {updateError && (
-                          <p className="px-3 text-xs text-red-600 dark:text-red-400">
-                            {updateError}
-                          </p>
+                {isTauri() && (
+                  <div className="pt-3 border-t border-stone-200 dark:border-stone-700 space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleCheckForUpdate}
+                      disabled={checking || downloading}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 border border-stone-200 dark:border-stone-700 rounded hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded bg-stone-100 dark:bg-stone-800">
+                        {checking ? (
+                          <Loader2 className="w-4 h-4 text-stone-600 dark:text-stone-400 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4 text-stone-600 dark:text-stone-400" />
                         )}
                       </div>
-                    </div>
-                  )}
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                          {checking ? "Checking..." : "Check for Updates"}
+                        </div>
+                      </div>
+                    </button>
 
-                  <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
-                    <h4 className="text-xs font-medium text-stone-900 dark:text-stone-100 mb-2">
-                      Philosophy
-                    </h4>
-                    <blockquote className="text-xs text-stone-600 dark:text-stone-400 italic border-l-2 border-stone-300 dark:border-stone-700 pl-3">
-                      "Where will I place my consciousness today?"
-                    </blockquote>
+                    {hasChecked && update && !downloading && (
+                      <div className="p-3 rounded border border-stone-300 dark:border-stone-600 bg-stone-100 dark:bg-stone-800">
+                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                          Version {update.version} available
+                        </p>
+                        <button
+                          type="button"
+                          onClick={downloadAndInstall}
+                          className="mt-2 w-full rounded bg-stone-900 dark:bg-stone-100 px-3 py-2 text-sm font-medium text-stone-50 dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
+                        >
+                          Install Update
+                        </button>
+                      </div>
+                    )}
+
+                    {downloading && (
+                      <div className="p-3 rounded border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
+                          <div
+                            className="h-full bg-stone-900 dark:bg-stone-100 transition-all duration-300"
+                            style={{ width: `${downloadProgress}%` }}
+                          />
+                        </div>
+                        <p className="mt-1.5 text-xs text-stone-600 dark:text-stone-400">
+                          Downloading... {Math.round(downloadProgress)}%
+                        </p>
+                      </div>
+                    )}
+
+                    {hasChecked && !update && !checking && !updateError && (
+                      <p className="px-3 text-xs text-stone-500">You're on the latest version.</p>
+                    )}
+
+                    {updateError && (
+                      <p className="px-3 text-xs text-red-600 dark:text-red-400">{updateError}</p>
+                    )}
                   </div>
+                )}
+
+                <div className="pt-3 border-t border-stone-200 dark:border-stone-700">
+                  <blockquote className="text-xs text-stone-600 dark:text-stone-400 italic border-l-2 border-stone-300 dark:border-stone-700 pl-3">
+                    "Where will I place my consciousness today?"
+                  </blockquote>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+              </div>
+            )}
+          </main>
         </div>
       </DialogContent>
     </Dialog>
