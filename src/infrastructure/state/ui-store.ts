@@ -563,6 +563,77 @@ export function closePersonForm() {
   });
 }
 
+export interface PlaceFormState {
+  open: boolean;
+  mode: "create" | "edit";
+  name: string;
+  emoji: string | null;
+  parentKey: string | null;
+  lat: string;
+  lng: string;
+  address: string;
+  url: string;
+  tags: string[];
+  editingPlaceId: string | null;
+}
+
+export const placeFormState$ = observable<PlaceFormState>({
+  open: false,
+  mode: "create",
+  name: "",
+  emoji: null,
+  parentKey: null,
+  lat: "",
+  lng: "",
+  address: "",
+  url: "",
+  tags: [],
+  editingPlaceId: null,
+});
+
+export function openPlaceFormEdit(
+  placeId: string,
+  place: {
+    name: string;
+    emoji: string | null;
+    parentKey: string | null;
+    coordinates: { lat: number; lng: number } | null;
+    address: string | null;
+    url: string | null;
+    tags: string[];
+  },
+) {
+  placeFormState$.set({
+    open: true,
+    mode: "edit",
+    name: place.name,
+    emoji: place.emoji,
+    parentKey: place.parentKey,
+    lat: place.coordinates?.lat.toString() ?? "",
+    lng: place.coordinates?.lng.toString() ?? "",
+    address: place.address ?? "",
+    url: place.url ?? "",
+    tags: place.tags ?? [],
+    editingPlaceId: placeId,
+  });
+}
+
+export function closePlaceForm() {
+  placeFormState$.set({
+    open: false,
+    mode: "create",
+    name: "",
+    emoji: null,
+    parentKey: null,
+    lat: "",
+    lng: "",
+    address: "",
+    url: "",
+    tags: [],
+    editingPlaceId: null,
+  });
+}
+
 /**
  * Command Palette visibility
  * Ephemeral - not persisted
