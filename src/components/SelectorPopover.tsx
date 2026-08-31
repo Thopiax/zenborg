@@ -33,6 +33,8 @@ export interface SelectorOption<T = string> {
   closeOnSelect?: boolean;
   /** Custom className for the option */
   className?: string;
+  /** Group label — a header is rendered when this changes between consecutive options */
+  group?: string;
 }
 
 interface SelectorPopoverProps<T = string> {
@@ -159,10 +161,17 @@ export function SelectorPopover<T = string>({
             {options.map((option, index) => {
               const isSelected = selectedValue === option.value;
               const shouldClose = option.closeOnSelect ?? true;
+              const prevGroup = index > 0 ? options[index - 1].group : undefined;
+              const showGroupHeader = option.group && option.group !== prevGroup;
 
               return (
+                <div key={`${option.value}-${index}`}>
+                  {showGroupHeader && (
+                    <div className={cn("px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider font-mono text-stone-400 dark:text-stone-500", index > 0 && "mt-1 border-t border-stone-200/60 dark:border-stone-700/40")}>
+                      {option.group}
+                    </div>
+                  )}
                 <button
-                  key={`${option.value}-${index}`}
                   type="button"
                   onClick={() => {
                     onSelect(option.value);
@@ -247,6 +256,7 @@ export function SelectorPopover<T = string>({
                     </div>
                   )}
                 </button>
+                </div>
               );
             })}
           </div>
