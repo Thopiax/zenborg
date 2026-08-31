@@ -1,8 +1,8 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { AtSign, Link2, MapPin, Trash2, Timer, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { AtSign, Trash2, Timer, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
   Dialog,
@@ -22,25 +22,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { RelationshipTagger, useRelationshipFromMention } from "@/components/RelationshipTagger";
 import {
   type SelectorOption,
   SelectorPopover,
 } from "@/components/SelectorPopover";
 import { TaggedNameInput } from "@/components/TaggedNameInput";
 import type { Cadence } from "@/domain/value-objects/Cadence";
-import { createRelationship, type EntityType } from "@/domain/entities/Relationship";
 import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import {
   closePersonForm,
   personFormState$,
 } from "@/infrastructure/state/ui-store";
-import {
-  areas$,
-  people$,
-  places$,
-  relationships$,
-} from "@/infrastructure/state/store";
-import { cn } from "@/lib/utils";
+import { relationships$ } from "@/infrastructure/state/store";
+
 
 const CADENCE_OPTIONS: SelectorOption<Cadence | null>[] = [
   { value: null, label: "No cadence", icon: "○", className: "font-mono text-stone-500 dark:text-stone-400", hotkey: "0" },
@@ -49,9 +44,6 @@ const CADENCE_OPTIONS: SelectorOption<Cadence | null>[] = [
   { value: "quarterly", label: "Quarterly", icon: "⟳", className: "font-mono text-stone-700 dark:text-stone-300", hotkey: "Q" },
   { value: "yearly", label: "Yearly", icon: "⟳", className: "font-mono text-stone-700 dark:text-stone-300", hotkey: "Y" },
 ];
-
-const BASED_IN_LABEL = "based-in";
-const TAGGABLE_TYPES: EntityType[] = ["area", "person", "place"];
 
 interface PersonFormDialogProps {
   onSave: (props: {
@@ -78,18 +70,16 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
     editingPersonId,
   } = formState;
 
-  const allPlaces = use$(places$);
   const allRelationships = use$(relationships$);
 
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [aliasesOpen, setAliasesOpen] = useState(false);
-  const [placeSelectorOpen, setPlaceSelectorOpen] = useState(false);
   const [cadenceSelectorOpen, setCadenceSelectorOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [basePlaceId, setBasePlaceId] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const taggedField = useTaggedNameField(name, tags);
+  const addRelFromMention = useRelationshipFromMention("person", editingPersonId ?? null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: seeds form state when the dialog opens
   useEffect(() => {
@@ -107,26 +97,9 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
       setValidationError(null);
       setEmojiPickerOpen(false);
       setAliasesOpen(false);
-      setPlaceSelectorOpen(false);
       setCadenceSelectorOpen(false);
-
-      if (mode === "edit" && editingPersonId) {
-        const existing = Object.values(allRelationships).find(
-          (r) =>
-            r.label === BASED_IN_LABEL &&
-            ((r.fromType === "person" && r.fromId === editingPersonId && r.toType === "place") ||
-             (r.toType === "person" && r.toId === editingPersonId && r.fromType === "place" && r.direction === "mutual")),
-        );
-        setBasePlaceId(
-          existing
-            ? existing.fromType === "person" ? existing.toId : existing.fromId
-            : null,
-        );
-      } else {
-        setBasePlaceId(null);
-      }
     }
-  }, [open, mode, editingPersonId, allRelationships]);
+  }, [open]);
 
   const handleSave = () => {
     const { name: cleanName, tags: finalTags } = taggedField.extractRemainingTags();
@@ -134,6 +107,17 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
       setValidationError("Name cannot be empty");
       return;
     }
+    const basedInRel = editingPersonId
+      ? Object.values(allRelationships).find(
+          (r) =>
+            r.label === "based-in" &&
+            ((r.fromType === "person" && r.fromId === editingPersonId && r.toType === "place") ||
+             (r.toType === "person" && r.toId === editingPersonId && r.fromType === "place" && r.direction === "mutual")),
+        )
+      : null;
+    const basePlaceId = basedInRel
+      ? basedInRel.fromType === "person" ? basedInRel.toId : basedInRel.fromId
+      : null;
     onSave({
       name: cleanName,
       emoji: emoji || null,
@@ -145,7 +129,7 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
     closePersonForm();
   };
 
-  const hotkeysEnabled = !emojiPickerOpen && !aliasesOpen && !placeSelectorOpen && !cadenceSelectorOpen && !taggedField.isAutocompleteOpen && open;
+  const hotkeysEnabled = !emojiPickerOpen && !aliasesOpen && !cadenceSelectorOpen && !taggedField.isAutocompleteOpen && open;
 
   useHotkeys(
     "enter",
@@ -155,66 +139,6 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
     },
     { enableOnFormTags: ["INPUT"], enabled: hotkeysEnabled },
   );
-
-  const selectedPlace = basePlaceId ? allPlaces[basePlaceId] : null;
-
-  const placeOptions: SelectorOption<string | null>[] = useMemo(() => {
-    const places = Object.values(allPlaces);
-    const byKey = new Map(places.map((p) => [p.key, p]));
-
-    const parentName = (p: { parentKey: string | null }): string => {
-      if (!p.parentKey) return "";
-      const parent = byKey.get(p.parentKey);
-      if (!parent) return p.parentKey;
-      const grandparent = parent.parentKey ? byKey.get(parent.parentKey) : null;
-      return grandparent ? `${grandparent.name} › ${parent.name}` : parent.name;
-    };
-
-    const roots = places.filter((p) => !p.parentKey).sort((a, b) => a.name.localeCompare(b.name));
-    const childrenOf = (key: string) =>
-      places.filter((p) => p.parentKey === key).sort((a, b) => a.name.localeCompare(b.name));
-
-    const grouped: SelectorOption<string | null>[] = [
-      { value: null, label: "No place", icon: "—", className: "font-mono text-stone-500 dark:text-stone-400", hotkey: "0" },
-    ];
-
-    const addTree = (place: typeof places[number], group: string) => {
-      const children = childrenOf(place.key);
-      if (children.length === 0) {
-        grouped.push({
-          value: place.id,
-          label: place.name,
-          icon: place.emoji || "📍",
-          className: "font-mono text-stone-700 dark:text-stone-300",
-          group,
-        });
-      } else {
-        for (const child of children) {
-          grouped.push({
-            value: child.id,
-            label: child.name,
-            icon: child.emoji || "📍",
-            description: parentName(child) || undefined,
-            className: "font-mono text-stone-700 dark:text-stone-300",
-            group,
-          });
-          for (const venue of childrenOf(child.key)) {
-            grouped.push({
-              value: venue.id,
-              label: venue.name,
-              icon: venue.emoji || "📍",
-              description: parentName(venue) || undefined,
-              className: "font-mono text-stone-700 dark:text-stone-300 pl-4",
-              group,
-            });
-          }
-        }
-      }
-    };
-
-    for (const root of roots) addTree(root, root.name);
-    return grouped;
-  }, [allPlaces]);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && closePersonForm()}>
@@ -268,13 +192,14 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
 
               <TaggedNameInput
                 field={taggedField}
-                placeholder="Name... #friend #family"
+                placeholder={mode === "edit" ? "Name... @mention #tag" : "Name... #tag"}
                 autoFocus={true}
                 className="flex-1 text-4xl font-bold"
                 collisionBoundary={dialogRef.current}
                 maxSuggestions={5}
                 showTags={true}
                 showMentions={false}
+                onMentionSelect={mode === "edit" ? addRelFromMention : undefined}
               />
             </div>
             {validationError && (
@@ -286,30 +211,6 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
 
           {/* Filled selectors (shown when value is set) */}
           <div className="flex flex-col gap-3">
-            {/* Place — full-width button when set */}
-            {selectedPlace && (
-              <SelectorPopover
-                open={placeSelectorOpen}
-                options={placeOptions}
-                selectedValue={basePlaceId}
-                onSelect={setBasePlaceId}
-                onClose={() => setPlaceSelectorOpen(false)}
-                onOpen={() => setPlaceSelectorOpen(true)}
-                collisionBoundary={dialogRef.current}
-                trigger={
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
-                  >
-                    <MapPin className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
-                    <span className="font-mono text-sm flex-1 text-left truncate">
-                      {selectedPlace.emoji ? `${selectedPlace.emoji} ` : ""}{selectedPlace.name}
-                    </span>
-                  </button>
-                }
-              />
-            )}
-
             {/* Cadence — full-width button when set */}
             {cadence && (
               <SelectorPopover
@@ -335,10 +236,13 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
             )}
           </div>
 
-          {/* Relationships — generic tagger (edit mode only) */}
+          {/* Relationships — shows all relationship chips (edit mode only) */}
           {mode === "edit" && editingPersonId && (
             <div className="mt-6">
-              <RelationshipTagger personId={editingPersonId} dialogRef={dialogRef} />
+              <RelationshipTagger
+                entityType="person"
+                entityId={editingPersonId}
+              />
             </div>
           )}
 
@@ -375,28 +279,6 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
                 />
               </PopoverContent>
             </Popover>
-
-            {/* Place — subtle chip when empty */}
-            {!selectedPlace && (
-              <SelectorPopover
-                open={placeSelectorOpen}
-                options={placeOptions}
-                selectedValue={basePlaceId}
-                onSelect={setBasePlaceId}
-                onClose={() => setPlaceSelectorOpen(false)}
-                onOpen={() => setPlaceSelectorOpen(true)}
-                collisionBoundary={dialogRef.current}
-                trigger={
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-                  >
-                    <MapPin className="w-3.5 h-3.5" strokeWidth={1.5} />
-                    <span className="text-xs font-mono">no place</span>
-                  </button>
-                }
-              />
-            )}
 
             {/* Cadence — subtle chip when empty */}
             {!cadence && (
@@ -454,195 +336,6 @@ export function PersonFormDialog({ onSave, onDelete }: PersonFormDialogProps) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function RelationshipTagger({
-  personId,
-  dialogRef,
-}: {
-  personId: string;
-  dialogRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  const allRelationships = use$(relationships$);
-  const allAreas = use$(areas$);
-  const allPeople = use$(people$);
-  const allPlaces = use$(places$);
-  const [adding, setAdding] = useState(false);
-  const [addType, setAddType] = useState<EntityType>("area");
-  const [addEntityId, setAddEntityId] = useState("");
-  const [addLabel, setAddLabel] = useState("");
-
-  const personRels = useMemo(() => {
-    return Object.values(allRelationships).filter((r) => {
-      if (r.label === BASED_IN_LABEL) return false;
-      if (r.fromType === "person" && r.fromId === personId) return true;
-      if (r.toType === "person" && r.toId === personId && r.direction === "mutual") return true;
-      return false;
-    });
-  }, [allRelationships, personId]);
-
-  function resolveEntity(type: EntityType, id: string): { name: string; emoji?: string | null } | null {
-    switch (type) {
-      case "area": return allAreas[id] ?? null;
-      case "person": return allPeople[id] ?? null;
-      case "place": return allPlaces[id] ?? null;
-      default: return null;
-    }
-  }
-
-  function otherEnd(r: typeof personRels[number]): { type: EntityType; id: string } {
-    if (r.fromType === "person" && r.fromId === personId) {
-      return { type: r.toType, id: r.toId };
-    }
-    return { type: r.fromType, id: r.fromId };
-  }
-
-  function entityOptions(type: EntityType): { id: string; name: string; emoji?: string | null }[] {
-    switch (type) {
-      case "area":
-        return Object.values(allAreas).sort((a, b) => a.name.localeCompare(b.name));
-      case "person":
-        return Object.values(allPeople)
-          .filter((p) => p.id !== personId && !p.isSelf)
-          .sort((a, b) => a.name.localeCompare(b.name));
-      case "place":
-        return Object.values(allPlaces).sort((a, b) => a.name.localeCompare(b.name));
-      default:
-        return [];
-    }
-  }
-
-  const handleAdd = () => {
-    if (!addEntityId || !addLabel.trim()) return;
-    const rel = createRelationship({
-      fromType: "person",
-      fromId: personId,
-      toType: addType,
-      toId: addEntityId,
-      label: addLabel.trim(),
-    });
-    relationships$[rel.id].set(rel);
-    setAddEntityId("");
-    setAddLabel("");
-    setAdding(false);
-  };
-
-  const handleRemove = (relId: string) => {
-    relationships$[relId].delete();
-  };
-
-  return (
-    <div>
-      <label className="flex items-center gap-1.5 text-xs font-mono text-stone-500 dark:text-stone-400 mb-2">
-        <Link2 className="w-3 h-3" />
-        Relationships
-      </label>
-
-      {personRels.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {personRels.map((r) => {
-            const end = otherEnd(r);
-            const entity = resolveEntity(end.type, end.id);
-            return (
-              <span
-                key={r.id}
-                className="flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-xs font-mono text-stone-700 dark:text-stone-300"
-              >
-                {entity?.emoji && <span>{entity.emoji}</span>}
-                <span className="text-stone-400 dark:text-stone-500">{r.label}:</span>
-                {entity?.name ?? end.id}
-                <span className="text-stone-400 dark:text-stone-500">({end.type})</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(r.id)}
-                  className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors ml-0.5"
-                  aria-label={`Remove relationship ${r.label}`}
-                >
-                  <X className="w-3 h-3" strokeWidth={2} />
-                </button>
-              </span>
-            );
-          })}
-        </div>
-      )}
-
-      {adding ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            <select
-              value={addType}
-              onChange={(e) => { setAddType(e.target.value as EntityType); setAddEntityId(""); }}
-              className="px-2 py-1.5 text-xs font-mono bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md text-stone-900 dark:text-stone-100 focus:outline-none"
-            >
-              {TAGGABLE_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-            <select
-              value={addEntityId}
-              onChange={(e) => setAddEntityId(e.target.value)}
-              className="flex-1 min-w-0 px-2 py-1.5 text-xs font-mono bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md text-stone-900 dark:text-stone-100 focus:outline-none"
-            >
-              <option value="">pick…</option>
-              {entityOptions(addType).map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.emoji ? `${e.emoji} ` : ""}{e.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={addLabel}
-              onChange={(e) => setAddLabel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); handleAdd(); }
-                if (e.key === "Escape") setAdding(false);
-              }}
-              placeholder="label (e.g. works-at, member-of)…"
-              className="flex-1 min-w-0 px-2 py-1.5 text-xs font-mono bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none"
-              autoFocus
-              list="rel-label-suggestions"
-            />
-            <datalist id="rel-label-suggestions">
-              <option value="works-at" />
-              <option value="member-of" />
-              <option value="trains-at" />
-              <option value="friend-of" />
-              <option value="mother-of" />
-              <option value="father-of" />
-              <option value="sibling" />
-              <option value="partner" />
-            </datalist>
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={!addEntityId || !addLabel.trim()}
-              className="px-2 py-1.5 text-xs font-mono bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 rounded-md transition-colors disabled:opacity-40"
-            >
-              add
-            </button>
-            <button
-              type="button"
-              onClick={() => setAdding(false)}
-              className="px-2 py-1.5 text-xs font-mono text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-            >
-              cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="text-xs font-mono text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
-        >
-          + add relationship
-        </button>
-      )}
-    </div>
   );
 }
 
