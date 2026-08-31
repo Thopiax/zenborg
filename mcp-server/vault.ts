@@ -171,7 +171,6 @@ export interface Area {
   color: string;
   emoji: string;
   isDefault: boolean;
-  isArchived?: boolean;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -293,6 +292,7 @@ export interface Person {
   tags: string[];
   basePlace: string | null;
   emoji: string | null;
+  isArchived?: boolean;
   isSelf?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -313,6 +313,7 @@ export interface Place {
   coordinates: Coordinates | null;
   emoji: string | null;
   url: string | null;
+  isArchived?: boolean;
   createdAt: string;
   updatedAt: string;
 }
