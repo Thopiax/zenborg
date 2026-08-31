@@ -186,20 +186,31 @@ private func doReconcilePass(store: EKEventStore) {
             _ = ensureAreaCalendar(store: store, config: &config, areaId: areaId, areas: areas)
         }
 
-        // Drop stale area calendar entries whose calendar no longer resolves
-        var staleAreaIds: [String] = []
+        // Drop area-calendar entries for areas no longer in the vault (deleted/archived)
+        // and delete their macOS calendars
+        var removedAreaIds: [String] = []
         for (areaId, calId) in config.areaCalendars {
-            if store.calendar(withIdentifier: calId) == nil {
-                staleAreaIds.append(areaId)
+            if areas[areaId] == nil {
+                removedAreaIds.append(areaId)
+                if let cal = store.calendar(withIdentifier: calId) {
+                    do {
+                        try store.removeCalendar(cal, commit: true)
+                        fputs("[calendar] removed calendar for deleted area '\(areaId)'\n", stderr)
+                    } catch {
+                        fputs("[calendar] failed to remove calendar for deleted area '\(areaId)': \(error)\n", stderr)
+                    }
+                }
+            } else if store.calendar(withIdentifier: calId) == nil {
+                removedAreaIds.append(areaId)
+                fputs("[calendar] area calendar for '\(areaId)' was deleted; dropping stale refs\n", stderr)
             }
         }
-        for areaId in staleAreaIds {
-            fputs("[calendar] area calendar for '\(areaId)' was deleted; dropping stale refs\n", stderr)
-            config.areaCalendars.removeValue(forKey: areaId)
-        }
-        if !staleAreaIds.isEmpty {
+        if !removedAreaIds.isEmpty {
+            let staleCalIds = Set(removedAreaIds.compactMap { config.areaCalendars[$0] })
+            for areaId in removedAreaIds {
+                config.areaCalendars.removeValue(forKey: areaId)
+            }
             try writeCalendarSyncConfig(config)
-            let staleCalIds = Set(staleAreaIds.compactMap { config.areaCalendars[$0] })
             for (id, var moment) in moments {
                 if let ref = moment.externalRef, staleCalIds.contains(ref.calendarId) {
                     moment.externalRef = nil

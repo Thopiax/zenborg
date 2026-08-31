@@ -123,6 +123,7 @@ func readAreas() -> [String: VaultArea] {
     }
     var result: [String: VaultArea] = [:]
     for (id, raw) in dict {
+        if raw["isArchived"] as? Bool == true { continue }
         result[id] = VaultArea(
             id: id,
             name: raw["name"] as? String ?? "",
