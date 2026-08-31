@@ -2,7 +2,7 @@
 
 import { use$ } from "@legendapp/state/react";
 import Fuse from "fuse.js";
-import { AtSign, Check, MapPin, Plus, User } from "lucide-react";
+import { AtSign, Check, Layers, MapPin, Plus, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Popover,
@@ -10,15 +10,18 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { displayName } from "@/domain/entities/Person";
-import { people$, places$ } from "@/infrastructure/state/store";
+import { normalizeMention } from "@/domain/services/MentionService";
+import { areas$, people$, places$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
+
+type MentionType = "person" | "place" | "area";
 
 interface MentionItem {
   key: string;
   name: string;
   aliases: string[];
   emoji: string | null;
-  type: "person" | "place";
+  type: MentionType;
 }
 
 interface MentionAutocompleteInlineProps {
@@ -31,6 +34,7 @@ interface MentionAutocompleteInlineProps {
   collisionBoundary?: Element | null | Array<Element | null>;
   existingMentions?: string[];
   maxSuggestions?: number;
+  includeAreas?: boolean;
 }
 
 export function MentionAutocompleteInline({
@@ -43,9 +47,11 @@ export function MentionAutocompleteInline({
   collisionBoundary,
   existingMentions = [],
   maxSuggestions = 8,
+  includeAreas = false,
 }: MentionAutocompleteInlineProps) {
   const allPeople = use$(people$);
   const allPlaces = use$(places$);
+  const allAreas = use$(areas$);
 
   const allItems = useMemo((): MentionItem[] => {
     const items: MentionItem[] = [];
@@ -67,8 +73,21 @@ export function MentionAutocompleteInline({
         type: "place",
       });
     }
+    if (includeAreas) {
+      for (const area of Object.values(allAreas)) {
+        const key = normalizeMention(area.name);
+        if (!key) continue;
+        items.push({
+          key,
+          name: area.name,
+          aliases: [],
+          emoji: area.emoji,
+          type: "area",
+        });
+      }
+    }
     return items;
-  }, [allPeople, allPlaces]);
+  }, [allPeople, allPlaces, allAreas, includeAreas]);
 
   const { suggestions, createNewKey } = useMemo(() => {
     const trimmedSearch = searchValue.trim().toLowerCase();
@@ -225,14 +244,14 @@ export function MentionAutocompleteInline({
       >
         {searchValue.trim() && (
           <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
-            People & places
+            {includeAreas ? "People, places & areas" : "People & places"}
           </div>
         )}
 
         <div className="flex flex-col gap-0.5 max-h-48 overflow-auto">
           {suggestions.map((item, index) => {
             const isUsed = existingMentions.includes(item.key);
-            const TypeIcon = item.type === "person" ? User : MapPin;
+            const TypeIcon = item.type === "person" ? User : item.type === "place" ? MapPin : Layers;
             return (
               <button
                 key={item.key}
@@ -271,7 +290,7 @@ export function MentionAutocompleteInline({
                 </span>
 
                 <span className="text-[10px] text-stone-400 dark:text-stone-500 flex-shrink-0 uppercase">
-                  {item.type === "person" ? "person" : "place"}
+                  {item.type}
                 </span>
               </button>
             );
