@@ -26,6 +26,10 @@ Do NOT trigger for:
 
 ## Workflow
 
+### 0. Materialize morning routine
+
+Before reading the board, call `mcp__zenborg__materialize_routine { boundary: "NIGHT->MORNING" }` to plant any wakeup routine entries that haven't been planted yet today. Report what was created vs. already planted.
+
 ### 1. Read today's board
 
 Fetch today's state in parallel:

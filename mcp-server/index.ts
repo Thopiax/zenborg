@@ -141,6 +141,7 @@ import { defineTool, err, ok, type ToolResult } from "./tooling.js";
 import {
   boundaryKey,
   conciseRoutine,
+  planMaterialization,
   VALID_BOUNDARIES,
   validateRoutine,
 } from "./routines.js";
@@ -1551,6 +1552,101 @@ defineTool(server, {
     delete routines[found.id];
     writeCollection(VAULT_ROOT, "routines", routines);
     return ok({ deleted: found });
+  },
+});
+
+// ponytail: no daemon — materialization fires when sunrise/sunset skill runs.
+// Upgrade path: Rust-side daily tick if skill-driven proves leaky.
+defineTool(server, {
+  name: "materialize_routine",
+  description:
+    "Plant moments from a routine's entries into today (or a given day). Idempotent — skips entries whose habit already has a moment on (day, phase). Pass boundary (e.g. 'NIGHT->MORNING') or routineId to materialize one routine; omit both to materialize all routines for the day.",
+  schema: {
+    boundary: z
+      .string()
+      .optional()
+      .describe("Boundary key, e.g. 'NIGHT->MORNING'."),
+    routineId: z.string().optional().describe("Routine id."),
+    day: z
+      .string()
+      .optional()
+      .describe("YYYY-MM-DD. Defaults to today."),
+  },
+  handler: async ({ boundary, routineId, day }) => {
+    const routines = readCollection(VAULT_ROOT, "routines");
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const moments = readCollection(VAULT_ROOT, "moments");
+    const targetDay =
+      day ?? new Date().toISOString().slice(0, 10);
+
+    let targets: typeof routines[string][];
+    if (routineId) {
+      const r = routines[routineId];
+      if (!r) return err(`Routine not found: ${routineId}`);
+      targets = [r];
+    } else if (boundary) {
+      const r = Object.values(routines).find(
+        (r) => boundaryKey(r) === boundary,
+      );
+      if (!r) return err(`No routine for boundary: ${boundary}`);
+      targets = [r];
+    } else {
+      targets = Object.values(routines);
+    }
+
+    const created: string[] = [];
+    const skipped: string[] = [];
+    const errors: string[] = [];
+
+    for (const routine of targets) {
+      const planned = planMaterialization(
+        routine,
+        moments,
+        habits,
+        targetDay,
+      );
+      for (const p of planned) {
+        const result = runAddMoment({
+          habitId: p.habitId,
+          day: targetDay,
+          phase: p.phase,
+        });
+        if ("err" in result) {
+          errors.push(
+            `${habits[p.habitId]?.name ?? p.habitId}: ${result.err}`,
+          );
+        } else {
+          moments[result.created.id] = result.created;
+          created.push(result.created.name);
+        }
+      }
+      for (const entry of routine.entries) {
+        const habit = habits[entry.habitId];
+        if (!habit || habit.isArchived) continue;
+        if (!planned.some((p) => p.habitId === entry.habitId)) {
+          skipped.push(habit.name);
+        }
+      }
+    }
+
+    return ok({
+      day: targetDay,
+      created,
+      skipped,
+      ...(errors.length ? { errors } : {}),
+    });
+  },
+  concise: (result) => {
+    const r = result as {
+      day: string;
+      created: string[];
+      skipped: string[];
+      errors?: string[];
+    };
+    const parts = [`${r.day}: +${r.created.length} created`];
+    if (r.skipped.length) parts.push(`${r.skipped.length} already planted`);
+    if (r.errors?.length) parts.push(`${r.errors.length} errors`);
+    return parts.join(", ");
   },
 });
 

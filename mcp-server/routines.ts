@@ -1,4 +1,4 @@
-import type { Habit, Phase, Routine, RoutineEntry } from "./vault.js";
+import type { Habit, Moment, Phase, Routine, RoutineEntry } from "./vault.js";
 
 const PHASE_ORDER: readonly Phase[] = [
   "MORNING",
@@ -63,6 +63,44 @@ export function validateRoutine(
   }
 
   return problems;
+}
+
+export interface PlannedEntry {
+  readonly habitId: string;
+  readonly phase: Phase;
+  readonly order: number;
+}
+
+export function planMaterialization(
+  routine: Routine,
+  existingMoments: Record<string, Moment>,
+  habits: Record<string, Habit>,
+  day: string,
+): PlannedEntry[] {
+  const targetPhase = routine.to;
+  const sorted = [...routine.entries].sort((a, b) => a.order - b.order);
+  const planned: PlannedEntry[] = [];
+
+  for (const entry of sorted) {
+    const habit = habits[entry.habitId];
+    if (!habit || habit.isArchived) continue;
+
+    const alreadyPlanted = Object.values(existingMoments).some(
+      (m) =>
+        m.habitId === entry.habitId &&
+        m.day === day &&
+        m.phase === targetPhase,
+    );
+    if (alreadyPlanted) continue;
+
+    planned.push({
+      habitId: entry.habitId,
+      phase: targetPhase,
+      order: entry.order,
+    });
+  }
+
+  return planned;
 }
 
 export function conciseRoutine(r: Routine): Record<string, unknown> {
