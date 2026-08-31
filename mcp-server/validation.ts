@@ -362,7 +362,7 @@ export function findAreaByIdOrName(
 ): Area | null {
   if (areas[ref]) return areas[ref];
   const matches = Object.values(areas).filter(
-    (a) => !a.isArchived && a.name.toLowerCase() === ref.toLowerCase(),
+    (a) => a.name.toLowerCase() === ref.toLowerCase(),
   );
   return matches.length === 1 ? matches[0] : null;
 }
@@ -395,7 +395,6 @@ export function requireActiveArea(
 ): string | Area {
   const area = findArea(areas, areaId);
   if (!area) return `Area not found: ${areaId}`;
-  if (area.isArchived) return `Area is archived: ${area.name}`;
   return area;
 }
 

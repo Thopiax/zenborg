@@ -160,7 +160,6 @@ describe("conciseArea", () => {
       emoji: "💼",
       color: "#aabbcc",
       isDefault: true,
-      isArchived: false,
       order: 0,
       attitude: null,
       tags: [],

@@ -15,7 +15,6 @@ function makeArea(overrides: Partial<Area> = {}): Area {
     color: "#aabbcc",
     emoji: "💼",
     isDefault: false,
-    isArchived: false,
     order: 0,
     createdAt: NOW.toISOString(),
     updatedAt: NOW.toISOString(),
@@ -235,15 +234,6 @@ describe("resolveAddMoment", () => {
       );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error).toContain("not found");
-    });
-
-    it("fails when area is archived", () => {
-      const ctx = baseCtx({
-        areas: { "area-1": makeArea({ isArchived: true }) },
-      });
-      const result = resolveAddMoment({ name: "test", areaId: "area-1" }, ctx);
-      expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.error).toContain("archived");
     });
   });
 

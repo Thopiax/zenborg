@@ -9,6 +9,7 @@ export interface Person {
   tags: string[];
   basePlace: string | null;
   emoji: string | null;
+  isArchived: boolean;
   isSelf?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -58,6 +59,7 @@ export function createPerson(props: {
     tags: props.tags ?? [],
     basePlace: props.basePlace ?? null,
     emoji: props.emoji ?? null,
+    isArchived: false,
     createdAt: now,
     updatedAt: now,
   };
