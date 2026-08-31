@@ -9,6 +9,7 @@ import type { Moment } from "@/domain/entities/Moment";
 import type { Person } from "@/domain/entities/Person";
 import type { Place } from "@/domain/entities/Place";
 import type { Relationship } from "@/domain/entities/Relationship";
+import type { Routine } from "@/domain/entities/Routine";
 import {
   getCurrentPhase,
   type PhaseConfig,
@@ -109,6 +110,12 @@ export const places$ = observable<Record<string, Place>>({});
  * Relationships collection - keyed by relationship ID
  */
 export const relationships$ = observable<Record<string, Relationship>>({});
+
+/**
+ * Routines collection - keyed by routine ID
+ * Ordered habit sequences at phase boundaries
+ */
+export const routines$ = observable<Record<string, Routine>>({});
 
 // ============================================================================
 // History State
@@ -705,6 +712,7 @@ export function resetDatabase() {
   people$.set({});
   places$.set({});
   relationships$.set({});
+  routines$.set({});
 
   console.log("[resetDatabase] Database reset complete");
 
