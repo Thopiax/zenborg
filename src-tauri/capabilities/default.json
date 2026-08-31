@@ -21,7 +21,6 @@
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
     "global-shortcut:allow-is-registered",
-    "playwright:default",
     "fs:default",
     "fs:allow-exists",
     "fs:allow-read-text-file",
