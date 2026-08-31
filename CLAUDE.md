@@ -135,6 +135,12 @@ Settings import path, so the fixture goes through real validation. Browsers inst
 `npx playwright install chromium`. It is deliberately outside the pre-commit hook: it covers what
 unit tests cannot see, which is what a card does with the space it has.
 
+`pnpm test:e2e:tauri` runs Playwright against the **real Tauri webview** via a socket bridge
+(`tauri-plugin-playwright`). Requires the app running with `pnpm tauri dev --features e2e-testing`.
+Tests live in `e2e/*.tauri.spec.ts` and import from `e2e/support/tauri.ts`. Use for anything that
+touches Tauri IPC, native window behaviour, or vault interaction. The plugin is feature-gated and
+compiles out of release builds.
+
 ## Design
 
 Canonical system: [`../DESIGN.md`](../DESIGN.md) (org-wide). It wins on conflict.
