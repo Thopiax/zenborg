@@ -225,8 +225,7 @@ describe("concisePerson", () => {
       key: "ada",
       aliases: ["mom"],
       cadence: null,
-      status: "active",
-      category: null,
+      tags: [],
       basePlace: null,
       emoji: "👩",
       createdAt: TS,
@@ -237,7 +236,6 @@ describe("concisePerson", () => {
       name: "Ada",
       key: "ada",
       aliases: ["mom"],
-      status: "active",
       emoji: "👩",
     });
   });
