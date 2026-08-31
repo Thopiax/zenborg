@@ -331,6 +331,24 @@ export const activeHabits$ = observable(() => {
 });
 
 /**
+ * Active child habits grouped by parentHabitId
+ */
+export const childHabitsByParent$ = observable(() => {
+  const allHabits = habits$.get();
+  const map: Record<string, Habit[]> = {};
+  for (const habit of Object.values(allHabits)) {
+    if (!habit.isArchived && habit.parentHabitId) {
+      if (!map[habit.parentHabitId]) map[habit.parentHabitId] = [];
+      map[habit.parentHabitId].push(habit);
+    }
+  }
+  for (const children of Object.values(map)) {
+    children.sort((a, b) => a.order - b.order);
+  }
+  return map;
+});
+
+/**
  * All archived habits, sorted by updatedAt (most recently archived first)
  * Computed from habits$ - automatically updates when habits change
  */
