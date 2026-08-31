@@ -4,6 +4,7 @@ import { observer, use$ } from "@legendapp/state/react";
 import {
   Eye,
   EyeOff,
+  Globe,
   Grid3X3,
   Hash,
   Heart,
@@ -48,6 +49,7 @@ const PEOPLE_GROUPS: { value: PeopleGroupBy; label: string; icon: ReactNode }[] 
 
 const PLACES_GROUPS: { value: PlacesGroupBy; label: string; icon: ReactNode }[] = [
   { value: "tree", label: "Tree", icon: <MapPin className="w-3 h-3" /> },
+  { value: "map", label: "Map", icon: <Globe className="w-3 h-3" /> },
 ];
 
 function GroupChip({
