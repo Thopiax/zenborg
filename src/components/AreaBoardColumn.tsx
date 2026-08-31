@@ -18,7 +18,7 @@ interface AreaBoardColumnProps {
   habits: Habit[];
   archivedHabits?: Habit[];
   onUpdateArea: (areaId: string, updates: Partial<Area>) => void;
-  onArchiveArea: (areaId: string) => void;
+  onDeleteArea: (areaId: string) => void;
   onEditHabit: (habitId: string) => void;
   onArchiveHabit: (habitId: string) => void;
   onUnarchiveHabit?: (habitId: string) => void;
@@ -32,7 +32,7 @@ export function AreaBoardColumn({
   habits,
   archivedHabits = [],
   onUpdateArea,
-  onArchiveArea,
+  onDeleteArea,
   onEditHabit,
   onArchiveHabit,
   onUnarchiveHabit,
@@ -99,7 +99,7 @@ export function AreaBoardColumn({
           area={area}
           habitCount={habits.length}
           onUpdateArea={onUpdateArea}
-          onArchiveArea={onArchiveArea}
+          onDeleteArea={onDeleteArea}
           onCreateHabit={onCreateHabit}
         />
       </div>
