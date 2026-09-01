@@ -201,7 +201,6 @@ export const ACTIVE_MOMENT_PATH = join(KAIROS_DIR, "activeMoment.json");
 export const MOMENTS_PATH = join(KAIROS_DIR, "moments.json");
 export const PHASE_CONFIGS_PATH = join(KAIROS_DIR, "phaseConfigs.json");
 export const CYCLES_PATH = join(KAIROS_DIR, "cycles.json");
-export const AREA_MAP_PATH = join(KEEL_DIR, "area-map.json");
 
 /** The active-moment pointer — which moment the intention currently is:
  *
@@ -444,49 +443,16 @@ export function loadMomentFriction(now = Date.now()) {
   );
 }
 
-/** Domain (or domain/path) → areaId.
- * @returns {Record<string, string>} */
-export function loadAreaMap() {
-  try {
-    return JSON.parse(readFileSync(AREA_MAP_PATH, "utf8"));
-  } catch {
-    return {};
-  }
-}
 
-/** @param {Record<string, string>} map */
-export function saveAreaMap(map) {
-  if (!existsSync(KEEL_DIR)) mkdirSync(KEEL_DIR, { recursive: true });
-  writeJsonAtomic(AREA_MAP_PATH, map);
-}
-
-/** Resolve a rule's areas to the domains currently sitting in them, unioned
- * with any domains it names directly. Area membership is looked up at serve
- * time, so a rule stays correct as the map grows.
+/** Extract browser domains from a rule's scope.
  * @param {any} rule @returns {string[]} */
 export function resolveRuleDomains(rule) {
-  // `RuleScope` first, because a rule that carries one has said which surface it
-  // is for and that answer is not negotiable. A session or desktop scope reaches
-  // no browser and yields nothing — falling through to the flat shape would let
-  // a fence declared for a filesystem path block a domain it happens to name.
   const scope = rule?.scope;
-  if (scope && typeof scope === "object" && "surface" in scope) {
-    if (scope.surface !== "browser") return [];
-    const domain = typeof scope.domain === "string" ? scope.domain.trim() : "";
-    return domain ? [domain] : [];
-  }
-
-  // The flat shape: keel's own rules named `domains` directly and `areas` for
-  // membership resolved at serve time, so a rule stays correct as the map grows.
-  // Kept because records written before `RuleScope` may still be in `fences`.
-  const map = loadAreaMap();
-  const out = new Set(rule?.domains ?? []);
-  for (const areaId of rule?.areas ?? []) {
-    for (const [domain, id] of Object.entries(map)) {
-      if (id === areaId) out.add(domain);
-    }
-  }
-  return [...out];
+  if (!scope || typeof scope !== "object" || !("surface" in scope)) return [];
+  if (scope.surface !== "browser") return [];
+  const d = scope.domain;
+  if (Array.isArray(d)) return d.filter((s) => typeof s === "string" && s.trim()).map((s) => s.trim());
+  return typeof d === "string" && d.trim() ? [d.trim()] : [];
 }
 
 /** What the big red button means right now: the areas it pauses and their
