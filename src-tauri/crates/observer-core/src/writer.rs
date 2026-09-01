@@ -1,5 +1,5 @@
 //! Desktop observer writer — the only file I/O in this crate.
-//! Append-only JSONL under keel's subtree of the kairos vault.
+//! Append-only JSONL under the kairos vault.
 //!
 //! Fail-open everywhere: any I/O error drops the event and returns `false`;
 //! the observer must never crash or block the app.
@@ -12,20 +12,25 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-/// Resolve keel's own subtree of the vault. `KEEL_HOME` overrides the subtree
-/// outright, which is how tests get a scratch log instead of the real one.
-/// Otherwise it is `<vault_root>/keel`.
-pub fn keel_dir(vault_root: &Path) -> PathBuf {
+/// The observer's root directory inside the vault. `KEEL_HOME` overrides for
+/// tests (a scratch dir instead of the real vault). Otherwise it IS the vault
+/// root — the `keel/` subtree was retired 2026-09-01.
+pub fn observer_dir(vault_root: &Path) -> PathBuf {
     if let Some(keel) = std::env::var_os("KEEL_HOME") {
         return PathBuf::from(keel);
     }
-    vault_root.join("keel")
+    vault_root.to_path_buf()
 }
 
-/// `<keel>/config.json` as a raw string. Fail-open: a missing or unreadable
-/// file reads as empty, and every parser here treats empty as "unset".
-pub fn read_config(keel_dir: &Path) -> String {
-    fs::read_to_string(keel_dir.join("config.json")).unwrap_or_default()
+/// Kept as an alias so callers that have not migrated yet still compile.
+pub fn keel_dir(vault_root: &Path) -> PathBuf {
+    observer_dir(vault_root)
+}
+
+/// `<observer_dir>/config.json` as a raw string. Fail-open: a missing or
+/// unreadable file reads as empty, and every parser here treats empty as "unset".
+pub fn read_config(observer_dir: &Path) -> String {
+    fs::read_to_string(observer_dir.join("config.json")).unwrap_or_default()
 }
 
 /// Append one already-serialized event line. Creates the directory on demand.
