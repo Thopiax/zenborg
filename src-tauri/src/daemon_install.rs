@@ -1,4 +1,4 @@
-//! Auto-wire the bundled `kairos-daemon` sidecar as a launchd agent.
+//! Auto-wire the bundled `zenborg-daemon` sidecar as a launchd agent.
 //!
 //! Follows the `mcp_install.rs` marker pattern: write a plist to
 //! `~/Library/LaunchAgents/`, bootstrap it via `launchctl`, and track
@@ -18,16 +18,16 @@ use serde::Serialize;
 const PLIST_LABEL: &str = "tech.equanimi.zenborg.daemon";
 const MARKER_FILE: &str = ".daemon-wired-binary";
 
-/// Resolve the bundled `kairos-daemon` next to the running Tauri exe.
+/// Resolve the bundled `zenborg-daemon` next to the running Tauri exe.
 fn bundled_daemon_path() -> Result<PathBuf> {
     let exe = std::env::current_exe().context("current_exe")?;
     let dir = exe
         .parent()
         .ok_or_else(|| anyhow!("current exe has no parent dir"))?;
-    let candidate = dir.join("kairos-daemon");
+    let candidate = dir.join("zenborg-daemon");
     if !candidate.exists() {
         return Err(anyhow!(
-            "bundled kairos-daemon not present next to app exe ({})",
+            "bundled zenborg-daemon not present next to app exe ({})",
             dir.display()
         ));
     }
@@ -70,9 +70,9 @@ fn generate_plist(daemon_binary: &Path) -> String {
   <key>ProcessType</key>
   <string>Background</string>
   <key>StandardOutPath</key>
-  <string>/tmp/kairos-daemon.out.log</string>
+  <string>/tmp/zenborg-daemon.out.log</string>
   <key>StandardErrorPath</key>
-  <string>/tmp/kairos-daemon.err.log</string>
+  <string>/tmp/zenborg-daemon.err.log</string>
 </dict>
 </plist>
 "#,

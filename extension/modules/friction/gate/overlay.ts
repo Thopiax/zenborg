@@ -3,7 +3,7 @@
  *
  * Rendered in a closed shadow root so page CSS cannot restyle it and page JS
  * cannot query it away. It is an overlay rather than a DNR redirect because
- * DNR's `redirect` action requires host permissions, and kairos ships none —
+ * DNR's `redirect` action requires host permissions, and zenborg ships none —
  * that absence is the structural guarantee it cannot read your browsing
  * (see drogues/blocklist/sync.ts).
  *

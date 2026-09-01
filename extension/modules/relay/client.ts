@@ -1,9 +1,9 @@
 /**
- * Relay client — the extension's channel to the kairos store.
+ * Relay client — the extension's channel to the zenborg store.
  *
  * ── One store, queried ──────────────────────────────────────────────────
  *
- * `~/.kairos/keel/log/` is the store. The tray writes to it, the agent writes to it,
+ * `~/.zenborg/keel/log/` is the store. The tray writes to it, the agent writes to it,
  * and this extension writes to it through the native host. Nobody keeps a
  * second copy.
  *
@@ -19,7 +19,7 @@
  *
  * Deliberately native messaging rather than aw-server's localhost HTTP: an
  * extension calling `http://localhost` needs a host permission, and shipping
- * zero `host_permissions` is kairos's structural guarantee that it cannot read
+ * zero `host_permissions` is zenborg's structural guarantee that it cannot read
  * your browsing. Same architecture, none of the exposure.
  *
  * Fail-open throughout. Pure helpers (chunkEvents/unacked) are unit-tested; the
@@ -87,7 +87,7 @@ export async function queryEvents(since: number): Promise<readonly ActivityEvent
   try {
     port = browser.runtime.connectNative(HOST_NAME);
   } catch (e) {
-    console.warn("[kairos relay] connectNative threw:", e);
+    console.warn("[zenborg relay] connectNative threw:", e);
     return [];
   }
 
@@ -264,7 +264,7 @@ export async function flushToHost(): Promise<void> {
   try {
     port = browser.runtime.connectNative(HOST_NAME);
   } catch (e) {
-    console.warn("[kairos relay] connectNative threw:", e); // host not installed — stay on the export stopgap
+    console.warn("[zenborg relay] connectNative threw:", e); // host not installed — stay on the export stopgap
     return;
   }
   try {
@@ -273,7 +273,7 @@ export async function flushToHost(): Promise<void> {
     // up here as lastError on disconnect.
     port.onDisconnect.addListener(() => {
       const err = browser.runtime.lastError;
-      if (err) console.warn("[kairos relay] native host disconnected:", err.message);
+      if (err) console.warn("[zenborg relay] native host disconnected:", err.message);
     });
     port.onMessage.addListener((raw: unknown) => {
       const msg = raw as {
@@ -297,12 +297,12 @@ export async function flushToHost(): Promise<void> {
       else if (msg.type === "armed") {
         void replaceFences(msg.armed).then((result) => {
           if (!result.applied) {
-            console.warn("[kairos fence] malformed push — keeping the previous cache");
+            console.warn("[zenborg fence] malformed push — keeping the previous cache");
             return;
           }
           for (const refusal of result.refused) {
             console.error(
-              `[kairos fence] refused "${refusal.id}": ${refusal.reason}` +
+              `[zenborg fence] refused "${refusal.id}": ${refusal.reason}` +
                 (refusal.reason === "no_exit"
                   ? " — invariant 6: a block with no visible exit is a bug, not a stricter shield"
                   : "")
@@ -312,7 +312,7 @@ export async function flushToHost(): Promise<void> {
       } else if (msg.type === "area_set") void flushToHost(); // re-pull so every surface agrees
     });
     const events = await readAllEvents();
-    console.debug("[kairos relay] flushing", events.length, "buffered events to", HOST_NAME);
+    console.debug("[zenborg relay] flushing", events.length, "buffered events to", HOST_NAME);
     for (const batch of chunkEvents(events, MAX_BATCH)) {
       port.postMessage({ type: "events", events: batch });
     }

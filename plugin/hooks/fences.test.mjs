@@ -19,8 +19,8 @@ const NODE_ARGS = [
 ];
 
 function fenced() {
-  const vault = mkdtempSync(join(tmpdir(), "kairos-fences-"));
-  const roots = mkdtempSync(join(tmpdir(), "kairos-roots-"));
+  const vault = mkdtempSync(join(tmpdir(), "zenborg-fences-"));
+  const roots = mkdtempSync(join(tmpdir(), "zenborg-roots-"));
   const onStream = join(roots, "on-stream");
   mkdirSync(onStream, { recursive: true });
 
@@ -46,7 +46,7 @@ function runFences({ vault, roots }, filePath) {
       tool_input: { file_path: filePath },
       cwd: filePath,
     }),
-    env: { ...process.env, KAIROS_HOME: vault, ZENBORG_FENCE_ROOTS: roots },
+    env: { ...process.env, ZENBORG_HOME: vault, ZENBORG_FENCE_ROOTS: roots },
     encoding: "utf8",
   });
 }
@@ -71,13 +71,13 @@ test("a crossing asks, at the first rung, naming the stream", () => {
 
 test("a path outside every root is not the fence's business", () => {
   const f = fenced();
-  const outside = mkdtempSync(join(tmpdir(), "kairos-outside-"));
+  const outside = mkdtempSync(join(tmpdir(), "zenborg-outside-"));
   assert.equal(runFences(f, join(outside, "file.ts")), "");
 });
 
 test("no fences declared is silence, not a crash", () => {
-  const vault = mkdtempSync(join(tmpdir(), "kairos-empty-"));
-  const roots = mkdtempSync(join(tmpdir(), "kairos-roots-"));
+  const vault = mkdtempSync(join(tmpdir(), "zenborg-empty-"));
+  const roots = mkdtempSync(join(tmpdir(), "zenborg-roots-"));
   assert.equal(runFences({ vault, roots }, join(roots, "file.ts")), "");
 });
 
@@ -92,7 +92,7 @@ function runFencesEx({ vault, roots }, filePath, toolName = "Read") {
       tool_input: { file_path: filePath },
       cwd: filePath,
     }),
-    env: { ...process.env, KAIROS_HOME: vault, ZENBORG_FENCE_ROOTS: roots },
+    env: { ...process.env, ZENBORG_HOME: vault, ZENBORG_FENCE_ROOTS: roots },
     encoding: "utf8",
   });
 }
@@ -154,8 +154,8 @@ function wateringRule({ paths, tools, schedule } = {}) {
 }
 
 function watered(overrides = {}) {
-  const vault = mkdtempSync(join(tmpdir(), "kairos-water-"));
-  const roots = mkdtempSync(join(tmpdir(), "kairos-roots-"));
+  const vault = mkdtempSync(join(tmpdir(), "zenborg-water-"));
+  const roots = mkdtempSync(join(tmpdir(), "zenborg-roots-"));
   const restricted = join(roots, "restricted-project");
   mkdirSync(restricted, { recursive: true });
 
@@ -208,8 +208,8 @@ test("schedule window on a different weekday is silent", () => {
 });
 
 test("windowed tally resets when the last crossing was on a different day", () => {
-  const vault = mkdtempSync(join(tmpdir(), "kairos-water-"));
-  const roots = mkdtempSync(join(tmpdir(), "kairos-roots-"));
+  const vault = mkdtempSync(join(tmpdir(), "zenborg-water-"));
+  const roots = mkdtempSync(join(tmpdir(), "zenborg-roots-"));
   const restricted = join(roots, "restricted");
   mkdirSync(restricted, { recursive: true });
 
@@ -253,8 +253,8 @@ const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const OTHER_DAY = WEEKDAYS[(new Date().getDay() + 3) % 7];
 
 function scheduleFenced(outsideWindow = "inactive", inWindow = true) {
-  const vault = mkdtempSync(join(tmpdir(), "kairos-fences-"));
-  const roots = mkdtempSync(join(tmpdir(), "kairos-roots-"));
+  const vault = mkdtempSync(join(tmpdir(), "zenborg-fences-"));
+  const roots = mkdtempSync(join(tmpdir(), "zenborg-roots-"));
   const onStream = join(roots, "on-stream");
   mkdirSync(onStream, { recursive: true });
 

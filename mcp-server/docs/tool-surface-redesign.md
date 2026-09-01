@@ -36,7 +36,7 @@ Two facts discovered during the audit that shape the plan:
 - **The deployed server has drifted from the repo.** Live sessions still expose
   `budget_habit_to_cycle`, `increment_habit_budget`, `list_cycle_plans`, `remove_habit_from_deck`
   — tools deleted from `index.ts`. The compiled `dist/` (and the plugin cache copy at
-  `~/.claude/plugins/cache/kairos/zenborg/…`) was not rebuilt after the cycle-plan removal.
+  `~/.claude/plugins/cache/zenborg/…`) was not rebuilt after the cycle-plan removal.
   Every phase below therefore ends with an explicit **rebuild + reinstall** step; shipping code
   without shipping the binary is how the current drift happened.
 

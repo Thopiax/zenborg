@@ -18,7 +18,7 @@ import { validateRuleSpec } from "@/domain/intervention/RuleSpec";
  *
  * Migration step 5 could not be finished without one. Slice E reported it in as
  * many words: the extension's armed cache had to keep reading
- * `~/.kairos/keel/rules/*.json` alongside `fences`, because zenborg's only fence
+ * `~/.zenborg/keel/rules/*.json` alongside `fences`, because zenborg's only fence
  * writer produced `scope.surface: "session"` rules and a fences-only read would
  * have shipped an inert feature. These tests are that gap closing.
  */

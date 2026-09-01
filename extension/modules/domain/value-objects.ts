@@ -1,5 +1,5 @@
 /**
- * Branded value objects for type safety across the kairos platform.
+ * Branded value objects for type safety across the zenborg platform.
  *
  * These use TypeScript's branded types pattern to prevent
  * accidental mixing of semantically different values

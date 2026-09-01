@@ -7,8 +7,7 @@
 ## What zenborg is
 
 **Zenborg is the product.** The app, the MCP server, the Claude Code plugin, the garden
-metaphor — one repo, one name. *Kairos* is the vault path (`~/.kairos`) and may become a
-marketing name; it is not a separate product or codebase.
+metaphor — one repo, one name.
 
 A macOS desktop app (Tauri 2) wrapping a Next.js static export, plus an MCP server that
 exposes the same vault to any agent. Local-first, no accounts, no server.
@@ -38,7 +37,7 @@ Anything reasoning about friction reads habits or the moment that references one
 
 ## The vault
 
-Garden state is a filesystem vault at `~/.kairos` (release) or `~/.kairos-dev` (debug builds).
+Garden state is a filesystem vault at `~/.zenborg` (release) or `~/.zenborg-dev` (debug builds).
 
 One JSON file per collection, each a **JSON object keyed by entity UUID** (not an array):
 `areas.json`, `habits.json`, `cycles.json`, `cyclePlans.json`, `moments.json`,
@@ -81,7 +80,7 @@ They must stay in lockstep; they have drifted before.
 Unstructured, area-scoped content lives beside the JSON, never inside it:
 
 ```
-$KAIROS_HOME/areas/<slug>/
+$ZENBORG_HOME/areas/<slug>/
 ├── AGENTS.md      # area-scoped agent context
 ├── docs/          # whatever belongs to this plot
 └── skills/        # area-scoped skills

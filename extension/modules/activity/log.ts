@@ -3,7 +3,7 @@
  *
  * DB "keel-log" (name kept from the original extension — an IndexedDB
  * rename would migrate or lose every already-collected event, so the
- * identifier stays even though the product is now kairos/zenborg), object
+ * identifier stays even though the product is now zenborg), object
  * store "events" (autoIncrement key, index on ts). The writer only ever
  * ADDS; the single deletion path is the startup retention guard
  * (`deleteOldestEvents`). Every operation is fail-open: a storage error

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 pub use observer_core::writer::append_line;
 
 fn vault_dir() -> PathBuf {
-    crate::vault::fs::vault_root().unwrap_or_else(|_| PathBuf::from(".kairos"))
+    crate::vault::fs::vault_root().unwrap_or_else(|_| PathBuf::from(".zenborg"))
 }
 
 pub fn observer_dir() -> PathBuf {

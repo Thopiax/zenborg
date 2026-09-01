@@ -1,11 +1,11 @@
 [package]
-name = "kairos-daemon"
+name = "zenborg-daemon"
 version = "0.1.0"
 edition = "2021"
 description = "Headless sidecar: desktop observer + scheduler. No Tauri."
 
 [[bin]]
-name = "kairos-daemon"
+name = "zenborg-daemon"
 path = "src/main.rs"
 
 [dependencies]

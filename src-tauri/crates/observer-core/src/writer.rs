@@ -1,5 +1,5 @@
 //! Desktop observer writer — the only file I/O in this crate.
-//! Append-only JSONL under the kairos vault.
+//! Append-only JSONL under the zenborg vault.
 //!
 //! Fail-open everywhere: any I/O error drops the event and returns `false`;
 //! the observer must never crash or block the app.
