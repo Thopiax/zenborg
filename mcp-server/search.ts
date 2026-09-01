@@ -9,7 +9,7 @@
  *   2. Prefix match (startsWith)
  *   3. Substring match (includes)
  *   4. Levenshtein distance <= 2
- *   5. Alias match (habits and people have an `aliases` field)
+ *   5. Alias match (habits, people, and places have an `aliases` field)
  */
 import type { Habit, Person, Place } from "./vault.js";
 
@@ -196,7 +196,7 @@ export function searchPeople(
 
 export interface PlaceMatch {
   place: Place;
-  matchedOn: "name" | "key" | "parentKey";
+  matchedOn: "name" | "alias" | "key" | "parentKey";
   matchedValue: string;
   score: number;
   method: MatchMethod;
@@ -223,6 +223,21 @@ export function searchPlaces(
         method: m.method,
       });
       continue;
+    }
+
+    if (place.aliases && place.aliases.length > 0) {
+      const aliasMatches = fuzzyMatch(query, place.aliases);
+      if (aliasMatches.length > 0) {
+        const m = aliasMatches[0];
+        results.push({
+          place,
+          matchedOn: "alias",
+          matchedValue: m.value,
+          score: m.score + 0.1,
+          method: m.method,
+        });
+        continue;
+      }
     }
 
     const keyMatches = fuzzyMatch(query, [place.key]);
