@@ -9,10 +9,14 @@ fn vault_dir() -> PathBuf {
     crate::vault::fs::vault_root().unwrap_or_else(|_| PathBuf::from(".kairos"))
 }
 
+pub fn observer_dir() -> PathBuf {
+    observer_core::writer::observer_dir(&vault_dir())
+}
+
 pub fn keel_dir() -> PathBuf {
-    observer_core::writer::keel_dir(&vault_dir())
+    observer_dir()
 }
 
 pub fn read_config() -> String {
-    observer_core::writer::read_config(&keel_dir())
+    observer_core::writer::read_config(&observer_dir())
 }
