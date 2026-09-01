@@ -35,6 +35,7 @@ import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import {
   activeAreas$,
   areas$,
+  habits$,
   phaseConfigs$,
 } from "@/infrastructure/state/store";
 import {
@@ -100,6 +101,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     customMetric,
     editingMomentId,
     mentionIds: formMentionIds,
+    habitId,
   } = formState;
 
   const tags = useMemo(() => formTags || [], [formTags]);
@@ -221,6 +223,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     momentFormState$.name.set(habit.name);
     momentFormState$.areaId.set(habit.areaId);
     momentFormState$.emoji.set(habit.emoji);
+    momentFormState$.habitId.set(habit.id);
     if (habit.tags?.length) {
       momentFormState$.tags.set(habit.tags);
     }
@@ -377,6 +380,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
       // Parent will keep modal open, but preserve area and phase selection
       if (shouldCreateMore) {
         taggedField.reset();
+        momentFormState$.habitId.set(null);
         setTimeout(() => {
           inputRef.current?.focus();
         }, 0);
@@ -397,6 +401,11 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
   // Use useSelector to reactively get the selected area
   const selectedArea = useSelector(() =>
     selectedAreaId ? areas$[selectedAreaId].get() : undefined,
+  );
+
+  // Resolve linked habit name for display
+  const linkedHabit = useSelector(() =>
+    habitId ? habits$[habitId].get() : undefined,
   );
 
   // Validate name (remove tags for validation)
@@ -440,6 +449,32 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
             {mode === "create" ? "New moment" : "Edit moment"}
           </DialogTitle>
         </DialogHeader>
+
+        {/* Habit provenance — barely-there top-left marker */}
+        {habitId && linkedHabit ? (
+          <div className="px-6 pt-3 flex items-center gap-1.5 text-stone-400 dark:text-stone-500">
+            <span className="text-[11px] font-mono leading-none">↻</span>
+            {linkedHabit.name !== name.trim() && (
+              <span className="text-[11px] font-mono leading-none">{linkedHabit.name}</span>
+            )}
+            <button
+              type="button"
+              onClick={() => momentFormState$.habitId.set(null)}
+              className="p-0.5 rounded opacity-0 hover:opacity-100 focus:opacity-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-opacity"
+            >
+              <X className="w-2.5 h-2.5" />
+            </button>
+          </div>
+        ) : !habitId && mode === "edit" ? (
+          <button
+            type="button"
+            onClick={() => setShowHabitAutocomplete(true)}
+            className="px-6 pt-3 flex items-center gap-1 text-stone-300 dark:text-stone-600 hover:text-stone-400 dark:hover:text-stone-500 transition-colors"
+          >
+            <span className="text-[11px] font-mono leading-none">↻</span>
+            <span className="text-[11px] font-mono leading-none">link habit</span>
+          </button>
+        ) : null}
 
         {/* Content */}
         <div className="px-6 py-6 flex-1 overflow-y-auto">
@@ -649,6 +684,7 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                     }
                   />
                 )}
+
               </div>
             </div>
           ) : (
