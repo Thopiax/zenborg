@@ -1,6 +1,6 @@
 {
-  "name": "@kairos/plugin",
-  "description": "kairos plugin: the vault's Claude Code surface. The garden's fences and gap practice, plus keel's activity-log writer and HUD. Ships as a Claude Code plugin.",
+  "name": "@zenborg/plugin",
+  "description": "zenborg plugin: the vault's Claude Code surface. The garden's fences and gap practice, plus keel's activity-log writer and HUD. Ships as a Claude Code plugin.",
   "version": "0.3.0",
   "private": true,
   "type": "module",

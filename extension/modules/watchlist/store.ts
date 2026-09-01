@@ -12,8 +12,8 @@
  * nothing in the sensor arm flow reads it anymore — read `derivedObserveDomains()`
  * instead.
  *
- * Self-authored like the voice: kairos never ships entries. The one standing
- * exception is explicitly-consented and now lives in `~/.kairos/keel/rules/*.json`,
+ * Self-authored like the voice: zenborg never ships entries. The one standing
+ * exception is explicitly-consented and now lives in `~/.zenborg/keel/rules/*.json`,
  * not in any shipped code.
  */
 

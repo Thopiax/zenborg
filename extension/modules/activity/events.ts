@@ -204,7 +204,7 @@ export function excessEventCount(
 
 // ── Popup mirror (today's deep-sensor completions) ────────────────
 
-/** What kairos noticed: the key-action completions the watchlist sensors
+/** What zenborg noticed: the key-action completions the watchlist sensors
  * emit, tallied for the popup's calm mirror (awareness, not a score). */
 export interface CompletionTally {
   readonly videos: number;

@@ -1,6 +1,6 @@
 //! Zenborg vault — file-based source of truth for domain collections.
 //!
-//! The vault lives at $HOME/.kairos/ and contains one JSON file per collection.
+//! The vault lives at $HOME/.zenborg/ and contains one JSON file per collection.
 //! It is the persistent truth across sessions and devices; IndexedDB acts as
 //! a hot runtime cache synchronized via Legend State's `synced()` adapter.
 //!

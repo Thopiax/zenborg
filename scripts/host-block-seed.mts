@@ -16,7 +16,7 @@
  * proposal is committed to the repo, the live artefact lands in the vault, and
  * the vault is edited by hand.
  *
- * It writes nothing. `$KAIROS_HOME/keel/rules/` is private tier, so this prints
+ * It writes nothing. `$ZENBORG_HOME/keel/rules/` is private tier, so this prints
  * and stops; installing is a deliberate act, which is the same thing the rules
  * it emits say about their own exit.
  *
@@ -35,7 +35,7 @@
  *   node scripts/host-block-seed.mts --cycle <id> \
  *     | jq -c '.[]' \
  *     | while read -r r; do
- *         printf '%s' "$r" | jq . > "$KAIROS_HOME/keel/rules/$(printf '%s' "$r" | jq -r .id).json"
+ *         printf '%s' "$r" | jq . > "$ZENBORG_HOME/keel/rules/$(printf '%s' "$r" | jq -r .id).json"
  *       done
  *
  * What installing does *not* do for the walls: it does not block anything. Those
@@ -46,7 +46,7 @@
  * resolver at these hosts is a hand edit outside this repo.
  *
  * The gate is the other way round: `loadDwellGates` reads it straight out of
- * `$KAIROS_HOME/keel/rules/` and the extension arms it, so installing that file
+ * `$ZENBORG_HOME/keel/rules/` and the extension arms it, so installing that file
  * is the whole of arming it. Order still matters, and it is the pain doc's:
  * whatever standing block covers `linkedin.com` comes off first, because a gate
  * added beside a live block leaves the reload loop exactly where it was.

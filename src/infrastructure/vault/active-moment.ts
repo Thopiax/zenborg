@@ -1,7 +1,7 @@
 /**
  * The active moment — the intention pointer.
  *
- * `$KAIROS_HOME/activeMoment.json` names the one moment that is "what I'm
+ * `$ZENBORG_HOME/activeMoment.json` names the one moment that is "what I'm
  * doing now":
  *
  *   { "momentId": "80d0f15a-…", "at": "2026-08-07T13:40:12.222Z" }

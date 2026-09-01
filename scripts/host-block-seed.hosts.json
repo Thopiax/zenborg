@@ -1,5 +1,5 @@
 {
-  "note": "The hosts that take a standing wall. Hand-editable. \"//\" is why this one, and it is the whole record of the decision. This seed is the proposal committed to the repo; the live artefacts are rule files under $KAIROS_HOME/keel/rules/, emitted by scripts/host-block-seed.mts and installed by hand. One person's list, not a default: the domain carries no host at all, and a peer's list is their own file.",
+  "note": "The hosts that take a standing wall. Hand-editable. \"//\" is why this one, and it is the whole record of the decision. This seed is the proposal committed to the repo; the live artefacts are rule files under $ZENBORG_HOME/keel/rules/, emitted by scripts/host-block-seed.mts and installed by hand. One person's list, not a default: the domain carries no host at all, and a peer's list is their own file.",
   "version": 1,
   "hosts": [
     {

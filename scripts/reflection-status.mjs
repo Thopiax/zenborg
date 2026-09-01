@@ -12,7 +12,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-const VAULT = process.env.KAIROS_HOME ?? path.join(os.homedir(), ".kairos");
+const VAULT = process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? path.join(os.homedir(), ".zenborg");
 const cycles = Object.values(
   JSON.parse(fs.readFileSync(path.join(VAULT, "cycles.json"), "utf8")),
 ).sort((a, b) => a.startDate.localeCompare(b.startDate));

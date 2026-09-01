@@ -9,7 +9,7 @@
  * mid-update, or crashed. So the record is **pushed** and held locally, and
  * actuation reads nothing but local state.
  *
- * `kairos/kernel/substrate.md` records why the push exists at all: the browser
+ * `docs/kernel/substrate.md` records why the push exists at all: the browser
  * extension has no filesystem access and never will, so it takes a pusher
  * rather than a loader. Pushing is a read with extra steps, not a second
  * writer — nothing here is authoritative, and nothing here is written back.

@@ -32,7 +32,7 @@ import type { RuleSpec } from "../RuleSpec";
  * `apps/agent/store.mjs#loadTransforms`) reads a flat `style` object instead,
  * and reads `targets`, never `target`. This factory writes the shape the
  * interpreter reads, which is the two production rules already prove out:
- * `~/.kairos/keel/rules/linkedin-feed-hidden.json` and
+ * `~/.zenborg/keel/rules/linkedin-feed-hidden.json` and
  * `youtube-shorts-hidden.json` (pre-migration, hand-authored — this factory
  * is what lets a rule with the same shape be declared through `fences`
  * instead).

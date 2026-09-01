@@ -24,7 +24,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 const APPLY = process.argv.includes("--apply");
-const VAULT = process.env.KAIROS_HOME ?? path.join(os.homedir(), ".kairos");
+const VAULT = process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? path.join(os.homedir(), ".zenborg");
 
 // tag → place key (resolved to UUID at runtime from places.json)
 const TAG_TO_PLACE_KEY = {

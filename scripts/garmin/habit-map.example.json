@@ -1,6 +1,6 @@
 {
   "$comment": [
-    "Garmin activity type -> zenborg habit. Copy to $KAIROS_HOME/integrations/garmin/habit-map.json",
+    "Garmin activity type -> zenborg habit. Copy to $ZENBORG_HOME/integrations/garmin/habit-map.json",
     "and replace every REPLACE-WITH-... with a habit UUID from your own habits.json.",
     "Habit ids are per-vault; this file ships names and reasoning only, never one user's ids.",
     "",

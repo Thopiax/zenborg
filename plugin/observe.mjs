@@ -8,10 +8,10 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { randomUUID } from "node:crypto";
 
-const KAIROS = process.env.KAIROS_HOME || join(homedir(), ".kairos");
+const ZENBORG = process.env.ZENBORG_HOME || process.env.KAIROS_HOME || join(homedir(), ".zenborg");
 const LOG_DIR = process.env.KEEL_HOME
   ? join(process.env.KEEL_HOME, "log")
-  : join(KAIROS, "log");
+  : join(ZENBORG, "log");
 
 const KIND = {
   "session-start": "session_start",

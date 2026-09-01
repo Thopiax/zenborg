@@ -23,7 +23,7 @@ ever touches `phaseConfigs.json`.
 | pure logic | `src/domain/garmin/` | zenborg's own rule: `domain/` is pure TS, no framework imports. Covered by `pnpm test`, so the husky pre-commit hook protects it. |
 | CLI edge | `scripts/garmin/garmin-report.mts` | I/O and formatting only. |
 | the example map | `scripts/garmin/habit-map.example.json` | schema + reasoning, **no UUIDs** — habit ids are per-vault and this repo is public. |
-| your actual map | `$KAIROS_HOME/integrations/garmin/habit-map.json` | see below |
+| your actual map | `$ZENBORG_HOME/integrations/garmin/habit-map.json` | see below |
 
 ### Why the map lives in the vault, not the repo
 
@@ -42,8 +42,8 @@ It is not a vault **collection**: nothing in `src-tauri/src/vault/fs.rs` or
 anything. It is integration config, which is why it sits under `integrations/` rather
 than at the vault root next to the eight collections.
 
-> `$KAIROS_HOME/integrations/` is a **new directory in a shared kernel namespace**.
-> It wants sign-off in `kairos/kernel/` before it is treated as convention. Until then
+> `$ZENBORG_HOME/integrations/` is a **new directory in a shared kernel namespace**.
+> It wants sign-off before it is treated as convention. Until then
 > the path is fully overridable — `--map <path>` or `$GARMIN_HABIT_MAP` — and nothing
 > is created implicitly.
 
@@ -52,9 +52,9 @@ than at the vault root next to the eight collections.
 ## Setup
 
 ```bash
-mkdir -p "${KAIROS_HOME:-$HOME/.kairos}/integrations/garmin"
+mkdir -p "${ZENBORG_HOME:-$HOME/.zenborg}/integrations/garmin"
 cp scripts/garmin/habit-map.example.json \
-   "${KAIROS_HOME:-$HOME/.kairos}/integrations/garmin/habit-map.json"
+   "${ZENBORG_HOME:-$HOME/.zenborg}/integrations/garmin/habit-map.json"
 # then replace every REPLACE-WITH-... with a habit id from your habits.json
 ```
 
@@ -91,8 +91,8 @@ node scripts/garmin/garmin-report.mts \
 |---|---|---|
 | `--activities <file\|->` | — | activity payload |
 | `--sleep <file\|->` | — | sleep payloads |
-| `--map <file>` | `$KAIROS_HOME/integrations/garmin/habit-map.json` | |
-| `--vault <dir>` | `$KAIROS_HOME` or `~/.kairos` | |
+| `--map <file>` | `$ZENBORG_HOME/integrations/garmin/habit-map.json` | |
+| `--vault <dir>` | `$ZENBORG_HOME` or `~/.zenborg` | |
 | `--threshold <min>` | `45` | drift threshold |
 | `--min-nights <n>` | `7` | refuse to propose below this |
 | `--tz <zone>` | host zone | IANA name |
