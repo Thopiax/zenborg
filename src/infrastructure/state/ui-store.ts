@@ -560,6 +560,7 @@ export interface PlaceFormState {
   address: string;
   url: string;
   tags: string[];
+  aliases: string[];
   editingPlaceId: string | null;
 }
 
@@ -574,6 +575,7 @@ export const placeFormState$ = observable<PlaceFormState>({
   address: "",
   url: "",
   tags: [],
+  aliases: [],
   editingPlaceId: null,
 });
 
@@ -587,6 +589,7 @@ export function openPlaceFormEdit(
     address: string | null;
     url: string | null;
     tags: string[];
+    aliases?: string[];
   },
 ) {
   placeFormState$.set({
@@ -600,6 +603,7 @@ export function openPlaceFormEdit(
     address: place.address ?? "",
     url: place.url ?? "",
     tags: place.tags ?? [],
+    aliases: place.aliases ?? [],
     editingPlaceId: placeId,
   });
 }
@@ -616,6 +620,7 @@ export function closePlaceForm() {
     address: "",
     url: "",
     tags: [],
+    aliases: [],
     editingPlaceId: null,
   });
 }
