@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+/* kairos design system (single source of truth: ../../styles) */
+@import "../../styles/tokens.css";
+@import "../../styles/theme.css";
+@import "../../styles/fonts.css";
+
+/*
+ * tokens.css scopes --background/--foreground/etc to [data-kairos-theme] but
+ * does not define --paper/--ink/--quiet/--rule/--ease-phi — those are a
+ * page-local convenience each entrypoint declares for itself (see
+ * ../popup/style.css). Mirrored here rather than invented fresh, so the two
+ * pages agree on what "quiet" and "rule" mean.
+ */
+:root {
+  --stone-50: #fafaf9;
+  --stone-100: #f5f5f4;
+  --stone-200: #e7e5e4;
+  --stone-400: #a8a29e;
+  --stone-500: #78716c;
+  --stone-900: #1c1917;
+  --stone-950: #0c0a09;
+
+  --paper: var(--stone-50);
+  --ink: var(--stone-900);
+  --quiet: var(--stone-500);
+  --rule: var(--stone-200);
+  --ease-phi: cubic-bezier(0.618, 0, 0.382, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: var(--stone-950);
+    --ink: var(--stone-100);
+    --quiet: var(--stone-400);
+    --rule: #1f1d1b;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.manage-root {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.manage-title {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: lowercase;
+  color: var(--quiet);
+  margin: 0;
+}
+
+.manage-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.manage-section-title {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet);
+  margin: 0;
+}
+
+.manage-empty,
+.manage-hint {
+  font-size: 13px;
+  color: var(--quiet);
+  margin: 0;
+}
+
+.manage-fence-table,
+.manage-area-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.manage-fence-table th,
+.manage-area-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--quiet);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.manage-fence-table td,
+.manage-area-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.manage-type {
+  font-size: 12px;
+  color: var(--quiet);
+}
+
+.manage-domains {
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  color: var(--quiet);
+}
+
+.manage-exit {
+  font-size: 12px;
+  color: var(--quiet);
+}
+
+.manage-refused {
+  font-size: 12px;
+  color: var(--quiet);
+}
+
+.manage-cooldown-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.manage-area-table select {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.manage-export {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--quiet);
+  cursor: pointer;
+  transition: color 240ms var(--ease-phi);
+}
+
+.manage-export:hover {
+  color: var(--ink);
+}
+
+.manage-subsection-title {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--quiet);
+  margin: 16px 0 0;
+}
+
+.manage-add-domain {
+  margin-top: 8px;
+}
+
+.manage-add-domain input {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+  width: 100%;
+  max-width: 320px;
+}
+
+.manage-add-domain input::placeholder {
+  color: var(--quiet);
+}

@@ -29,7 +29,7 @@ import type { Area, Moment, PhaseConfig } from "./vault.ts";
 const DEFAULT_CAP_MS: Record<string, number> = {
   desktop: 30 * 60_000,
   agent: 5 * 60_000,
-  browser: 15 * 60_000,
+  browser: 120 * 60_000, // focus_end/idle_start give real boundaries; cap is a fallback
 };
 
 const DAY_START_HOUR = 4;
