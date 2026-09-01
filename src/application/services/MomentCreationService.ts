@@ -14,6 +14,7 @@ import type { Phase } from "@/domain/value-objects/Phase";
 export interface CreateMomentWithWorkflowParams {
   name: string;
   areaId: string;
+  habitId?: string | null;
   phase?: Phase | null;
   emoji?: string | null;
   prefilledAllocation?: {
@@ -57,6 +58,7 @@ export class MomentCreationService {
     const {
       name,
       areaId,
+      habitId,
       phase = null,
       emoji = null,
       prefilledAllocation,
@@ -70,6 +72,7 @@ export class MomentCreationService {
     const result = createMoment({
       name,
       areaId,
+      habitId,
       phase,
       emoji,
       tags,
