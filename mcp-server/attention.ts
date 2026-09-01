@@ -15,8 +15,16 @@ import {
   dwellRows,
   type DwellConfig,
 } from "../src/domain/attention/AttentionSummary.ts";
+import {
+  boundariesIn,
+  cellWindow,
+  type MomentRef,
+  type PhaseConfigRef,
+} from "../src/domain/attention/GardenClock.ts";
+import { spanDuration, spanOverlaps } from "../src/domain/attention/Span.ts";
+import { deriveSpans } from "../src/domain/attention/SpanDerivation.ts";
 import { logDir, readActivityLog } from "./activity-log.ts";
-import type { Area } from "./vault.ts";
+import type { Area, Moment, PhaseConfig } from "./vault.ts";
 
 const DEFAULT_CAP_MS: Record<string, number> = {
   desktop: 30 * 60_000,
@@ -319,4 +327,181 @@ export function mapArea(
 
   writeAreaMap(vaultRoot, next);
   return { ok: true, message: `Mapped ${params.kind} "${params.key}" → ${area.name}` };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Day trace — plan vs actual
+// ────────────────────────────────────────────────────────────────────────
+
+export interface DayTraceResult {
+  day: string;
+  coverage: Array<{ surface: string; first?: string; last?: string; events: number }>;
+  moments: Array<{
+    momentId: string;
+    name: string;
+    areaId: string;
+    areaName: string;
+    phase: string | null;
+    window?: { start: string; end: string };
+    traced: Array<{ surface: string; minutes: number }>;
+    elsewhere: Array<{ surface: string; areaName: string; minutes: number }>;
+    evidence: "traced" | "untraced";
+  }>;
+  unplanted: Array<{ phase: string; areaName: string; surface: string; minutes: number }>;
+}
+
+export function getDayTrace(
+  vaultRoot: string,
+  areas: Record<string, Area>,
+  moments: Record<string, Moment>,
+  phaseConfigRecs: Record<string, PhaseConfig>,
+  params: { day?: string; idleGapMin?: number },
+): DayTraceResult {
+  const day = params.day ?? todayStr();
+  const idleGapMs = (params.idleGapMin ?? 15) * 60_000;
+  const areaMap = loadAreaMap(vaultRoot);
+  const areaName = (id: string) => areas[id]?.name ?? id;
+
+  const window = wakingDayWindow(day);
+  const dir = logDir(vaultRoot);
+  const surfaces = ["desktop", "agent", "browser"] as const;
+  const events = readActivityLog(dir, window.from, window.to, surfaces);
+
+  const momentsList = Object.values(moments) as MomentRef[];
+  const pcList = Object.values(phaseConfigRecs) as PhaseConfigRef[];
+
+  const boundaries = boundariesIn(window.from, window.to, momentsList, pcList);
+  const resolver = (e: Parameters<typeof resolveArea>[1]) => resolveArea(areaMap, e);
+  const spans = deriveSpans(events, resolver, { idleGapMs, boundaries });
+
+  const cov = coverage(events, surfaces).map((c) => ({
+    surface: c.surface,
+    ...(c.first !== undefined ? { first: timeStr(c.first) } : {}),
+    ...(c.last !== undefined ? { last: timeStr(c.last) } : {}),
+    events: c.events,
+  }));
+
+  const dayMoments = Object.values(moments).filter(
+    (m) => m.day === day && m.phase !== null,
+  );
+
+  const tracedPhases = new Set<string>();
+
+  const momentResults = dayMoments.map((m) => {
+    const cell = cellWindow(day, m.phase!, pcList);
+    if (!cell) {
+      return {
+        momentId: m.id,
+        name: m.name,
+        areaId: m.areaId,
+        areaName: areaName(m.areaId),
+        phase: m.phase,
+        traced: [] as Array<{ surface: string; minutes: number }>,
+        elsewhere: [] as Array<{ surface: string; areaName: string; minutes: number }>,
+        evidence: "untraced" as const,
+      };
+    }
+
+    tracedPhases.add(m.phase!);
+
+    const cellSpans = spans.filter((s) => spanOverlaps(s, cell.from, cell.to));
+    const traced = new Map<string, number>();
+    const elsewhere = new Map<string, { areaId: string; ms: number }>();
+
+    for (const span of cellSpans) {
+      const overlapStart = Math.max(span.start, cell.from);
+      const overlapEnd = Math.min(span.end, cell.to);
+      const ms = Math.max(0, overlapEnd - overlapStart);
+      if (ms === 0) continue;
+
+      const event = events.find((e) => e.id === span.sourceEventIds[0]);
+      const surface = event?.surface ?? "agent";
+
+      if (span.areaId === m.areaId) {
+        traced.set(surface, (traced.get(surface) ?? 0) + ms);
+      } else {
+        const key = `${surface}:${span.areaId}`;
+        const existing = elsewhere.get(key);
+        if (existing) {
+          existing.ms += ms;
+        } else {
+          elsewhere.set(key, { areaId: span.areaId, ms });
+        }
+      }
+    }
+
+    const hasWindow = m.startTime !== undefined;
+    return {
+      momentId: m.id,
+      name: m.name,
+      areaId: m.areaId,
+      areaName: areaName(m.areaId),
+      phase: m.phase,
+      ...(hasWindow && m.startTime
+        ? {
+            window: {
+              start: m.startTime,
+              end: m.durationMin
+                ? (() => {
+                    const [h, min] = m.startTime!.split(":").map(Number);
+                    const total = h * 60 + min + m.durationMin!;
+                    const p = (n: number) => String(n).padStart(2, "0");
+                    return `${p(Math.floor(total / 60) % 24)}:${p(total % 60)}`;
+                  })()
+                : m.startTime,
+            },
+          }
+        : {}),
+      traced: [...traced.entries()]
+        .map(([surface, ms]) => ({ surface, minutes: msToMin(ms) }))
+        .filter((t) => t.minutes > 0),
+      elsewhere: [...elsewhere.entries()]
+        .map(([key, { areaId, ms }]) => ({
+          surface: key.split(":")[0],
+          areaName: areaName(areaId),
+          minutes: msToMin(ms),
+        }))
+        .filter((e) => e.minutes > 0),
+      evidence: traced.size > 0 ? ("traced" as const) : ("untraced" as const),
+    };
+  });
+
+  // Unplanted: spans in phases with no planted moments for that area
+  const plantedAreasByPhase = new Map<string, Set<string>>();
+  for (const m of dayMoments) {
+    if (!m.phase) continue;
+    const set = plantedAreasByPhase.get(m.phase) ?? new Set();
+    set.add(m.areaId);
+    plantedAreasByPhase.set(m.phase, set);
+  }
+
+  const unplantedAcc = new Map<string, number>();
+  for (const span of spans) {
+    for (const pc of pcList) {
+      const cell = cellWindow(day, pc.phase, pcList);
+      if (!cell || !spanOverlaps(span, cell.from, cell.to)) continue;
+      const planted = plantedAreasByPhase.get(pc.phase);
+      if (planted && planted.has(span.areaId)) continue;
+
+      const overlapStart = Math.max(span.start, cell.from);
+      const overlapEnd = Math.min(span.end, cell.to);
+      const ms = Math.max(0, overlapEnd - overlapStart);
+      if (ms === 0) continue;
+
+      const event = events.find((e) => e.id === span.sourceEventIds[0]);
+      const surface = event?.surface ?? "agent";
+      const key = `${pc.phase}:${span.areaId}:${surface}`;
+      unplantedAcc.set(key, (unplantedAcc.get(key) ?? 0) + ms);
+    }
+  }
+
+  const unplanted = [...unplantedAcc.entries()]
+    .map(([key, ms]) => {
+      const [phase, areaId, surface] = key.split(":");
+      return { phase, areaName: areaName(areaId), surface, minutes: msToMin(ms) };
+    })
+    .filter((u) => u.minutes > 0)
+    .sort((a, b) => b.minutes - a.minutes);
+
+  return { day, coverage: cov, moments: momentResults, unplanted };
 }

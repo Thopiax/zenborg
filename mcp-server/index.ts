@@ -151,6 +151,7 @@ import {
 import {
   getAreaMap,
   getAttention,
+  getDayTrace,
   mapArea,
   resolveWindow,
 } from "./attention.js";
@@ -4162,6 +4163,32 @@ defineTool(server, {
       })).filter((s) => s.points.length > 0);
     }
     return ok({ habitId: params.habitId, habitName: habit.name, series });
+  },
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// DAY TRACE — plan vs actual
+// ────────────────────────────────────────────────────────────────────────
+
+defineTool(server, {
+  name: "get_day_trace",
+  description:
+    "How aligned was the day with the plan? For each planted moment: " +
+    "attention traced in its cell (same area), attention elsewhere (different area), " +
+    "and whether any trace was found. Also reports unplanted attention — " +
+    "spans in cells that planted nothing for that area. " +
+    "No alignment %, no score.",
+  schema: {
+    day: DaySchema.optional().describe("Waking day (04:00 roll). Omit for today."),
+    idleGapMin: z.number().int().positive().optional()
+      .describe("Idle gap in minutes for span derivation. Default 15."),
+  },
+  annotations: { readOnlyHint: true },
+  handler: async (params) => {
+    const areas = readCollection(VAULT_ROOT, "areas");
+    const moments = readCollection(VAULT_ROOT, "moments");
+    const phaseConfigs = readCollection(VAULT_ROOT, "phaseConfigs");
+    return ok(getDayTrace(VAULT_ROOT, areas, moments, phaseConfigs, params));
   },
 });
 
