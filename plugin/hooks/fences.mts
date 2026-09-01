@@ -57,7 +57,7 @@ import type {
 import type { RuleSpec } from "../domain/intervention/RuleSpec.ts";
 import { rungFor } from "../domain/intervention/rules/sessionFence.ts";
 
-const VAULT = process.env.KAIROS_HOME || join(homedir(), ".kairos");
+const VAULT = process.env.ZENBORG_HOME || process.env.KAIROS_HOME || join(homedir(), ".zenborg");
 const FENCES = join(VAULT, "fences.json");
 /** Plugin-owned runtime state. Not a kernel collection: `fences` stays
  * single-writer (zenborg the app), and a crossing tally is not policy. */

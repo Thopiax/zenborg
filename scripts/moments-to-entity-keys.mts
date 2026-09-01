@@ -38,7 +38,7 @@
  *   --write      apply, after copying each touched file to a timestamped .bak
  *   --force      with --write, proceed even if the zenborg app looks open
  *
- * Reads and writes $KAIROS_HOME (default ~/.kairos). **Close the desktop app
+ * Reads and writes $ZENBORG_HOME (default ~/.zenborg). **Close the desktop app
  * first**: it is the sole writer of these collections and would overwrite this
  * migration from its in-memory store. Every step is reversible only from the
  * backup this script takes, which is why it takes one.
@@ -300,12 +300,12 @@ export const migrate = (
 
 // ---------------------------------------------------------------- io
 
-const kairosHome = (): string =>
-  process.env.KAIROS_HOME ?? join(homedir(), ".kairos");
+const vaultHome = (): string =>
+  process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? join(homedir(), ".zenborg");
 
 const readJson = <T,>(path: string): T => {
   if (!existsSync(path)) {
-    throw new Error(`not found: ${path} (set KAIROS_HOME?)`);
+    throw new Error(`not found: ${path} (set ZENBORG_HOME?)`);
   }
   return JSON.parse(readFileSync(path, "utf8")) as T;
 };
@@ -409,7 +409,7 @@ const main = (): number => {
     return 0;
   }
 
-  const vault = kairosHome();
+  const vault = vaultHome();
   const habitsPath = join(vault, "habits.json");
   const momentsPath = join(vault, "moments.json");
 

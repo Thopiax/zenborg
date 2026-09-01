@@ -1,5 +1,5 @@
 /**
- * kairos extension domain: the pure attention substrate the extension writes and reads.
+ * zenborg extension domain: the pure attention substrate the extension writes and reads.
  *
  * This was `@kairos/domain`, a workspace package shared by three surfaces. Two of
  * them are gone: the tray was replaced by zenborg's observer and the agent never

@@ -20,7 +20,7 @@ import * as path from "node:path";
 
 const write = process.argv.includes("--write");
 const vaultRoot =
-  process.env.ZENBORG_VAULT ?? path.join(os.homedir(), ".kairos");
+  process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? path.join(os.homedir(), ".zenborg");
 
 const momentsPath = path.join(vaultRoot, "moments.json");
 const configPath = path.join(vaultRoot, "calendarSync.json");

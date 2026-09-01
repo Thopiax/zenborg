@@ -342,7 +342,7 @@ export async function declareWateringHours(
 //
 // Migration step 5 is "flip the readers", and it could not be flipped without
 // this. Slice E of the extension work said so in its own report: `loadArmed()`
-// read `fences.json` *and* `~/.kairos/keel/rules/*.json`, merged, because
+// read `fences.json` *and* `~/.zenborg/keel/rules/*.json`, merged, because
 // zenborg's only fence writer was `sessionFenceRule` and a session-scoped rule
 // reaches no browser. A fences-only read would have shipped an inert feature.
 //

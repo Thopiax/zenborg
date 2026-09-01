@@ -7,7 +7,7 @@
  * ── What left at migration step 5 ───────────────────────────────────────
  *
  * `standing`, `armable` and `gates` used to live here. They were a projection of
- * `~/.kairos/keel/rules/*.json`, which was a second declared-rule store beside
+ * `~/.zenborg/keel/rules/*.json`, which was a second declared-rule store beside
  * the `fences` collection, and the extension had to union the two on every
  * actuation. That store is retired: what is in force now arrives once, as the
  * pushed armed record (`modules/interventions/`), and the questions those three
@@ -82,12 +82,12 @@ export interface AreaInfo {
   readonly id: string;
   readonly name: string;
   readonly emoji: string;
-  /** Hex, from the kernel. The one sanctioned accent (kairos/kernel/areas.md). */
+  /** Hex, from the kernel. The one sanctioned accent. */
   readonly color?: string;
   readonly tags: readonly string[];
 }
 
-/** Areas the user has defined (imported from zenborg, or set up in kairos). */
+/** Areas the user has defined (imported from zenborg). */
 export const areas = storage.defineItem<AreaInfo[]>("local:policy:areas", { fallback: [] });
 
 /** Domain (or domain/path) → areaId. */

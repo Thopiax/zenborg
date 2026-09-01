@@ -6,8 +6,8 @@
  * exactly the same path. A second arming path would be a second place for the
  * write-forward-only rule to be got wrong.
  *
- * Until modes land, the covered set is the observe tier — the domains kairos
- * already watches for this user. kairos ships no domains of its own (the drogue
+ * Until modes land, the covered set is the observe tier — the domains zenborg
+ * already watches for this user. zenborg ships no domains of its own (the drogue
  * seed is the lone consented exception), so an empty observe tier means this
  * covers nothing, and callers must say so rather than imply a lock that isn't
  * there.
@@ -87,7 +87,7 @@ export async function armWatchedCooldown(
   //
   // The declaration comes off the armed cache since migration step 5. It used to
   // come off the policy mirror, projected host-side from
-  // `~/.kairos/keel/rules/*.json`; that store is retired, and the candidate set
+  // `~/.zenborg/keel/rules/*.json`; that store is retired, and the candidate set
   // is the same question asked of the one that replaced it.
   const declared = [...armableHosts(await fenceCache.getValue())];
   const domains = declared.length > 0 ? declared : await derivedObserveDomains();

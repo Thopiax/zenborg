@@ -22,12 +22,12 @@
  *
  * This hides; it does not block. A hidden Shorts shelf is still one URL away,
  * which is the Modification Rights constraint the gate obeys too (`rules.ts`,
- * §On walls) — every notch kairos owns is escapable.
+ * §On walls) — every notch zenborg owns is escapable.
  */
 
 import type { PageTransform } from "../policy/store";
 
-/** The single style element kairos owns on a page. */
+/** The single style element zenborg owns on a page. */
 export const STYLE_ID = "kairos-transform";
 
 /** Transforms whose domains cover `hostname`, `www.` disregarded.
@@ -54,7 +54,7 @@ export function transformsFor(
  * Rule files are hand-edited, so the content is untrusted input to the parser.
  * An unescaped `"` closes the declaration and everything after it becomes live
  * CSS; a raw newline is a parse error that discards the WHOLE stylesheet, which
- * would silently un-hide every page kairos is transforming. Backslash goes first,
+ * would silently un-hide every page zenborg is transforming. Backslash goes first,
  * or it re-escapes the escapes.
  *
  * `\A ` (with the trailing space) is the CSS hex escape for a line feed; the

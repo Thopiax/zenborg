@@ -9,11 +9,9 @@
  * Resolution order (mirrors `vault_root()` in `src-tauri/src/vault/fs.rs` — the two
  * must agree or the app and the MCP server end up on different vaults):
  *   1. `--vault /path/to/vault` CLI arg
- *   2. `$KAIROS_HOME` env var
- *   3. `$ZENBORG_VAULT_DIR` env var (legacy, honoured after KAIROS_HOME)
- *   4. `$HOME/.kairos/` (release default)
- *
- * The vault moved from `~/.zenborg` to `~/.kairos` on 2026-08-06 (zenborg 0.15.0).
+ *   2. `$ZENBORG_HOME` env var
+ *   3. `$KAIROS_HOME` env var (legacy, honoured after ZENBORG_HOME)
+ *   4. `$HOME/.zenborg/` (release default)
  *
  * Writes are atomic: temp file in the same directory, then rename. This
  * matches the Tauri adapter's semantics so concurrent readers never see a
@@ -423,10 +421,10 @@ export interface CollectionTypeMap {
 // Vault path resolution
 // ────────────────────────────────────────────────────────────────────────
 
+export const ZENBORG_HOME_ENV = "ZENBORG_HOME";
 export const KAIROS_HOME_ENV = "KAIROS_HOME";
-export const VAULT_DIR_ENV = "ZENBORG_VAULT_DIR";
-export const DEFAULT_VAULT_FOLDER = ".kairos";
-export const DEV_VAULT_FOLDER = ".kairos-dev";
+export const DEFAULT_VAULT_FOLDER = ".zenborg";
+export const DEV_VAULT_FOLDER = ".zenborg-dev";
 
 export interface ResolvedVault {
   root: string;
@@ -435,7 +433,7 @@ export interface ResolvedVault {
 
 /**
  * Resolve the vault root.
- * Priority: --vault CLI > $KAIROS_HOME > $ZENBORG_VAULT_DIR > ~/.kairos
+ * Priority: --vault CLI > $ZENBORG_HOME > $KAIROS_HOME > ~/.zenborg
  *
  * Keep in lockstep with `vault_root()` in `src-tauri/src/vault/fs.rs`.
  */
@@ -447,7 +445,7 @@ export function resolveVault(
     return { root: path.resolve(vaultArg), source: "cli" };
   }
 
-  for (const envVar of [KAIROS_HOME_ENV, VAULT_DIR_ENV]) {
+  for (const envVar of [ZENBORG_HOME_ENV, KAIROS_HOME_ENV]) {
     const envPath = process.env[envVar];
     if (envPath && envPath.trim().length > 0) {
       return { root: path.resolve(envPath), source: "env" };

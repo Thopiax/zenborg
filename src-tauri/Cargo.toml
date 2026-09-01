@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/observer-core", "crates/kairos-daemon"]
+members = [".", "crates/observer-core", "crates/zenborg-daemon"]
 
 [package]
 name = "app"

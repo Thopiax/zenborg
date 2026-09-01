@@ -39,10 +39,10 @@
  *
  *   (no flags)          dry run: report counts, write nothing
  *   --csv <path>        the Notion export. Without it, habits-only.
- *   --out <path>        where to write. Default $KAIROS_HOME/export/people-registry.json
+ *   --out <path>        where to write. Default $ZENBORG_HOME/export/people-registry.json
  *   --write             actually write the export file
  *
- * Reads $KAIROS_HOME (default ~/.kairos). Read-only against the vault: it
+ * Reads $ZENBORG_HOME (default ~/.zenborg). Read-only against the vault: it
  * never writes habits.json or moments.json, so the desktop app may stay open.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -356,8 +356,8 @@ export const parseCsv = (text: string): CsvRow[] => {
 
 // ---------------------------------------------------------------- io
 
-const kairosHome = (): string =>
-  process.env.KAIROS_HOME ?? join(homedir(), ".kairos");
+const vaultHome = (): string =>
+  process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? join(homedir(), ".zenborg");
 
 const main = (): number => {
   const { values } = parseArgs({
@@ -376,7 +376,7 @@ const main = (): number => {
         "",
         "  (no flags)     dry run: counts only, writes nothing",
         "  --csv <path>   the Notion CRM export. Without it, habits-only.",
-        "  --out <path>   default $KAIROS_HOME/export/people-registry.json",
+        "  --out <path>   default $ZENBORG_HOME/export/people-registry.json",
         "  --write        write the export file",
         "",
         "  Read-only against the vault — it never touches habits.json or",
@@ -389,10 +389,10 @@ const main = (): number => {
     return 0;
   }
 
-  const vault = kairosHome();
+  const vault = vaultHome();
   const habitsPath = join(vault, "habits.json");
   if (!existsSync(habitsPath)) {
-    process.stderr.write(`not found: ${habitsPath} (set KAIROS_HOME?)\n`);
+    process.stderr.write(`not found: ${habitsPath} (set ZENBORG_HOME?)\n`);
     return 2;
   }
   const habits = Object.values(

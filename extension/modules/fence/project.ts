@@ -8,10 +8,10 @@
  *
  * Why `block` and not `redirect` to a branded page: DNR's `redirect` (and
  * `modifyHeaders`) actions require *host permissions* for the target domain.
- * kairos ships ZERO host_permissions on purpose — that's the structural guarantee
+ * zenborg ships ZERO host_permissions on purpose — that's the structural guarantee
  * that it cannot read your browsing. `block` needs no host access, so it
  * preserves that property while actually stopping the page from loading. The
- * cost is the generic browser "blocked" page instead of the kairos block page.
+ * cost is the generic browser "blocked" page instead of the zenborg block page.
  *
  * Uses the native `chrome.declarativeNetRequest` (always present in MV3; the
  * WXT `browser` shim does not surface this namespace). Errors are logged, never
@@ -25,7 +25,7 @@ import { fenceCache } from "./store";
 
 // Standing blocks, from the fence cache. Slice E had to give the armed record a
 // THIRD rule id, because the policy mirror carried a second list of blocked
-// hosts projected from `~/.kairos/keel/rules/*.json` and the two refreshed on
+// hosts projected from `~/.zenborg/keel/rules/*.json` and the two refreshed on
 // different schedules. Migration step 5 retired that store, so there is one
 // source again and one rule id for it.
 const BLOCK_RULE_ID = 1;
@@ -114,7 +114,7 @@ export function buildDnrRules(
 export async function syncFenceRules(): Promise<void> {
   const dnr = getDnr();
   if (!dnr) {
-    console.error("[kairos fence] chrome.declarativeNetRequest unavailable");
+    console.error("[zenborg fence] chrome.declarativeNetRequest unavailable");
     return;
   }
 
@@ -150,12 +150,12 @@ export async function syncFenceRules(): Promise<void> {
       addRules,
     });
     console.info(
-      `[kairos fence] synced ${domains.length} armed domain(s)` +
+      `[zenborg fence] synced ${domains.length} armed domain(s)` +
         (cooling.length > 0 ? ` + ${cooling.length} under cooldown` : ""),
       domains,
       cooling
     );
   } catch (err) {
-    console.error("[kairos fence] updateDynamicRules failed:", err);
+    console.error("[zenborg fence] updateDynamicRules failed:", err);
   }
 }

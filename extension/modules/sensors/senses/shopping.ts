@@ -40,7 +40,7 @@ export const MAX_IMAGE_SEEDS = 300;
 
 /** Hard ceiling on emissions per content-script lifetime. Infinite-scroll
  * marketplaces would otherwise stream events all afternoon. Past this the
- * sense disconnects: kairos has already learned what it needed to. */
+ * sense disconnects: zenborg has already learned what it needed to. */
 export const MAX_PRODUCTS_PER_PAGE = 120;
 
 /** A card must hold ≥50% visibility this long to count as seen. Mirrors
