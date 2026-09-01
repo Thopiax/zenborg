@@ -251,19 +251,25 @@ export function intentionLine(moment) {
   return `[keel] ◎ tending: ${moment.name}${where} — capture drift (idea/pain), hold the thread.`;
 }
 
-/** Resolve cwd to an area via the area map (fence declarations). Longest prefix wins.
- * Path entries in the area map start with `/`; domain entries don't.
- * @param {string} cwd @param {Record<string, string>} areaMap @param {{id: string, name: string}[]} areas
+/** Resolve cwd to an area via standing fence declarations. Longest matching path wins.
+ * Reads session-scoped fences: scope.paths carries the directories, serves.areaId carries
+ * which area the fence belongs to. This is the path→area mapping — no separate area-map.json.
+ * @param {string} cwd @param {any[]} fences @param {{id: string, name: string}[]} areas
  * @returns {{id: string, name: string}|null} */
-export function matchCwdArea(cwd, areaMap, areas) {
-  if (!cwd || !areaMap) return null;
-  let bestPrefix = "";
+export function matchCwdArea(cwd, fences, areas) {
+  if (!cwd || !Array.isArray(fences)) return null;
+  let bestLen = 0;
   let bestAreaId = "";
-  for (const [key, areaId] of Object.entries(areaMap)) {
-    if (!key.startsWith("/")) continue;
-    if (cwd === key || cwd.startsWith(key.endsWith("/") ? key : key + "/")) {
-      if (key.length > bestPrefix.length) {
-        bestPrefix = key;
+  for (const rule of fences) {
+    const scope = rule?.scope;
+    if (!scope || scope.surface !== "session") continue;
+    const areaId = rule?.serves?.areaId;
+    if (!areaId) continue;
+    for (const p of scope.paths ?? []) {
+      if (typeof p !== "string") continue;
+      const prefix = p.endsWith("/") ? p : p + "/";
+      if ((cwd === p || cwd.startsWith(prefix)) && p.length > bestLen) {
+        bestLen = p.length;
         bestAreaId = areaId;
       }
     }
@@ -284,7 +290,7 @@ export function matchCwdArea(cwd, areaMap, areas) {
  *
  * @param {{name: string, areaId?: string, phase?: string}[]} candidates
  * @param {string} [cwd]
- * @param {{ areas?: {id: string, name: string}[], band?: string, areaMap?: Record<string, string> }} [ctx]
+ * @param {{ areas?: {id: string, name: string}[], band?: string, fences?: any[] }} [ctx]
  * @returns {string} */
 export function intentionNudge(candidates, cwd, ctx) {
   const garden = candidates.length
@@ -295,7 +301,7 @@ export function intentionNudge(candidates, cwd, ctx) {
 
   const areas = ctx?.areas ?? [];
   const band = ctx?.band ?? "";
-  const cwdArea = dir ? matchCwdArea(dir, ctx?.areaMap ?? {}, areas) : null;
+  const cwdArea = dir ? matchCwdArea(dir, ctx?.fences ?? [], areas) : null;
 
   let suggestion = "";
   if (cwdArea && candidates.length > 0) {
