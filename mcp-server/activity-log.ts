@@ -1,5 +1,5 @@
 /**
- * Read adapter for keel's activity log.
+ * Read adapter for zenborg's activity log.
  *
  * One reader, shared by MCP tools and `scripts/shadow.mts`. Lifted from
  * `shadow.mts::readLog` — which now imports this — so the normalisation
@@ -85,5 +85,5 @@ export function readActivityLog(
 }
 
 export function logDir(vaultRoot: string): string {
-  return join(vaultRoot, "keel", "log");
+  return join(vaultRoot, "log");
 }
