@@ -25,6 +25,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { logDir, readActivityLog } from "../mcp-server/activity-log.ts";
 import { resolveVault } from "../mcp-server/vault.ts";
 import type {
   ActivityLogPort,
@@ -126,7 +127,7 @@ function proposeAreaMap(): void {
     };
   });
 
-  console.log(JSON.stringify({ paths, hosts: [] }, null, 2));
+  console.log(JSON.stringify({ paths, hosts: [], apps: [] }, null, 2));
   console.error(
     `\n${paths.length} area(s) proposed. Review every prefix, drop "guessed",` +
       `\nand save to ${AREA_MAP_PATH}. Rows left as TODO resolve to nothing.`,
@@ -149,6 +150,7 @@ if (areaMapFile === null) {
 const areaMap: AreaMap = {
   paths: areaMapFile.paths ?? [],
   hosts: areaMapFile.hosts ?? [],
+  apps: (areaMapFile as { apps?: AreaMap["apps"] }).apps ?? [],
 };
 const unreviewed = areaMap.paths.filter(
   (p) =>
@@ -156,7 +158,7 @@ const unreviewed = areaMap.paths.filter(
     p.prefix.startsWith("TODO"),
 );
 
-const LOG_DIR = join(VAULT, "keel", "log");
+const LOG_DIR = logDir(VAULT);
 
 const localDate = (ts: number) => {
   const d = new Date(ts);
@@ -164,27 +166,8 @@ const localDate = (ts: number) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
-/** Every daily bucket overlapping the window, on every surface keel writes. */
 function readLog(from: number, to: number): readonly ActivityEvent[] {
-  if (!existsSync(LOG_DIR)) return [];
-  const events: ActivityEvent[] = [];
-  for (let ts = from; ts <= to + DAY; ts += DAY) {
-    for (const surface of ["agent", "browser"] as const) {
-      const file = join(LOG_DIR, `${localDate(ts)}.${surface}.jsonl`);
-      if (!existsSync(file)) continue;
-      for (const line of readFileSync(file, "utf8").split("\n")) {
-        if (line.trim() === "") continue;
-        try {
-          const parsed = JSON.parse(line) as ActivityEvent;
-          // Older lines predate the surface field; the filename still carries it.
-          events.push(parsed.surface ? parsed : { ...parsed, surface });
-        } catch {
-          // A torn line is one lost observation, not a reason to abandon the run.
-        }
-      }
-    }
-  }
-  return events.filter((e) => e.ts >= from && e.ts < to);
+  return readActivityLog(LOG_DIR, from, to, ["agent", "browser"]);
 }
 
 interface VaultMoment {
