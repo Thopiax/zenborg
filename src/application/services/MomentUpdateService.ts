@@ -9,6 +9,7 @@ import type { Phase } from "@/domain/value-objects/Phase";
 export interface UpdateMomentParams {
   name?: string;
   areaId?: string;
+  habitId?: string | null;
   emoji?: string | null;
   phase?: Phase | null;
   tags?: string[];
@@ -62,6 +63,9 @@ export class MomentUpdateService {
     // Apply updates only if they're present in the updates object
     if ("areaId" in updates) {
       updated.areaId = updates.areaId!;
+    }
+    if ("habitId" in updates) {
+      updated.habitId = updates.habitId ?? null;
     }
     if ("emoji" in updates) {
       updated.emoji = updates.emoji!;
