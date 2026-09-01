@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 const KAIROS = process.env.KAIROS_HOME || join(homedir(), ".kairos");
 const LOG_DIR = process.env.KEEL_HOME
   ? join(process.env.KEEL_HOME, "log")
-  : join(KAIROS, "keel", "log");
+  : join(KAIROS, "log");
 
 const KIND = {
   "session-start": "session_start",
