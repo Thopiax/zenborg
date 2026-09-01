@@ -130,15 +130,16 @@ describe("HabitHealthService — RETURNING", () => {
     expect(service.computeHealth(habit, null, [], new Date())).toBe("wilting");
   });
 
-  it("is 'blooming' when last allocation is within RETURNING's extended threshold", () => {
-    // monthly count=2 → KEEPING threshold = 15 days; RETURNING = 22.5 days.
+  it("is 'budding' when recently back with few allocations (re-entry grace)", () => {
+    // monthly count=2 → KEEPING threshold = 15d; RETURNING extended = 22.5d
+    // re-entry window = 22.5 × 3 = 67.5d; need < 3 allocations to be budding
     const rhythm: Rhythm = { period: "monthly", count: 2 };
     const habit = baseHabit({
       attitude: Attitude.RETURNING,
       rhythm,
     });
     const now = new Date("2026-04-20");
-    const last = new Date("2026-04-01"); // 19 days ago — past KEEPING threshold, within RETURNING
+    const last = new Date("2026-04-15"); // 5 days ago — within threshold, only 1 allocation
     expect(
       service.computeHealth(
         habit,
@@ -146,7 +147,22 @@ describe("HabitHealthService — RETURNING", () => {
         [allocatedMoment(habit.id, last)],
         now,
       ),
-    ).toBe("blooming");
+    ).toBe("budding");
+  });
+
+  it("is 'blooming' when enough recent allocations to exit re-entry", () => {
+    const rhythm: Rhythm = { period: "monthly", count: 2 };
+    const habit = baseHabit({
+      attitude: Attitude.RETURNING,
+      rhythm,
+    });
+    const now = new Date("2026-04-20");
+    const moments = [
+      allocatedMoment(habit.id, new Date("2026-04-05")),
+      allocatedMoment(habit.id, new Date("2026-04-12")),
+      allocatedMoment(habit.id, new Date("2026-04-18")),
+    ];
+    expect(service.computeHealth(habit, null, moments, now)).toBe("blooming");
   });
 
   it("is more forgiving than KEEPING for the same gap", () => {
@@ -167,8 +183,9 @@ describe("HabitHealthService — RETURNING", () => {
     });
 
     expect(service.computeHealth(keeping, null, moments, now)).toBe("wilting");
+    // RETURNING: within extended threshold (22.5d) and < 3 recent allocations → budding
     expect(service.computeHealth(returning, null, moments, now)).toBe(
-      "blooming",
+      "budding",
     );
   });
 
@@ -284,8 +301,36 @@ describe("HabitHealthService — BUILDING", () => {
   });
 });
 
+describe("HabitHealthService — PRUNING", () => {
+  it("is 'dormant' regardless of silence when rhythm is set", () => {
+    const habit = baseHabit({
+      attitude: Attitude.PRUNING,
+      rhythm: { period: "weekly", count: 3 },
+    });
+    // No allocations at all — still dormant, not wilting
+    expect(service.computeHealth(habit, null, [], new Date("2026-04-20"))).toBe(
+      "dormant",
+    );
+  });
+
+  it("is 'dormant' even with recent allocations", () => {
+    const habit = baseHabit({
+      attitude: Attitude.PRUNING,
+      rhythm: { period: "weekly", count: 3 },
+    });
+    const now = new Date("2026-04-20");
+    const moments = [allocatedMoment(habit.id, new Date("2026-04-19"))];
+    expect(service.computeHealth(habit, null, moments, now)).toBe("dormant");
+  });
+
+  it("is 'unstated' when PRUNING has no rhythm", () => {
+    const habit = baseHabit({ attitude: Attitude.PRUNING });
+    expect(service.computeHealth(habit, null, [], new Date())).toBe("unstated");
+  });
+});
+
 describe("HabitHealthService — PUSHING", () => {
-  it("reuses BUILDING pace logic (wilt on underpace)", () => {
+  it("wilts with zero tolerance (stricter than BUILDING)", () => {
     const now = new Date("2026-04-27");
     const habit = baseHabit({
       attitude: Attitude.PUSHING,
@@ -294,6 +339,33 @@ describe("HabitHealthService — PUSHING", () => {
     });
     // 0 allocations in last 7 days, expect wilting
     expect(service.computeHealth(habit, null, [], now)).toBe("wilting");
+  });
+
+  it("is stricter than BUILDING for the same count", () => {
+    const now = new Date("2026-04-27"); // full week elapsed
+    const rhythm: Rhythm = { period: "weekly", count: 5 };
+    // 4 allocations out of 5 expected — tolerance 1 saves BUILDING, not PUSHING
+    const moments = [0, 1, 2, 3].map((i) =>
+      allocatedMoment("habit-1", new Date(`2026-04-2${i + 1}`)),
+    );
+
+    const building = baseHabit({
+      id: "habit-1",
+      attitude: Attitude.BUILDING,
+      rhythm,
+      updatedAt: ISO(new Date("2026-01-01")),
+    });
+    const pushing = baseHabit({
+      id: "habit-1",
+      attitude: Attitude.PUSHING,
+      rhythm,
+      updatedAt: ISO(new Date("2026-01-01")),
+    });
+
+    expect(service.computeHealth(building, null, moments, now)).toBe(
+      "blooming",
+    );
+    expect(service.computeHealth(pushing, null, moments, now)).toBe("wilting");
   });
 
   it("is 'unstated' when PUSHING has no rhythm (migration safety)", () => {
@@ -367,8 +439,9 @@ describe("HabitHealthService — moments attached via personIds", () => {
     });
 
     expect(service.computeHealth(mari, null, [], NOW)).toBe("wilting");
+    // Single allocation → re-entry budding grace (< 3 in window)
     expect(service.computeHealth(mari, null, [groupDinner], NOW)).toBe(
-      "blooming",
+      "budding",
     );
   });
 

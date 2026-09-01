@@ -88,7 +88,8 @@ describe("computeHealth — moments attached via personIds", () => {
     });
 
     expect(computeHealth(mari, null, [], NOW)).toBe("wilting");
-    expect(computeHealth(mari, null, [groupDinner], NOW)).toBe("blooming");
+    // Single allocation → re-entry budding grace (< 3 in window)
+    expect(computeHealth(mari, null, [groupDinner], NOW)).toBe("budding");
   });
 
   it("leaves an ordinary habit's health untouched by unrelated personIds", () => {
@@ -160,6 +161,41 @@ describe("daysSinceLast — moments attached via personIds", () => {
     const orphan = moment({ id: "m-orphan" });
     expect(() => daysSinceLast("p-yaya", [orphan], NOW)).not.toThrow();
     expect(daysSinceLast("p-yaya", [orphan], NOW)).toBeNull();
+  });
+});
+
+describe("computeHealth — PRUNING", () => {
+  it("is 'dormant' regardless of silence when rhythm is set", () => {
+    const pruning = habit({
+      attitude: "PRUNING",
+      rhythm: WEEKLY,
+    });
+    expect(computeHealth(pruning, null, [], NOW)).toBe("dormant");
+  });
+
+  it("is 'unstated' when PRUNING has no rhythm", () => {
+    const pruning = habit({ attitude: "PRUNING" });
+    expect(computeHealth(pruning, null, [], NOW)).toBe("unstated");
+  });
+});
+
+describe("computeHealth — PUSHING vs BUILDING tolerance", () => {
+  it("PUSHING is stricter than BUILDING for the same count", () => {
+    const rhythm: Rhythm = { period: "weekly", count: 5 };
+    // 4 allocations out of 5 expected — BUILDING's tolerance=1 saves it, PUSHING's 0 does not
+    const moments = [0, 1, 2, 3].map((i) =>
+      moment({
+        id: `m-${i}`,
+        habitId: "h-1",
+        day: dayBefore(NOW, i + 1),
+      }),
+    );
+
+    const building = habit({ attitude: "BUILDING", rhythm });
+    const pushing = habit({ attitude: "PUSHING", rhythm });
+
+    expect(computeHealth(building, null, moments, NOW)).toBe("blooming");
+    expect(computeHealth(pushing, null, moments, NOW)).toBe("wilting");
   });
 });
 
