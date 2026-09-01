@@ -443,15 +443,16 @@ export function loadMomentFriction(now = Date.now()) {
   );
 }
 
-/** @param {any} rule @returns {string[]} */
+
+/** Extract browser domains from a rule's scope.
+ * @param {any} rule @returns {string[]} */
 export function resolveRuleDomains(rule) {
   const scope = rule?.scope;
-  if (scope && typeof scope === "object" && "surface" in scope) {
-    if (scope.surface !== "browser") return [];
-    const domain = typeof scope.domain === "string" ? scope.domain.trim() : "";
-    return domain ? [domain] : [];
-  }
-  return [...(rule?.domains ?? [])];
+  if (!scope || typeof scope !== "object" || !("surface" in scope)) return [];
+  if (scope.surface !== "browser") return [];
+  const d = scope.domain;
+  if (Array.isArray(d)) return d.filter((s) => typeof s === "string" && s.trim()).map((s) => s.trim());
+  return typeof d === "string" && d.trim() ? [d.trim()] : [];
 }
 
 /** What the big red button means right now: the areas it pauses and their
