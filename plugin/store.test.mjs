@@ -453,7 +453,7 @@ test("loadArmed arms a browser fence zenborg wrote, and only that", async () => 
   ]);
 });
 
-test("resolveRuleDomains reads a browser RuleScope as well as the flat shape", async () => {
+test("resolveRuleDomains reads a browser RuleScope (single and multi-domain)", async () => {
   const dir = mkdtempSync(join(tmpdir(), "keel-step5-scope-"));
   const m = await storeFrom(dir);
   assert.deepEqual(
@@ -462,18 +462,26 @@ test("resolveRuleDomains reads a browser RuleScope as well as the flat shape", a
     }),
     ["linkedin.com"],
   );
-  // Session and desktop reach no browser and yield nothing, rather than
-  // falling through to the flat shape and inventing a domain.
+  assert.deepEqual(
+    m.resolveRuleDomains({
+      scope: {
+        surface: "browser",
+        domain: ["youtube.com", "m.youtube.com", "youtu.be"],
+        matches: [],
+      },
+    }),
+    ["youtube.com", "m.youtube.com", "youtu.be"],
+  );
+  // Session and desktop reach no browser and yield nothing.
   assert.deepEqual(
     m.resolveRuleDomains({
       scope: { surface: "session", paths: ["/x"] },
-      domains: ["linkedin.com"],
     }),
     [],
   );
-  assert.deepEqual(m.resolveRuleDomains({ domains: ["chess.com"] }), [
-    "chess.com",
-  ]);
+  // No scope at all → no domains (legacy flat shape no longer supported).
+  assert.deepEqual(m.resolveRuleDomains({ domains: ["chess.com"] }), []);
+  assert.deepEqual(m.resolveRuleDomains({}), []);
 });
 
 test("loadTransforms and loadBreakTarget read fences, not the rules directory", async () => {
@@ -523,4 +531,54 @@ test("loadTransforms and loadBreakTarget read fences, not the rules directory", 
   const target = m.loadBreakTarget();
   assert.deepEqual(target.domains, ["youtube.com"]);
   assert.equal(target.durationMs, 3600 * 1000);
+});
+
+test("multi-domain RuleScope resolves all domains for armed and transform projections", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "keel-multi-domain-"));
+  writeJsonAtomic(join(dir, "areas.json"), {});
+  writeJsonAtomic(join(dir, "fences.json"), {
+    dwell: {
+      id: "dwell",
+      scope: {
+        surface: "browser",
+        domain: ["youtube.com", "m.youtube.com", "youtu.be"],
+        matches: ["*://youtube.com/*", "*://m.youtube.com/*", "*://youtu.be/*"],
+      },
+      primitives: [
+        {
+          kind: "gate",
+          trigger: { type: "dwell", everyMinutes: 10 },
+          frictionType: { type: "intention", prompt: "still here?" },
+          proceedAffordance: { label: "yes", action: { type: "continue" } },
+          abortAffordance: { label: "close" },
+        },
+      ],
+    },
+    shorts: {
+      id: "shorts",
+      scope: {
+        surface: "browser",
+        domain: ["youtube.com", "m.youtube.com"],
+        matches: ["*://youtube.com/*", "*://m.youtube.com/*"],
+      },
+      primitives: [
+        {
+          kind: "transform",
+          targets: { primary: "ytd-rich-section-renderer", fallbacks: [] },
+          replacement: { type: "hide" },
+        },
+      ],
+    },
+  });
+  const m = await storeFrom(dir);
+
+  const armed = m.loadArmed();
+  assert.deepEqual(armed.dwell.domains, [
+    "youtube.com",
+    "m.youtube.com",
+    "youtu.be",
+  ]);
+
+  const transforms = m.loadTransforms();
+  assert.deepEqual(transforms[0].domains, ["youtube.com", "m.youtube.com"]);
 });
