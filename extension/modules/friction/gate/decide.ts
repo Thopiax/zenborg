@@ -29,7 +29,7 @@ export type GateFriction =
   | { readonly type: "delay"; readonly seconds: number }
   | { readonly type: "breath"; readonly cycles: number };
 
-/** A dwell gate as the extension sees it, pulled from ~/.kairos/keel/rules. */
+/** A dwell gate as the extension sees it, pulled from ~/.zenborg/keel/rules. */
 export interface DwellGate {
   readonly ruleId: string;
   readonly domains: readonly string[];
@@ -167,7 +167,7 @@ export async function evaluateGate(
 }
 
 /**
- * A redirect target, or `null` if it is not one kairos will navigate to.
+ * A redirect target, or `null` if it is not one zenborg will navigate to.
  *
  * Mirrors `safeRedirect` in `apps/plugin/store.mjs`. Duplicated rather than shared
  * because the agent is plain `@ts-check` JS that deploys standalone and cannot import

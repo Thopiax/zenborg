@@ -1,5 +1,5 @@
 /**
- * kairos block page — shown when the porn Drogue (block notch, f=1, no skip)
+ * zenborg block page — shown when the porn Drogue (block notch, f=1, no skip)
  * redirects a main_frame navigation. The page never loaded; nothing here
  * unblocks it. Calm, structural, not punitive (strategy Part VI: nudge > block,
  * meta-awareness not guilt).
@@ -7,7 +7,7 @@
 import "@/styles/tokens.css";
 import "@/styles/fonts.css";
 
-// kairos-owned theme root (system-aware) so the design tokens resolve.
+// zenborg-owned theme root (system-aware) so the design tokens resolve.
 document.documentElement.setAttribute(
   "data-kairos-theme",
   window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
