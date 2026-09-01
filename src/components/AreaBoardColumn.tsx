@@ -24,7 +24,6 @@ interface AreaBoardColumnProps {
   onUnarchiveHabit?: (habitId: string) => void;
   onDeleteHabit?: (habitId: string) => void;
   onCreateHabit: () => void;
-  maxHabitsHeight?: string;
 }
 
 export function AreaBoardColumn({
@@ -38,7 +37,6 @@ export function AreaBoardColumn({
   onUnarchiveHabit,
   onDeleteHabit,
   onCreateHabit,
-  maxHabitsHeight = "calc(100vh - 16rem)",
 }: AreaBoardColumnProps) {
   // Sortable for area reordering (the column itself is draggable)
   const {
@@ -82,7 +80,7 @@ export function AreaBoardColumn({
       }}
       style={style}
       className={cn(
-        "flex flex-col snap-start rounded-lg",
+        "flex flex-col snap-start rounded-lg h-full",
         columnWidth.scrollableClassName,
         isOver &&
           "ring-2 ring-stone-400 dark:ring-stone-500 bg-stone-50 dark:bg-stone-800/50",
@@ -112,8 +110,7 @@ export function AreaBoardColumn({
 
       {/* Habits List (scrollable) */}
       <div
-        className="flex flex-col gap-3 p-4 flex-1 overflow-y-auto"
-        style={{ maxHeight: maxHabitsHeight }}
+        className="flex flex-col gap-3 p-4 flex-1 overflow-y-auto min-h-0"
       >
         {habits.length === 0 ? (
           <button
