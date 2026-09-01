@@ -124,9 +124,12 @@ export function useGlobalKeyboard() {
 
     const placeKeys = new Set(Object.values(places$.peek()).map((p) => p.key));
 
+    const habitId = momentFormState$.habitId.peek();
+
     const result = momentCreationService.createMomentWithWorkflow({
       name,
       areaId,
+      habitId,
       phase,
       emoji: emoji || null,
       prefilledAllocation,
@@ -190,9 +193,12 @@ export function useGlobalKeyboard() {
         return;
       }
 
+      const editHabitId = momentFormState$.habitId.peek();
+
       const result = momentUpdateService.updateMoment(currentMoment, {
         name,
         areaId,
+        habitId: editHabitId,
         emoji: emoji || null,
         tags,
         customMetric,
