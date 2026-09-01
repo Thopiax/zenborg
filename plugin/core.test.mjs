@@ -290,19 +290,37 @@ test("intentionNudge: names the garden, the cwd, and never sets anything itself"
   assert.doesNotMatch(intentionNudge([], "   "), /Working in/);
 });
 
-test("matchCwdArea: resolves cwd to area by path hint", () => {
+test("matchCwdArea: resolves cwd to area via area-map path rules", () => {
   const areas = [
     { id: "a1", name: "equanimi.tech" },
     { id: "a2", name: "Themia" },
     { id: "a3", name: "health" },
   ];
-  const eq = matchCwdArea("/Users/rafa/Developer/equanimitech/zenborg", areas);
+  const areaMap = {
+    "/Users/rafa/Developer/equanimitech": "a1",
+    "/Users/rafa/Developer/themia": "a2",
+    "youtube.com": "a3",  // domain entries are ignored
+  };
+  const eq = matchCwdArea("/Users/rafa/Developer/equanimitech/zenborg", areaMap, areas);
   assert.equal(eq?.id, "a1");
-  const th = matchCwdArea("/Users/rafa/Developer/themia/minerva", areas);
+  const th = matchCwdArea("/Users/rafa/Developer/themia/minerva", areaMap, areas);
   assert.equal(th?.id, "a2");
-  assert.equal(matchCwdArea("/Users/rafa/Documents", areas), null);
-  assert.equal(matchCwdArea("", areas), null);
-  assert.equal(matchCwdArea(undefined, areas), null);
+  assert.equal(matchCwdArea("/Users/rafa/Documents", areaMap, areas), null);
+  assert.equal(matchCwdArea("", areaMap, areas), null);
+  assert.equal(matchCwdArea(undefined, areaMap, areas), null);
+});
+
+test("matchCwdArea: longest prefix wins", () => {
+  const areas = [
+    { id: "a1", name: "equanimi.tech" },
+    { id: "a2", name: "zenborg" },
+  ];
+  const areaMap = {
+    "/Users/rafa/Developer/equanimitech": "a1",
+    "/Users/rafa/Developer/equanimitech/zenborg": "a2",
+  };
+  const result = matchCwdArea("/Users/rafa/Developer/equanimitech/zenborg/src", areaMap, areas);
+  assert.equal(result?.id, "a2");
 });
 
 test("intentionNudge: single area+phase match yields a direct proposal", () => {
@@ -310,6 +328,10 @@ test("intentionNudge: single area+phase match yields a direct proposal", () => {
     { id: "a1", name: "equanimi.tech" },
     { id: "a2", name: "Themia" },
   ];
+  const areaMap = {
+    "/Users/rafa/Developer/equanimitech": "a1",
+    "/Users/rafa/Developer/themia": "a2",
+  };
   const candidates = [
     { name: "craft zenborg", areaId: "a1", phase: "AFTERNOON" },
     { name: "staging release", areaId: "a2", phase: "AFTERNOON" },
@@ -318,7 +340,7 @@ test("intentionNudge: single area+phase match yields a direct proposal", () => {
   const nudge = intentionNudge(
     candidates,
     "/Users/rafa/Developer/equanimitech/zenborg",
-    { areas, band: "AFTERNOON" },
+    { areas, band: "AFTERNOON", areaMap },
   );
   assert.match(nudge, /best match is "craft zenborg"/);
   assert.match(nudge, /Propose it/);
@@ -327,6 +349,7 @@ test("intentionNudge: single area+phase match yields a direct proposal", () => {
 
 test("intentionNudge: multiple area matches lists candidates", () => {
   const areas = [{ id: "a1", name: "equanimi.tech" }];
+  const areaMap = { "/Users/rafa/Developer/equanimitech": "a1" };
   const candidates = [
     { name: "craft zenborg", areaId: "a1", phase: "AFTERNOON" },
     { name: "write docs", areaId: "a1", phase: "AFTERNOON" },
@@ -334,7 +357,7 @@ test("intentionNudge: multiple area matches lists candidates", () => {
   const nudge = intentionNudge(
     candidates,
     "/Users/rafa/Developer/equanimitech/zenborg",
-    { areas, band: "AFTERNOON" },
+    { areas, band: "AFTERNOON", areaMap },
   );
   assert.match(nudge, /candidates: "craft zenborg", "write docs"/);
   assert.match(nudge, /Propose the closest one/);
@@ -342,13 +365,14 @@ test("intentionNudge: multiple area matches lists candidates", () => {
 
 test("intentionNudge: no area match falls through to generic", () => {
   const areas = [{ id: "a1", name: "equanimi.tech" }];
+  const areaMap = { "/Users/rafa/Developer/equanimitech": "a1" };
   const candidates = [
     { name: "craft zenborg", areaId: "a1", phase: "AFTERNOON" },
   ];
   const nudge = intentionNudge(
     candidates,
     "/Users/rafa/Documents/random",
-    { areas, band: "AFTERNOON" },
+    { areas, band: "AFTERNOON", areaMap },
   );
   assert.doesNotMatch(nudge, /best match/);
   assert.doesNotMatch(nudge, /candidates:/);
