@@ -24,13 +24,13 @@ export interface DwellConfig {
   readonly capMs: Duration;
 }
 
-type LocatorOf = (event: ActivityEvent) => string | undefined;
+export type LocatorOf = (event: ActivityEvent) => string | undefined;
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.length > 0 ? v : undefined;
 }
 
-const locatorOf: Readonly<Record<ActivitySurface, LocatorOf>> = {
+export const LOCATORS: Readonly<Record<string, LocatorOf>> = {
   desktop: (e) =>
     e.kind === "app_switched" ? str(e.payload.app_name) : undefined,
   agent: (e) => (e.kind === "prompt" ? str(e.payload.cwd) : undefined),
@@ -44,8 +44,9 @@ export function dwellRows(
   surface: ActivitySurface,
   resolve: AreaResolver,
   config: DwellConfig,
+  locator?: LocatorOf,
 ): readonly DwellRow[] {
-  const getLocator = locatorOf[surface];
+  const getLocator = locator ?? LOCATORS[surface] ?? (() => undefined);
   const surfaceEvents = events
     .filter((e) => e.surface === surface && isHumanActor(e))
     .sort((a, b) => a.ts - b.ts);

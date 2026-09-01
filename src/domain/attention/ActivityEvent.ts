@@ -11,8 +11,9 @@ import type { Duration, Instant } from "./ids";
  * Contract: `keel/packages/domain/docs/event-taxonomy.md`.
  */
 
-/** The surface that observed the event. */
-export type ActivitySurface = "agent" | "desktop" | "browser" | "garmin";
+/** The surface that observed the event. Open to new surfaces (oracles). */
+export type ActivitySurface = string;
+export const KNOWN_SURFACES = ["agent", "desktop", "browser", "garmin"] as const;
 
 /**
  * Kinds are an open set. They accrete per surface and are never centrally

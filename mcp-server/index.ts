@@ -156,8 +156,7 @@ import {
   resolveWindow,
 } from "./attention.js";
 import { logDir, readActivityLog } from "./activity-log.js";
-import { nightsOf, workoutsOf } from "../src/domain/garmin/BodyLog.ts";
-import { parseHabitMap } from "../src/domain/garmin/GarminHabitMap.ts";
+import { garminOracle } from "./oracles/garmin.js";
 import { metricSeries } from "../src/domain/services/MetricTrendService.ts";
 
 function nowIso(): string {
@@ -4068,16 +4067,6 @@ defineTool(server, {
 // BODY + METRIC TREND
 // ────────────────────────────────────────────────────────────────────────
 
-function loadHabitMap() {
-  const mapPath = path.join(VAULT_ROOT, "integrations", "garmin", "habit-map.json");
-  if (!fs.existsSync(mapPath)) return parseHabitMap(null);
-  try {
-    return parseHabitMap(JSON.parse(fs.readFileSync(mapPath, "utf8")));
-  } catch {
-    return parseHabitMap(null);
-  }
-}
-
 defineTool(server, {
   name: "get_body",
   description:
@@ -4092,48 +4081,13 @@ defineTool(server, {
   annotations: { readOnlyHint: true },
   handler: async (params) => {
     const window = resolveWindow(params);
-    const events = readActivityLog(logDir(VAULT_ROOT), window.from, window.to, ["garmin"]);
-    const habitMap = loadHabitMap();
     const habits = readCollection(VAULT_ROOT, "habits");
-    const habitName = (id: string) => habits[id]?.name ?? id;
-    const nights = nightsOf(events).map((n) => ({
-      calendarDate: n.calendarDate,
-      asleepHours: +(n.asleepMs / 3_600_000).toFixed(1),
-      ...(n.score !== undefined ? { score: n.score } : {}),
-      ...(n.deepS !== undefined ? { deepMin: Math.round(n.deepS / 60) } : {}),
-      ...(n.remS !== undefined ? { remMin: Math.round(n.remS / 60) } : {}),
-      ...(n.avgHrBpm !== undefined ? { avgHrBpm: n.avgHrBpm } : {}),
-    }));
-    const workouts = workoutsOf(events, habitMap).map((w) => {
-      const d = new Date(w.start);
-      const p = (n: number) => String(n).padStart(2, "0");
-      return {
-        day: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
-        start: `${p(d.getHours())}:${p(d.getMinutes())}`,
-        activityType: w.activityType,
-        elapsedMin: Math.round(w.elapsedMs / 60_000),
-        ...(w.movingS !== undefined ? { movingMin: Math.round(w.movingS / 60) } : {}),
-        ...(w.calories !== undefined ? { calories: w.calories } : {}),
-        ...(w.avgHrBpm !== undefined ? { avgHrBpm: w.avgHrBpm } : {}),
-        ...(w.habitId ? { habitId: w.habitId, habitName: habitName(w.habitId) } : {}),
-      };
-    });
-    const garminEvents = events.filter((e) => e.surface === "garmin");
-    const first = garminEvents.length > 0 ? garminEvents[0].ts : undefined;
-    const last = garminEvents.length > 0 ? garminEvents[garminEvents.length - 1].ts : undefined;
-    const localDate = (ts: number) => {
-      const d = new Date(ts);
-      const p = (n: number) => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-    };
+    const oracle = garminOracle(habits);
+    const result = oracle(VAULT_ROOT, window.from, window.to);
     return ok({
       window: { from: window.fromDay, to: window.toDay },
-      coverage: {
-        ...(first !== undefined ? { first: localDate(first) } : {}),
-        ...(last !== undefined ? { last: localDate(last) } : {}),
-      },
-      nights,
-      workouts,
+      coverage: result.coverage,
+      ...result.data,
     });
   },
 });
