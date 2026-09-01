@@ -540,55 +540,12 @@ export function momentFrictionAt(pointer, moments, areas, now) {
   return { allow: seedAllowFromRefs(moments?.[active.id]?.refs), deny: [] };
 }
 
-// ── Gap practice ──────────────────────────────────────────────────
-// Mirrors `src/domain/intervention/rules/gapPractice.ts` — the domain owns the
-// convention (`gap` tag + `gap-Ns`/`gap-Nm` sizing); the plugin reimplements the
-// filter because it is plain JS and the domain is TypeScript.
-
-const GAP_TAG = "gap";
-const SIZE_RE = /^gap-(\d+)(s|m)$/;
-
-/** @param {string[]} tags @returns {number|undefined} ms */
-function gapSizeMs(tags) {
-  for (const t of tags) {
-    const m = SIZE_RE.exec(t.trim().toLowerCase());
-    if (!m) continue;
-    const n = Number(m[1]);
-    if (!Number.isFinite(n) || n <= 0) continue;
-    return m[2] === "s" ? n * 1000 : n * 60_000;
-  }
-}
-
-/** Habits tagged `gap`, smallest-fit first. Pure.
- * @param {{id:string, name:string, tags:string[], isArchived?:boolean}[]} habits
- * @returns {{name:string, fitsMs?:number}[]} */
-export function gapPractices(habits) {
-  const out = [];
-  for (const h of habits) {
-    if (h.isArchived) continue;
-    const tags = (h.tags ?? []).map((t) => String(t).trim().toLowerCase());
-    if (!tags.includes(GAP_TAG)) continue;
-    out.push({ name: h.name, fitsMs: gapSizeMs(tags) });
-  }
-  return out.sort(
-    (a, b) =>
-      (a.fitsMs ?? Number.POSITIVE_INFINITY) -
-      (b.fitsMs ?? Number.POSITIVE_INFINITY),
-  );
-}
-
-/** The per-turn focus line: a practice from the gap roster, not a static string.
- * Scoreless by design (a streak would be engagement, not equanimity).
- * @param {State} state
- * @param {{name:string, fitsMs?:number}[]} practices - from `gapPractices(loadHabits())`
- * @returns {string} */
-export function focusLine(state, practices) {
+/** The per-turn focus line: a breath on the AI-wait gap. Empty unless focus is on.
+ * Scoreless by design (a streak would be engagement, not equanimity); the capture
+ * machinery is intention's, this only adds the breath. @param {State} state @returns {string} */
+export function focusLine(state) {
   if (!state.focus) return "";
-  if (!practices || practices.length === 0) {
-    return "[keel] ◉ focus — breathe the AI gap; hold this stream, park strays with /idea.";
-  }
-  const pick = practices[Math.floor(Math.random() * practices.length)];
-  return `[keel] ◉ focus — ${pick.name}; hold this stream, park strays with /idea.`;
+  return "[keel] ◉ focus — breathe the AI gap; hold this stream, park strays with /idea.";
 }
 
 // ── Activity log (observability substrate — slice A) ────────────

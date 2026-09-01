@@ -19,7 +19,6 @@ import {
   DEFAULT_GRANULARITY,
   setFocus,
   focusLine,
-  gapPractices,
   buildEvent,
   capPayload,
   summarizeEvents,
@@ -43,7 +42,6 @@ import {
   loadActiveMomentPointer,
   loadMoments,
   loadAreas,
-  loadHabits,
   loadCycles,
   probeMachine,
   readStdin,
@@ -304,10 +302,7 @@ async function handleUserSubmit(now) {
   }
   saveState(state);
   // The focus cue rides the same turn-boundary channel. Empty unless `keel focus` is on.
-  // Gap practices are read from the vault once per turn — the roster is small (~5 habits)
-  // and reading it here avoids caching a stale list across the session.
-  const practices = state.focus ? gapPractices(loadHabits()) : [];
-  return emitText([nudge, focusLine(state, practices)].filter(Boolean).join("\n"));
+  return emitText([nudge, focusLine(state)].filter(Boolean).join("\n"));
 }
 
 async function handleSessionStart(now) {
