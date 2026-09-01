@@ -31,7 +31,7 @@ function fixtureForToday(): string {
 export async function seedGarden(page: Page): Promise<void> {
   await page.goto("/plant");
   await page.getByRole("button", { name: "Open settings" }).click();
-  await page.locator('button:has-text("Data Management")').click();
+  await page.locator('button:has-text("Data")').click();
 
   const chooser = page.waitForEvent("filechooser");
   await page.locator('button:has-text("Import (Merge)")').click();

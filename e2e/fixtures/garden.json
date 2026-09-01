@@ -122,6 +122,36 @@
         "tags": [],
         "createdAt": "2026-08-21T09:00:00.000Z",
         "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "e2e-renamed-moment-001": {
+        "id": "e2e-renamed-moment-001",
+        "name": "hill sprints",
+        "areaId": "77b68395-1366-52cb-a51b-a9bd0644fa99",
+        "habitId": "89b49dad-632b-512b-b4d8-4df9b9a595ec",
+        "cycleId": null,
+        "cyclePlanId": null,
+        "phase": "EVENING",
+        "day": "2026-08-21",
+        "order": 1,
+        "emoji": "🏃",
+        "tags": [],
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
+      },
+      "e2e-standalone-moment-001": {
+        "id": "e2e-standalone-moment-001",
+        "name": "free sketch",
+        "areaId": "000cc1e2-1a83-5adb-a62a-66432f7be910",
+        "habitId": null,
+        "cycleId": null,
+        "cyclePlanId": null,
+        "phase": "EVENING",
+        "day": "2026-08-21",
+        "order": 2,
+        "emoji": "✏️",
+        "tags": [],
+        "createdAt": "2026-08-21T09:00:00.000Z",
+        "updatedAt": "2026-08-21T09:00:00.000Z"
       }
     },
     "areas": {
@@ -441,7 +471,7 @@
     }
   },
   "metadata": {
-    "totalMoments": 8,
+    "totalMoments": 10,
     "totalAreas": 3,
     "totalHabits": 6,
     "totalCycles": 3,

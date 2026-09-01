@@ -221,6 +221,7 @@ export interface MomentFormState {
   tags?: string[];
   customMetric?: CustomMetric;
   mentionIds?: string[];
+  habitId: string | null;
 }
 
 export const momentFormState$ = observable<MomentFormState>({
@@ -238,6 +239,7 @@ export const momentFormState$ = observable<MomentFormState>({
   tags: [],
   customMetric: undefined,
   mentionIds: [],
+  habitId: null,
 });
 
 /**
@@ -270,6 +272,7 @@ export function openMomentFormCreate(params?: {
     tags: [],
     customMetric: undefined,
     mentionIds: [],
+    habitId: null,
   });
 }
 
@@ -295,6 +298,7 @@ export function openMomentFormEdit(momentId: string, moment: Moment) {
     tags: moment.tags || [],
     customMetric: moment.customMetric,
     mentionIds: [...(moment.personIds || []), ...(moment.placeIds || [])],
+    habitId: moment.habitId,
   });
 }
 
@@ -317,6 +321,7 @@ export function closeMomentForm() {
     tags: [],
     customMetric: undefined,
     mentionIds: [],
+    habitId: null,
   });
 }
 
