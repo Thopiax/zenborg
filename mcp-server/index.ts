@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import * as crypto from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
 /**
  * Zenborg MCP server — the gardener's voice.
  *
@@ -146,6 +148,17 @@ import {
   VALID_BOUNDARIES,
   validateRoutine,
 } from "./routines.js";
+import {
+  getAreaMap,
+  getAttention,
+  getDayTrace,
+  mapArea,
+  resolveWindow,
+} from "./attention.js";
+import { logDir, readActivityLog } from "./activity-log.js";
+import { nightsOf, workoutsOf } from "../src/domain/garmin/BodyLog.ts";
+import { parseHabitMap } from "../src/domain/garmin/GarminHabitMap.ts";
+import { metricSeries } from "../src/domain/services/MetricTrendService.ts";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -3986,6 +3999,210 @@ defineTool(server, {
   annotations: { readOnlyHint: true },
   handler: async () => {
     return ok(await fenceReport(fenceDeps));
+  },
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// ATTENTION — the plan ↔ trace bridge
+// ────────────────────────────────────────────────────────────────────────
+
+const DaySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+defineTool(server, {
+  name: "get_attention",
+  description:
+    "Where did attention go? Dwell time by area per surface (desktop/agent/browser), " +
+    "unmapped locators (top 10), and agent sessions. Minutes, never ms. " +
+    "Coverage on every response — an empty surface means unrecorded, not idle.",
+  schema: {
+    day: DaySchema.optional().describe(
+      "One waking day (04:00 roll). Omit for today.",
+    ),
+    from: DaySchema.optional().describe(
+      "Inclusive start day. Use with `to` for a range.",
+    ),
+    to: DaySchema.optional().describe(
+      "Inclusive end day.",
+    ),
+    surfaces: z
+      .array(z.enum(["desktop", "agent", "browser"]))
+      .optional()
+      .describe("Surfaces to query. Default: all three."),
+    pathPrefix: z
+      .string()
+      .optional()
+      .describe(
+        "Agent surface only: restrict to cwds under this path (~ expands).",
+      ),
+  },
+  annotations: { readOnlyHint: true },
+  handler: async (params) => {
+    const areas = readCollection(VAULT_ROOT, "areas");
+    return ok(getAttention(VAULT_ROOT, areas, params));
+  },
+});
+
+defineTool(server, {
+  name: "get_area_map",
+  description:
+    "Show the area map: path, host, and app rules that resolve trace events to areas. " +
+    "Flags rules whose areaId no longer exists.",
+  schema: {},
+  annotations: { readOnlyHint: true },
+  handler: async () => {
+    const areas = readCollection(VAULT_ROOT, "areas");
+    return ok(getAreaMap(VAULT_ROOT, areas));
+  },
+});
+
+defineTool(server, {
+  name: "map_area",
+  description:
+    "Add, update, or remove a rule in the area map. " +
+    '"Slack → Themia" becomes kind=app, key=Slack, area=Themia. ' +
+    "Pass area=null to remove a rule.",
+  schema: {
+    kind: z.enum(["path", "host", "app"]),
+    key: z.string().min(1).describe("The path prefix, host, or app name."),
+    area: z
+      .string()
+      .nullable()
+      .describe("Area name or id. null removes the rule."),
+  },
+  annotations: { readOnlyHint: false },
+  handler: async (params) => {
+    const areas = readCollection(VAULT_ROOT, "areas");
+    const result = mapArea(VAULT_ROOT, areas, params);
+    if (!result.ok) return err(result.message);
+    return ok(result);
+  },
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// BODY + METRIC TREND
+// ────────────────────────────────────────────────────────────────────────
+
+function loadHabitMap() {
+  const mapPath = path.join(VAULT_ROOT, "integrations", "garmin", "habit-map.json");
+  if (!fs.existsSync(mapPath)) return parseHabitMap(null);
+  try {
+    return parseHabitMap(JSON.parse(fs.readFileSync(mapPath, "utf8")));
+  } catch {
+    return parseHabitMap(null);
+  }
+}
+
+defineTool(server, {
+  name: "get_body",
+  description:
+    "Sleep nights and workouts from Garmin. " +
+    "Nights report the morning woken (calendarDate describes the night before that day's work). " +
+    "Workouts resolve to habits via the garmin habit map when mapped.",
+  schema: {
+    day: DaySchema.optional().describe("One waking day (04:00 roll). Omit for today."),
+    from: DaySchema.optional().describe("Inclusive start day."),
+    to: DaySchema.optional().describe("Inclusive end day."),
+  },
+  annotations: { readOnlyHint: true },
+  handler: async (params) => {
+    const window = resolveWindow(params);
+    const events = readActivityLog(logDir(VAULT_ROOT), window.from, window.to, ["garmin"]);
+    const habitMap = loadHabitMap();
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const habitName = (id: string) => habits[id]?.name ?? id;
+    const nights = nightsOf(events).map((n) => ({
+      calendarDate: n.calendarDate,
+      asleepHours: +(n.asleepMs / 3_600_000).toFixed(1),
+      ...(n.score !== undefined ? { score: n.score } : {}),
+      ...(n.deepS !== undefined ? { deepMin: Math.round(n.deepS / 60) } : {}),
+      ...(n.remS !== undefined ? { remMin: Math.round(n.remS / 60) } : {}),
+      ...(n.avgHrBpm !== undefined ? { avgHrBpm: n.avgHrBpm } : {}),
+    }));
+    const workouts = workoutsOf(events, habitMap).map((w) => {
+      const d = new Date(w.start);
+      const p = (n: number) => String(n).padStart(2, "0");
+      return {
+        day: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
+        start: `${p(d.getHours())}:${p(d.getMinutes())}`,
+        activityType: w.activityType,
+        elapsedMin: Math.round(w.elapsedMs / 60_000),
+        ...(w.movingS !== undefined ? { movingMin: Math.round(w.movingS / 60) } : {}),
+        ...(w.calories !== undefined ? { calories: w.calories } : {}),
+        ...(w.avgHrBpm !== undefined ? { avgHrBpm: w.avgHrBpm } : {}),
+        ...(w.habitId ? { habitId: w.habitId, habitName: habitName(w.habitId) } : {}),
+      };
+    });
+    const garminEvents = events.filter((e) => e.surface === "garmin");
+    const first = garminEvents.length > 0 ? garminEvents[0].ts : undefined;
+    const last = garminEvents.length > 0 ? garminEvents[garminEvents.length - 1].ts : undefined;
+    const localDate = (ts: number) => {
+      const d = new Date(ts);
+      const p = (n: number) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    };
+    return ok({
+      window: { from: window.fromDay, to: window.toDay },
+      coverage: {
+        ...(first !== undefined ? { first: localDate(first) } : {}),
+        ...(last !== undefined ? { last: localDate(last) } : {}),
+      },
+      nights,
+      workouts,
+    });
+  },
+});
+
+defineTool(server, {
+  name: "get_metric_trend",
+  description:
+    "Metric values over time for a habit. Points only — no slope, no target distance.",
+  schema: {
+    habitId: z.string().min(1),
+    metricName: z.string().optional().describe("Filter to one metric name."),
+    since: DaySchema.optional().describe("Only points on or after this date."),
+  },
+  annotations: { readOnlyHint: true },
+  handler: async (params) => {
+    const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
+    const logs = Object.values(readCollection(VAULT_ROOT, "metricLogs"));
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const habit = habits[params.habitId];
+    if (!habit) return err(`Habit not found: ${params.habitId}`);
+
+    let series = metricSeries(params.habitId, moments, logs, params.metricName);
+    if (params.since) {
+      series = series.map((s) => ({
+        ...s,
+        points: s.points.filter((p) => p.date >= params.since!),
+      })).filter((s) => s.points.length > 0);
+    }
+    return ok({ habitId: params.habitId, habitName: habit.name, series });
+  },
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// DAY TRACE — plan vs actual
+// ────────────────────────────────────────────────────────────────────────
+
+defineTool(server, {
+  name: "get_day_trace",
+  description:
+    "How aligned was the day with the plan? For each planted moment: " +
+    "attention traced in its cell (same area), attention elsewhere (different area), " +
+    "and whether any trace was found. Also reports unplanted attention — " +
+    "spans in cells that planted nothing for that area. " +
+    "No alignment %, no score.",
+  schema: {
+    day: DaySchema.optional().describe("Waking day (04:00 roll). Omit for today."),
+    idleGapMin: z.number().int().positive().optional()
+      .describe("Idle gap in minutes for span derivation. Default 15."),
+  },
+  annotations: { readOnlyHint: true },
+  handler: async (params) => {
+    const areas = readCollection(VAULT_ROOT, "areas");
+    const moments = readCollection(VAULT_ROOT, "moments");
+    const phaseConfigs = readCollection(VAULT_ROOT, "phaseConfigs");
+    return ok(getDayTrace(VAULT_ROOT, areas, moments, phaseConfigs, params));
   },
 });
 
