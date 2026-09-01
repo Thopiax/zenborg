@@ -38,14 +38,12 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { RuleSpec } from "../domain/intervention/RuleSpec.ts";
 import {
   type GapPractice,
   practicesForGap,
 } from "../domain/intervention/rules/gapPractice.ts";
 
 const VAULT = process.env.KAIROS_HOME || join(homedir(), ".kairos");
-const FENCES = join(VAULT, "fences.json");
 const STATE_DIR = join(VAULT, "plugin");
 const STATE = join(STATE_DIR, "gap-practice-state.json");
 const HABITS = join(VAULT, "habits.json");
@@ -122,19 +120,6 @@ function readStdin(): Promise<Record<string, unknown> | null> {
   });
 }
 
-/** The standing substitution rule, if there is one. It names no practice. */
-function substitutionRule(): RuleSpec | null {
-  try {
-    const raw = JSON.parse(readFileSync(FENCES, "utf8"));
-    const records: RuleSpec[] = Array.isArray(raw)
-      ? raw
-      : Object.values(raw ?? {});
-    return records.find((r) => r?.mechanism === "substitution") ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * What the garden offers for a gap, smallest first.
  *
@@ -177,7 +162,6 @@ function recordOffer(at: number): void {
 
 const main = async (): Promise<void> => {
   await readStdin();
-  if (!substitutionRule()) silent();
 
   // No practice tagged for a gap means the garden has nothing to offer, and
   // inventing one is the mistake this rewrite exists to undo.

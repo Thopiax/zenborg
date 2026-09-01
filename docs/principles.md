@@ -108,11 +108,11 @@ Success means the user needs the tool less over time — not through neglect, th
 
 ### 9. Downstream Allocation
 
-The user fills the slots. The system doesn't. No algorithmic curation that prioritizes platform objectives over user intentions.
+The user fills the slots. The system may propose what belongs in them — but never fill them. Proposals are derived from the user's own declared intentions (habits, rhythms, attitudes, cycle plans), never from platform objectives. A suggestion is ambient information: dismissible, never auto-applied, never a default the user must undo.
 
-**In Zenborg:** This is the purest expression of Zenborg's thesis. No feed, no recommendations, no auto-placement. The system surfaces context (whispers, dormancy indicators) but the allocation decision always belongs to the person. "Where will I place my consciousness today?" — the question is the user's to answer.
+**In Zenborg:** The system surfaces wilting habits, proposes cycle budgets, and suggests scheduling for gaps — all grounded in patterns the user already declared. The allocation decision always belongs to the person. "Where will I place my consciousness today?" remains the user's question to answer; the garden can whisper what might need tending.
 
-**Design test:** Who decided what the user is looking at right now — the user or the system?
+**Design test:** Is every suggestion derived from what the user already told the system they care about? Can the user ignore it with zero consequence? Is anything auto-placed?
 
 ---
 
@@ -138,7 +138,7 @@ These are not additional principles. They are how the pyramid speaks in Zenborg'
 - No completion percentages or progress bars against targets
 - No push notifications, email reminders, badges, or red dots
 - No modal alerts (modals are a UI anti-pattern here regardless)
-- No algorithmic curation of what the user sees
+- No algorithmic curation that serves platform objectives over user intentions
 - No performance ranking, comparative scoring, or leaderboards
 - No dark patterns, forced updates, or account-gated features
 - No advertising, no engagement-based revenue
@@ -158,6 +158,7 @@ The pyramid allows many patterns that superficially resemble the red lines. Don'
 - **Attitude-driven feedback is fine.** Each attitude interprets rhythm differently; feedback is neutral information. (Downstream Allocation)
 - **Constraints that prevent action are fine.** Three-per-phase blocks a fourth; that's strategic friction, not paternalism. (Strategic Friction)
 - **Visual indicators on cards are fine** (attitude chip, area color). They're ambient, not demanding. (Peripheral Presence)
+- **Suggestions derived from declared intentions are fine.** Proposing a wilting habit for an empty slot, nudging a return to running based on rhythm — these serve the user's own goals. The line: derived from what the user declared, dismissible, never auto-applied. (Downstream Allocation)
 
 When in doubt: does this surface *invite* attention without *demanding* it? If yes, it's permitted.
 

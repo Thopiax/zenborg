@@ -25,9 +25,16 @@ export interface HostRule {
   readonly areaId: AreaId;
 }
 
+export interface AppRule {
+  /** Exact `payload.app_name` as the observer records it ("Slack", "Linear"). */
+  readonly app: string;
+  readonly areaId: AreaId;
+}
+
 export interface AreaMap {
   readonly paths: readonly PathRule[];
   readonly hosts: readonly HostRule[];
+  readonly apps: readonly AppRule[];
 }
 
 /**
@@ -49,6 +56,7 @@ const TOOL_INPUT_KEYS = ["file_path", "notebook_path"] as const;
 const CWD_KEYS = ["cwd"] as const;
 const HOST_KEYS = ["host", "domain"] as const;
 const URL_KEYS = ["url"] as const;
+const APP_NAME_KEYS = ["app_name"] as const;
 
 function firstString(
   source: Readonly<Record<string, unknown>>,
@@ -139,6 +147,13 @@ export function resolveArea(
       }
     }
     if (best !== undefined) return best.areaId;
+  }
+
+  const appName = firstString(event.payload, APP_NAME_KEYS);
+  if (appName !== undefined) {
+    for (const rule of map.apps) {
+      if (rule.app === appName) return rule.areaId;
+    }
   }
 
   return undefined;
