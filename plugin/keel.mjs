@@ -54,6 +54,7 @@ import {
   loadSnapshot,
   saveSnapshot,
   writeObserveList,
+  loadRuleSpecs,
   LEDGER_PATH,
   SNAPSHOT_PATH,
 } from "./store.mjs";
@@ -282,8 +283,9 @@ async function handleUserSubmit(now) {
   // answer by what each tier costs the reader. The dial, its CLI and the tray submenu survive
   // but now reach no agent — see docs/decisions/2026-08-20-hand-response-depth-to-attently.md.
   const moments = loadMoments();
+  const areas = loadAreas();
   const pointer = loadActiveMomentPointer();
-  const moment = resolveActiveMoment(pointer, moments, loadAreas(), now);
+  const moment = resolveActiveMoment(pointer, moments, areas, now);
   // Mid-session switches land here — session-start alone would miss every one of them.
   const switched = intentionSwitch(pointer, moment, state);
   if (switched) {
@@ -298,7 +300,8 @@ async function handleUserSubmit(now) {
   // that arrived after the session had already committed to something.
   if (unset && state.inferNudgedTs !== state.sessionStartTs) {
     state.inferNudgedTs = state.sessionStartTs;
-    nudge = intentionNudge(todaysMoments(moments, now), input?.cwd);
+    const band = bandNow(loadPhaseConfigs(), now);
+    nudge = intentionNudge(todaysMoments(moments, now), input?.cwd, { areas, band, fences: loadRuleSpecs() });
   }
   saveState(state);
   // The focus cue rides the same turn-boundary channel. Empty unless `keel focus` is on.

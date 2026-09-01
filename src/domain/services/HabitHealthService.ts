@@ -22,6 +22,8 @@ const BUDDING_PERIOD_COUNT = 3;
  * for gaps should sit between BEGINNING (no wilt) and KEEPING (strict threshold).
  */
 const RETURNING_THRESHOLD_MULTIPLIER = 1.5;
+const RETURNING_REENTRY_PERIODS = 3;
+const RETURNING_REENTRY_COUNT = 3;
 
 /**
  * HabitHealthService — pure derivation of per-habit health from
@@ -62,11 +64,13 @@ export class HabitHealthService {
       case Attitude.RETURNING:
         return this.computeReturning(rhythm, habitMoments, now);
       case Attitude.KEEPING:
-      case Attitude.PRUNING:
         return this.computeKeeping(rhythm, habitMoments, now);
+      case Attitude.PRUNING:
+        return this.computePruning(rhythm);
       case Attitude.BUILDING:
+        return this.computePaced(habit, rhythm, habitMoments, now, 0.2);
       case Attitude.PUSHING:
-        return this.computePaced(habit, rhythm, habitMoments, now);
+        return this.computePaced(habit, rhythm, habitMoments, now, 0);
       default:
         return "unstated";
     }
@@ -91,10 +95,17 @@ export class HabitHealthService {
     return daysSince <= threshold ? "blooming" : "wilting";
   }
 
+  private computePruning(rhythm: Rhythm | null): Health {
+    if (!rhythm) return "unstated";
+    return "dormant";
+  }
+
   /**
-   * RETURNING — like KEEPING but with an extended silence threshold to
-   * acknowledge re-engagement friction. Threshold = KEEPING threshold × 1.5.
-   * Without a rhythm, stays unstated (cannot derive a threshold).
+   * RETURNING — silence threshold × 1.5, plus a re-entry budding grace.
+   * After a lapse, the first few allocations show "budding" (on-ramp)
+   * before rhythm compliance is expected. This means a 6-month break
+   * gets a gentler re-entry than a 1-week gap — you need to show up
+   * consistently before the system expects rhythm.
    */
   private computeReturning(
     rhythm: Rhythm | null,
@@ -102,14 +113,30 @@ export class HabitHealthService {
     now: Date,
   ): Health {
     if (!rhythm) return "unstated";
-    const threshold =
-      rhythmSilenceThresholdDays(rhythm) * RETURNING_THRESHOLD_MULTIPLIER;
+    const baseThreshold = rhythmSilenceThresholdDays(rhythm);
+    const extendedThreshold =
+      baseThreshold * RETURNING_THRESHOLD_MULTIPLIER;
 
     const lastAllocation = this.latestAllocationDate(habitMoments, now);
     if (lastAllocation === null) return "wilting";
 
-    const daysSince = (now.getTime() - lastAllocation.getTime()) / MS_PER_DAY;
-    return daysSince <= threshold ? "blooming" : "wilting";
+    const daysSinceLast =
+      (now.getTime() - lastAllocation.getTime()) / MS_PER_DAY;
+    if (daysSinceLast > extendedThreshold) return "wilting";
+
+    const reEntryWindowDays =
+      extendedThreshold * RETURNING_REENTRY_PERIODS;
+    const reEntryWindowStart = new Date(
+      now.getTime() - reEntryWindowDays * MS_PER_DAY,
+    );
+    const recentCount = habitMoments.filter((m) => {
+      if (m.day === null) return false;
+      const d = fromISODate(m.day);
+      return d >= reEntryWindowStart && d <= now;
+    }).length;
+
+    if (recentCount < RETURNING_REENTRY_COUNT) return "budding";
+    return "blooming";
   }
 
   private computePaced(
@@ -117,6 +144,7 @@ export class HabitHealthService {
     rhythm: Rhythm | null,
     habitMoments: Moment[],
     now: Date,
+    toleranceFraction: number,
   ): Health {
     if (!rhythm) return "unstated";
 
@@ -139,7 +167,10 @@ export class HabitHealthService {
 
     const daysElapsed = Math.min(periodDays, daysSinceHabitUpdate);
     const expectedByNow = rhythm.count * (daysElapsed / periodDays);
-    const tolerance = Math.max(1, Math.floor(rhythm.count * 0.2));
+    const tolerance =
+      toleranceFraction > 0
+        ? Math.max(1, Math.floor(rhythm.count * toleranceFraction))
+        : 0;
 
     return countInPeriod + tolerance >= expectedByNow ? "blooming" : "wilting";
   }

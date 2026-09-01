@@ -214,7 +214,7 @@ export function intentionSwitch(pointer, moment, state) {
 
 /** Today's moments in board order — the candidates the agent proposes from when nothing
  * is active. @param {Record<string, any>|null|undefined} moments @param {number} now
- * @returns {{name: string, emoji: string}[]} */
+ * @returns {{name: string, emoji: string, areaId: string, phase: string}[]} */
 export function todaysMoments(moments, now) {
   const day = focusDayKey(now);
   return Object.values(moments ?? {})
@@ -222,7 +222,12 @@ export function todaysMoments(moments, now) {
       (m) => m && m.day === day && typeof m.name === "string" && m.name.trim(),
     )
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((m) => ({ name: m.name.trim(), emoji: m.emoji ?? "" }));
+    .map((m) => ({
+      name: m.name.trim(),
+      emoji: m.emoji ?? "",
+      areaId: m.areaId ?? "",
+      phase: m.phase ?? "",
+    }));
 }
 
 /** The session-start line — names the habit being tended, or says plainly that none is.
@@ -246,23 +251,74 @@ export function intentionLine(moment) {
   return `[keel] ◎ tending: ${moment.name}${where} — capture drift (idea/pain), hold the thread.`;
 }
 
+/** Resolve cwd to an area via standing fence declarations. Longest matching path wins.
+ * Reads session-scoped fences: scope.paths carries the directories, serves.areaId carries
+ * which area the fence belongs to. This is the path→area mapping — no separate area-map.json.
+ * @param {string} cwd @param {any[]} fences @param {{id: string, name: string}[]} areas
+ * @returns {{id: string, name: string}|null} */
+export function matchCwdArea(cwd, fences, areas) {
+  if (!cwd || !Array.isArray(fences)) return null;
+  let bestLen = 0;
+  let bestAreaId = "";
+  for (const rule of fences) {
+    const scope = rule?.scope;
+    if (!scope || scope.surface !== "session") continue;
+    const areaId = rule?.serves?.areaId;
+    if (!areaId) continue;
+    for (const p of scope.paths ?? []) {
+      if (typeof p !== "string") continue;
+      const prefix = p.endsWith("/") ? p : p + "/";
+      if ((cwd === p || cwd.startsWith(prefix)) && p.length > bestLen) {
+        bestLen = p.length;
+        bestAreaId = areaId;
+      }
+    }
+  }
+  if (!bestAreaId) return null;
+  return areas.find((a) => a.id === bestAreaId) ?? null;
+}
+
 /** The once-per-session nudge, fired while nothing is being tended: the agent infers what
  * the session is actually doing, proposes the habit closest to it, and sets it in zenborg
  * on the user's yes. keel can't set it itself — it's a reader, and the writer lives outside
  * the box it opens.
  *
- * The cwd is the strongest hint available about which area the work belongs to, and it is
- * the same seam a later gate would read. Naming it here makes the proposal specific now,
- * and makes the cwd→area mapping observable well before anything is gated on it.
- * @param {{name: string}[]} candidates @param {string} [cwd] @returns {string} */
-export function intentionNudge(candidates, cwd) {
+ * When areas and the current band are supplied, the nudge narrows the garden to the moments
+ * most likely to match this session — same area as the cwd, same phase as the clock. A
+ * single match is named as the recommended proposal. The user still confirms; the system
+ * never sets it unasked (Principle 9 — Downstream Allocation).
+ *
+ * @param {{name: string, areaId?: string, phase?: string}[]} candidates
+ * @param {string} [cwd]
+ * @param {{ areas?: {id: string, name: string}[], band?: string, fences?: any[] }} [ctx]
+ * @returns {string} */
+export function intentionNudge(candidates, cwd, ctx) {
   const garden = candidates.length
     ? `Today's garden: ${candidates.map((m) => `"${m.name}"`).join(", ")}.`
     : "Today's garden is bare.";
   const dir = String(cwd ?? "").trim();
   const where = dir ? ` Working in ${dir}.` : "";
+
+  const areas = ctx?.areas ?? [];
+  const band = ctx?.band ?? "";
+  const cwdArea = dir ? matchCwdArea(dir, ctx?.fences ?? [], areas) : null;
+
+  let suggestion = "";
+  if (cwdArea && candidates.length > 0) {
+    const inArea = candidates.filter((m) => m.areaId === cwdArea.id);
+    if (inArea.length > 0) {
+      const inPhase = band ? inArea.filter((m) => m.phase === band) : [];
+      const best = inPhase.length > 0 ? inPhase : inArea;
+      if (best.length === 1) {
+        suggestion = ` This session's cwd maps to ${cwdArea.name} — the best match is "${best[0].name}". Propose it.`;
+      } else {
+        suggestion = ` This session's cwd maps to ${cwdArea.name} — candidates: ${best.map((m) => `"${m.name}"`).join(", ")}. Propose the closest one.`;
+      }
+    }
+  }
+
   return (
-    `<keel: nothing is being tended — no habit is getting water this session. ${garden}${where}` +
+    `<keel: nothing is being tended — no habit is getting water this session. ${garden}${where}${suggestion}` +
     " Infer what this session is actually doing, propose the closest habit to tend (or a new" +
     " 1–3 word moment) in one short line, and on the user's yes set it active in zenborg via" +
     " the zenborg MCP. Never set it unasked; if you genuinely cannot infer it, say nothing.>"
