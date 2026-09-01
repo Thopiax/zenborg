@@ -78,45 +78,20 @@ function timeStr(ts: number): string {
 }
 
 export const AREA_MAP_PATH = "area-map.json";
-const LEGACY_AREA_MAP_PATH = path.join("keel", "area-map.json");
 
 export function loadAreaMap(vaultRoot: string): AreaMap {
   const mapFile = path.join(vaultRoot, AREA_MAP_PATH);
-  let map: AreaMap = { paths: [], hosts: [], apps: [] };
-  if (fs.existsSync(mapFile)) {
-    try {
-      const raw = JSON.parse(fs.readFileSync(mapFile, "utf8"));
-      map = {
-        paths: raw.paths ?? [],
-        hosts: raw.hosts ?? [],
-        apps: raw.apps ?? [],
-      };
-    } catch {
-      // malformed map — treat as empty
-    }
+  if (!fs.existsSync(mapFile)) return { paths: [], hosts: [], apps: [] };
+  try {
+    const raw = JSON.parse(fs.readFileSync(mapFile, "utf8"));
+    return {
+      paths: raw.paths ?? [],
+      hosts: raw.hosts ?? [],
+      apps: raw.apps ?? [],
+    };
+  } catch {
+    return { paths: [], hosts: [], apps: [] };
   }
-
-  // ponytail: fold legacy keel/area-map.json (Record<domain, areaId>) into hosts;
-  // delete the fold when the plugin's fence resolver reads the domain map
-  const legacyFile = path.join(vaultRoot, LEGACY_AREA_MAP_PATH);
-  if (fs.existsSync(legacyFile)) {
-    try {
-      const legacy = JSON.parse(
-        fs.readFileSync(legacyFile, "utf8"),
-      ) as Record<string, string>;
-      const existingHosts = new Set(map.hosts.map((h) => h.host));
-      const extra = Object.entries(legacy)
-        .filter(([host]) => !existingHosts.has(host))
-        .map(([host, areaId]) => ({ host, areaId }));
-      if (extra.length > 0) {
-        map = { ...map, hosts: [...map.hosts, ...extra] };
-      }
-    } catch {
-      // legacy map unreadable — skip
-    }
-  }
-
-  return map;
 }
 
 export function writeAreaMap(vaultRoot: string, map: AreaMap): void {
