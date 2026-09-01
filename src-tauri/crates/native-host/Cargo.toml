@@ -10,7 +10,6 @@ path = "src/main.rs"
 
 [dependencies]
 serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
 chrono = "0.4"
 dirs = "5.0"
 observer-core = { path = "../observer-core" }
