@@ -26,7 +26,7 @@ export type FadeEligibility = "auto" | "manual" | "never";
 export type RuleScope =
   | {
       readonly surface: "browser";
-      readonly domain: string;
+      readonly domain: string | readonly string[];
       readonly matches: readonly string[];
     }
   | {
