@@ -1,6 +1,7 @@
 mod daemon_install;
 mod login_item;
 mod mcp_install;
+mod native_host_install;
 mod observer;
 mod scheduler;
 mod vault;
@@ -162,6 +163,14 @@ pub fn run() {
                     }
                     if let Err(e) = daemon_install::install_once_per_version(&app_version) {
                         log::info!("[daemon] wiring skipped: {e}");
+                    }
+                    match crate::sidecar_path("zenborg-native-host") {
+                        Ok(path) => {
+                            if let Err(e) = native_host_install::install(&path) {
+                                log::info!("[native-host] manifest install skipped: {e}");
+                            }
+                        }
+                        Err(e) => log::info!("[native-host] sidecar not found: {e}"),
                     }
                 });
             }
