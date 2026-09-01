@@ -25,6 +25,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { logDir, readActivityLog } from "../mcp-server/activity-log.ts";
 import { resolveVault } from "../mcp-server/vault.ts";
 import type {
   ActivityLogPort,
@@ -32,9 +33,13 @@ import type {
   DiscrepancyRecord,
   DiscrepancyStorePort,
   GardenPort,
-  Planting,
   ShadowDeps,
 } from "../src/application/ports.ts";
+import {
+  boundariesIn as gardenBoundariesIn,
+  phaseAt as gardenPhaseAt,
+  plantingsAt as gardenPlantingsAt,
+} from "../src/domain/attention/GardenClock.ts";
 import { runShadowMode } from "../src/application/use-cases/deriveDiscrepancies.ts";
 import {
   type ActivityEvent,
@@ -126,7 +131,7 @@ function proposeAreaMap(): void {
     };
   });
 
-  console.log(JSON.stringify({ paths, hosts: [] }, null, 2));
+  console.log(JSON.stringify({ paths, hosts: [], apps: [] }, null, 2));
   console.error(
     `\n${paths.length} area(s) proposed. Review every prefix, drop "guessed",` +
       `\nand save to ${AREA_MAP_PATH}. Rows left as TODO resolve to nothing.`,
@@ -149,6 +154,7 @@ if (areaMapFile === null) {
 const areaMap: AreaMap = {
   paths: areaMapFile.paths ?? [],
   hosts: areaMapFile.hosts ?? [],
+  apps: (areaMapFile as { apps?: AreaMap["apps"] }).apps ?? [],
 };
 const unreviewed = areaMap.paths.filter(
   (p) =>
@@ -156,7 +162,7 @@ const unreviewed = areaMap.paths.filter(
     p.prefix.startsWith("TODO"),
 );
 
-const LOG_DIR = join(VAULT, "keel", "log");
+const LOG_DIR = logDir(VAULT);
 
 const localDate = (ts: number) => {
   const d = new Date(ts);
@@ -164,117 +170,26 @@ const localDate = (ts: number) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
-/** Every daily bucket overlapping the window, on every surface keel writes. */
 function readLog(from: number, to: number): readonly ActivityEvent[] {
-  if (!existsSync(LOG_DIR)) return [];
-  const events: ActivityEvent[] = [];
-  for (let ts = from; ts <= to + DAY; ts += DAY) {
-    for (const surface of ["agent", "browser"] as const) {
-      const file = join(LOG_DIR, `${localDate(ts)}.${surface}.jsonl`);
-      if (!existsSync(file)) continue;
-      for (const line of readFileSync(file, "utf8").split("\n")) {
-        if (line.trim() === "") continue;
-        try {
-          const parsed = JSON.parse(line) as ActivityEvent;
-          // Older lines predate the surface field; the filename still carries it.
-          events.push(parsed.surface ? parsed : { ...parsed, surface });
-        } catch {
-          // A torn line is one lost observation, not a reason to abandon the run.
-        }
-      }
-    }
-  }
-  return events.filter((e) => e.ts >= from && e.ts < to);
+  return readActivityLog(LOG_DIR, from, to, ["agent", "browser"]);
 }
 
-interface VaultMoment {
-  readonly id: string;
-  readonly areaId: string;
-  readonly day: string | null;
-  readonly phase: string | null;
-  /** "HH:MM", 24h. Absent on ambient moments. */
-  readonly startTime?: string;
-  readonly durationMin?: number;
-}
-interface VaultPhaseConfig {
-  readonly phase: string;
-  readonly startHour: number;
-  readonly endHour: number;
-}
+import type { MomentRef, PhaseConfigRef } from "../src/domain/attention/GardenClock.ts";
 
 const moments = Object.values(
-  readJson<Record<string, VaultMoment>>(join(VAULT, "moments.json"), {}),
+  readJson<Record<string, MomentRef>>(join(VAULT, "moments.json"), {}),
 );
 const phaseConfigs = Object.values(
-  readJson<Record<string, VaultPhaseConfig>>(
+  readJson<Record<string, PhaseConfigRef>>(
     join(VAULT, "phaseConfigs.json"),
     {},
   ),
 );
 
-function phaseAt(instant: number): string | null {
-  const hour = new Date(instant).getHours();
-  for (const config of phaseConfigs) {
-    const { startHour, endHour } = config;
-    const inBand =
-      endHour <= startHour
-        ? hour >= startHour || hour < endHour
-        : hour >= startHour && hour < endHour;
-    if (inBand) return config.phase;
-  }
-  return null;
-}
-
-/** What the (day, phase) cell containing `instant` held. A set: a cell plants a lane. */
-function plantingsAt(instant: number): Planting {
-  const day = localDate(instant);
-  const phase = phaseAt(instant);
-  const planted = moments.filter((m) => m.day === day && m.phase === phase);
-  return {
-    momentIds: planted.map((m) => m.id),
-    areaIds: [...new Set(planted.map((m) => m.areaId))],
-  };
-}
-
-/**
- * Where the plan says one stretch ended and another began.
- *
- * Phase-band edges for every day in the window, plus the start and end of any
- * moment planted with a clock time. A therapy session in the afternoon ends the
- * morning's work whether or not the log went quiet across it, and nothing in
- * the log can know that. The plan can.
- */
-function boundariesIn(from: number, to: number): readonly number[] {
-  const out = new Set<number>();
-
-  const atHour = (dayStart: Date, hour: number) => {
-    const d = new Date(dayStart);
-    d.setHours(hour, 0, 0, 0);
-    return d.getTime();
-  };
-
-  for (let ts = from; ts <= to + DAY; ts += DAY) {
-    const dayStart = new Date(ts);
-    for (const config of phaseConfigs) {
-      out.add(atHour(dayStart, config.startHour % 24));
-      out.add(atHour(dayStart, config.endHour % 24));
-    }
-  }
-
-  for (const moment of moments) {
-    if (moment.day === null || moment.startTime === undefined) continue;
-    const [h, m] = moment.startTime.split(":").map(Number);
-    if (!Number.isFinite(h) || !Number.isFinite(m)) continue;
-    const [y, mo, d] = moment.day.split("-").map(Number);
-    const start = new Date(y, mo - 1, d, h, m, 0, 0).getTime();
-    out.add(start);
-    if (moment.durationMin !== undefined && moment.durationMin > 0) {
-      out.add(start + moment.durationMin * MINUTE);
-    }
-  }
-
-  return [...out].filter((b) => b >= from && b < to).sort((a, b) => a - b);
-}
+const plantingsAt = (instant: number) =>
+  gardenPlantingsAt(instant, moments, phaseConfigs);
+const boundariesIn = (from: number, to: number) =>
+  gardenBoundariesIn(from, to, moments, phaseConfigs);
 
 const now = Date.now();
 const window = { from: now - DAYS * DAY, to: now };
