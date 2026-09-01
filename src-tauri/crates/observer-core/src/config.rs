@@ -10,11 +10,12 @@ use std::time::Duration;
 use serde::Serialize;
 use serde_json::Value;
 
-/// Where the observer writes while the old tray still owns `keel/log`.
-pub const PARITY_LOG_DIR: &str = "log-zenborg";
+/// Default log directory name under the vault root.
+pub const LOG_DIR: &str = "log";
 
-/// The real collection. Naming it in the config is the act of taking over.
-pub const LIVE_LOG_DIR: &str = "log";
+/// Legacy aliases — kept so existing tests and callers compile.
+pub const PARITY_LOG_DIR: &str = LOG_DIR;
+pub const LIVE_LOG_DIR: &str = LOG_DIR;
 
 /// What the observer was told to do.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,8 +30,8 @@ pub struct ObserverConfig {
 impl Default for ObserverConfig {
     fn default() -> Self {
         ObserverConfig {
-            enabled: false,
-            log_dir_name: PARITY_LOG_DIR.to_string(),
+            enabled: true,
+            log_dir_name: LOG_DIR.to_string(),
             start_hidden: false,
         }
     }
@@ -53,13 +54,13 @@ pub fn parse_observer_config(config_json: &str) -> ObserverConfig {
     let enabled = node
         .get("enabled")
         .and_then(Value::as_bool)
-        .unwrap_or(false);
+        .unwrap_or(true);
 
     let log_dir_name = node
         .get("logDirName")
         .and_then(Value::as_str)
         .filter(|name| !name.is_empty() && !name.contains('/') && *name != ".." && *name != ".")
-        .unwrap_or(PARITY_LOG_DIR)
+        .unwrap_or(LOG_DIR)
         .to_string();
 
     let start_hidden = node
@@ -255,32 +256,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn an_absent_or_broken_config_leaves_the_observer_off() {
+    fn an_absent_or_broken_config_enables_the_observer_with_defaults() {
         for input in ["", "{ not json", "{}", r#"{"desktop":{}}"#] {
             let config = parse_observer_config(input);
-            assert!(
-                !config.enabled,
-                "input {input:?} must not enable the writer"
-            );
-            assert_eq!(config.log_dir_name, PARITY_LOG_DIR);
+            assert!(config.enabled, "input {input:?} must enable the writer by default");
+            assert_eq!(config.log_dir_name, LOG_DIR);
         }
     }
 
     #[test]
-    fn enabling_alone_writes_to_the_parity_directory() {
-        let config =
-            parse_observer_config(r#"{"desktop":{"backgroundObserver":{"enabled":true}}}"#);
-        assert!(config.enabled);
-        assert_eq!(config.log_dir_name, PARITY_LOG_DIR);
+    fn explicit_disable_turns_the_observer_off() {
+        let config = parse_observer_config(
+            r#"{"desktop":{"backgroundObserver":{"enabled":false}}}"#,
+        );
+        assert!(!config.enabled);
     }
 
     #[test]
-    fn taking_over_the_real_collection_has_to_be_said_out_loud() {
-        let config = parse_observer_config(
-            r#"{"desktop":{"backgroundObserver":{"enabled":true,"logDirName":"log"}}}"#,
-        );
+    fn enabling_alone_writes_to_the_default_log_directory() {
+        let config =
+            parse_observer_config(r#"{"desktop":{"backgroundObserver":{"enabled":true}}}"#);
         assert!(config.enabled);
-        assert_eq!(config.log_dir_name, LIVE_LOG_DIR);
+        assert_eq!(config.log_dir_name, LOG_DIR);
+    }
+
+    #[test]
+    fn a_custom_dir_name_is_honoured() {
+        let config = parse_observer_config(
+            r#"{"desktop":{"backgroundObserver":{"enabled":true,"logDirName":"custom"}}}"#,
+        );
+        assert_eq!(config.log_dir_name, "custom");
     }
 
     #[test]
@@ -289,7 +294,7 @@ mod tests {
             let json = format!(
                 r#"{{"desktop":{{"backgroundObserver":{{"enabled":true,"logDirName":"{name}"}}}}}}"#
             );
-            assert_eq!(parse_observer_config(&json).log_dir_name, PARITY_LOG_DIR);
+            assert_eq!(parse_observer_config(&json).log_dir_name, LOG_DIR);
         }
     }
 
