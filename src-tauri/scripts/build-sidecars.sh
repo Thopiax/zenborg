@@ -71,6 +71,21 @@ if [[ -d "$CAL_DIR/Sources" ]]; then
   fi
 fi
 
+# ── zenborg-native-host (Rust, Chrome extension relay) ─────────────
+NH_DIR="$WORKSPACE_ROOT/src-tauri/crates/native-host"
+if [[ -d "$NH_DIR/src" ]]; then
+  echo "[sidecars] compiling zenborg-native-host (cargo)"
+  cargo build --release --manifest-path "$NH_DIR/Cargo.toml"
+  NH_BIN="$WORKSPACE_ROOT/src-tauri/target/release/zenborg-native-host"
+  if [[ -f "$NH_BIN" ]]; then
+    cp "$NH_BIN" "$DEST/zenborg-native-host-$TARGET"
+    chmod +x "$DEST/zenborg-native-host-$TARGET"
+  else
+    echo "[sidecars] zenborg-native-host binary not found at $NH_BIN" >&2
+    exit 1
+  fi
+fi
+
 # ── zenborg-daemon (Rust, observer + scheduler) ─────────────────────
 DAEMON_DIR="$WORKSPACE_ROOT/src-tauri/crates/zenborg-daemon"
 if [[ -d "$DAEMON_DIR/src" ]]; then
