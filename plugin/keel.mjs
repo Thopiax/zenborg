@@ -54,7 +54,7 @@ import {
   loadSnapshot,
   saveSnapshot,
   writeObserveList,
-  loadAreaMap,
+  loadRuleSpecs,
   LEDGER_PATH,
   SNAPSHOT_PATH,
 } from "./store.mjs";
@@ -301,7 +301,7 @@ async function handleUserSubmit(now) {
   if (unset && state.inferNudgedTs !== state.sessionStartTs) {
     state.inferNudgedTs = state.sessionStartTs;
     const band = bandNow(loadPhaseConfigs(), now);
-    nudge = intentionNudge(todaysMoments(moments, now), input?.cwd, { areas, band, areaMap: loadAreaMap() });
+    nudge = intentionNudge(todaysMoments(moments, now), input?.cwd, { areas, band, fences: loadRuleSpecs() });
   }
   saveState(state);
   // The focus cue rides the same turn-boundary channel. Empty unless `keel focus` is on.
