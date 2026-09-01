@@ -26,6 +26,8 @@ const BUDDING_PERIOD_COUNT = 3;
  * friction. Mirrors src/domain/services/HabitHealthService.ts.
  */
 const RETURNING_THRESHOLD_MULTIPLIER = 1.5;
+const RETURNING_REENTRY_PERIODS = 3;
+const RETURNING_REENTRY_COUNT = 3;
 
 /**
  * Parse a YYYY-MM-DD vault date string as local midnight.
@@ -73,15 +75,29 @@ export function computeHealth(
 
   if (habit.attitude === "RETURNING") {
     if (!rhythm) return "unstated";
-    const threshold =
-      rhythmSilenceThresholdDays(rhythm) * RETURNING_THRESHOLD_MULTIPLIER;
+    const baseThreshold = rhythmSilenceThresholdDays(rhythm);
+    const extendedThreshold =
+      baseThreshold * RETURNING_THRESHOLD_MULTIPLIER;
     const last = latestAllocationDate(habitMoments);
     if (last === null) return "wilting";
     const daysSince = (now.getTime() - last.getTime()) / MS_PER_DAY;
-    return daysSince <= threshold ? "blooming" : "wilting";
+    if (daysSince > extendedThreshold) return "wilting";
+
+    const reEntryWindowDays =
+      extendedThreshold * RETURNING_REENTRY_PERIODS;
+    const reEntryWindowStart = new Date(
+      now.getTime() - reEntryWindowDays * MS_PER_DAY,
+    );
+    const recentCount = habitMoments.filter((m) => {
+      if (m.day === null) return false;
+      return parseVaultDay(m.day).getTime() >= reEntryWindowStart.getTime()
+        && parseVaultDay(m.day).getTime() <= now.getTime();
+    }).length;
+    if (recentCount < RETURNING_REENTRY_COUNT) return "budding";
+    return "blooming";
   }
 
-  if (habit.attitude === "KEEPING" || habit.attitude === "PRUNING") {
+  if (habit.attitude === "KEEPING") {
     if (!rhythm) return "unstated";
     const threshold = rhythmSilenceThresholdDays(rhythm);
     const last = latestAllocationDate(habitMoments);
@@ -90,7 +106,12 @@ export function computeHealth(
     return daysSince <= threshold ? "blooming" : "wilting";
   }
 
-  if (habit.attitude === "BUILDING" || habit.attitude === "PUSHING") {
+  if (habit.attitude === "PRUNING") {
+    if (!rhythm) return "unstated";
+    return "dormant";
+  }
+
+  if (habit.attitude === "BUILDING") {
     if (!rhythm) return "unstated";
     const periodDays = PERIOD_DAYS[rhythm.period];
     const buddingWindow = periodDays * BUDDING_PERIOD_COUNT;
@@ -108,6 +129,25 @@ export function computeHealth(
     const expected = rhythm.count * (daysElapsed / periodDays);
     const tolerance = Math.max(1, Math.floor(rhythm.count * 0.2));
     return countInPeriod + tolerance >= expected ? "blooming" : "wilting";
+  }
+
+  if (habit.attitude === "PUSHING") {
+    if (!rhythm) return "unstated";
+    const periodDays = PERIOD_DAYS[rhythm.period];
+    const buddingWindow = periodDays * BUDDING_PERIOD_COUNT;
+    const habitUpdated = new Date(habit.updatedAt);
+    const daysSinceUpdate =
+      (now.getTime() - habitUpdated.getTime()) / MS_PER_DAY;
+    if (daysSinceUpdate < buddingWindow) return "budding";
+
+    const periodStart = new Date(now.getTime() - periodDays * MS_PER_DAY);
+    const countInPeriod = habitMoments.filter((m) => {
+      if (m.day === null) return false;
+      return parseVaultDay(m.day).getTime() >= periodStart.getTime();
+    }).length;
+    const daysElapsed = Math.min(periodDays, daysSinceUpdate);
+    const expected = rhythm.count * (daysElapsed / periodDays);
+    return countInPeriod >= expected ? "blooming" : "wilting";
   }
 
   return "unstated";
