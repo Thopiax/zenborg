@@ -20,6 +20,7 @@ import {
   todaysMoments,
   intentionLine,
   intentionNudge,
+  matchCwdArea,
   focusDayKey,
   setFocus,
   focusLine,
@@ -289,18 +290,98 @@ test("intentionNudge: names the garden, the cwd, and never sets anything itself"
   assert.doesNotMatch(intentionNudge([], "   "), /Working in/);
 });
 
-test("todaysMoments: today's board only, in order", () => {
+test("matchCwdArea: resolves cwd to area by path hint", () => {
+  const areas = [
+    { id: "a1", name: "equanimi.tech" },
+    { id: "a2", name: "Themia" },
+    { id: "a3", name: "health" },
+  ];
+  const eq = matchCwdArea("/Users/rafa/Developer/equanimitech/zenborg", areas);
+  assert.equal(eq?.id, "a1");
+  const th = matchCwdArea("/Users/rafa/Developer/themia/minerva", areas);
+  assert.equal(th?.id, "a2");
+  assert.equal(matchCwdArea("/Users/rafa/Documents", areas), null);
+  assert.equal(matchCwdArea("", areas), null);
+  assert.equal(matchCwdArea(undefined, areas), null);
+});
+
+test("intentionNudge: single area+phase match yields a direct proposal", () => {
+  const areas = [
+    { id: "a1", name: "equanimi.tech" },
+    { id: "a2", name: "Themia" },
+  ];
+  const candidates = [
+    { name: "craft zenborg", areaId: "a1", phase: "AFTERNOON" },
+    { name: "staging release", areaId: "a2", phase: "AFTERNOON" },
+    { name: "gym", areaId: "a3", phase: "EVENING" },
+  ];
+  const nudge = intentionNudge(
+    candidates,
+    "/Users/rafa/Developer/equanimitech/zenborg",
+    { areas, band: "AFTERNOON" },
+  );
+  assert.match(nudge, /best match is "craft zenborg"/);
+  assert.match(nudge, /Propose it/);
+  assert.match(nudge, /Never set it unasked/);
+});
+
+test("intentionNudge: multiple area matches lists candidates", () => {
+  const areas = [{ id: "a1", name: "equanimi.tech" }];
+  const candidates = [
+    { name: "craft zenborg", areaId: "a1", phase: "AFTERNOON" },
+    { name: "write docs", areaId: "a1", phase: "AFTERNOON" },
+  ];
+  const nudge = intentionNudge(
+    candidates,
+    "/Users/rafa/Developer/equanimitech/zenborg",
+    { areas, band: "AFTERNOON" },
+  );
+  assert.match(nudge, /candidates: "craft zenborg", "write docs"/);
+  assert.match(nudge, /Propose the closest one/);
+});
+
+test("intentionNudge: no area match falls through to generic", () => {
+  const areas = [{ id: "a1", name: "equanimi.tech" }];
+  const candidates = [
+    { name: "craft zenborg", areaId: "a1", phase: "AFTERNOON" },
+  ];
+  const nudge = intentionNudge(
+    candidates,
+    "/Users/rafa/Documents/random",
+    { areas, band: "AFTERNOON" },
+  );
+  assert.doesNotMatch(nudge, /best match/);
+  assert.doesNotMatch(nudge, /candidates:/);
+  assert.match(nudge, /Today's garden: "craft zenborg"/);
+});
+
+test("intentionNudge: backward compatible without ctx", () => {
+  const nudge = intentionNudge(
+    [{ name: "gym" }],
+    "/Users/rafa/Developer/themia",
+  );
+  assert.match(nudge, /Today's garden: "gym"/);
+  assert.match(nudge, /Working in/);
+  assert.match(nudge, /Never set it unasked/);
+});
+
+test("todaysMoments: today's board only, in order, with areaId and phase", () => {
   const noon = Date.parse("2026-06-19T12:00:00");
   const moments = {
-    b: { name: "gym", day: "2026-06-19", order: 2 },
-    a: { name: "staging release", day: "2026-06-19", order: 1 },
+    b: { name: "gym", day: "2026-06-19", order: 2, areaId: "a3", phase: "EVENING" },
+    a: { name: "staging release", day: "2026-06-19", order: 1, areaId: "a2", phase: "AFTERNOON" },
     old: { name: "stale", day: "2026-06-18", order: 0 },
     junk: { name: "   ", day: "2026-06-19", order: 0 },
   };
+  const result = todaysMoments(moments, noon);
   assert.deepEqual(
-    todaysMoments(moments, noon).map((m) => m.name),
+    result.map((m) => m.name),
     ["staging release", "gym"],
   );
+  assert.equal(result[0].areaId, "a2");
+  assert.equal(result[0].phase, "AFTERNOON");
+  assert.equal(result[1].areaId, "a3");
+  assert.equal(result[1].phase, "EVENING");
   assert.deepEqual(todaysMoments(null, noon), []);
   // Pre-04:00 still belongs to the prior waking-day, so that day's board is what shows.
   assert.deepEqual(
