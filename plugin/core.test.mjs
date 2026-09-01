@@ -23,6 +23,7 @@ import {
   focusDayKey,
   setFocus,
   focusLine,
+  gapPractices,
   seedAllowFromRefs,
   momentFrictionAt,
   intentionSwitch,
@@ -337,11 +338,37 @@ test("focus: a marker, not a lock — the flag flips and the breath line follows
   let s = setFocus(emptyState(), true, 1000);
   assert.equal(s.focus, true);
   assert.equal(s.focusTs, 1000);
-  assert.match(focusLine(s), /breathe the AI gap/);
+  assert.match(focusLine(s, []), /breathe the AI gap/);
   s = setFocus(s, false, 2000);
   assert.equal(s.focus, false);
   assert.equal(s.focusTs, 0);
-  assert.equal(focusLine(s), "");
+  assert.equal(focusLine(s, []), "");
+});
+
+test("focusLine names a gap practice when the roster is non-empty", () => {
+  const s = setFocus(emptyState(), true, 1000);
+  const practices = [{ name: "breathwork", fitsMs: 120_000 }];
+  const line = focusLine(s, practices);
+  assert.match(line, /breathwork/);
+  assert.doesNotMatch(line, /breathe the AI gap/);
+});
+
+test("gapPractices filters by gap tag and sorts smallest first", () => {
+  const habits = [
+    { id: "1", name: "breathwork", tags: ["gap", "gap-2m"], isArchived: false },
+    { id: "2", name: "qi gong", tags: ["gap", "gap-5m"], isArchived: false },
+    { id: "3", name: "walk", tags: ["gap"], isArchived: false },
+    { id: "4", name: "journaling", tags: ["reflection"], isArchived: false },
+    { id: "5", name: "archived", tags: ["gap"], isArchived: true },
+  ];
+  const result = gapPractices(habits);
+  assert.equal(result.length, 3);
+  assert.equal(result[0].name, "breathwork");
+  assert.equal(result[0].fitsMs, 120_000);
+  assert.equal(result[1].name, "qi gong");
+  assert.equal(result[1].fitsMs, 300_000);
+  assert.equal(result[2].name, "walk");
+  assert.equal(result[2].fitsMs, undefined);
 });
 
 test("focus carries no session ownership — nothing to claim, nothing held", () => {

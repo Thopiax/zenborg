@@ -200,6 +200,7 @@ export const AREAS_PATH = join(KAIROS_DIR, "areas.json");
 export const ACTIVE_MOMENT_PATH = join(KAIROS_DIR, "activeMoment.json");
 export const MOMENTS_PATH = join(KAIROS_DIR, "moments.json");
 export const PHASE_CONFIGS_PATH = join(KAIROS_DIR, "phaseConfigs.json");
+export const HABITS_PATH = join(KAIROS_DIR, "habits.json");
 export const CYCLES_PATH = join(KAIROS_DIR, "cycles.json");
 export const AREA_MAP_PATH = join(KEEL_DIR, "area-map.json");
 
@@ -229,6 +230,29 @@ export function loadMoments() {
   } catch {
     return null;
   }
+}
+
+/** Habits from the kernel, keyed by id. Only the fields gap-practice needs are projected.
+ * Fails soft to `[]`.
+ * @returns {{id: string, name: string, tags: string[], isArchived: boolean, placeIds: string[]}[]} */
+export function loadHabits() {
+  /** @type {any} */
+  let raw;
+  try {
+    raw = JSON.parse(readFileSync(HABITS_PATH, "utf8"));
+  } catch {
+    return [];
+  }
+  const list = Array.isArray(raw) ? raw : Object.values(raw ?? {});
+  return list
+    .filter((h) => h && h.id && h.name && h.isArchived !== true)
+    .map((h) => ({
+      id: String(h.id),
+      name: String(h.name),
+      tags: Array.isArray(h.tags) ? h.tags.map(String) : [],
+      isArchived: false,
+      placeIds: Array.isArray(h.placeIds) ? h.placeIds.map(String) : [],
+    }));
 }
 
 /** Phase bands from the kernel — when MORNING/AFTERNOON/EVENING/NIGHT start and end.
