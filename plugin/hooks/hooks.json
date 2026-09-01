@@ -5,8 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook session-start",
-            "timeout": 20
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs session-start",
+            "timeout": 10
           }
         ]
       }
@@ -16,8 +16,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook user-submit",
-            "timeout": 20
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs user-submit",
+            "timeout": 10
           }
         ]
       },
@@ -36,8 +36,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook pre-tool",
-            "timeout": 30
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs pre-tool",
+            "timeout": 10
           }
         ]
       },
@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook post-tool",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs post-tool",
             "timeout": 10
           }
         ]
@@ -67,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook post-tool-failure",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs post-tool-failure",
             "timeout": 10
           }
         ]
@@ -78,7 +78,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook stop",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs stop",
             "timeout": 10
           }
         ]
@@ -89,7 +89,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook subagent-stop",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs subagent-stop",
             "timeout": 10
           }
         ]
@@ -100,8 +100,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook session-end",
-            "timeout": 20
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs session-end",
+            "timeout": 10
           }
         ]
       }
@@ -111,7 +111,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook notification",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs notification",
             "timeout": 10
           }
         ]
@@ -122,7 +122,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook pre-compact",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs pre-compact",
             "timeout": 10
           }
         ]
@@ -133,7 +133,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook permission-request",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs permission-request",
             "timeout": 10
           }
         ]
@@ -144,7 +144,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook config-change",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs config-change",
             "timeout": 10
           }
         ]
@@ -155,7 +155,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/keel.mjs hook file-changed",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/observe.mjs file-changed",
             "timeout": 10
           }
         ]
