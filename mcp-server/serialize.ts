@@ -109,6 +109,7 @@ export function concisePlace(p: Place): Record<string, unknown> {
   };
   if (p.parentKey) base.parentKey = p.parentKey;
   if (p.tags && p.tags.length > 0) base.tags = p.tags;
+  if (p.aliases && p.aliases.length > 0) base.aliases = p.aliases;
   if (p.address) base.address = p.address;
   if (p.coordinates) base.coordinates = p.coordinates;
   if (p.emoji) base.emoji = p.emoji;

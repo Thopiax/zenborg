@@ -29,7 +29,7 @@ import { PlacesMapView } from "@/components/PlacesMapView";
 import { PlacesTreeView } from "@/components/PlacesTreeView";
 import { PlantToolbar } from "@/components/PlantToolbar";
 import { slugify } from "@/domain/entities/Moment";
-import { createPlace } from "@/domain/entities/Place";
+import { createPlace, normalizeAliases } from "@/domain/entities/Place";
 import {
   activeAreas$,
   activeHabits$,
@@ -197,7 +197,8 @@ const PlantPage = observer(() => {
 
               if (formState.mode === "edit" && formState.editingPlaceId) {
                 const existing = places$[formState.editingPlaceId].peek();
-                places$[formState.editingPlaceId].set({
+                const normalized = normalizeAliases(props.aliases, name);
+                const updated = {
                   ...existing,
                   name,
                   key,
@@ -208,7 +209,10 @@ const PlantPage = observer(() => {
                   url: props.url,
                   tags: props.tags,
                   updatedAt: new Date().toISOString(),
-                });
+                };
+                if (normalized.length > 0) updated.aliases = normalized;
+                else delete updated.aliases;
+                places$[formState.editingPlaceId].set(updated);
               } else {
                 const place = createPlace({
                   name,
@@ -219,6 +223,7 @@ const PlantPage = observer(() => {
                   address: props.address,
                   url: props.url,
                   tags: props.tags,
+                  aliases: props.aliases,
                 });
                 places$[place.id].set(place);
               }
