@@ -309,6 +309,7 @@ export interface Place {
   key: string;
   parentKey: string | null;
   tags: string[];
+  aliases?: string[];
   address: string | null;
   coordinates: Coordinates | null;
   emoji: string | null;
