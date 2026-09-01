@@ -146,6 +146,11 @@ import {
   VALID_BOUNDARIES,
   validateRoutine,
 } from "./routines.js";
+import {
+  getAreaMap,
+  getAttention,
+  mapArea,
+} from "./attention.js";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -3972,6 +3977,82 @@ defineTool(server, {
   annotations: { readOnlyHint: true },
   handler: async () => {
     return ok(await fenceReport(fenceDeps));
+  },
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// ATTENTION — the plan ↔ trace bridge
+// ────────────────────────────────────────────────────────────────────────
+
+const DaySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+defineTool(server, {
+  name: "get_attention",
+  description:
+    "Where did attention go? Dwell time by area per surface (desktop/agent/browser), " +
+    "unmapped locators (top 10), and agent sessions. Minutes, never ms. " +
+    "Coverage on every response — an empty surface means unrecorded, not idle.",
+  schema: {
+    day: DaySchema.optional().describe(
+      "One waking day (04:00 roll). Omit for today.",
+    ),
+    from: DaySchema.optional().describe(
+      "Inclusive start day. Use with `to` for a range.",
+    ),
+    to: DaySchema.optional().describe(
+      "Inclusive end day.",
+    ),
+    surfaces: z
+      .array(z.enum(["desktop", "agent", "browser"]))
+      .optional()
+      .describe("Surfaces to query. Default: all three."),
+    pathPrefix: z
+      .string()
+      .optional()
+      .describe(
+        "Agent surface only: restrict to cwds under this path (~ expands).",
+      ),
+  },
+  annotations: { readOnlyHint: true },
+  handler: async (params) => {
+    const areas = readCollection(VAULT_ROOT, "areas");
+    return ok(getAttention(VAULT_ROOT, areas, params));
+  },
+});
+
+defineTool(server, {
+  name: "get_area_map",
+  description:
+    "Show the area map: path, host, and app rules that resolve trace events to areas. " +
+    "Flags rules whose areaId no longer exists.",
+  schema: {},
+  annotations: { readOnlyHint: true },
+  handler: async () => {
+    const areas = readCollection(VAULT_ROOT, "areas");
+    return ok(getAreaMap(VAULT_ROOT, areas));
+  },
+});
+
+defineTool(server, {
+  name: "map_area",
+  description:
+    "Add, update, or remove a rule in the area map. " +
+    '"Slack → Themia" becomes kind=app, key=Slack, area=Themia. ' +
+    "Pass area=null to remove a rule.",
+  schema: {
+    kind: z.enum(["path", "host", "app"]),
+    key: z.string().min(1).describe("The path prefix, host, or app name."),
+    area: z
+      .string()
+      .nullable()
+      .describe("Area name or id. null removes the rule."),
+  },
+  annotations: { readOnlyHint: false },
+  handler: async (params) => {
+    const areas = readCollection(VAULT_ROOT, "areas");
+    const result = mapArea(VAULT_ROOT, areas, params);
+    if (!result.ok) return err(result.message);
+    return ok(result);
   },
 });
 
