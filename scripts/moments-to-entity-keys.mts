@@ -51,12 +51,14 @@ import {
   fsyncSync,
   openSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   writeSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 // ---------------------------------------------------------------- shapes
@@ -507,4 +509,6 @@ const main = (): number => {
   return 0;
 };
 
-process.exitCode = main();
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+  process.exitCode = main();
+}
