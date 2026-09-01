@@ -7,7 +7,7 @@ import {
   parseHabitMap,
   resolveActivities,
   resolveActivity,
-} from "@/domain/garmin/GarminHabitMap";
+} from "@/infrastructure/integrations/garmin/GarminHabitMap";
 
 // Synthetic fixtures. Real habit ids are per-vault and never live in this repo.
 const VIPASSANA = "11111111-1111-4111-8111-111111111111";

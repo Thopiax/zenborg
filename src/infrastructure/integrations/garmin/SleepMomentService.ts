@@ -12,8 +12,8 @@
  * Pure. No filesystem, no network, no clock.
  */
 
-import type { IntegrationBinding } from "../integration/IntegrationBinding.ts";
-import { Phase } from "../value-objects/Phase.ts";
+import type { IntegrationBinding } from "../../../domain/integration/IntegrationBinding.ts";
+import { Phase } from "../../../domain/value-objects/Phase.ts";
 import { localHourOf, type SleepNight } from "./SleepPhaseService.ts";
 
 export interface SleepMomentFields {

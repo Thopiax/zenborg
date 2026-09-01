@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { IntegrationBinding } from "../../domain/integration/IntegrationBinding.ts";
-import type { SleepNight } from "../../domain/garmin/SleepPhaseService.ts";
+import type { SleepNight } from "../../infrastructure/integrations/garmin/SleepPhaseService.ts";
 import { plantSleep } from "../use-cases/plantSleep.ts";
 
 const binding: IntegrationBinding = {

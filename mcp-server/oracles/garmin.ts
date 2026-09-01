@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { OracleAdapter, OracleResponse } from "../../src/domain/attention/Oracle.ts";
-import { nightsOf, workoutsOf } from "../../src/domain/garmin/BodyLog.ts";
-import { parseHabitMap } from "../../src/domain/garmin/GarminHabitMap.ts";
+import { nightsOf, workoutsOf } from "../../src/infrastructure/integrations/garmin/BodyLog.ts";
+import { parseHabitMap } from "../../src/infrastructure/integrations/garmin/GarminHabitMap.ts";
 import { logDir, readActivityLog } from "../activity-log.ts";
 import type { Habit } from "../vault.ts";
 

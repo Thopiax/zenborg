@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ActivityEvent } from "../../attention/ActivityEvent";
+import type { ActivityEvent } from "../../../../domain/attention/ActivityEvent";
 import type { GarminHabitMap } from "../GarminHabitMap";
 import { nightsOf, workoutsOf } from "../BodyLog";
 

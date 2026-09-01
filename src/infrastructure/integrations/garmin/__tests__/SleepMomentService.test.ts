@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { IntegrationBinding } from "../../integration/IntegrationBinding.ts";
+import type { IntegrationBinding } from "../../../../domain/integration/IntegrationBinding.ts";
 import {
   isSleepAlreadyPlanted,
   sleepToMomentFields,

@@ -11,8 +11,8 @@ import {
   isSleepAlreadyPlanted,
   sleepToMomentFields,
   type SleepMomentFields,
-} from "../../domain/garmin/SleepMomentService.ts";
-import type { SleepNight } from "../../domain/garmin/SleepPhaseService.ts";
+} from "../../infrastructure/integrations/garmin/SleepMomentService.ts";
+import type { SleepNight } from "../../infrastructure/integrations/garmin/SleepPhaseService.ts";
 
 export interface PlantSleepInput {
   readonly nights: readonly SleepNight[];

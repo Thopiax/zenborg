@@ -2,7 +2,7 @@
  * Derived views over garmin JSONL events — sleep nights and workouts.
  * Pure: no I/O, no persistence. Computed on request, thrown away after.
  */
-import type { ActivityEvent } from "../attention/ActivityEvent.ts";
+import type { ActivityEvent } from "../../../domain/attention/ActivityEvent.ts";
 import type {
   GarminHabitMap,
   HabitMapping,

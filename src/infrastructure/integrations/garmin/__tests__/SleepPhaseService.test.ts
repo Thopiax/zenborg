@@ -11,7 +11,7 @@ import {
   shiftBands,
   summarizeNights,
   wrap24,
-} from "@/domain/garmin/SleepPhaseService";
+} from "@/infrastructure/integrations/garmin/SleepPhaseService";
 
 const TZ = "Europe/Paris";
 
