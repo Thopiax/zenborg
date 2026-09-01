@@ -19,7 +19,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 const APPLY = process.argv.includes("--apply");
-const VAULT = process.env.KAIROS_HOME ?? path.join(os.homedir(), ".kairos");
+const VAULT = process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? path.join(os.homedir(), ".zenborg");
 const csvArg = process.argv.indexOf("--csv");
 const CSV_PATH =
   csvArg !== -1

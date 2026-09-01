@@ -9,7 +9,7 @@ import * as path from "node:path";
  * Zenborg vault (JSON collections at `{vaultRoot}/{collection}.json`).
  * See TOOLS.md for the scoped tool inventory.
  *
- * Vault path resolution: --vault CLI > $KAIROS_HOME > $ZENBORG_VAULT_DIR > ~/.kairos.
+ * Vault path resolution: --vault CLI > $ZENBORG_HOME > $KAIROS_HOME > ~/.zenborg.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";

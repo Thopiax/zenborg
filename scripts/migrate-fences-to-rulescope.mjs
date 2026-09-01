@@ -2,7 +2,7 @@
 /**
  * Migrate legacy fences from flat domains/matches/areas to RuleScope.
  *
- * Reads $KAIROS_HOME/fences.json (default ~/.kairos/fences.json), converts
+ * Reads $ZENBORG_HOME/fences.json (default ~/.zenborg/fences.json), converts
  * every entry that has a flat `domains` field but no `scope` into a
  * browser-scoped RuleScope, and writes back atomically.
  *
@@ -21,9 +21,9 @@ import { readFileSync, writeFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-const KAIROS_HOME =
-  process.env.KAIROS_HOME || join(process.env.HOME, ".kairos");
-const FENCES_PATH = join(KAIROS_HOME, "fences.json");
+const ZENBORG_HOME =
+  process.env.ZENBORG_HOME || process.env.KAIROS_HOME || join(process.env.HOME, ".zenborg");
+const FENCES_PATH = join(ZENBORG_HOME, "fences.json");
 const dryRun = process.argv.includes("--dry-run");
 
 function readFences() {

@@ -31,7 +31,7 @@ import { parseArgs } from "node:util";
 const { values } = parseArgs({ options: { write: { type: "boolean" } } });
 const write = values.write === true;
 
-const VAULT = process.env.KAIROS_HOME ?? join(homedir(), ".kairos");
+const VAULT = process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? join(homedir(), ".zenborg");
 const BASED_IN = "based-in";
 
 type Person = { id: string; name: string; basePlace?: string | null; [k: string]: unknown };

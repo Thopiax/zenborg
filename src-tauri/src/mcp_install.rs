@@ -119,7 +119,7 @@ pub fn install_once_per_version(app_version: &str) -> Result<()> {
 
 fn marker_path() -> Result<PathBuf> {
     // Follows the vault root rather than pinning a second copy of the path, so
-    // it honours $KAIROS_HOME and the debug/release split for free.
+    // it honours $ZENBORG_HOME and the debug/release split for free.
     let root = crate::vault::fs::vault_root().map_err(|e| anyhow!(e))?;
     Ok(root.join(MARKER_FILE))
 }

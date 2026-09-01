@@ -43,7 +43,7 @@ import {
   practicesForGap,
 } from "../domain/intervention/rules/gapPractice.ts";
 
-const VAULT = process.env.KAIROS_HOME || join(homedir(), ".kairos");
+const VAULT = process.env.ZENBORG_HOME || process.env.KAIROS_HOME || join(homedir(), ".zenborg");
 const STATE_DIR = join(VAULT, "plugin");
 const STATE = join(STATE_DIR, "gap-practice-state.json");
 const HABITS = join(VAULT, "habits.json");

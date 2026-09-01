@@ -21,7 +21,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 const PORT = Number(process.env.PORT ?? 8748);
-const VAULT = process.env.KAIROS_HOME ?? path.join(os.homedir(), ".kairos");
+const VAULT = process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? path.join(os.homedir(), ".zenborg");
 const HTML = fs.readFileSync(path.join(import.meta.dirname, "globe.html"));
 
 const CITY_COORDS = JSON.parse(

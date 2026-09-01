@@ -25,7 +25,7 @@ const arg = (n) => {
   return i !== -1 ? process.argv[i + 1] : undefined;
 };
 const APPLY = process.argv.includes("--apply");
-const VAULT = process.env.KAIROS_HOME ?? path.join(os.homedir(), ".kairos");
+const VAULT = process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? path.join(os.homedir(), ".zenborg");
 // Era routing is natural: every journal dir contributes the dated entries in
 // a cycle's window — supernote carries recent seasons, saperene the old ones.
 const JOURNALS = arg("journal")

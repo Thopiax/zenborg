@@ -4,7 +4,7 @@ The garden's Claude Code surface. Three concerns, each its own file:
 
 | File | Hook | What it does |
 |---|---|---|
-| `observe.mjs` | all 13 events | Append-only activity log to `~/.kairos/keel/log/*.agent.jsonl` |
+| `observe.mjs` | all 13 events | Append-only activity log to `~/.zenborg/keel/log/*.agent.jsonl` |
 | `hooks/fences.mts` | PreToolUse | Fence enforcement — reads vault fences, escalation ladder |
 | `hooks/gap-practice.mts` | UserPromptSubmit | Breath practice offered in the AI-wait gap |
 

@@ -1,4 +1,4 @@
-//! kairos-daemon — headless sidecar for the desktop observer and scheduler.
+//! zenborg-daemon — headless sidecar for the desktop observer and scheduler.
 //!
 //! Quitting zenborg doesn't kill it. launchd keeps it alive.
 //!
@@ -10,11 +10,11 @@
 //! ## Vault resolution
 //!
 //! The daemon is a standalone binary, not a Tauri app. It cannot use
-//! `cfg!(debug_assertions)` to pick between `~/.kairos` and `~/.kairos-dev`
+//! `cfg!(debug_assertions)` to pick between `~/.zenborg` and `~/.zenborg-dev`
 //! because it is always a release build. Resolution:
-//!   1. `KAIROS_HOME` env var (if set and non-empty) — used verbatim
-//!   2. `ZENBORG_VAULT_DIR` env var (legacy) — used verbatim
-//!   3. `$HOME/.kairos` (always release for a standalone binary)
+//!   1. `ZENBORG_HOME` env var (if set and non-empty) — used verbatim
+//!   2. `KAIROS_HOME` env var (legacy) — used verbatim
+//!   3. `$HOME/.zenborg` (always release for a standalone binary)
 
 mod scheduler;
 mod sensors;
@@ -67,10 +67,10 @@ fn hide_from_dock() {
 #[cfg(not(target_os = "macos"))]
 fn hide_from_dock() {}
 
-/// Resolve the kairos vault root. The daemon has no debug/release split —
-/// it is always a release binary. Use env vars or fall back to `~/.kairos`.
+/// Resolve the zenborg vault root. The daemon has no debug/release split —
+/// it is always a release binary. Use env vars or fall back to `~/.zenborg`.
 fn vault_root() -> Result<PathBuf> {
-    for key in &["KAIROS_HOME", "ZENBORG_VAULT_DIR"] {
+    for key in &["ZENBORG_HOME", "KAIROS_HOME"] {
         if let Ok(raw) = std::env::var(key) {
             if !raw.trim().is_empty() {
                 let path = PathBuf::from(raw);
@@ -80,7 +80,7 @@ fn vault_root() -> Result<PathBuf> {
         }
     }
     let home = dirs::home_dir().context("could not resolve $HOME")?;
-    let root = home.join(".kairos");
+    let root = home.join(".zenborg");
     fs::create_dir_all(&root)?;
     Ok(root)
 }
