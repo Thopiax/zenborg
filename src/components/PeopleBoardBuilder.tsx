@@ -314,7 +314,7 @@ function PeopleColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col snap-start rounded-lg",
+        "flex flex-col snap-start rounded-lg h-full",
         columnWidth.scrollableClassName,
         isOver && "ring-2 ring-stone-400 dark:ring-stone-500 bg-stone-50 dark:bg-stone-800/50",
       )}
@@ -340,8 +340,7 @@ function PeopleColumn({
       <div className="h-[3px] mx-4 bg-stone-300 dark:bg-stone-600" />
 
       <div
-        className="flex flex-col gap-3 p-4 flex-1 overflow-y-auto"
-        style={{ maxHeight: "calc(100vh - 16rem)" }}
+        className="flex flex-col gap-3 p-4 flex-1 overflow-y-auto min-h-0"
       >
         <SortableContext
           items={people.map((p) => p.id)}
