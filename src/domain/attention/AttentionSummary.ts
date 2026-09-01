@@ -39,6 +39,18 @@ const locatorOf: Readonly<Record<ActivitySurface, LocatorOf>> = {
   garmin: () => undefined,
 };
 
+/**
+ * Events that end an attention span on the browser surface. A tab_activated
+ * opens a span; only these kinds close it. Without this filter, near-
+ * simultaneous non-boundary events (focus_start, navigation_committed) truncate
+ * the span to near-zero.
+ */
+const BROWSER_BOUNDARY_KINDS = new Set([
+  "tab_activated",
+  "focus_end",
+  "idle_start",
+]);
+
 export function dwellRows(
   events: readonly ActivityEvent[],
   surface: ActivitySurface,
@@ -57,9 +69,9 @@ export function dwellRows(
     const loc = getLocator(event);
     if (loc === undefined) continue;
 
-    const next = surfaceEvents[i + 1];
-    const dwell = next
-      ? Math.min(next.ts - event.ts, config.capMs)
+    const boundary = findBoundary(surfaceEvents, i, surface);
+    const dwell = boundary !== undefined
+      ? Math.min(boundary - event.ts, config.capMs)
       : 0;
 
     const entry = acc.get(loc);
@@ -80,6 +92,31 @@ export function dwellRows(
       visits,
     }))
     .sort((a, b) => b.ms - a.ms);
+}
+
+/**
+ * Find the next dwell boundary after surfaceEvents[fromIndex].
+ *
+ * For desktop/agent, any subsequent event works (the old behaviour).
+ * For browser, only boundary kinds count — focus_start, navigation_committed,
+ * etc. happen simultaneously with tab_activated and would truncate real dwell
+ * to near-zero.
+ */
+function findBoundary(
+  surfaceEvents: readonly ActivityEvent[],
+  fromIndex: number,
+  surface: ActivitySurface,
+): number | undefined {
+  if (surface !== "browser") {
+    const next = surfaceEvents[fromIndex + 1];
+    return next?.ts;
+  }
+  for (let j = fromIndex + 1; j < surfaceEvents.length; j++) {
+    if (BROWSER_BOUNDARY_KINDS.has(surfaceEvents[j].kind)) {
+      return surfaceEvents[j].ts;
+    }
+  }
+  return undefined;
 }
 
 export interface AreaAttention {

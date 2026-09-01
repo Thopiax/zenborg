@@ -1,0 +1,38 @@
+{
+  "name": "@zenborg/extension",
+  "description": "zenborg's Chromium extension (WXT): activity writer, watchlist-gated per-domain sensors, blocklist drogue. Observe-first.",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt --browser firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build --browser firefox",
+    "deploy": "wxt build && node -e \"console.log('\\nLoad unpacked: ' + require('path').resolve('dist/chrome-mv3'))\"",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip --browser firefox",
+    "postinstall": "wxt prepare",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@vitejs/plugin-react": "^4.7.0"
+    }
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@wxt-dev/module-react": "^1.1.3",
+    "tailwindcss": "^4.0.0",
+    "typescript": "~5.8.3",
+    "vitest": "^3.2.4",
+    "wxt": "^0.19.0"
+  }
+}
