@@ -1,7 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { Link2, MapPin, MapPinned, Navigation, Trash2, TreePine } from "lucide-react";
+import { Check, Copy, Link2, MapPin, MapPinned, Navigation, Trash2, TreePine } from "lucide-react";
 import { RelationshipTagger, useRelationshipFromMention } from "@/components/RelationshipTagger";
 import { TaggedNameInput } from "@/components/TaggedNameInput";
 import {
@@ -280,28 +280,7 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
 
             {/* URL — shown when set */}
             {url.trim() && (
-              <Popover open={urlOpen} onOpenChange={setUrlOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
-                  >
-                    <Link2 className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
-                    <span className="font-mono text-sm flex-1 text-left truncate">
-                      {url}
-                    </span>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-80 p-3 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95">
-                  <TextFieldEditor
-                    icon={<Link2 className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />}
-                    label="URL"
-                    value={url}
-                    onChange={(v) => placeFormState$.url.set(v)}
-                    placeholder="https://maps.app.goo.gl/..."
-                  />
-                </PopoverContent>
-              </Popover>
+              <UrlField url={url} urlOpen={urlOpen} setUrlOpen={setUrlOpen} />
             )}
           </div>
 
@@ -438,6 +417,62 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
   );
 }
 
+function UrlField({
+  url,
+  urlOpen,
+  setUrlOpen,
+}: {
+  url: string;
+  urlOpen: boolean;
+  setUrlOpen: (v: boolean) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 w-full">
+      <Popover open={urlOpen} onOpenChange={setUrlOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 flex-1 min-w-0"
+          >
+            <Link2 className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+            <span className="font-mono text-sm flex-1 text-left truncate">
+              {url}
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-80 p-3 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95">
+          <TextFieldEditor
+            icon={<Link2 className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />}
+            label="URL"
+            value={url}
+            onChange={(v) => placeFormState$.url.set(v)}
+            placeholder="https://maps.app.goo.gl/..."
+          />
+        </PopoverContent>
+      </Popover>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="p-2.5 rounded-lg border border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:border-stone-300 dark:hover:border-stone-600 transition-all flex-shrink-0"
+        aria-label="Copy URL"
+      >
+        {copied
+          ? <Check className="w-4 h-4" />
+          : <Copy className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+}
+
 function ParentPicker({
   value,
   options,
@@ -552,6 +587,7 @@ function TextFieldEditor({
         placeholder={placeholder}
         className="w-full bg-transparent border border-stone-200 dark:border-stone-700 rounded-md text-sm font-mono px-2 py-1.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-400 dark:focus:border-stone-500"
         autoFocus
+        onFocus={(e) => e.target.select()}
         onKeyDown={(e) => {
           if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); }
         }}
