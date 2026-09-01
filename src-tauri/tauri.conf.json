@@ -31,7 +31,8 @@
     "externalBin": [
       "binaries/zenborg-mcp",
       "binaries/zenborg-calendar",
-      "binaries/zenborg-daemon"
+      "binaries/zenborg-daemon",
+      "binaries/zenborg-native-host"
     ],
     "icon": [
       "icons/32x32.png",
