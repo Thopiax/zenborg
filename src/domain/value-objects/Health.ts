@@ -10,7 +10,7 @@
  *   - budding:   new rhythm, history forming (first ~3 periods after rhythm set)
  *   - blooming:  on-rhythm, healthy
  *   - wilting:   off-rhythm or past silence threshold
- *   - dormant:   intentionally paused (reserved for v2, not computed in v1)
+ *   - dormant:   deliberate taper (PRUNING attitude), silence is the intent
  *   - evergreen: BEING attitude, crystallized
  *   - unstated:  no attitude set or insufficient signal — pure presence
  */
