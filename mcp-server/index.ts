@@ -1245,12 +1245,13 @@ defineTool(server, {
 defineTool(server, {
   name: "create_place",
   description:
-    'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `tags` classify the place (e.g. ["country"], ["city"], ["place"]). `address` is a street/postal address for calendar event locations. `coordinates` is `{ lat, lng }` for map pins. `url` is a map link.',
+    'Add a place to the registry. `name` is the display name (e.g. "Soho House"); `key` is derived via slugify if omitted. `parentKey` links to a containing place (e.g. "sp" for Sao Paulo). `tags` classify the place (e.g. ["country"], ["city"], ["place"]). `aliases` are alternate names that match when searching (e.g. ["sp", "sampa"] for São Paulo). `address` is a street/postal address for calendar event locations. `coordinates` is `{ lat, lng }` for map pins. `url` is a map link.',
   schema: {
     name: z.string(),
     key: z.string().optional(),
     parentKey: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
+    aliases: z.array(z.string()).optional(),
     address: z.string().nullable().optional(),
     coordinates: z
       .object({ lat: z.number(), lng: z.number() })
@@ -1269,12 +1270,14 @@ defineTool(server, {
       return err(`Place with key "${key}" already exists: ${existing.id}`);
     const id = crypto.randomUUID();
     const now = nowIso();
+    const normalized = normalizeAliases(params.aliases, params.name);
     const place: Place = {
       id,
       name: params.name,
       key,
       parentKey: params.parentKey ? slugify(params.parentKey) : null,
       tags: normalizeTags(params.tags ?? []),
+      ...(normalized.length > 0 ? { aliases: normalized } : {}),
       address: params.address ?? null,
       coordinates: params.coordinates ?? null,
       emoji: params.emoji ?? null,
@@ -1297,6 +1300,7 @@ defineTool(server, {
     name: z.string().optional(),
     parentKey: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
+    aliases: z.array(z.string()).optional(),
     address: z.string().nullable().optional(),
     coordinates: z
       .object({ lat: z.number(), lng: z.number() })
@@ -1314,6 +1318,7 @@ defineTool(server, {
       Object.values(places).find((p) => p.key === idOrKey)?.id;
     if (!id) return err(`Place not found: ${idOrKey}`);
     const place = { ...places[id] };
+    const nextName = updates.name ?? place.name;
     if ("name" in updates && updates.name !== undefined) {
       place.name = updates.name;
       place.key = slugify(updates.name);
@@ -1321,6 +1326,15 @@ defineTool(server, {
     if ("parentKey" in updates)
       place.parentKey = updates.parentKey ? slugify(updates.parentKey) : null;
     if ("tags" in updates) place.tags = normalizeTags(updates.tags ?? []);
+    if ("aliases" in updates) {
+      const normalized = normalizeAliases(updates.aliases, nextName);
+      if (normalized.length === 0) delete place.aliases;
+      else place.aliases = normalized;
+    } else if (place.aliases && updates.name) {
+      const renormalized = normalizeAliases(place.aliases, nextName);
+      if (renormalized.length === 0) delete place.aliases;
+      else place.aliases = renormalized;
+    }
     if ("address" in updates) place.address = updates.address ?? null;
     if ("coordinates" in updates)
       place.coordinates = updates.coordinates ?? null;
