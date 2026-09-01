@@ -251,24 +251,25 @@ export function intentionLine(moment) {
   return `[keel] ◎ tending: ${moment.name}${where} — capture drift (idea/pain), hold the thread.`;
 }
 
-// ponytail: hardcoded path hints, replace with AreaMap config when the adapter lands
-/** Match cwd to an area by path prefix. Longest prefix wins.
- * @param {string} cwd @param {{id: string, name: string}[]} areas @returns {{id: string, name: string}|null} */
-export function matchCwdArea(cwd, areas) {
-  if (!cwd) return null;
-  const PATH_HINTS = [
-    { prefix: "/Developer/equanimitech/", tag: "equanimi" },
-    { prefix: "/Developer/themia/", tag: "themia" },
-  ];
-  for (const hint of PATH_HINTS) {
-    if (cwd.includes(hint.prefix)) {
-      const found = areas.find(
-        (a) => a.name.toLowerCase().includes(hint.tag),
-      );
-      if (found) return found;
+/** Resolve cwd to an area via the area map (fence declarations). Longest prefix wins.
+ * Path entries in the area map start with `/`; domain entries don't.
+ * @param {string} cwd @param {Record<string, string>} areaMap @param {{id: string, name: string}[]} areas
+ * @returns {{id: string, name: string}|null} */
+export function matchCwdArea(cwd, areaMap, areas) {
+  if (!cwd || !areaMap) return null;
+  let bestPrefix = "";
+  let bestAreaId = "";
+  for (const [key, areaId] of Object.entries(areaMap)) {
+    if (!key.startsWith("/")) continue;
+    if (cwd === key || cwd.startsWith(key.endsWith("/") ? key : key + "/")) {
+      if (key.length > bestPrefix.length) {
+        bestPrefix = key;
+        bestAreaId = areaId;
+      }
     }
   }
-  return null;
+  if (!bestAreaId) return null;
+  return areas.find((a) => a.id === bestAreaId) ?? null;
 }
 
 /** The once-per-session nudge, fired while nothing is being tended: the agent infers what
@@ -283,7 +284,7 @@ export function matchCwdArea(cwd, areas) {
  *
  * @param {{name: string, areaId?: string, phase?: string}[]} candidates
  * @param {string} [cwd]
- * @param {{ areas?: {id: string, name: string}[], band?: string }} [ctx]
+ * @param {{ areas?: {id: string, name: string}[], band?: string, areaMap?: Record<string, string> }} [ctx]
  * @returns {string} */
 export function intentionNudge(candidates, cwd, ctx) {
   const garden = candidates.length
@@ -294,7 +295,7 @@ export function intentionNudge(candidates, cwd, ctx) {
 
   const areas = ctx?.areas ?? [];
   const band = ctx?.band ?? "";
-  const cwdArea = dir ? matchCwdArea(dir, areas) : null;
+  const cwdArea = dir ? matchCwdArea(dir, ctx?.areaMap ?? {}, areas) : null;
 
   let suggestion = "";
   if (cwdArea && candidates.length > 0) {
