@@ -7284,6 +7284,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "zenborg-native-host"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dirs 5.0.1",
+ "observer-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "zerocopy"
 version = "0.8.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
