@@ -79,6 +79,57 @@ describe("dwellRows", () => {
   });
 });
 
+describe("dwellRows — browser", () => {
+  const browserResolve = (e: ActivityEvent) => {
+    const domain = e.payload.domain;
+    if (domain === "zoom.us") return "area-meetings";
+    if (domain === "github.com") return "area-code";
+    return undefined;
+  };
+
+  it("skips non-boundary events between tab_activated pairs", () => {
+    const events = [
+      ev({ ts: 0, surface: "browser", kind: "tab_activated", payload: { domain: "zoom.us" } }),
+      ev({ ts: 1, surface: "browser", kind: "focus_start", payload: {} }),
+      ev({ ts: 60 * MINUTE, surface: "browser", kind: "tab_activated", payload: { domain: "github.com" } }),
+    ];
+    const rows = dwellRows(events, "browser", browserResolve, { capMs: 120 * MINUTE });
+    const zoom = rows.find((r) => r.locator === "zoom.us")!;
+    expect(zoom.ms).toBe(60 * MINUTE);
+  });
+
+  it("uses focus_end as a boundary for long single-tab sessions", () => {
+    const events = [
+      ev({ ts: 0, surface: "browser", kind: "tab_activated", payload: { domain: "zoom.us" } }),
+      ev({ ts: 0, surface: "browser", kind: "focus_start", payload: {} }),
+      ev({ ts: 60 * MINUTE, surface: "browser", kind: "focus_end", payload: {} }),
+    ];
+    const rows = dwellRows(events, "browser", browserResolve, { capMs: 120 * MINUTE });
+    const zoom = rows.find((r) => r.locator === "zoom.us")!;
+    expect(zoom.ms).toBe(60 * MINUTE);
+    expect(zoom.visits).toBe(1);
+  });
+
+  it("uses idle_start as a boundary", () => {
+    const events = [
+      ev({ ts: 0, surface: "browser", kind: "tab_activated", payload: { domain: "zoom.us" } }),
+      ev({ ts: 30 * MINUTE, surface: "browser", kind: "idle_start", payload: {} }),
+    ];
+    const rows = dwellRows(events, "browser", browserResolve, { capMs: 120 * MINUTE });
+    expect(rows[0].ms).toBe(30 * MINUTE);
+  });
+
+  it("gives zero dwell when no boundary follows", () => {
+    const events = [
+      ev({ ts: 0, surface: "browser", kind: "tab_activated", payload: { domain: "zoom.us" } }),
+      ev({ ts: 1, surface: "browser", kind: "focus_start", payload: {} }),
+    ];
+    const rows = dwellRows(events, "browser", browserResolve, { capMs: 120 * MINUTE });
+    expect(rows[0].ms).toBe(0);
+    expect(rows[0].visits).toBe(1);
+  });
+});
+
 describe("byArea", () => {
   it("aggregates rows by area, excluding unmapped", () => {
     const rows = [

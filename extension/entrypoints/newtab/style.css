@@ -1,0 +1,345 @@
+@import "tailwindcss";
+
+/* kairos design system (single source of truth: ../../styles) */
+@import "../../styles/tokens.css";
+@import "../../styles/theme.css";
+@import "../../styles/fonts.css";
+
+:root {
+  --stone-50: #fafaf9;
+  --stone-100: #f5f5f4;
+  --stone-200: #e7e5e4;
+  --stone-400: #a8a29e;
+  --stone-500: #78716c;
+  --stone-600: #57534e;
+  --stone-700: #44403c;
+  --stone-800: #292524;
+  --stone-900: #1c1917;
+  --paper: var(--stone-50);
+  --ink: var(--stone-800);
+  --quiet: var(--stone-400);
+  --rule: var(--stone-200);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: var(--stone-900);
+    --ink: var(--stone-100);
+    --quiet: var(--stone-500);
+    --rule: var(--stone-700);
+  }
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.newtab-root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.newtab-center {
+  max-width: 480px;
+  width: 100%;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.newtab-time {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: var(--quiet);
+  margin: 0;
+  text-align: center;
+}
+
+.newtab-loading, .newtab-empty {
+  font-size: 13px;
+  color: var(--quiet);
+  margin: 0;
+  text-align: center;
+}
+
+.newtab-usage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.newtab-domain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.newtab-domain-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.newtab-domain-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Area groups + circles */
+
+.newtab-area-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.newtab-area-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.newtab-area-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.newtab-area-dwell {
+  font-size: 12px;
+  color: var(--quiet);
+  font-variant-numeric: tabular-nums;
+}
+
+.newtab-circles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.newtab-circle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.newtab-circle {
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 200ms, transform 200ms;
+  padding: 0;
+}
+
+.newtab-circle:hover {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.newtab-favicon {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.newtab-circle-label {
+  font-size: 10px;
+  color: var(--quiet);
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.newtab-circle-dwell {
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.newtab-circle-actions {
+  font-size: 9px;
+  color: var(--quiet);
+}
+
+.newtab-assign {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+  z-index: 10;
+}
+
+.newtab-assign select {
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.newtab-app-link {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--quiet);
+  cursor: pointer;
+  align-self: center;
+  transition: color 200ms;
+}
+
+.newtab-app-link:hover {
+  color: var(--ink);
+}
+
+/* Active moment (intention) */
+
+.newtab-intention {
+  text-align: center;
+}
+
+.newtab-intention-line {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.newtab-intention-marker {
+  color: var(--quiet);
+  font-size: 12px;
+}
+
+.newtab-intention-emoji {
+  font-size: 16px;
+}
+
+.newtab-intention-name {
+  /* inherits */
+}
+
+.newtab-intention-area {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--quiet);
+}
+
+.newtab-intention-none {
+  font-size: 13px;
+  color: var(--quiet);
+  margin: 0;
+}
+
+/* Today's moments */
+
+.newtab-moments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.newtab-phase-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.newtab-phase-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--quiet);
+  margin: 0;
+}
+
+.newtab-phase-current {
+  color: var(--ink);
+}
+
+.newtab-moment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.newtab-moment {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+}
+
+.newtab-moment-done {
+  color: var(--quiet);
+}
+
+.newtab-moment-active {
+  font-weight: 500;
+}
+
+.newtab-moment-indicator {
+  font-size: 10px;
+  width: 12px;
+  flex-shrink: 0;
+  text-align: center;
+  color: var(--quiet);
+}
+
+.newtab-moment-active .newtab-moment-indicator {
+  color: var(--ink);
+}
+
+.newtab-moment-emoji {
+  font-size: 13px;
+}
+
+.newtab-moment-name {
+  /* inherits */
+}
+
+.newtab-moment-time {
+  font-size: 11px;
+  color: var(--quiet);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+.newtab-fence-summary {
+  font-size: 12px;
+  color: var(--quiet);
+  margin: 0;
+  text-align: center;
+}
