@@ -26,7 +26,7 @@ export type FadeEligibility = "auto" | "manual" | "never";
 export type RuleScope =
   | {
       readonly surface: "browser";
-      readonly domain: string;
+      readonly domain: string | readonly string[];
       readonly matches: readonly string[];
     }
   | {
@@ -130,6 +130,12 @@ export function validateRuleSpec(rule: RuleSpec): readonly string[] {
   }
 
   if (rule.scope.surface === "browser") {
+    const domains = Array.isArray(rule.scope.domain)
+      ? rule.scope.domain
+      : [rule.scope.domain];
+    if (domains.length === 0 || domains.every((d) => !d.trim())) {
+      problems.push("scope.domain must name at least one registrable domain");
+    }
     if (rule.scope.matches.length === 0) {
       problems.push("scope.matches must be non-empty");
     }
