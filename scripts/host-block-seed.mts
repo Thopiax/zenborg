@@ -198,7 +198,9 @@ function main(): void {
   // `primitive-contracts.md`. One file, both readers.
   const documents = rules.map((rule) => ({
     ...rule,
-    domains: [rule.scope.surface === "browser" ? rule.scope.domain : ""],
+    domains: rule.scope.surface === "browser"
+      ? (Array.isArray(rule.scope.domain) ? rule.scope.domain : [rule.scope.domain])
+      : [""],
     defaultEnabled: true,
   }));
 
