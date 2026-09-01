@@ -68,7 +68,7 @@ export function MentionAutocompleteInline({
       items.push({
         key: place.key,
         name: place.name,
-        aliases: [],
+        aliases: place.aliases ?? [],
         emoji: place.emoji,
         type: "place",
       });

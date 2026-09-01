@@ -1,7 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { Check, Copy, Link2, MapPin, MapPinned, Navigation, Trash2, TreePine } from "lucide-react";
+import { AtSign, Check, Copy, Link2, MapPin, MapPinned, Navigation, Trash2, TreePine, X } from "lucide-react";
 import { RelationshipTagger, useRelationshipFromMention } from "@/components/RelationshipTagger";
 import { TaggedNameInput } from "@/components/TaggedNameInput";
 import {
@@ -41,13 +41,14 @@ interface PlaceFormDialogProps {
     address: string | null;
     url: string | null;
     tags: string[];
+    aliases: string[];
   }) => void;
   onDelete?: () => void;
 }
 
 export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
   const formState = use$(placeFormState$);
-  const { open, mode, emoji, parentKey, lat, lng, address, url, tags, editingPlaceId } =
+  const { open, mode, emoji, parentKey, lat, lng, address, url, tags, aliases, editingPlaceId } =
     formState;
   const name = formState.name;
 
@@ -57,6 +58,7 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
   const [coordsOpen, setCoordsOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [urlOpen, setUrlOpen] = useState(false);
+  const [aliasesOpen, setAliasesOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -82,6 +84,7 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
       setCoordsOpen(false);
       setAddressOpen(false);
       setUrlOpen(false);
+      setAliasesOpen(false);
     }
   }, [open]);
 
@@ -122,10 +125,11 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
       address: address.trim() || null,
       url: url.trim() || null,
       tags: finalTags,
+      aliases,
     });
   };
 
-  const anyPopoverOpen = emojiPickerOpen || parentOpen || coordsOpen || addressOpen || urlOpen || taggedField.isAutocompleteOpen;
+  const anyPopoverOpen = emojiPickerOpen || parentOpen || coordsOpen || addressOpen || urlOpen || aliasesOpen || taggedField.isAutocompleteOpen;
   const hotkeysEnabled = !anyPopoverOpen && open;
 
   useHotkeys(
@@ -282,6 +286,28 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
             {url.trim() && (
               <UrlField url={url} urlOpen={urlOpen} setUrlOpen={setUrlOpen} />
             )}
+
+            {/* Aliases — shown when set */}
+            {aliases.length > 0 && (
+              <AliasesSelector
+                open={aliasesOpen}
+                value={aliases}
+                onChange={(next) => placeFormState$.aliases.set(next)}
+                onOpen={() => setAliasesOpen(true)}
+                onClose={() => setAliasesOpen(false)}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 px-3 py-3 rounded-lg border border-stone-200 dark:border-stone-700 transition-all text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-600 w-full"
+                  >
+                    <AtSign className="w-4 h-4 text-stone-400 dark:text-stone-500 flex-shrink-0" />
+                    <span className="font-mono text-sm flex-1 text-left truncate">
+                      {aliases.join(", ")}
+                    </span>
+                  </button>
+                }
+              />
+            )}
           </div>
 
           {/* Relationships (edit mode only) */}
@@ -378,6 +404,25 @@ export function PlaceFormDialog({ onSave, onDelete }: PlaceFormDialogProps) {
                   />
                 </PopoverContent>
               </Popover>
+            )}
+
+            {aliases.length === 0 && (
+              <AliasesSelector
+                open={aliasesOpen}
+                value={aliases}
+                onChange={(next) => placeFormState$.aliases.set(next)}
+                onOpen={() => setAliasesOpen(true)}
+                onClose={() => setAliasesOpen(false)}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+                  >
+                    <AtSign className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    <span className="text-xs font-mono">no aliases</span>
+                  </button>
+                }
+              />
             )}
           </div>
         </div>
@@ -556,6 +601,110 @@ function CoordinatesEditor({ lat, lng }: { lat: string; lng: string }) {
         </div>
       </div>
     </>
+  );
+}
+
+function AliasesSelector({
+  open,
+  value,
+  onChange,
+  onOpen,
+  onClose,
+  trigger,
+}: {
+  open: boolean;
+  value: string[];
+  onChange: (next: string[]) => void;
+  onOpen: () => void;
+  onClose: () => void;
+  trigger: React.ReactNode;
+}) {
+  const [draft, setDraft] = useState("");
+
+  const commitDraft = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) { setDraft(""); return; }
+    const lower = trimmed.toLowerCase();
+    if (value.some((a) => a.toLowerCase() === lower)) { setDraft(""); return; }
+    onChange([...value, trimmed]);
+    setDraft("");
+  };
+
+  const removeAt = (index: number) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (isOpen) onOpen();
+        else { commitDraft(); onClose(); }
+      }}
+    >
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-80 p-3 border-stone-200/50 dark:border-stone-700/50 shadow-sm bg-white/95 dark:bg-stone-900/95"
+        side="bottom"
+        sideOffset={4}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          setDraft("");
+          onClose();
+        }}
+      >
+        <div className="flex items-center gap-1.5 mb-2">
+          <AtSign className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />
+          <span className="text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
+            Aliases
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5 items-center border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1.5 focus-within:border-stone-400 dark:focus-within:border-stone-500">
+          {value.map((alias, index) => (
+            <span
+              // biome-ignore lint/suspicious/noArrayIndexKey: aliases may repeat while being edited
+              key={`${alias}-${index}`}
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-xs font-mono text-stone-700 dark:text-stone-300"
+            >
+              {alias}
+              <button
+                type="button"
+                onClick={() => removeAt(index)}
+                className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                aria-label={`Remove alias ${alias}`}
+              >
+                <X className="w-3 h-3" strokeWidth={2} />
+              </button>
+            </span>
+          ))}
+          <input
+            type="text"
+            value={draft}
+            autoCapitalize="none"
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === ",") {
+                e.preventDefault();
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+                commitDraft();
+              } else if (e.key === "Backspace" && draft === "" && value.length > 0) {
+                e.preventDefault();
+                removeAt(value.length - 1);
+              }
+            }}
+            placeholder={value.length === 0 ? "Add alias…" : ""}
+            className="flex-1 min-w-[80px] bg-transparent text-xs font-mono text-stone-700 dark:text-stone-300 placeholder:text-stone-400 focus:outline-none"
+          />
+        </div>
+
+        <p className="mt-2 text-[11px] font-mono text-stone-400 dark:text-stone-500">
+          Enter to add. Alternate names that match when searching.
+        </p>
+      </PopoverContent>
+    </Popover>
   );
 }
 
