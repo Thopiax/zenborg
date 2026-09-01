@@ -7290,7 +7290,6 @@ dependencies = [
  "chrono",
  "dirs 5.0.1",
  "observer-core",
- "serde",
  "serde_json",
 ]
 
