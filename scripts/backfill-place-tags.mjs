@@ -10,7 +10,7 @@
  *   node scripts/backfill-place-tags.mjs            # dry-run (default): prints the diff
  *   node scripts/backfill-place-tags.mjs --apply    # writes moments.json (atomic)
  *
- * Vault resolution mirrors mcp-server/vault.ts: $KAIROS_HOME, else ~/.kairos.
+ * Vault resolution mirrors mcp-server/vault.ts: $ZENBORG_HOME, else ~/.zenborg.
  * Zenborg is the writer for moments.json — run this while the desktop app is
  * closed, or let the Rust watcher pick up the external edit.
  */
@@ -30,7 +30,7 @@ import * as path from "node:path";
 const TAG_VALID = /^[a-z0-9][a-z0-9-]{0,19}$/;
 
 const APPLY = process.argv.includes("--apply");
-const VAULT = process.env.KAIROS_HOME ?? path.join(os.homedir(), ".kairos");
+const VAULT = process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? path.join(os.homedir(), ".zenborg");
 
 const mapArgIdx = process.argv.indexOf("--map");
 const MAP_PATH =

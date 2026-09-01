@@ -29,7 +29,7 @@
  *   node scripts/people-migration.mts                     # dry run, report only
  *   node scripts/people-migration.mts --write             # apply
  *   node scripts/people-migration.mts --write --force     # apply despite a running app
- *   KAIROS_HOME=/tmp/copy node scripts/people-migration.mts --write
+ *   ZENBORG_HOME=/tmp/copy node scripts/people-migration.mts --write
  *
  * See docs/decisions/2026-08-07-people-are-a-kind-on-habit-not-a-new-collection.md
  */
@@ -113,12 +113,12 @@ const SPLITS: Readonly<Record<string, readonly [string, string]>> = {
 
 // ---------------------------------------------------------------- paths
 
-const kairosHome = (): string =>
-  process.env.KAIROS_HOME ?? join(homedir(), ".kairos");
+const vaultHome = (): string =>
+  process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? join(homedir(), ".zenborg");
 
 const readJson = <T,>(path: string): T => {
   if (!existsSync(path)) {
-    throw new Error(`not found: ${path} (set KAIROS_HOME?)`);
+    throw new Error(`not found: ${path} (set ZENBORG_HOME?)`);
   }
   return JSON.parse(readFileSync(path, "utf8")) as T;
 };
@@ -399,7 +399,7 @@ const main = (): number => {
         "  --write      apply, after copying habits.json to a timestamped .bak",
         "  --force      with --write, proceed even if the zenborg app looks open",
         "",
-        "  Reads $KAIROS_HOME (default ~/.kairos). Close the zenborg desktop app",
+        "  Reads $ZENBORG_HOME (default ~/.zenborg). Close the zenborg desktop app",
         "  first: it is the sole writer of habits.json and would overwrite this",
         "  migration from its in-memory store.",
         "",
@@ -408,7 +408,7 @@ const main = (): number => {
     return 0;
   }
 
-  const vault = kairosHome();
+  const vault = vaultHome();
   const habitsPath = join(vault, "habits.json");
 
   const areas = readJson<Record<string, AreaRecord>>(join(vault, "areas.json"));

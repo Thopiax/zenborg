@@ -22,7 +22,7 @@ import * as path from "node:path";
 
 const WRITE = process.argv.includes("--write");
 const VAULT =
-  process.env.KAIROS_HOME ?? path.join(process.env.HOME!, ".kairos");
+  process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? path.join(process.env.HOME!, ".zenborg");
 const OBSERVATORY = path.resolve(
   import.meta.dirname!,
   "../../observatory/scripts",

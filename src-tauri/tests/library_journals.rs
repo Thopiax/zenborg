@@ -8,7 +8,7 @@
 //!
 //! Two questions, and this file holds both answers:
 //!
-//! 1. **Where does the collection live?** `$KAIROS_HOME/journals`, like every
+//! 1. **Where does the collection live?** `$ZENBORG_HOME/journals`, like every
 //!    other collection, the moment the prose is actually there. Until then the
 //!    library's registry still answers, because a contract that claims a move
 //!    that has not happened is worse than one that admits it.
@@ -22,7 +22,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use app_lib::library::{journals, Staleness};
 
 #[test]
-fn journals_live_under_kairos_home_once_the_prose_is_there() {
+fn journals_live_under_zenborg_home_once_the_prose_is_there() {
     let root = tempfile::tempdir().unwrap();
     let moved = root.path().join("journals");
     std::fs::create_dir_all(&moved).unwrap();

@@ -247,7 +247,7 @@ export function startActivityWriter(): void {
           // The armed cache is consulted here as well as in the poll, or a
           // fence would never arm its page in the first place. One store since
           // migration step 5: the policy mirror's gate list came from
-          // `~/.kairos/keel/rules/*.json`, which is retired.
+          // `~/.zenborg/keel/rules/*.json`, which is retired.
           gate:
             domain === null
               ? null

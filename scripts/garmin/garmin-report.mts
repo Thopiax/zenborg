@@ -27,8 +27,8 @@
  *
  *   --activities <file|->   get_activities_by_date payload
  *   --sleep <file|->        get_sleep_summary payloads, keyed by date or an array
- *   --map <file>            habit map (default $KAIROS_HOME/integrations/garmin/habit-map.json)
- *   --vault <dir>           default $KAIROS_HOME or ~/.kairos
+ *   --map <file>            habit map (default $ZENBORG_HOME/integrations/garmin/habit-map.json)
+ *   --vault <dir>           default $ZENBORG_HOME or ~/.zenborg
  *   --threshold <minutes>   drift threshold (default 45)
  *   --min-nights <n>        refuse to propose below this many nights (default 7)
  *   --tz <zone>             IANA zone (default: host zone)
@@ -92,7 +92,7 @@ function parseArgs(argv: readonly string[]): Args {
     return i >= 0 && i + 1 < argv.length ? argv[i + 1] : undefined;
   };
   const vault =
-    get("--vault") ?? process.env.KAIROS_HOME ?? join(homedir(), ".kairos");
+    get("--vault") ?? process.env.ZENBORG_HOME ?? process.env.KAIROS_HOME ?? join(homedir(), ".zenborg");
   return {
     activities: get("--activities"),
     sleep: get("--sleep"),
@@ -540,7 +540,7 @@ function main(): number {
     const sleepBinding = findBinding(integrations, GARMIN_SLEEP_SOURCE);
     if (sleepBinding === null) {
       out.push(
-        `${BULLET}SKIPPED — no "${GARMIN_SLEEP_SOURCE}" binding in $KAIROS_HOME/integrations.json`,
+        `${BULLET}SKIPPED — no "${GARMIN_SLEEP_SOURCE}" binding in $ZENBORG_HOME/integrations.json`,
       );
       out.push(
         `${BULLET}Add: { "version": 1, "bindings": [{ "source": "garmin.sleep", "areaId": "...", "habitId": "..." }] }`,

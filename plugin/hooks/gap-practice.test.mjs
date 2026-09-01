@@ -20,7 +20,7 @@ const { GAP_TAG } = await import(
 /** A vault with one habit tagged for the gap. No fences needed — the hook
  * fires when gap-tagged habits exist, not when an intervention rule does. */
 function garden({ tagged = true } = {}) {
-  const vault = mkdtempSync(join(tmpdir(), "kairos-gap-"));
+  const vault = mkdtempSync(join(tmpdir(), "zenborg-gap-"));
   writeFileSync(
     join(vault, "habits.json"),
     JSON.stringify([
@@ -35,7 +35,7 @@ function runGap(vault) {
     input: JSON.stringify({ session_id: "t", prompt: "go" }),
     // ZENBORG_PLACE is cleared so the roster is not filtered by where the
     // machine thinks it is when the suite runs somewhere else.
-    env: { ...process.env, KAIROS_HOME: vault, ZENBORG_PLACE: "" },
+    env: { ...process.env, ZENBORG_HOME: vault, ZENBORG_PLACE: "" },
     encoding: "utf8",
   });
 }
@@ -57,5 +57,5 @@ test("no habit tagged for the gap means the garden stays quiet", () => {
 });
 
 test("an empty vault is silence, not a crash", () => {
-  assert.equal(runGap(mkdtempSync(join(tmpdir(), "kairos-bare-"))), "");
+  assert.equal(runGap(mkdtempSync(join(tmpdir(), "zenborg-bare-"))), "");
 });

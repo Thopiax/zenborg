@@ -2,7 +2,7 @@
  * Domain normalization — shared by the watchlist and the DNR projection.
  *
  * Lived in `drogues/blocklist/store.ts` until that store was removed
- * (2026-08-06, when `~/.kairos/keel/rules/*.json` became the single source of blocked
+ * (2026-08-06, when `~/.zenborg/keel/rules/*.json` became the single source of blocked
  * domains). It has nothing to do with blocklists specifically; both callers
  * need a bare registrable host out of freeform input.
  */

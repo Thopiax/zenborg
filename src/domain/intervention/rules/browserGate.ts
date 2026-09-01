@@ -13,7 +13,7 @@ import type { RuleSpec } from "../RuleSpec";
  * and nothing else. It could not finish, and said so: zenborg's only fence
  * writer was `sessionFenceRule`, which produces `scope.surface: "session"` rules
  * that reach no browser. So the host kept reading a second store —
- * `~/.kairos/keel/rules/*.json` — or the feature would have shipped inert.
+ * `~/.zenborg/keel/rules/*.json` — or the feature would have shipped inert.
  *
  * This factory is the missing half. A rule built here is browser-scoped, so it
  * survives the projection into the armed record, so the readers can collapse

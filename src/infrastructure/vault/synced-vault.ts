@@ -2,7 +2,7 @@
  * Legend State synced() factory for the zenborg vault.
  *
  * Produces a SyncedOptions config that:
- *   - Reads from $HOME/.kairos/{collection}.json on boot
+ *   - Reads from $HOME/.zenborg/{collection}.json on boot
  *   - Writes on mutation (debounced 2s)
  *   - Subscribes to external edits via the Tauri watcher
  *   - Uses IndexedDB as a hot cache

@@ -7,8 +7,8 @@
 
 ## Vault
 
-Collections are JSON keyed by UUID at `~/.kairos` (release) / `~/.kairos-dev` (debug).
-Resolution: `--vault` → `$KAIROS_HOME` → `$ZENBORG_VAULT_DIR` → `~/.kairos`.
+Collections are JSON keyed by UUID at `~/.zenborg` (release) / `~/.zenborg-dev` (debug).
+Resolution: `--vault` → `$ZENBORG_HOME` → `$KAIROS_HOME` → `~/.zenborg`.
 
 ---
 

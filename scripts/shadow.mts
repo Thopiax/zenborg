@@ -16,7 +16,7 @@
  *   node scripts/shadow.mts --gap 20       idle gap in minutes (default 15)
  *   node scripts/shadow.mts --init-map     propose an area map and exit
  *
- * The vault is resolved by `resolveVault`, so `--vault` and `KAIROS_HOME` work
+ * The vault is resolved by `resolveVault`, so `--vault` and `ZENBORG_HOME` work
  * exactly as they do for the MCP server. The area map lives beside the other
  * collections as `area-map.json`; without it nothing resolves, so `--init-map`
  * proposes one from the areas already in the garden and leaves it to be edited.
@@ -68,7 +68,7 @@ const GAP_MINUTES = Math.max(1, Number(opt("gap", "15")));
 const DRY = flag("dry");
 
 if (!existsSync(VAULT)) {
-  console.error(`vault not found: ${VAULT} (set KAIROS_HOME?)`);
+  console.error(`vault not found: ${VAULT} (set ZENBORG_HOME?)`);
   process.exit(1);
 }
 

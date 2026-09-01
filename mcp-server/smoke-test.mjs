@@ -19,35 +19,33 @@ import path from "node:path";
 import { DEFAULT_VAULT_FOLDER, resolveVault } from "./dist/vault.js";
 
 // ── Vault resolution order — must match vault_root() in src-tauri/src/vault/fs.rs.
-// Guards the 2026-08-06 regression where the app moved to ~/.kairos and the MCP
-// server kept resolving ~/.zenborg, silently splitting the vault in two.
 {
   const saved = {
+    z: process.env.ZENBORG_HOME,
     k: process.env.KAIROS_HOME,
-    z: process.env.ZENBORG_VAULT_DIR,
   };
+  delete process.env.ZENBORG_HOME;
   delete process.env.KAIROS_HOME;
-  delete process.env.ZENBORG_VAULT_DIR;
 
   assert.equal(
     resolveVault([]).root,
-    path.join(homedir(), ".kairos"),
-    "default is ~/.kairos",
+    path.join(homedir(), ".zenborg"),
+    "default is ~/.zenborg",
   );
-  assert.equal(DEFAULT_VAULT_FOLDER, ".kairos");
+  assert.equal(DEFAULT_VAULT_FOLDER, ".zenborg");
 
-  process.env.ZENBORG_VAULT_DIR = "/tmp/legacy-vault";
+  process.env.KAIROS_HOME = "/tmp/legacy-vault";
   assert.equal(
     resolveVault([]).root,
     "/tmp/legacy-vault",
-    "legacy env still honoured",
+    "legacy KAIROS_HOME env still honoured",
   );
 
-  process.env.KAIROS_HOME = "/tmp/kairos-vault";
+  process.env.ZENBORG_HOME = "/tmp/zenborg-vault";
   assert.equal(
     resolveVault([]).root,
-    "/tmp/kairos-vault",
-    "KAIROS_HOME beats ZENBORG_VAULT_DIR",
+    "/tmp/zenborg-vault",
+    "ZENBORG_HOME beats KAIROS_HOME",
   );
 
   assert.equal(
@@ -56,10 +54,10 @@ import { DEFAULT_VAULT_FOLDER, resolveVault } from "./dist/vault.js";
     "--vault beats every env var",
   );
 
+  if (saved.z === undefined) delete process.env.ZENBORG_HOME;
+  else process.env.ZENBORG_HOME = saved.z;
   if (saved.k === undefined) delete process.env.KAIROS_HOME;
   else process.env.KAIROS_HOME = saved.k;
-  if (saved.z === undefined) delete process.env.ZENBORG_VAULT_DIR;
-  else process.env.ZENBORG_VAULT_DIR = saved.z;
   console.log("✓ vault resolution order");
 }
 
