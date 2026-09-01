@@ -13,21 +13,14 @@ const NODE_ARGS = [
   "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
 ];
 
-const { gapPracticeRule, GAP_TAG } = await import(
+const { GAP_TAG } = await import(
   "../domain/intervention/rules/gapPractice.ts"
 );
 
-/** A vault holding a substitution rule and one habit tagged for the gap. */
+/** A vault with one habit tagged for the gap. No fences needed — the hook
+ * fires when gap-tagged habits exist, not when an intervention rule does. */
 function garden({ tagged = true } = {}) {
   const vault = mkdtempSync(join(tmpdir(), "kairos-gap-"));
-  const rule = gapPracticeRule({
-    id: "gap-test",
-    name: "the gap",
-    description: "a substitution rule for the test",
-    serves: { kind: "cycle", cycleId: "c1" },
-    staysOutOf: ["area-1"],
-  });
-  writeFileSync(join(vault, "fences.json"), JSON.stringify([rule]));
   writeFileSync(
     join(vault, "habits.json"),
     JSON.stringify([
