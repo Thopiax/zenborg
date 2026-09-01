@@ -11,7 +11,7 @@ use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
-use chrono::{Local, TimeZone};
+use chrono::{Local, Timelike, TimeZone};
 use serde_json::{json, Value};
 
 use observer_core::writer;
@@ -78,7 +78,7 @@ fn write_message(msg: &Value) {
 
 fn today_str() -> String {
     let now = Local::now();
-    let date = if now.format("%H").to_string().parse::<u32>().unwrap_or(12) < DAY_START_HOUR {
+    let date = if now.hour() < DAY_START_HOUR {
         now.date_naive() - chrono::Duration::days(1)
     } else {
         now.date_naive()
@@ -95,7 +95,7 @@ fn local_date(ts_ms: i64) -> String {
 }
 
 fn current_phase(configs: &Value) -> &'static str {
-    let hour = Local::now().format("%H").to_string().parse::<u32>().unwrap_or(12);
+    let hour = Local::now().hour();
     if let Value::Object(map) = configs {
         for cfg in map.values() {
             let start = cfg.get("startHour").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
@@ -422,11 +422,10 @@ fn handle_request_events(msg: &Value, vault: &Path) {
         return;
     }
 
-    for chunk in events.chunks(EVENT_CHUNK_SIZE) {
+    let total_chunks = (events.len() + EVENT_CHUNK_SIZE - 1) / EVENT_CHUNK_SIZE;
+    for (i, chunk) in events.chunks(EVENT_CHUNK_SIZE).enumerate() {
         let items: Vec<&Value> = chunk.iter().map(|(_, v)| v).collect();
-        let done = chunk.as_ptr() as usize + chunk.len() * std::mem::size_of::<(i64, Value)>()
-            >= events.as_ptr() as usize + events.len() * std::mem::size_of::<(i64, Value)>();
-        write_message(&json!({"type": "events_slice", "events": items, "done": done}));
+        write_message(&json!({"type": "events_slice", "events": items, "done": i + 1 == total_chunks}));
     }
 }
 
