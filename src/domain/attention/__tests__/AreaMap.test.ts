@@ -12,6 +12,10 @@ const map: AreaMap = {
     { host: "github.com", areaId: "area-craft" },
     { host: "chess.com", areaId: "area-leisure" },
   ],
+  apps: [
+    { app: "Slack", areaId: "area-themia" },
+    { app: "Linear", areaId: "area-themia" },
+  ],
 };
 
 function event(
@@ -168,5 +172,29 @@ describe("resolveArea", () => {
 
   it("ignores a non-object tool input rather than throwing", () => {
     expect(resolveArea(map, event({ tool_input: "oops" }))).toBeUndefined();
+  });
+
+  it("resolves a desktop app_name via app rules", () => {
+    expect(
+      resolveArea(map, event({ app_name: "Slack" }, "desktop")),
+    ).toBe("area-themia");
+  });
+
+  it("prefers path over app_name when both are present", () => {
+    expect(
+      resolveArea(
+        map,
+        event(
+          { app_name: "Slack", cwd: "/Users/rafa/Developer/equanimitech/keel" },
+          "agent",
+        ),
+      ),
+    ).toBe("area-keel");
+  });
+
+  it("returns undefined for an unmapped app_name", () => {
+    expect(
+      resolveArea(map, event({ app_name: "Calculator" }, "desktop")),
+    ).toBeUndefined();
   });
 });
