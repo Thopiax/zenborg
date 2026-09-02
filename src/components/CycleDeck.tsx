@@ -1,16 +1,8 @@
 "use client";
 
-import { useDroppable } from "@dnd-kit/core";
 import { useValue } from "@legendapp/state/react";
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Flag,
-  Pencil,
-  Plus,
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp, Flag, Plus } from "lucide-react";
+import { useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
 import {
   Popover,
@@ -18,81 +10,71 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { Area } from "@/domain/entities/Area";
+import type { Habit } from "@/domain/entities/Habit";
 import {
   activeCycle$,
   areas$,
-  cyclePlans$,
   cycles$,
   habits$,
-  moments$,
   storeHydrated$,
 } from "@/infrastructure/state/store";
 import {
   cycleDeckCollapsed$,
-  cycleDeckEditMode$,
   cycleDeckSelectedCycleId$,
 } from "@/infrastructure/state/ui-store";
-import {
-  computeVirtualDeckCards,
-  type VirtualDeckCard,
-} from "@/infrastructure/state/virtualDeckCards";
+import { useHabitHealth } from "@/hooks/useHabitHealth";
 import { formatCycleSubtitle } from "@/lib/dates";
+import { columnWidth } from "@/lib/design-tokens";
+import { healthEmojiClass } from "@/lib/health-style";
 import { cn } from "@/lib/utils";
 import { CycleDeckHeatmap } from "./banded-heatmap/CycleDeckHeatmap";
 import { CycleCalendarDialog } from "./CycleCalendarDialog";
-import { CycleDeckColumn } from "./CycleDeckColumn";
 
-/**
- * CycleDeck - Container for virtual deck cards derived from cycle plans.
- *
- * Derive paradigm: the deck is a computed view of `cyclePlans$`.
- * Each plan contributes `budgetedCount - allocatedCount` ghost cards.
- * Dragging a ghost onto a timeline slot calls `allocateFromPlan`, which
- * materializes a new Moment. Dragging an allocated moment back onto the deck
- * calls `unallocateMoment`, which deletes the moment row.
- *
- * Features:
- *  - Strip-based cycle navigation (past, current, future cycles)
- *  - Double-click header to collapse/expand
- *  - Inline edit mode: editable name + date inputs, budget controls, ghost cards
- *  - CycleStarter shown when no cycle is active
- */
+function CycleHabitRow({ habit }: { habit: Habit }) {
+  const { health, daysSinceLast } = useHabitHealth(habit.id);
+
+  const showDays =
+    health === "wilting" && daysSinceLast !== null && daysSinceLast > 0;
+
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <span className={cn("text-sm shrink-0", healthEmojiClass(health))}>
+        {habit.emoji || "·"}
+      </span>
+      <span className="text-xs font-mono text-stone-700 dark:text-stone-300 truncate flex-1 min-w-0">
+        {habit.name}
+      </span>
+      {showDays && (
+        <span className="text-xs font-mono text-stone-400 shrink-0">
+          {daysSinceLast}d
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function CycleDeck() {
   const cycleService = new CycleService();
 
-  // Reactive reads — order matters for test mocks
   const activeCycle = useValue(() => activeCycle$.get());
   const isCollapsed = useValue(cycleDeckCollapsed$);
-  const isEditMode = useValue(cycleDeckEditMode$);
   const selectedCycleId = useValue(cycleDeckSelectedCycleId$);
   const allCyclesMap = useValue(() => cycles$.get());
-  const plansMap = useValue(() => cyclePlans$.get());
   const habitsMap = useValue(() => habits$.get());
   const areasMap = useValue(() => areas$.get());
-  const momentsMap = useValue(() => moments$.get());
   const isHydrated = useValue(storeHydrated$);
 
   const toggleCollapsed = () =>
     cycleDeckCollapsed$.set(!cycleDeckCollapsed$.peek());
 
-  const toggleEditMode = () => {
-    if (isCollapsed) return;
-    const next = !cycleDeckEditMode$.peek();
-    cycleDeckEditMode$.set(next);
-  };
-
-  // Resolve which cycle the detail pane below the strip is rendering.
-  // Selection state (ui-store) trumps the active cycle so scrolling the
-  // strip can surface any past/future cycle.
   const effectiveCycleId = selectedCycleId || activeCycle?.id || null;
   const effectiveCycle = effectiveCycleId
     ? allCyclesMap[effectiveCycleId] || null
     : null;
 
-  // Create cycle dialog
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  // End cycle popover state
+  // End cycle popover
   const [endPopoverOpen, setEndPopoverOpen] = useState(false);
   const [endDateInput, setEndDateInput] = useState("");
   const [endCycleError, setEndCycleError] = useState<string | null>(null);
@@ -113,69 +95,7 @@ export function CycleDeck() {
     resetEndCycleState();
   };
 
-  // Inline editing state for cycle name and dates
-  const [editName, setEditName] = useState(effectiveCycle?.name || "");
-  const [editStartDate, setEditStartDate] = useState(
-    effectiveCycle?.startDate || "",
-  );
-  const [editEndDate, setEditEndDate] = useState(effectiveCycle?.endDate || "");
-
-  // Sync inline edit state when navigating to a different cycle
-  const effectiveCycleName = effectiveCycle?.name;
-  const effectiveCycleStartDate = effectiveCycle?.startDate;
-  const effectiveCycleEndDate = effectiveCycle?.endDate;
-
-  useEffect(() => {
-    if (effectiveCycleName !== undefined) {
-      setEditName(effectiveCycleName);
-    }
-    if (effectiveCycleStartDate !== undefined) {
-      setEditStartDate(effectiveCycleStartDate);
-    }
-    setEditEndDate(effectiveCycleEndDate || "");
-  }, [effectiveCycleName, effectiveCycleStartDate, effectiveCycleEndDate]);
-
-  // Setup droppable for the entire deck (to unallocate moments from timeline)
-  // Must be called unconditionally before any early returns to satisfy React hooks rules
-  const cycleId = effectiveCycle?.id;
-  const { setNodeRef, isOver } = useDroppable({
-    id: `cycle-deck-${cycleId || "none"}`,
-    data: {
-      cycleId,
-      targetType: "cycle-deck",
-    },
-  });
-
-  // Derive virtual deck cards for the effective cycle, grouped by area.
-  // Intentionally not memoized: legend-state may return a stable top-level
-  // reference after nested writes, which would leave a useMemo stale and
-  // the UI stuck showing outdated ghost counts after +/-/remove.
-  const areasWithCards: Array<{ area: Area; cards: VirtualDeckCard[] }> =
-    (() => {
-      if (!effectiveCycleId) return [];
-      const cards = computeVirtualDeckCards({
-        cycleId: effectiveCycleId,
-        plans: Object.values(plansMap),
-        habits: Object.values(habitsMap),
-        areas: Object.values(areasMap),
-        moments: Object.values(momentsMap),
-      });
-
-      const byArea = new Map<string, VirtualDeckCard[]>();
-      for (const card of cards) {
-        const list = byArea.get(card.habit.areaId) ?? [];
-        list.push(card);
-        byArea.set(card.habit.areaId, list);
-      }
-
-      return Array.from(byArea.entries())
-        .map(([areaId, list]) => ({ area: areasMap[areaId], cards: list }))
-        .filter(({ area }) => Boolean(area))
-        .sort((a, b) => a.area.order - b.area.order);
-    })();
-
-  // No active cycle → show only the strip (with "+ Plan new cycle") and a
-  // quiet hint. No floating "Cycle Deck" container over an empty space.
+  // No active cycle
   if (!activeCycle) {
     if (!isHydrated) return null;
     return (
@@ -199,24 +119,26 @@ export function CycleDeck() {
     );
   }
 
-  const handleNameBlur = () => {
-    if (!effectiveCycleId || editName.trim() === effectiveCycle?.name) return;
-    cycleService.updateCycle(effectiveCycleId, { name: editName.trim() });
-  };
+  // Habits grouped by area
+  const habitsByArea: Array<{ area: Area; habits: Habit[] }> = (() => {
+    const activeHabits = Object.values(habitsMap).filter(
+      (h) => !h.isArchived,
+    );
+    const byArea = new Map<string, Habit[]>();
+    for (const h of activeHabits) {
+      const list = byArea.get(h.areaId) ?? [];
+      list.push(h);
+      byArea.set(h.areaId, list);
+    }
+    return Array.from(byArea.entries())
+      .map(([areaId, habits]) => ({
+        area: areasMap[areaId],
+        habits: habits.sort((a, b) => a.order - b.order),
+      }))
+      .filter(({ area }) => Boolean(area))
+      .sort((a, b) => a.area.order - b.area.order);
+  })();
 
-  const handleDateBlur = () => {
-    if (!effectiveCycleId) return;
-    cycleService.updateCycle(effectiveCycleId, {
-      startDate: editStartDate,
-      endDate: editEndDate || null,
-    });
-  };
-
-  const hasAnyCards = areasWithCards.some(({ cards }) =>
-    cards.some((c) => c.ghosts > 0 || c.plan.budgetedCount > 0),
-  );
-
-  // Subtitle for view mode
   const isEffectiveCycleActive = effectiveCycle?.id === activeCycle?.id;
   const deckSubtitle = effectiveCycle
     ? formatCycleSubtitle(
@@ -226,61 +148,19 @@ export function CycleDeck() {
       )
     : "";
 
-  // Header with arrow navigation and action buttons
   const header = (
     <div className="px-6 py-2.5 border-b border-stone-200 dark:border-stone-700 flex items-center justify-between cursor-default select-none">
-      {/* Left side: arrow nav or inline editing */}
-      <div className="flex items-center gap-2 min-w-0">
-        {isEditMode && !isCollapsed ? (
-          /* Edit mode: name input + date inputs */
-          <div className="flex items-center gap-3 min-w-0">
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onBlur={handleNameBlur}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.currentTarget.blur();
-              }}
-              className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold bg-transparent border-b border-stone-300 dark:border-stone-600 focus:border-stone-500 outline-none px-0 py-0 min-w-0"
-              aria-label="Cycle name"
-            />
-            <div className="flex items-center gap-1.5 text-xs font-mono text-stone-500 flex-shrink-0">
-              <input
-                type="date"
-                value={editStartDate}
-                onChange={(e) => setEditStartDate(e.target.value)}
-                onBlur={handleDateBlur}
-                className="bg-transparent border-b border-stone-300 dark:border-stone-600 focus:border-stone-500 outline-none px-0 py-0 text-xs font-mono text-stone-600 dark:text-stone-400"
-                aria-label="Start date"
-              />
-              <span className="text-stone-400">{"→"}</span>
-              <input
-                type="date"
-                value={editEndDate}
-                onChange={(e) => setEditEndDate(e.target.value)}
-                onBlur={handleDateBlur}
-                className="bg-transparent border-b border-stone-300 dark:border-stone-600 focus:border-stone-500 outline-none px-0 py-0 text-xs font-mono text-stone-600 dark:text-stone-400"
-                aria-label="End date"
-              />
-            </div>
-          </div>
-        ) : (
-          /* View mode: name + subtitle (strip above handles nav) */
-          <div className="min-w-0">
-            <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold truncate leading-tight">
-              {effectiveCycle?.name ?? "Pick a cycle"}
-            </h2>
-            {deckSubtitle && (
-              <p className="text-xs font-mono text-stone-500 dark:text-stone-400 truncate leading-tight">
-                {deckSubtitle}
-              </p>
-            )}
-          </div>
+      <div className="min-w-0">
+        <h2 className="text-sm font-mono text-stone-900 dark:text-stone-100 font-semibold truncate leading-tight">
+          {effectiveCycle?.name ?? "Pick a cycle"}
+        </h2>
+        {deckSubtitle && (
+          <p className="text-xs font-mono text-stone-500 dark:text-stone-400 truncate leading-tight">
+            {deckSubtitle}
+          </p>
         )}
       </div>
 
-      {/* Right side: action icon buttons */}
       <div className="flex items-center gap-1 flex-shrink-0">
         {!isCollapsed && effectiveCycle && (
           <Popover
@@ -317,8 +197,8 @@ export function CycleDeck() {
                 </p>
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                   {effectiveCycle.endDate
-                    ? `Adjust when “${effectiveCycle.name}” ended.`
-                    : `Close “${effectiveCycle.name}”. Defaults to today, capped before the next cycle.`}
+                    ? `Adjust when "${effectiveCycle.name}" ended.`
+                    : `Close "${effectiveCycle.name}". Defaults to today, capped before the next cycle.`}
                 </p>
               </div>
               {!effectiveCycle.endDate && (
@@ -365,30 +245,15 @@ export function CycleDeck() {
           </Popover>
         )}
         {!isCollapsed && (
-          <>
-            <button
-              type="button"
-              onClick={() => setCreateDialogOpen(true)}
-              className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-              title="Plan new cycle"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={toggleEditMode}
-              className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-              title={isEditMode ? "Done editing" : "Edit cycle deck"}
-            >
-              {isEditMode ? (
-                <Check className="h-3.5 w-3.5" />
-              ) : (
-                <Pencil className="h-3.5 w-3.5" />
-              )}
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => setCreateDialogOpen(true)}
+            className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+            title="Plan new cycle"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
         )}
-        {/* Collapse/expand toggle — always visible */}
         <button
           type="button"
           onClick={toggleCollapsed}
@@ -405,135 +270,47 @@ export function CycleDeck() {
     </div>
   );
 
-  // Helper to render area columns content
-  const renderColumns = (
-    list: Array<{ area: Area; cards: VirtualDeckCard[] }>,
-  ) => (
-    <div className="flex gap-4 overflow-x-auto px-6 py-2 snap-x snap-mandatory scroll-smooth">
-      {list.map(({ area, cards }) => (
-        <CycleDeckColumn
-          key={area.id}
-          area={area}
-          cards={cards}
-          isEditMode={isEditMode}
-          showAllHabits={isEditMode}
-          cycleId={cycleId ?? ""}
-        />
-      ))}
-    </div>
-  );
-
-  // In edit mode, also include areas that have habits but no plans yet,
-  // so the user can ghost-add them to the budget.
-  const allAreasForEdit = (() => {
-    if (!isEditMode) return areasWithCards;
-
-    const budgetedAreaIds = new Set(areasWithCards.map(({ area }) => area.id));
-
-    const extraAreas = Object.values(areasMap)
-      .filter(
-        (a) =>
-          !budgetedAreaIds.has(a.id) &&
-          Object.values(habitsMap).some(
-            (h) => h.areaId === a.id && !h.isArchived,
-          ),
-      )
-      .sort((a, b) => a.order - b.order)
-      .map((area) => ({ area, cards: [] as VirtualDeckCard[] }));
-
-    return [...areasWithCards, ...extraAreas].sort(
-      (a, b) => a.area.order - b.area.order,
-    );
-  })();
-
-  // Empty state — in edit mode, show area columns with ghost cards
-  if (!hasAnyCards && isEditMode && !isCollapsed) {
-    const areaIdsWithHabits = new Set(
-      Object.values(habitsMap)
-        .filter((h) => !h.isArchived)
-        .map((h) => h.areaId),
-    );
-
-    const areasToShow = Object.values(areasMap)
-      .filter((a) => areaIdsWithHabits.has(a.id))
-      .sort((a, b) => a.order - b.order)
-      .map((area) => ({ area, cards: [] as VirtualDeckCard[] }));
-
-    return (
-      <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        {header}
-        {renderColumns(areasToShow)}
-        <CycleDeckHeatmap />
-        <CycleCalendarDialog
-          open={createDialogOpen}
-          onClose={() => setCreateDialogOpen(false)}
-        />
-      </div>
-    );
-  }
-
-  // Empty state — read-only mode
-  if (!hasAnyCards) {
-    return (
-      <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
-        {header}
-        {!isCollapsed && (
-          <div
-            ref={setNodeRef}
-            className={cn(
-              "p-8 min-h-[200px] flex flex-col items-center justify-center gap-3 border-2 border-dashed mx-6 my-4 rounded-lg transition-colors",
-              isOver
-                ? "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-800"
-                : "border-stone-300 dark:border-stone-600",
-            )}
-          >
-            <p className="text-stone-400 text-sm font-mono text-center">
-              No budgeted moments in deck
-            </p>
-            <p className="text-xs text-stone-500 font-mono text-center">
-              Drag habits from the library to build your cycle deck
-            </p>
-          </div>
-        )}
-        <CycleDeckHeatmap />
-        <CycleCalendarDialog
-          open={createDialogOpen}
-          onClose={() => setCreateDialogOpen(false)}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="w-full border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 flex-shrink-0">
       {header}
 
-      {/* Droppable container for unallocating moments */}
       {!isCollapsed && (
-        <div
-          ref={setNodeRef}
-          className={cn(
-            "relative transition-colors",
-            isOver && "bg-stone-100/50 dark:bg-stone-800/50",
-          )}
-        >
-          {/* Drop indicator when dragging over */}
-          {isOver && (
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-              <div className="border-4 border-dashed border-stone-400 dark:border-stone-500 rounded-lg absolute inset-4 bg-stone-100/30 dark:bg-stone-800/30">
-                <div className="flex items-center justify-center h-full">
-                  <div className="bg-stone-800/90 dark:bg-stone-200/90 text-white dark:text-stone-900 px-6 py-3 rounded-lg shadow-lg">
-                    <p className="text-sm font-bold font-mono">
-                      Drop to unallocate back to cycle deck
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div>
+          {effectiveCycle?.intention && (
+            <p className="px-6 py-2 text-xs font-mono text-stone-500 dark:text-stone-400 italic border-b border-stone-200/50 dark:border-stone-700/50">
+              {effectiveCycle.intention}
+            </p>
           )}
 
-          {/* Horizontal scrollable columns */}
-          {renderColumns(isEditMode ? allAreasForEdit : areasWithCards)}
+          <div className="flex gap-4 overflow-x-auto px-6 py-2 snap-x snap-mandatory scroll-smooth">
+            {habitsByArea.map(({ area, habits }) => (
+              <div
+                key={area.id}
+                className={cn(
+                  "flex flex-col snap-start",
+                  columnWidth.scrollableClassName,
+                )}
+              >
+                <div className="flex items-center gap-2 py-1">
+                  {area.emoji && (
+                    <span className="text-sm">{area.emoji}</span>
+                  )}
+                  <span className="text-xs font-mono font-semibold text-stone-600 dark:text-stone-400 truncate">
+                    {area.name}
+                  </span>
+                </div>
+                <div
+                  className="h-[2px] mb-1"
+                  style={{ backgroundColor: area.color }}
+                />
+                <div className="flex flex-col">
+                  {habits.map((h) => (
+                    <CycleHabitRow key={h.id} habit={h} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
