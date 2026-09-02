@@ -1,7 +1,6 @@
 "use client";
 
 import { useSelector } from "@legendapp/state/react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { MomentCreationService } from "@/application/services/MomentCreationService";
@@ -26,7 +25,6 @@ import { useFocusManager } from "./useFocusManager.ts";
  * This ensures single source of truth for commands and shortcuts.
  */
 export function useGlobalKeyboard() {
-  const router = useRouter();
   const { focusMoment } = useFocusManager();
 
   // Application services for business logic
@@ -47,7 +45,7 @@ export function useGlobalKeyboard() {
     (e, handler) => {
       e.preventDefault();
       const command = allCommands.find(
-        (cmd) => cmd.shortcut === handler.keys?.join("+"),
+        (cmd) => cmd.shortcut === handler.hotkey,
       );
       if (command) {
         command.action();
@@ -58,42 +56,6 @@ export function useGlobalKeyboard() {
       enableOnFormTags: false,
     },
     [allCommands],
-  );
-
-  useHotkeys(
-    "meta+1, ctrl+1",
-    (e) => {
-      e.preventDefault();
-      router.push("/plant");
-    },
-    {
-      enabled: globalShortcutsEnabled,
-      enableOnFormTags: false,
-    },
-  );
-
-  useHotkeys(
-    "meta+2, ctrl+2",
-    (e) => {
-      e.preventDefault();
-      window.location.href = "/cultivate";
-    },
-    {
-      enabled: globalShortcutsEnabled,
-      enableOnFormTags: false,
-    },
-  );
-
-  useHotkeys(
-    "meta+3, ctrl+3",
-    (e) => {
-      e.preventDefault();
-      router.push("/harvest");
-    },
-    {
-      enabled: globalShortcutsEnabled,
-      enableOnFormTags: false,
-    },
   );
 
   // ==================== HELPER FUNCTIONS ====================
