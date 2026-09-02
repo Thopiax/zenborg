@@ -17,7 +17,6 @@ const area = (id: string, name = `area-${id}`, order = 0): Area => ({
   color: "#334155",
   emoji: "🟢",
   isDefault: false,
-  isArchived: false,
   order,
   createdAt: "",
   updatedAt: "",

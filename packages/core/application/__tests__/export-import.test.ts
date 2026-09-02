@@ -364,6 +364,8 @@ describe("Export/Import System", () => {
           dayNotes: {},
           people: {},
           places: {},
+          relationships: {},
+          routines: {},
         },
         metadata: {
           totalMoments: 1,
@@ -377,6 +379,7 @@ describe("Export/Import System", () => {
           totalPeople: 0,
           totalPlaces: 0,
           totalRelationships: 0,
+          totalRoutines: 0,
         },
       };
 
@@ -408,6 +411,8 @@ describe("Export/Import System", () => {
           dayNotes: {},
           people: {},
           places: {},
+          relationships: {},
+          routines: {},
         },
         metadata: {
           totalMoments: 1,
@@ -421,6 +426,7 @@ describe("Export/Import System", () => {
           totalPeople: 0,
           totalPlaces: 0,
           totalRelationships: 0,
+          totalRoutines: 0,
         },
       };
 
@@ -767,6 +773,8 @@ describe("Export/Import System", () => {
           dayNotes: {},
           people: {},
           places: {},
+          relationships: {},
+          routines: {},
         },
         metadata: {
           totalMoments: 1,
@@ -780,6 +788,7 @@ describe("Export/Import System", () => {
           totalPeople: 0,
           totalPlaces: 0,
           totalRelationships: 0,
+          totalRoutines: 0,
         },
       };
 
@@ -882,6 +891,7 @@ describe("Export/Import System", () => {
           totalMetricLogs: 0,
           totalDayNotes: 0,
           totalPeople: 0,
+          totalRoutines: 0,
           totalPlaces: 0,
           totalRelationships: 0,
         },

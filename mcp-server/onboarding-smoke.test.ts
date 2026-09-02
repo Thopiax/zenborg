@@ -134,11 +134,8 @@ describe("onboarding smoke test", () => {
         order: i,
         attitude: spec.attitude,
         phase: spec.phase,
-        rhythm: spec.rhythm,
-        schedule: null,
+        ...(spec.rhythm && { rhythm: spec.rhythm }),
         emoji: null,
-        description: null,
-        guidance: null,
         tags: [],
         aliases: [],
         placeIds: [],
@@ -175,14 +172,16 @@ describe("onboarding smoke test", () => {
     for (const spec of personSpecs) {
       const key = slugify(spec.name);
       const person: Person = {
+        id: key,
         key,
         name: spec.name,
         emoji: null,
         tags: spec.tags,
         cadence: spec.cadence,
         basePlace: null,
-        status: "active",
-        notes: null,
+        isArchived: false,
+        createdAt: NOW,
+        updatedAt: NOW,
       };
       people[key] = person;
       personKeys[spec.name] = key;
@@ -203,13 +202,18 @@ describe("onboarding smoke test", () => {
     for (const spec of placeSpecs) {
       const key = slugify(spec.name);
       const place: Place = {
+        id: key,
         key,
         name: spec.name,
         emoji: null,
         parentKey: spec.parentKey,
+        tags: [],
         url: null,
         address: null,
         coordinates: null,
+        isArchived: false,
+        createdAt: NOW,
+        updatedAt: NOW,
       };
       places[key] = place;
       placeKeys[spec.name] = key;

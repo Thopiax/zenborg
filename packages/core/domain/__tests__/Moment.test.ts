@@ -448,7 +448,7 @@ describe("compareMoments", () => {
     habitId: null,
     cycleId: null,
     cyclePlanId: null,
-    phase: "MORNING",
+    phase: Phase.MORNING,
     day: "2026-08-28",
     order: 0,
     tags: null,

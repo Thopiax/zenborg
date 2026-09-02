@@ -54,7 +54,6 @@ describe("AttitudeService", () => {
     attitude,
     tags: [],
     isDefault: false,
-    isArchived: false,
     order: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -24,6 +24,7 @@ import {
   declareWateringHours,
   fenceReport,
   seedHostBlocks,
+  type WateringHoursDeclaration,
 } from "@zenborg/core/application/use-cases/fences";
 import {
   crossingTally,
@@ -3945,6 +3946,7 @@ defineTool(server, {
   handler: async (input) => {
     const result = await declareWateringHours(fenceDeps, {
       ...input,
+      window: input.window as WateringHoursDeclaration["window"],
       restricts: {
         ...input.restricts,
         paths: input.restricts.paths?.map(expandHome),

@@ -25,6 +25,7 @@ const areaMap: AreaMap = {
     { prefix: "/w/themia", areaId: "area-themia" },
   ],
   hosts: [],
+  apps: [],
 };
 
 /** The payload shape keel actually writes: raw hook stdin, file path under tool_input. */

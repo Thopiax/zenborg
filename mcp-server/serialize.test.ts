@@ -227,6 +227,7 @@ describe("concisePerson", () => {
       tags: [],
       basePlace: null,
       emoji: "👩",
+      isArchived: false,
       createdAt: TS,
       updatedAt: TS,
     });
@@ -247,10 +248,12 @@ describe("concisePlace", () => {
       name: "Home",
       key: "home",
       parentKey: null,
+      tags: [],
       address: null,
       coordinates: null,
       emoji: "🏠",
       url: null,
+      isArchived: false,
       createdAt: TS,
       updatedAt: TS,
     });

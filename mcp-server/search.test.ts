@@ -180,10 +180,10 @@ function makePerson(
 ): Person {
   return {
     cadence: null,
-    status: "active",
     tags: [],
     basePlace: null,
     emoji: null,
+    isArchived: false,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
@@ -197,7 +197,6 @@ const people: Record<string, Person> = {
     id: "p3",
     name: "Cai Dunn",
     key: "cai-dunn",
-    status: "paused",
   }),
 };
 
@@ -313,10 +312,12 @@ function makePlace(
 ): Place {
   return {
     parentKey: null,
+    tags: [],
     address: null,
     coordinates: null,
     emoji: null,
     url: null,
+    isArchived: false,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,

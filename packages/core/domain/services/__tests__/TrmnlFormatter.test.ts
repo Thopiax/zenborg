@@ -47,7 +47,6 @@ function createArea(
     color: "#10b981",
     emoji,
     isDefault: true,
-    isArchived: false,
     order: 0,
     createdAt: "2026-02-22T10:00:00.000Z",
     updatedAt: "2026-02-22T10:00:00.000Z",
