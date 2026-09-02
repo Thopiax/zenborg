@@ -2,8 +2,8 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
 import { cn } from "@/lib/utils";
 import type { DraggableData } from "@/types/dnd";
 import { VirtualDeckCard } from "./VirtualDeckCard";

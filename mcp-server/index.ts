@@ -14,7 +14,7 @@ import * as path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import type { FenceDeps } from "../src/application/ports.ts";
+import type { FenceDeps } from "@zenborg/core/application/ports";
 import {
   clearFences,
   declareBrowserGate,
@@ -24,7 +24,7 @@ import {
   declareWateringHours,
   fenceReport,
   seedHostBlocks,
-} from "../src/application/use-cases/fences.ts";
+} from "@zenborg/core/application/use-cases/fences";
 import {
   crossingTally,
   expandHome,
@@ -156,9 +156,9 @@ import {
   resolveWindow,
 } from "./attention.js";
 import { logDir, readActivityLog } from "./activity-log.js";
-import { nightsOf, workoutsOf } from "../src/domain/garmin/BodyLog.ts";
-import { parseHabitMap } from "../src/domain/garmin/GarminHabitMap.ts";
-import { metricSeries } from "../src/domain/services/MetricTrendService.ts";
+import { nightsOf, workoutsOf } from "@zenborg/core/domain/garmin/BodyLog";
+import { parseHabitMap } from "@zenborg/core/domain/garmin/GarminHabitMap";
+import { metricSeries } from "@zenborg/core/domain/services/MetricTrendService";
 
 function nowIso(): string {
   return new Date().toISOString();

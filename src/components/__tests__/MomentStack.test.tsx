@@ -4,8 +4,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
 import { MomentStack } from "../MomentStack";
 
 // Make React globally available (needed for JSX in components without React import)

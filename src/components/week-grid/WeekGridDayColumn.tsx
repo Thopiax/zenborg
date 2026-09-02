@@ -1,6 +1,6 @@
 "use client";
 
-import type { Area } from "@/domain/entities/Area";
+import type { Area } from "@zenborg/core/domain/entities/Area";
 import type {
   WeekGridBlock,
   WeekGridDay,

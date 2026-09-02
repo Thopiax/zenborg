@@ -6,7 +6,7 @@ import { MentionAutocompleteInline } from "@/components/MentionAutocompleteInlin
 import { MentionBadges } from "@/components/MentionBadges";
 import { TagAutocompleteInline } from "@/components/TagAutocompleteInline";
 import { TagBadges } from "@/components/TagBadges";
-import { classifyMentionIds } from "@/domain/services/MentionService";
+import { classifyMentionIds } from "@zenborg/core/domain/services/MentionService";
 import type { TaggedNameField } from "@/hooks/useTaggedNameField";
 import { places$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";

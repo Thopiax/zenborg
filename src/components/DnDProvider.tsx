@@ -25,9 +25,9 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useValue } from "@legendapp/state/react";
 import { useState } from "react";
 import { CycleService } from "@/application/services/CycleService";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
-import type { Phase } from "@/domain/value-objects/Phase";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
 import {
   duplicateMomentWithHistory,

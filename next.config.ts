@@ -3,6 +3,7 @@ import { version } from "./package.json";
 
 const nextConfig: NextConfig = {
   ...(process.env.NEXT_OUTPUT_MODE === "export" ? { output: "export" } : {}),
+  transpilePackages: ["@zenborg/core"],
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
   },

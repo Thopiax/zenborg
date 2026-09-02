@@ -1,4 +1,4 @@
-import { createMoment } from "@/domain/entities/Moment";
+import { createMoment } from "@zenborg/core/domain/entities/Moment";
 import {
   createMomentWithHistory,
   unallocateMomentWithHistory,

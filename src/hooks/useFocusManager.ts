@@ -1,5 +1,5 @@
 import { useSelector } from "@legendapp/state/react";
-import type { Phase } from "@/domain/value-objects/Phase";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import { moments$ } from "@/infrastructure/state/store";
 import {
   focusedCell$,

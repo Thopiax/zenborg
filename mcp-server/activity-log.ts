@@ -18,7 +18,7 @@ import { join } from "node:path";
 import type {
   ActivityEvent,
   ActivitySurface,
-} from "../src/domain/attention/ActivityEvent.ts";
+} from "@zenborg/core/domain/attention/ActivityEvent";
 
 const DAY_MS = 24 * 60 * 60_000;
 

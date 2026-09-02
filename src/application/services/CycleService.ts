@@ -1,25 +1,25 @@
 import { differenceInCalendarDays } from "date-fns";
-import type { Area } from "@/domain/entities/Area";
+import type { Area } from "@zenborg/core/domain/entities/Area";
 import {
   type Cycle,
   type CycleResult,
   createCycle,
   isDateInCycle,
   type ReflectionSource,
-} from "@/domain/entities/Cycle";
+} from "@zenborg/core/domain/entities/Cycle";
 import {
   type CyclePlan,
   type CyclePlanResult,
   createCyclePlan,
   updateCyclePlanBudget,
-} from "@/domain/entities/CyclePlan";
+} from "@zenborg/core/domain/entities/CyclePlan";
 import {
   allocateMoment,
   createMoment,
   type Moment,
   type MomentResult,
   momentInvolvesHabit,
-} from "@/domain/entities/Moment";
+} from "@zenborg/core/domain/entities/Moment";
 import {
   calculateDefaultEndDate,
   calculateDefaultStartDate,
@@ -27,16 +27,16 @@ import {
   findOverlappingCycle,
   generateCycleName,
   type TemplateDuration,
-} from "@/domain/services/CycleDateService";
-import { habitHealthService } from "@/domain/services/HabitHealthService";
-import { Attitude } from "@/domain/value-objects/Attitude";
-import type { Health } from "@/domain/value-objects/Health";
-import type { Phase } from "@/domain/value-objects/Phase";
+} from "@zenborg/core/domain/services/CycleDateService";
+import { habitHealthService } from "@zenborg/core/domain/services/HabitHealthService";
+import { Attitude } from "@zenborg/core/domain/value-objects/Attitude";
+import type { Health } from "@zenborg/core/domain/value-objects/Health";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import {
   type Rhythm,
   rhythmToCycleBudget,
-} from "@/domain/value-objects/Rhythm";
-import { timingFromSchedule } from "@/domain/value-objects/Schedule";
+} from "@zenborg/core/domain/value-objects/Rhythm";
+import { timingFromSchedule } from "@zenborg/core/domain/value-objects/Schedule";
 import {
   activeCycle$,
   activeCycleId$,

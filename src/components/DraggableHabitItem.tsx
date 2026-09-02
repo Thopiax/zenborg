@@ -3,7 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Archive } from "lucide-react";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
 import { getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";
 import { TagSummary } from "./TagSummary";

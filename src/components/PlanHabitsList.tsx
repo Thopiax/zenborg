@@ -7,7 +7,7 @@ import {
 import { use$ } from "@legendapp/state/react";
 import { X } from "lucide-react";
 import { useState } from "react";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
 import { childHabitsByParent$ } from "@/infrastructure/state/store";
 import { getTextColorsForBackground } from "@/lib/design-tokens";
 import { cn } from "@/lib/utils";

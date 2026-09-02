@@ -28,7 +28,7 @@ import {
   SelectorPopover,
 } from "@/components/SelectorPopover";
 import { TaggedNameInput } from "@/components/TaggedNameInput";
-import type { Cadence } from "@/domain/value-objects/Cadence";
+import type { Cadence } from "@zenborg/core/domain/value-objects/Cadence";
 import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import {
   closePersonForm,

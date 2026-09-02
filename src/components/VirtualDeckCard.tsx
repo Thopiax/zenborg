@@ -1,8 +1,8 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
 import { useHabitHealth } from "@/hooks/useHabitHealth";
 import { getTextColorsForBackground, momentCard } from "@/lib/design-tokens";
 import { healthEmojiClass } from "@/lib/health-style";

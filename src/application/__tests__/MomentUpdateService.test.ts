@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createMoment, isMomentError } from "@/domain/entities/Moment";
+import { createMoment, isMomentError } from "@zenborg/core/domain/entities/Moment";
 import { MomentUpdateService } from "../services/MomentUpdateService";
 
 describe("MomentUpdateService", () => {

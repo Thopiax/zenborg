@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TrmnlPayload } from "@/domain/services/TrmnlFormatter";
+import type { TrmnlPayload } from "@zenborg/core/domain/services/TrmnlFormatter";
 import { pushToRelay, pushToTrmnlDirect } from "../trmnl-client";
 
 const mockPayload: TrmnlPayload = {

@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { normalizeTag } from "@/domain/services/TagService";
+import { normalizeTag } from "@zenborg/core/domain/services/TagService";
 import {
   allUnifiedTags$,
   unifiedTagUsageCount$,

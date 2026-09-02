@@ -9,8 +9,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { displayName } from "@/domain/entities/Person";
-import { normalizeMention } from "@/domain/services/MentionService";
+import { displayName } from "@zenborg/core/domain/entities/Person";
+import { normalizeMention } from "@zenborg/core/domain/services/MentionService";
 import { areas$, people$, places$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 

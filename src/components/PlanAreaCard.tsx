@@ -26,9 +26,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
-import type { Attitude } from "@/domain/value-objects/Attitude";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { Attitude } from "@zenborg/core/domain/value-objects/Attitude";
 import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import { cn } from "@/lib/utils";
 import { TaggedNameInput } from "./TaggedNameInput";

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { Area } from "@/domain/entities/Area";
-import type { Cycle } from "@/domain/entities/Cycle";
-import type { Moment } from "@/domain/entities/Moment";
-import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Cycle } from "@zenborg/core/domain/entities/Cycle";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import { Phase, type PhaseConfig } from "@zenborg/core/domain/value-objects/Phase";
 import {
   deriveHarvestSeason,
   pickHarvestSeason,

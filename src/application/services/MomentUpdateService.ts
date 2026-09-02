@@ -1,7 +1,7 @@
-import type { Moment, MomentResult } from "@/domain/entities/Moment";
-import { isMomentError, updateMomentName } from "@/domain/entities/Moment";
-import type { CustomMetric } from "@/domain/value-objects/Attitude";
-import type { Phase } from "@/domain/value-objects/Phase";
+import type { Moment, MomentResult } from "@zenborg/core/domain/entities/Moment";
+import { isMomentError, updateMomentName } from "@zenborg/core/domain/entities/Moment";
+import type { CustomMetric } from "@zenborg/core/domain/value-objects/Attitude";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 
 /**
  * Parameters for updating a moment

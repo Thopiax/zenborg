@@ -2,7 +2,7 @@
 
 import { ArchiveRestore, Trash2 } from "lucide-react";
 import { useState } from "react";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
 import { cn } from "@/lib/utils";
 
 interface AreaRestingHabitsProps {

@@ -24,7 +24,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { Coordinates } from "@/domain/entities/Place";
+import type { Coordinates } from "@zenborg/core/domain/entities/Place";
 import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import {
   closePlaceForm,

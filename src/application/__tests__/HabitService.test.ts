@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createCyclePlan } from "@/domain/entities/CyclePlan";
-import { createMoment } from "@/domain/entities/Moment";
-import { Attitude } from "@/domain/value-objects/Attitude";
-import { Phase } from "@/domain/value-objects/Phase";
+import { createCyclePlan } from "@zenborg/core/domain/entities/CyclePlan";
+import { createMoment } from "@zenborg/core/domain/entities/Moment";
+import { Attitude } from "@zenborg/core/domain/value-objects/Attitude";
+import { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import {
   activeHabits$,
   archivedHabits$,

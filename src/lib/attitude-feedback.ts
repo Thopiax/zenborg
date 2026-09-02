@@ -6,12 +6,12 @@
  */
 
 import { differenceInDays, subDays } from "date-fns";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
-import type { MetricLog } from "@/domain/entities/MetricLog";
-import type { Moment } from "@/domain/entities/Moment";
-import { attitudeService } from "@/domain/services/AttitudeService";
-import { Attitude } from "@/domain/value-objects/Attitude";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { MetricLog } from "@zenborg/core/domain/entities/MetricLog";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import { attitudeService } from "@zenborg/core/domain/services/AttitudeService";
+import { Attitude } from "@zenborg/core/domain/value-objects/Attitude";
 
 /**
  * BEGINNING attitude feedback

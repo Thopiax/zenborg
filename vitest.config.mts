@@ -8,20 +8,18 @@ export default defineConfig({
     include: [
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
+      "packages/core/**/*.test.ts",
       "mcp-server/**/*.test.ts",
-      // The composition edge. `scripts/` is where one person's ids and lists
-      // live so the domain does not have to hold them, which makes it exactly
-      // the place that needs a test rather than exactly the place without one.
       "scripts/**/*.test.ts",
     ],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
-      include: ["src/domain/**/*.ts"],
+      include: ["packages/core/domain/**/*.ts"],
       exclude: [
         "node_modules/",
-        "src/**/*.test.ts",
-        "src/**/*.test.tsx",
+        "**/*.test.ts",
+        "**/*.test.tsx",
         "**/*.d.ts",
         "**/*.config.*",
       ],
@@ -30,6 +28,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@zenborg/core": path.resolve(__dirname, "./packages/core"),
     },
   },
 });

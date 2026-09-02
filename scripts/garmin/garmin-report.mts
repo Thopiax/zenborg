@@ -48,14 +48,14 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { plantSleep } from "../../src/application/use-cases/plantSleep.ts";
+import { plantSleep } from "@zenborg/core/application/use-cases/plantSleep";
 import {
   checkMapIntegrity,
   coverage,
   type GarminActivity,
   parseHabitMap,
   resolveActivities,
-} from "../../src/domain/garmin/GarminHabitMap.ts";
+} from "@zenborg/core/domain/garmin/GarminHabitMap";
 import {
   DEFAULT_DRIFT_THRESHOLD_MINUTES,
   DEFAULT_MIN_NIGHTS,
@@ -65,11 +65,11 @@ import {
   type PhaseBand,
   type SleepNight,
   summarizeNights,
-} from "../../src/domain/garmin/SleepPhaseService.ts";
+} from "@zenborg/core/domain/garmin/SleepPhaseService";
 import {
   findBinding,
   parseIntegrationConfig,
-} from "../../src/domain/integration/IntegrationBinding.ts";
+} from "@zenborg/core/domain/integration/IntegrationBinding";
 
 // ---------------------------------------------------------------- args
 

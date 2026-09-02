@@ -1,15 +1,15 @@
-import type { Area } from "@/domain/entities/Area";
+import type { Area } from "@zenborg/core/domain/entities/Area";
 import {
   type Cycle,
   isDateInCycle,
   isHumanWritten,
-} from "@/domain/entities/Cycle";
-import type { Moment } from "@/domain/entities/Moment";
-import type { Phase, PhaseConfig } from "@/domain/value-objects/Phase";
+} from "@zenborg/core/domain/entities/Cycle";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import type { Phase, PhaseConfig } from "@zenborg/core/domain/value-objects/Phase";
 import {
   parseReflection,
   type Reflection,
-} from "@/domain/value-objects/Reflection";
+} from "@zenborg/core/domain/value-objects/Reflection";
 
 /**
  * Harvest view model — one closed season, read back.

@@ -2,11 +2,11 @@
 
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Habit } from "@/domain/entities/Habit";
-import type { Moment } from "@/domain/entities/Moment";
-import { Attitude } from "@/domain/value-objects/Attitude";
-import { Phase } from "@/domain/value-objects/Phase";
-import type { Rhythm } from "@/domain/value-objects/Rhythm";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import { Attitude } from "@zenborg/core/domain/value-objects/Attitude";
+import { Phase } from "@zenborg/core/domain/value-objects/Phase";
+import type { Rhythm } from "@zenborg/core/domain/value-objects/Rhythm";
 import {
   activeCycleId$,
   cyclePlans$,

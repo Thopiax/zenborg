@@ -5,7 +5,7 @@ import {
   importDataWithStrategy,
   readImportFile,
   validateImportData,
-} from "@/application/use-cases/export-import";
+} from "@zenborg/core/application/use-cases/export-import";
 import { writeCollection } from "../vault/adapter.ts";
 import { isTauri } from "../vault/is-tauri.ts";
 import {

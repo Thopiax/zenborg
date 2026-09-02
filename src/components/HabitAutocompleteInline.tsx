@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
 import { areas$, habits$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 

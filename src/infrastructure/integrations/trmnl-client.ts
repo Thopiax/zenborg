@@ -1,4 +1,4 @@
-import type { TrmnlPayload } from "@/domain/services/TrmnlFormatter";
+import type { TrmnlPayload } from "@zenborg/core/domain/services/TrmnlFormatter";
 
 // ============================================================================
 // Types

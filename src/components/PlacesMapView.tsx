@@ -9,8 +9,8 @@ import {
   Marker,
   ZoomableGroup,
 } from "react-simple-maps";
-import type { Cycle } from "@/domain/entities/Cycle";
-import type { Place } from "@/domain/entities/Place";
+import type { Cycle } from "@zenborg/core/domain/entities/Cycle";
+import type { Place } from "@zenborg/core/domain/entities/Place";
 import {
   cycles$,
   places$,

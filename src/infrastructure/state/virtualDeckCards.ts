@@ -1,7 +1,7 @@
-import type { Area } from "@/domain/entities/Area";
-import type { CyclePlan } from "@/domain/entities/CyclePlan";
-import type { Habit } from "@/domain/entities/Habit";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { CyclePlan } from "@zenborg/core/domain/entities/CyclePlan";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
 
 export interface VirtualDeckCard {
   plan: CyclePlan;

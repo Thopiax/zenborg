@@ -7,10 +7,10 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { MomentCreationService } from "@/application/services/MomentCreationService";
 import { MomentUpdateService } from "@/application/services/MomentUpdateService";
 import { allCommands } from "@/commands";
-import { isMomentError } from "@/domain/entities/Moment";
-import { classifyMentionIds } from "@/domain/services/MentionService";
-import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
-import type { Phase } from "@/domain/value-objects/Phase";
+import { isMomentError } from "@zenborg/core/domain/entities/Moment";
+import { classifyMentionIds } from "@zenborg/core/domain/services/MentionService";
+import type { Attitude, CustomMetric } from "@zenborg/core/domain/value-objects/Attitude";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import { moments$, places$ } from "@/infrastructure/state/store";
 import {
   closeMomentForm,

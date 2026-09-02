@@ -1,6 +1,6 @@
 import { observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
-import { normalizeMention } from "@/domain/services/MentionService";
+import { normalizeMention } from "@zenborg/core/domain/services/MentionService";
 
 export interface MentionField {
   isMentionOpen: boolean;

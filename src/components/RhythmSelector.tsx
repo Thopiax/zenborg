@@ -6,7 +6,7 @@ import {
   type SelectorOption,
   SelectorPopover,
 } from "@/components/SelectorPopover";
-import type { Rhythm, RhythmPeriod } from "@/domain/value-objects/Rhythm";
+import type { Rhythm, RhythmPeriod } from "@zenborg/core/domain/value-objects/Rhythm";
 
 interface RhythmSelectorProps {
   open: boolean;

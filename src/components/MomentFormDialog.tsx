@@ -25,12 +25,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { Habit } from "@/domain/entities/Habit";
-import { validateMomentName } from "@/domain/entities/Moment";
-import type { CustomMetric } from "@/domain/value-objects/Attitude";
-import type { Phase } from "@/domain/value-objects/Phase";
-import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
-import { snapToGrid } from "@/domain/value-objects/TimeGrid.ts";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import { validateMomentName } from "@zenborg/core/domain/entities/Moment";
+import type { CustomMetric } from "@zenborg/core/domain/value-objects/Attitude";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
+import { PhaseIcon } from "@zenborg/core/domain/value-objects/phaseStyles";
+import { snapToGrid } from "@zenborg/core/domain/value-objects/TimeGrid.ts";
 import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import {
   activeAreas$,

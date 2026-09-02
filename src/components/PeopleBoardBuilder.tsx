@@ -25,12 +25,12 @@ import {
   displayName,
   createPerson,
   normalizeAliases,
-} from "@/domain/entities/Person";
-import type { Person } from "@/domain/entities/Person";
-import type { Place } from "@/domain/entities/Place";
-import type { Relationship } from "@/domain/entities/Relationship";
-import { createRelationship } from "@/domain/entities/Relationship";
-import { slugify } from "@/domain/entities/Moment";
+} from "@zenborg/core/domain/entities/Person";
+import type { Person } from "@zenborg/core/domain/entities/Person";
+import type { Place } from "@zenborg/core/domain/entities/Place";
+import type { Relationship } from "@zenborg/core/domain/entities/Relationship";
+import { createRelationship } from "@zenborg/core/domain/entities/Relationship";
+import { slugify } from "@zenborg/core/domain/entities/Moment";
 import { PersonFormDialog } from "@/components/PersonFormDialog";
 import { people$, places$, relationships$ } from "@/infrastructure/state/store";
 import {

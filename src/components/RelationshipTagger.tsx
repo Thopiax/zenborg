@@ -6,9 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createRelationship,
   type EntityType,
-} from "@/domain/entities/Relationship";
-import { displayName } from "@/domain/entities/Person";
-import { normalizeMention } from "@/domain/services/MentionService";
+} from "@zenborg/core/domain/entities/Relationship";
+import { displayName } from "@zenborg/core/domain/entities/Person";
+import { normalizeMention } from "@zenborg/core/domain/services/MentionService";
 import {
   areas$,
   habits$,

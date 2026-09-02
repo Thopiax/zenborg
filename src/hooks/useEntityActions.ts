@@ -10,10 +10,10 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { CycleService } from "@/application/services/CycleService";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
-import type { Moment } from "@/domain/entities/Moment";
-import { getCurrentPhase } from "@/domain/value-objects/Phase";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import { getCurrentPhase } from "@zenborg/core/domain/value-objects/Phase";
 import {
   activeCycle$,
   allocateMomentWithHistory,

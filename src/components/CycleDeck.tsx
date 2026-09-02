@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { Area } from "@/domain/entities/Area";
+import type { Area } from "@zenborg/core/domain/entities/Area";
 import {
   activeCycle$,
   areas$,

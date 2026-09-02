@@ -3,9 +3,9 @@
 import { use$ } from "@legendapp/state/react";
 import { MapPin, Plus, Trash2, User } from "lucide-react";
 import { useState } from "react";
-import { createPerson } from "@/domain/entities/Person";
-import { createPlace } from "@/domain/entities/Place";
-import { slugify } from "@/domain/entities/Moment";
+import { createPerson } from "@zenborg/core/domain/entities/Person";
+import { createPlace } from "@zenborg/core/domain/entities/Place";
+import { slugify } from "@zenborg/core/domain/entities/Moment";
 import { people$, places$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 

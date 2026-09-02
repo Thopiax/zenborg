@@ -1,7 +1,7 @@
 "use client";
 
-import type { Attitude } from "@/domain/value-objects/Attitude";
-import { ATTITUDE_METADATA } from "@/domain/value-objects/Attitude";
+import type { Attitude } from "@zenborg/core/domain/value-objects/Attitude";
+import { ATTITUDE_METADATA } from "@zenborg/core/domain/value-objects/Attitude";
 import { cn } from "@/lib/utils";
 
 interface AttitudeChipProps {

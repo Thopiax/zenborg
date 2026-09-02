@@ -14,7 +14,7 @@
 import { type Observable, syncState } from "@legendapp/state";
 import { observablePersistIndexedDB } from "@legendapp/state/persist-plugins/indexeddb";
 import { synced } from "@legendapp/state/sync";
-import type { CollectionName } from "@/domain/registry";
+import type { CollectionName } from "@zenborg/core/domain/registry";
 import {
   readCollection,
   subscribeToCollection,

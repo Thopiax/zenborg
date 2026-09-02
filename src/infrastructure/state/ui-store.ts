@@ -1,8 +1,8 @@
 import { observable } from "@legendapp/state";
-import type { Moment } from "@/domain/entities/Moment";
-import type { Attitude, CustomMetric } from "@/domain/value-objects/Attitude";
-import type { Phase } from "@/domain/value-objects/Phase";
-import type { Rhythm } from "@/domain/value-objects/Rhythm";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import type { Attitude, CustomMetric } from "@zenborg/core/domain/value-objects/Attitude";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
+import type { Rhythm } from "@zenborg/core/domain/value-objects/Rhythm";
 import { getTodayISO } from "@/lib/dates";
 
 /**
@@ -179,7 +179,7 @@ export const focusedMomentId$ = observable<string | null>(null);
  */
 export const focusedCell$ = observable<{
   day: string;
-  phase: import("@/domain/value-objects/Phase").Phase;
+  phase: import("@zenborg/core/domain/value-objects/Phase").Phase;
 } | null>(null);
 
 /**
@@ -491,7 +491,7 @@ export interface PersonFormState {
   emoji: string | null;
   aliases: string[];
   tags: string[];
-  cadence: import("@/domain/value-objects/Cadence").Cadence | null;
+  cadence: import("@zenborg/core/domain/value-objects/Cadence").Cadence | null;
   editingPersonId: string | null;
 }
 
@@ -526,7 +526,7 @@ export function openPersonFormEdit(
     emoji: string | null;
     aliases?: string[];
     tags: string[];
-    cadence: import("@/domain/value-objects/Cadence").Cadence | null;
+    cadence: import("@zenborg/core/domain/value-objects/Cadence").Cadence | null;
   },
 ) {
   personFormState$.set({

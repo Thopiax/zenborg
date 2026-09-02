@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { EXPORTABLE_MODELS } from "@/domain/registry";
+import { EXPORTABLE_MODELS } from "@zenborg/core/domain/registry";
 
 /**
  * Vault files the Rust side may touch that are NOT exportable collections.

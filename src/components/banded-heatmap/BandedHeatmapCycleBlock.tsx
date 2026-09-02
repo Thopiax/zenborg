@@ -1,6 +1,6 @@
 import { use$ } from "@legendapp/state/react";
-import type { Area } from "@/domain/entities/Area";
-import type { Phase } from "@/domain/value-objects/Phase";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import type {
   HeatmapBand,
   HeatmapDay,

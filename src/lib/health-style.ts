@@ -1,4 +1,4 @@
-import type { Health } from "@/domain/value-objects/Health";
+import type { Health } from "@zenborg/core/domain/value-objects/Health";
 
 /**
  * Opacity class for health treatment of the habit emoji.

@@ -1,12 +1,12 @@
-import type { MomentResult } from "@/domain/entities/Moment";
+import type { MomentResult } from "@zenborg/core/domain/entities/Moment";
 import {
   allocateMoment,
   createMoment,
   isMomentError,
-} from "@/domain/entities/Moment";
-import { classifyMentionIds } from "@/domain/services/MentionService";
-import type { CustomMetric } from "@/domain/value-objects/Attitude";
-import type { Phase } from "@/domain/value-objects/Phase";
+} from "@zenborg/core/domain/entities/Moment";
+import { classifyMentionIds } from "@zenborg/core/domain/services/MentionService";
+import type { CustomMetric } from "@zenborg/core/domain/value-objects/Attitude";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 
 /**
  * Parameters for creating a moment with full workflow orchestration

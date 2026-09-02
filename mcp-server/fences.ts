@@ -5,8 +5,8 @@ import type {
   CrossingRecord,
   CrossingTallyPort,
   FenceStorePort,
-} from "../src/application/ports.ts";
-import type { RuleSpec } from "../src/domain/intervention/RuleSpec.ts";
+} from "@zenborg/core/application/ports";
+import type { RuleSpec } from "@zenborg/core/domain/intervention/RuleSpec";
 
 /**
  * Vault I/O for the `fences` collection and the plugin's crossing tally.

@@ -2,8 +2,8 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
-import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
 import { cn } from "@/lib/utils";
 import { MomentCard } from "./MomentCard";
 

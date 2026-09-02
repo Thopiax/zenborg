@@ -1,13 +1,13 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Attitude } from "@/domain/value-objects/Attitude";
-import { Phase } from "@/domain/value-objects/Phase";
+import { Attitude } from "@zenborg/core/domain/value-objects/Attitude";
+import { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import {
   type Rhythm,
   rhythmToCycleBudget,
-} from "@/domain/value-objects/Rhythm";
-import { Weekday } from "@/domain/value-objects/Schedule";
+} from "@zenborg/core/domain/value-objects/Rhythm";
+import { Weekday } from "@zenborg/core/domain/value-objects/Schedule";
 import {
   activeCycleId$,
   cyclePlans$,

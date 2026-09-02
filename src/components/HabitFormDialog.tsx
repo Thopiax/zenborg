@@ -35,12 +35,12 @@ import {
 import type {
   CreateHabitProps,
   UpdateHabitProps,
-} from "@/domain/entities/Habit";
+} from "@zenborg/core/domain/entities/Habit";
 import {
   getAttitudeIcon,
   getAttitudeLabel,
-} from "@/domain/value-objects/Attitude";
-import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
+} from "@zenborg/core/domain/value-objects/Attitude";
+import { PhaseIcon } from "@zenborg/core/domain/value-objects/phaseStyles";
 import { useTaggedNameField } from "@/hooks/useTaggedNameField";
 import { areas$, phaseConfigs$ } from "@/infrastructure/state/store";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Area } from "@/domain/entities/Area";
+import type { Area } from "@zenborg/core/domain/entities/Area";
 import type { WeekGridViewModel } from "@/infrastructure/state/weekGridViewModel";
 import { WeekGridDayColumn } from "./WeekGridDayColumn";
 

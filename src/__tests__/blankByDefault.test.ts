@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import * as hostBlock from "@/domain/intervention/rules/hostBlock";
+import * as hostBlock from "@zenborg/core/domain/intervention/rules/hostBlock";
 
 /**
  * Blank by default, made checkable.
@@ -70,7 +70,7 @@ describe("a fresh install ships no hosts", () => {
     expect(read("scripts/host-block-seed.mts")).toMatch(
       /host-block-seed\.hosts\.json/,
     );
-    expect(read("src/domain/intervention/rules/hostBlock.ts")).not.toMatch(
+    expect(read("packages/core/domain/intervention/rules/hostBlock.ts")).not.toMatch(
       HOSTNAME,
     );
   });

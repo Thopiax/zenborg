@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { sessionFenceRule } from "../src/domain/intervention/rules/sessionFence.ts";
+import { sessionFenceRule } from "@zenborg/core/domain/intervention/rules/sessionFence";
 import {
   expandHome,
   fencesPath,

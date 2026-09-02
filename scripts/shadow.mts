@@ -34,23 +34,23 @@ import type {
   DiscrepancyStorePort,
   GardenPort,
   ShadowDeps,
-} from "../src/application/ports.ts";
+} from "@zenborg/core/application/ports";
 import {
   boundariesIn as gardenBoundariesIn,
   phaseAt as gardenPhaseAt,
   plantingsAt as gardenPlantingsAt,
-} from "../src/domain/attention/GardenClock.ts";
-import { runShadowMode } from "../src/application/use-cases/deriveDiscrepancies.ts";
+} from "@zenborg/core/domain/attention/GardenClock";
+import { runShadowMode } from "@zenborg/core/application/use-cases/deriveDiscrepancies";
 import {
   type ActivityEvent,
   isHumanActor,
-} from "../src/domain/attention/ActivityEvent.ts";
-import type { AreaMap } from "../src/domain/attention/AreaMap.ts";
+} from "@zenborg/core/domain/attention/ActivityEvent";
+import type { AreaMap } from "@zenborg/core/domain/attention/AreaMap";
 import {
   assessBaseline,
   type DailyCount,
   DEFAULT_BASELINE_CONFIG,
-} from "../src/domain/attention/Baseline.ts";
+} from "@zenborg/core/domain/attention/Baseline";
 
 const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
@@ -174,7 +174,7 @@ function readLog(from: number, to: number): readonly ActivityEvent[] {
   return readActivityLog(LOG_DIR, from, to, ["agent", "browser"]);
 }
 
-import type { MomentRef, PhaseConfigRef } from "../src/domain/attention/GardenClock.ts";
+import type { MomentRef, PhaseConfigRef } from "@zenborg/core/domain/attention/GardenClock";
 
 const moments = Object.values(
   readJson<Record<string, MomentRef>>(join(VAULT, "moments.json"), {}),

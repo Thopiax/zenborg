@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Cycle } from "@/domain/entities/Cycle";
+import type { Cycle } from "@zenborg/core/domain/entities/Cycle";
 import { cycles$ } from "@/infrastructure/state/store";
 import { cycleDeckSelectedCycleId$ } from "@/infrastructure/state/ui-store";
 import { formatCycleDateRange, fromISODate, toISODate } from "@/lib/dates";

@@ -4,7 +4,7 @@
  * Types for @dnd-kit integration with Zenborg's moment allocation system.
  */
 
-import type { Phase } from "@/domain/value-objects/Phase";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 
 /**
  * Source location types for draggable moments

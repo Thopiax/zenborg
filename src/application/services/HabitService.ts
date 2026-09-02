@@ -6,7 +6,7 @@ import {
   type HabitResult,
   unarchiveHabit,
   updateHabit,
-} from "@/domain/entities/Habit";
+} from "@zenborg/core/domain/entities/Habit";
 import { cyclePlans$, habits$ } from "@/infrastructure/state/store";
 
 /**

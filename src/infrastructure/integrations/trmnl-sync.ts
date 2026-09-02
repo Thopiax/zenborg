@@ -1,5 +1,5 @@
 import { observe } from "@legendapp/state";
-import { formatTodayForTrmnl } from "@/domain/services/TrmnlFormatter";
+import { formatTodayForTrmnl } from "@zenborg/core/domain/services/TrmnlFormatter";
 import {
   getRelayPushUrl,
   isTrmnlConfigured,

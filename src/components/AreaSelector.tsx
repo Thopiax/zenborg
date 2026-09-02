@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { createArea } from "@/domain/entities/Area";
+import { createArea } from "@zenborg/core/domain/entities/Area";
 import { activeAreas$, areas$ } from "@/infrastructure/state/store";
 import { suggestEmojiForAreaName } from "@/lib/emoji-utils";
 

@@ -4,9 +4,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { PhaseConfig } from "@/domain/value-objects/Phase";
-import { Phase } from "@/domain/value-objects/Phase";
-import { PHASE_STYLES } from "@/domain/value-objects/phaseStyles";
+import type { PhaseConfig } from "@zenborg/core/domain/value-objects/Phase";
+import { Phase } from "@zenborg/core/domain/value-objects/Phase";
+import { PHASE_STYLES } from "@zenborg/core/domain/value-objects/phaseStyles";
 
 // Design tokens - Stone-based monochrome palette (Tailwind CSS hex values)
 const COLORS = {

@@ -7,8 +7,8 @@ import {
   type SelectorOption,
   SelectorPopover,
 } from "@/components/SelectorPopover";
-import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
-import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
+import { Phase, type PhaseConfig } from "@zenborg/core/domain/value-objects/Phase";
+import { PhaseIcon } from "@zenborg/core/domain/value-objects/phaseStyles";
 import { phaseConfigs$ } from "@/infrastructure/state/store";
 
 interface PhaseSelectorProps {

@@ -1,7 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { habitHealthService } from "@/domain/services/HabitHealthService";
+import { habitHealthService } from "@zenborg/core/domain/services/HabitHealthService";
 import {
   activeCycleId$,
   cyclePlans$,

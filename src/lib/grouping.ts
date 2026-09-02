@@ -3,13 +3,13 @@
  */
 
 import { isThisMonth, isThisWeek, isToday, isYesterday } from "date-fns";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
-import type { Moment } from "@/domain/entities/Moment";
-import { attitudeService } from "@/domain/services/AttitudeService";
-import { ATTITUDE_METADATA, Attitude } from "@/domain/value-objects/Attitude";
-import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
-import { PHASE_ICONS } from "@/domain/value-objects/phaseStyles";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import { attitudeService } from "@zenborg/core/domain/services/AttitudeService";
+import { ATTITUDE_METADATA, Attitude } from "@zenborg/core/domain/value-objects/Attitude";
+import { Phase, type PhaseConfig } from "@zenborg/core/domain/value-objects/Phase";
+import { PHASE_ICONS } from "@zenborg/core/domain/value-objects/phaseStyles";
 
 /**
  * Sort moments by order (primary) and createdAt (secondary)

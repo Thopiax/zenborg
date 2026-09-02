@@ -3,8 +3,8 @@ import {
   createMoment,
   isMomentError,
   type Moment,
-} from "@/domain/entities/Moment";
-import { getDefaultPhaseConfigs, Phase } from "@/domain/value-objects/Phase";
+} from "@zenborg/core/domain/entities/Moment";
+import { getDefaultPhaseConfigs, Phase } from "@zenborg/core/domain/value-objects/Phase";
 import { deriveWeekGridViewModel } from "./weekGridViewModel.ts";
 
 function moment(overrides: Partial<Moment>): Moment {

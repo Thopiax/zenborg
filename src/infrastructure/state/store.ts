@@ -1,19 +1,19 @@
 import { observable } from "@legendapp/state";
-import type { Area } from "@/domain/entities/Area";
-import type { Cycle } from "@/domain/entities/Cycle";
-import type { CyclePlan } from "@/domain/entities/CyclePlan";
-import type { DayNote } from "@/domain/entities/DayNote";
-import type { Habit } from "@/domain/entities/Habit";
-import type { MetricLog } from "@/domain/entities/MetricLog";
-import type { Moment } from "@/domain/entities/Moment";
-import type { Person } from "@/domain/entities/Person";
-import type { Place } from "@/domain/entities/Place";
-import type { Relationship } from "@/domain/entities/Relationship";
-import type { Routine } from "@/domain/entities/Routine";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Cycle } from "@zenborg/core/domain/entities/Cycle";
+import type { CyclePlan } from "@zenborg/core/domain/entities/CyclePlan";
+import type { DayNote } from "@zenborg/core/domain/entities/DayNote";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { MetricLog } from "@zenborg/core/domain/entities/MetricLog";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import type { Person } from "@zenborg/core/domain/entities/Person";
+import type { Place } from "@zenborg/core/domain/entities/Place";
+import type { Relationship } from "@zenborg/core/domain/entities/Relationship";
+import type { Routine } from "@zenborg/core/domain/entities/Routine";
 import {
   getCurrentPhase,
   type PhaseConfig,
-} from "@/domain/value-objects/Phase";
+} from "@zenborg/core/domain/value-objects/Phase";
 import { readMeta, writeMeta } from "@/infrastructure/vault/meta-repository";
 import { getCurrentHour } from "@/lib/dates";
 import { cycleDeckSelectedCycleId$ } from "./ui-store.ts";

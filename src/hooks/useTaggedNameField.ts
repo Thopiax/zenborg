@@ -9,11 +9,11 @@
 
 import { observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
-import { normalizeMention } from "@/domain/services/MentionService";
+import { normalizeMention } from "@zenborg/core/domain/services/MentionService";
 import {
   extractTagsFromText,
   normalizeTag,
-} from "@/domain/services/TagService";
+} from "@zenborg/core/domain/services/TagService";
 
 export interface TaggedNameField {
   // Reactive state

@@ -1,4 +1,4 @@
-import type { Area } from "@/domain/entities/Area";
+import type { Area } from "@zenborg/core/domain/entities/Area";
 import type { HeatmapCell } from "@/infrastructure/state/bandedHeatmapViewModel";
 import { CELL_SIZE, TENSE_OPACITY } from "./constants";
 

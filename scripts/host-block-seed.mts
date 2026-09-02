@@ -54,10 +54,10 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { validateDelivery } from "../src/domain/intervention/Delivery.ts";
-import { validateRuleSpec } from "../src/domain/intervention/RuleSpec.ts";
-import { linkedinDwellGate } from "../src/domain/intervention/rules/dwellGate.ts";
-import { hostBlockSeedRules } from "../src/domain/intervention/rules/hostBlock.ts";
+import { validateDelivery } from "@zenborg/core/domain/intervention/Delivery";
+import { validateRuleSpec } from "@zenborg/core/domain/intervention/RuleSpec";
+import { linkedinDwellGate } from "@zenborg/core/domain/intervention/rules/dwellGate";
+import { hostBlockSeedRules } from "@zenborg/core/domain/intervention/rules/hostBlock";
 
 /**
  * The walls, read rather than declared.

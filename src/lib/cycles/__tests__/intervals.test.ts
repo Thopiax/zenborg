@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Cycle } from "@/domain/entities/Cycle";
+import type { Cycle } from "@zenborg/core/domain/entities/Cycle";
 import { addDays, clampCycleEdge, dayDiff } from "../intervals";
 
 function makeCycle(

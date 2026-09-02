@@ -1,7 +1,7 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import { displayName } from "@/domain/entities/Person";
+import { displayName } from "@zenborg/core/domain/entities/Person";
 import { people$, places$ } from "@/infrastructure/state/store";
 import { cn } from "@/lib/utils";
 

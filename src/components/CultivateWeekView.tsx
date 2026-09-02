@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useValue } from "@legendapp/state/react";
 import { addDays, startOfWeek, subDays } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { validateMomentName } from "@/domain/entities/Moment";
+import { validateMomentName } from "@zenborg/core/domain/entities/Moment";
 import {
   areas$,
   moments$,

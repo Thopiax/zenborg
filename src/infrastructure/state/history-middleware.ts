@@ -25,9 +25,9 @@ import type {
   SelectMomentsOperation,
   UnallocateMomentOperation,
   UpdateMomentOperation,
-} from "@/domain/entities/HistoryEntry";
-import type { Moment } from "@/domain/entities/Moment";
-import type { Phase } from "@/domain/value-objects/Phase";
+} from "@zenborg/core/domain/entities/HistoryEntry";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import { recordOperation } from "./history.ts";
 import { selectionState$ } from "./selection.ts";
 import { moments$ } from "./store.ts";

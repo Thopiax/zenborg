@@ -3,7 +3,7 @@
 import { useValue } from "@legendapp/state/react";
 import { Plus } from "lucide-react";
 import { forwardRef, useEffect, useRef } from "react";
-import type { Cycle } from "@/domain/entities/Cycle";
+import type { Cycle } from "@zenborg/core/domain/entities/Cycle";
 import { activeCycle$, cycles$ } from "@/infrastructure/state/store";
 import { cycleDeckSelectedCycleId$ } from "@/infrastructure/state/ui-store";
 import {

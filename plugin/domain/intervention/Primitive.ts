@@ -15,8 +15,8 @@
  * is not who armed the thing, it is that every armed thing can be got out of.
  */
 
-import type { Weekday } from "../../../src/domain/value-objects/Schedule.ts";
-import type { Phase } from "../../../src/domain/value-objects/Phase.ts";
+import type { Weekday } from "../../../packages/core/domain/value-objects/Schedule.ts";
+import type { Phase } from "../../../packages/core/domain/value-objects/Phase.ts";
 
 export interface TransformSpec {
   readonly kind: "transform";

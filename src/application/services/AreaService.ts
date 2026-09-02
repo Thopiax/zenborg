@@ -5,7 +5,7 @@ import {
   canDeleteArea,
   createArea,
   updateArea,
-} from "@/domain/entities/Area";
+} from "@zenborg/core/domain/entities/Area";
 import { areas$, habits$, moments$ } from "@/infrastructure/state/store";
 
 export class AreaService {

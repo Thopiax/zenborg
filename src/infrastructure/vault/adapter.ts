@@ -8,7 +8,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { CollectionName } from "@/domain/registry";
+import type { CollectionName } from "@zenborg/core/domain/registry";
 
 // ────────────────────────────────────────────────────────────────────────
 // Commands

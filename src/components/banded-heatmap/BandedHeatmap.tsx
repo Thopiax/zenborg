@@ -12,10 +12,10 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Area } from "@/domain/entities/Area";
-import type { CreateCycleProps, Cycle } from "@/domain/entities/Cycle";
-import type { Moment } from "@/domain/entities/Moment";
-import type { PhaseConfig } from "@/domain/value-objects/Phase";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { CreateCycleProps, Cycle } from "@zenborg/core/domain/entities/Cycle";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import type { PhaseConfig } from "@zenborg/core/domain/value-objects/Phase";
 import {
   deriveBandedHeatmapViewModel,
   type HeatmapViewModel,

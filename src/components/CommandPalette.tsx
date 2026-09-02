@@ -16,8 +16,8 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
 import {
   type AppMode,
   type SearchableEntity,

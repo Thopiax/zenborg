@@ -2,12 +2,12 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import "fake-indexeddb/auto";
-import { createArea } from "@/domain/entities/Area";
-import { createCycle } from "@/domain/entities/Cycle";
-import { createHabit } from "@/domain/entities/Habit";
-import { defaultMeta } from "@/domain/entities/Meta";
-import { createMoment } from "@/domain/entities/Moment";
-import { Phase } from "@/domain/value-objects/Phase";
+import { createArea } from "@zenborg/core/domain/entities/Area";
+import { createCycle } from "@zenborg/core/domain/entities/Cycle";
+import { createHabit } from "@zenborg/core/domain/entities/Habit";
+import { defaultMeta } from "@zenborg/core/domain/entities/Meta";
+import { createMoment } from "@zenborg/core/domain/entities/Moment";
+import { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import {
   clearMetaCache,
   readMeta,

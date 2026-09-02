@@ -28,8 +28,8 @@ import { PlaceFormDialog } from "@/components/PlaceFormDialog";
 import { PlacesMapView } from "@/components/PlacesMapView";
 import { PlacesTreeView } from "@/components/PlacesTreeView";
 import { PlantToolbar } from "@/components/PlantToolbar";
-import { slugify } from "@/domain/entities/Moment";
-import { createPlace, normalizeAliases } from "@/domain/entities/Place";
+import { slugify } from "@zenborg/core/domain/entities/Moment";
+import { createPlace, normalizeAliases } from "@zenborg/core/domain/entities/Place";
 import {
   activeAreas$,
   activeHabits$,

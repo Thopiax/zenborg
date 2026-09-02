@@ -3,7 +3,7 @@
 import { observer, use$ } from "@legendapp/state/react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Place } from "@/domain/entities/Place";
+import type { Place } from "@zenborg/core/domain/entities/Place";
 import { activeHabits$, places$ } from "@/infrastructure/state/store";
 import {
   openPlaceFormEdit,

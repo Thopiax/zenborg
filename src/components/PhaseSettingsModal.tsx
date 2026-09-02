@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PhaseConfig } from "@/domain/value-objects/Phase";
+import type { PhaseConfig } from "@zenborg/core/domain/value-objects/Phase";
 import { phaseConfigs$ } from "@/infrastructure/state/store";
 import { CircularPhaseSlider } from "./CircularPhaseSlider";
 

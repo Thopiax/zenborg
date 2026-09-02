@@ -4,8 +4,8 @@
  * Business logic for validating drag operations against Zenborg's constraints.
  */
 
-import type { Moment } from "@/domain/entities/Moment";
-import type { Phase } from "@/domain/value-objects/Phase";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import type { DragValidationResult } from "@/types/dnd";
 
 /**

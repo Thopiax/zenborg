@@ -1,9 +1,9 @@
-import { defaultMeta, type Meta } from "@/domain/entities/Meta";
+import { defaultMeta, type Meta } from "@zenborg/core/domain/entities/Meta";
 
 const STORAGE_KEY = "zenborg:meta";
 let cached: Meta | null = null;
 
-export { defaultMeta } from "@/domain/entities/Meta";
+export { defaultMeta } from "@zenborg/core/domain/entities/Meta";
 
 export function readMeta(): Meta {
   if (cached) return cached;

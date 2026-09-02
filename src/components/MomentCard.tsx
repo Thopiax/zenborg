@@ -1,8 +1,8 @@
 "use client";
 
 import { use$ } from "@legendapp/state/react";
-import type { Area } from "@/domain/entities/Area";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
 import { useActiveMoment } from "@/hooks/useActiveMoment";
 import { useHabitHealth } from "@/hooks/useHabitHealth";
 import { useSelection } from "@/hooks/useSelection";

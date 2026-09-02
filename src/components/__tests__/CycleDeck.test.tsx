@@ -4,9 +4,9 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import type { Area } from "@/domain/entities/Area";
-import type { CyclePlan } from "@/domain/entities/CyclePlan";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { CyclePlan } from "@zenborg/core/domain/entities/CyclePlan";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
 import type { VirtualDeckCard } from "@/infrastructure/state/virtualDeckCards";
 
 // Make React globally available (needed for JSX in components without React import)

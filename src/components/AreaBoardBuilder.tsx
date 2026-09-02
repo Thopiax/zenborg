@@ -10,11 +10,11 @@ import { HabitService } from "@/application/services/HabitService";
 import { AreaBoardColumn } from "@/components/AreaBoardColumn";
 import { EmptyAreaColumn } from "@/components/EmptyAreaColumn";
 import { HabitFormDialog } from "@/components/HabitFormDialog";
-import type { Area, UpdateAreaProps } from "@/domain/entities/Area";
+import type { Area, UpdateAreaProps } from "@zenborg/core/domain/entities/Area";
 import type {
   CreateHabitProps,
   UpdateHabitProps,
-} from "@/domain/entities/Habit";
+} from "@zenborg/core/domain/entities/Habit";
 import {
   activeAreas$,
   activeHabits$,

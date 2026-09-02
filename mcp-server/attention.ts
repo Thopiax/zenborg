@@ -6,23 +6,23 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { AreaMap } from "../src/domain/attention/AreaMap.ts";
-import { resolveArea } from "../src/domain/attention/AreaMap.ts";
+import type { AreaMap } from "@zenborg/core/domain/attention/AreaMap";
+import { resolveArea } from "@zenborg/core/domain/attention/AreaMap";
 import {
   agentSessions,
   byArea,
   coverage,
   dwellRows,
   type DwellConfig,
-} from "../src/domain/attention/AttentionSummary.ts";
+} from "@zenborg/core/domain/attention/AttentionSummary";
 import {
   boundariesIn,
   cellWindow,
   type MomentRef,
   type PhaseConfigRef,
-} from "../src/domain/attention/GardenClock.ts";
-import { spanDuration, spanOverlaps } from "../src/domain/attention/Span.ts";
-import { deriveSpans } from "../src/domain/attention/SpanDerivation.ts";
+} from "@zenborg/core/domain/attention/GardenClock";
+import { spanDuration, spanOverlaps } from "@zenborg/core/domain/attention/Span";
+import { deriveSpans } from "@zenborg/core/domain/attention/SpanDerivation";
 import { logDir, readActivityLog } from "./activity-log.ts";
 import type { Area, Moment, PhaseConfig } from "./vault.ts";
 

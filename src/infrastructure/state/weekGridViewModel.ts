@@ -1,9 +1,9 @@
-import type { Moment } from "@/domain/entities/Moment";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
 import {
   getVisiblePhases,
   type PhaseConfig,
-} from "@/domain/value-objects/Phase";
-import { CALENDAR_GRID_MINUTES } from "@/domain/value-objects/TimeGrid.ts";
+} from "@zenborg/core/domain/value-objects/Phase";
+import { CALENDAR_GRID_MINUTES } from "@zenborg/core/domain/value-objects/TimeGrid.ts";
 
 export interface WeekGridBlock {
   readonly momentId: string;

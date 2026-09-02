@@ -4,8 +4,8 @@ import { useState } from "react";
 import { AttitudeChip } from "@/components/AttitudeChip";
 import { AttitudeSelector } from "@/components/AttitudeSelector";
 import { TagBadges } from "@/components/TagBadges";
-import type { Area } from "@/domain/entities/Area";
-import type { Attitude } from "@/domain/value-objects/Attitude";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Attitude } from "@zenborg/core/domain/value-objects/Attitude";
 
 const MAX_VISIBLE_TAGS = 2;
 

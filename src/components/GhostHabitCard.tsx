@@ -3,7 +3,7 @@
 import { useValue } from "@legendapp/state/react";
 import { ChevronUp, X } from "lucide-react";
 import { CycleService } from "@/application/services/CycleService";
-import type { Area } from "@/domain/entities/Area";
+import type { Area } from "@zenborg/core/domain/entities/Area";
 import { useHabitHealth } from "@/hooks/useHabitHealth";
 import { habits$ } from "@/infrastructure/state/store";
 import { healthEmojiClass } from "@/lib/health-style";

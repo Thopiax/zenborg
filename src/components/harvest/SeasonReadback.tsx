@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { Phase } from "@/domain/value-objects/Phase";
-import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
-import { composeReflection } from "@/domain/value-objects/Reflection";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
+import { PhaseIcon } from "@zenborg/core/domain/value-objects/phaseStyles";
+import { composeReflection } from "@zenborg/core/domain/value-objects/Reflection";
 import type {
   HarvestMoment,
   HarvestSeason,

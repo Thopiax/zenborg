@@ -11,11 +11,11 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { use$ } from "@legendapp/state/react";
-import type { Area } from "@/domain/entities/Area";
-import { type Moment, compareMoments } from "@/domain/entities/Moment";
-import type { Phase } from "@/domain/value-objects/Phase";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import { type Moment, compareMoments } from "@zenborg/core/domain/entities/Moment";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import { Plus } from "lucide-react";
-import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
+import { PhaseIcon } from "@zenborg/core/domain/value-objects/phaseStyles";
 import { selectionState$ } from "@/infrastructure/state/selection";
 import { areas$, moments$ } from "@/infrastructure/state/store";
 import {

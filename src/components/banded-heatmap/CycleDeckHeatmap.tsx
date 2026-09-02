@@ -3,7 +3,7 @@
 import { useValue } from "@legendapp/state/react";
 import { useCallback } from "react";
 import { CycleService } from "@/application/services/CycleService";
-import type { CreateCycleProps } from "@/domain/entities/Cycle";
+import type { CreateCycleProps } from "@zenborg/core/domain/entities/Cycle";
 import {
   areas$,
   cycles$,

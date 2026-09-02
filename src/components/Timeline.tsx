@@ -3,7 +3,7 @@
 import { use$ } from "@legendapp/state/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
-import type { Phase } from "@/domain/value-objects/Phase";
+import type { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import {
   currentPhase$,
   timeTick$,

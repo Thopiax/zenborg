@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import type { ImportStrategy } from "@/application/use-cases/export-import";
+import type { ImportStrategy } from "@zenborg/core/application/use-cases/export-import";
 import {
   Dialog,
   DialogContent,

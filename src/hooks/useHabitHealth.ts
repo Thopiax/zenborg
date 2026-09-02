@@ -4,9 +4,9 @@ import { use$ } from "@legendapp/state/react";
 import {
   countsAsAllocation,
   momentInvolvesHabit,
-} from "@/domain/entities/Moment";
-import { habitHealthService } from "@/domain/services/HabitHealthService";
-import type { Health } from "@/domain/value-objects/Health";
+} from "@zenborg/core/domain/entities/Moment";
+import { habitHealthService } from "@zenborg/core/domain/services/HabitHealthService";
+import type { Health } from "@zenborg/core/domain/value-objects/Health";
 import {
   activeCycleId$,
   cyclePlans$,

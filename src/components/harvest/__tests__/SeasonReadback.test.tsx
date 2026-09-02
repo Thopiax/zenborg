@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import { Phase } from "@/domain/value-objects/Phase";
+import { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import type {
   HarvestMoment,
   HarvestSeason,

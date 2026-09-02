@@ -1,4 +1,4 @@
-import type { Cycle } from "@/domain/entities/Cycle";
+import type { Cycle } from "@zenborg/core/domain/entities/Cycle";
 
 export interface ClampInput {
   cycleId: string;

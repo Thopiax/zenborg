@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import type { Habit } from "@/domain/entities/Habit";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
 import { cn } from "@/lib/utils";
 import { HabitAutocompleteInline } from "./HabitAutocompleteInline";
 

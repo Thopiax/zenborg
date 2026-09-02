@@ -1,11 +1,11 @@
-import type { Area } from "@/domain/entities/Area";
-import type { Cycle } from "@/domain/entities/Cycle";
-import { countsAsAllocation, type Moment } from "@/domain/entities/Moment";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Cycle } from "@zenborg/core/domain/entities/Cycle";
+import { countsAsAllocation, type Moment } from "@zenborg/core/domain/entities/Moment";
 import {
   getVisiblePhases,
   type Phase,
   type PhaseConfig,
-} from "@/domain/value-objects/Phase";
+} from "@zenborg/core/domain/value-objects/Phase";
 
 export type HeatmapTense = "past" | "active" | "future";
 export type HeatmapCellState = "planted" | "fallow" | "unplanted";

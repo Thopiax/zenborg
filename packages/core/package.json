@@ -1,0 +1,12 @@
+{
+  "name": "@zenborg/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./*.ts"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0"
+  }
+}

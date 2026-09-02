@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
+    "@zenborg/core": "workspace:*",
     "zod": "^3.25.0"
   },
   "devDependencies": {

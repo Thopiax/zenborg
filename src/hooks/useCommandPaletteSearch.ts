@@ -2,9 +2,9 @@ import { useSelector } from "@legendapp/state/react";
 import Fuse from "fuse.js";
 import { useMemo } from "react";
 import { allCommands, type Command } from "@/commands";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
-import type { Moment } from "@/domain/entities/Moment";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
 import {
   activeAreas$,
   activeHabits$,

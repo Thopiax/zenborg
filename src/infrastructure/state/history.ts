@@ -3,8 +3,8 @@ import type {
   HistoryEntry,
   HistoryOperation,
   HistoryState,
-} from "@/domain/entities/HistoryEntry";
-import { createHistoryEntry } from "@/domain/entities/HistoryEntry";
+} from "@zenborg/core/domain/entities/HistoryEntry";
+import { createHistoryEntry } from "@zenborg/core/domain/entities/HistoryEntry";
 
 /**
  * History State Observable

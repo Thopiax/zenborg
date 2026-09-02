@@ -2,9 +2,9 @@
 
 import { Archive } from "lucide-react";
 import { useState } from "react";
-import type { Habit } from "@/domain/entities/Habit";
-import { getAttitudeIcon } from "@/domain/value-objects/Attitude";
-import { PhaseIcon } from "@/domain/value-objects/phaseStyles";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import { getAttitudeIcon } from "@zenborg/core/domain/value-objects/Attitude";
+import { PhaseIcon } from "@zenborg/core/domain/value-objects/phaseStyles";
 import { cn } from "@/lib/utils";
 
 interface PlanHabitItemProps {

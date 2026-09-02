@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from "vitest";
-import type { Area } from "@/domain/entities/Area";
-import type { CyclePlan } from "@/domain/entities/CyclePlan";
-import type { Habit } from "@/domain/entities/Habit";
-import type { Moment } from "@/domain/entities/Moment";
-import { Phase } from "@/domain/value-objects/Phase";
+import type { Area } from "@zenborg/core/domain/entities/Area";
+import type { CyclePlan } from "@zenborg/core/domain/entities/CyclePlan";
+import type { Habit } from "@zenborg/core/domain/entities/Habit";
+import type { Moment } from "@zenborg/core/domain/entities/Moment";
+import { Phase } from "@zenborg/core/domain/value-objects/Phase";
 import { computeVirtualDeckCards } from "../state/virtualDeckCards";
 
 const area = (id: string, order: number): Area => ({

@@ -4,7 +4,7 @@ import {
   type DayNoteResult,
   setDayNoteBody,
   updateDayNote,
-} from "@/domain/entities/DayNote";
+} from "@zenborg/core/domain/entities/DayNote";
 import { dayNotes$ } from "@/infrastructure/state/store";
 
 /**

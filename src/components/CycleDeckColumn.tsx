@@ -2,7 +2,7 @@
 
 import { useValue } from "@legendapp/state/react";
 import { CycleService } from "@/application/services/CycleService";
-import type { Area } from "@/domain/entities/Area";
+import type { Area } from "@zenborg/core/domain/entities/Area";
 import { habits$ } from "@/infrastructure/state/store";
 import type { VirtualDeckCard as VirtualDeckCardData } from "@/infrastructure/state/virtualDeckCards";
 import { columnWidth } from "@/lib/design-tokens";
