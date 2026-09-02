@@ -32,6 +32,36 @@ export const viewCommands: Command[] = [
     },
   },
   {
+    id: "view.plant",
+    label: "Go to Plant",
+    shortcut: "mod+1",
+    category: "Views",
+    keywords: ["plant", "day", "board"],
+    action: () => {
+      window.location.href = "/plant";
+    },
+  },
+  {
+    id: "view.cultivate",
+    label: "Go to Cultivate",
+    shortcut: "mod+2",
+    category: "Views",
+    keywords: ["cultivate", "timeline"],
+    action: () => {
+      window.location.href = "/cultivate";
+    },
+  },
+  {
+    id: "view.harvest",
+    label: "Go to Harvest",
+    shortcut: "mod+3",
+    category: "Views",
+    keywords: ["harvest", "review"],
+    action: () => {
+      window.location.href = "/harvest";
+    },
+  },
+  {
     id: "view.plant.habits",
     label: "View Habits",
     shortcut: "shift+1",
