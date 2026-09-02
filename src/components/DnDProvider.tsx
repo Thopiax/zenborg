@@ -24,9 +24,6 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useValue } from "@legendapp/state/react";
 import { useState } from "react";
-import { CycleService } from "@/application/services/CycleService";
-import type { Area } from "@/domain/entities/Area";
-import type { Habit } from "@/domain/entities/Habit";
 import type { Phase } from "@/domain/value-objects/Phase";
 import { endBatch, startBatch } from "@/infrastructure/state/history";
 import {
@@ -35,19 +32,14 @@ import {
   reorderMomentsWithHistory,
 } from "@/infrastructure/state/history-middleware";
 import { selectionState$ } from "@/infrastructure/state/selection";
-import { areas$, habits$, moments$ } from "@/infrastructure/state/store";
+import { areas$, moments$ } from "@/infrastructure/state/store";
 import { isDuplicateMode$ } from "@/infrastructure/state/ui-store";
-import {
-  columnWidth,
-  getTextColorsForBackground,
-  momentCard,
-} from "@/lib/design-tokens";
+import { columnWidth } from "@/lib/design-tokens";
 import {
   calculateNextOrder,
   canDropInCell,
   reorderAfterRemoval,
 } from "@/lib/drag-validation";
-import { cn } from "@/lib/utils";
 import type { DraggableData, DroppableData } from "@/types/dnd";
 import { MomentCard } from "./MomentCard";
 
@@ -55,53 +47,11 @@ interface DnDProviderProps {
   children: React.ReactNode;
 }
 
-/**
- * DeckCardPreview — overlay preview rendered when dragging a VirtualDeckCard.
- * Matches MomentCard styling so the drop into a timeline slot feels continuous
- * with allocating a moment.
- */
-function DeckCardPreview({ habit, area }: { habit: Habit; area: Area }) {
-  const textColors = getTextColorsForBackground(area.color);
-  return (
-    <div
-      className={cn(
-        "rounded-lg w-full flex flex-row items-center gap-2 shadow-lg",
-      )}
-      style={{
-        backgroundColor: area.color,
-        minHeight: momentCard.minHeight,
-        paddingLeft: momentCard.paddingX,
-        paddingRight: momentCard.paddingX,
-        paddingTop: momentCard.paddingY,
-        paddingBottom: momentCard.paddingY,
-      }}
-    >
-      {habit.emoji && (
-        <span className={cn("mr-2 text-lg", textColors.primary)}>
-          {habit.emoji}
-        </span>
-      )}
-      <span
-        className={cn(
-          "text-lg font-semibold font-mono truncate flex-1 min-w-0",
-          textColors.primary,
-        )}
-      >
-        {habit.name}
-      </span>
-    </div>
-  );
-}
-
 export function DnDProvider({ children }: DnDProviderProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeDeckHabitId, setActiveDeckHabitId] = useState<string | null>(
-    null,
-  );
   const isDuplicateMode = useValue(isDuplicateMode$);
   const allMoments = useValue(moments$);
   const allAreas = useValue(areas$);
-  const allHabits = useValue(habits$);
   const selectedMomentIds = useValue(selectionState$.selectedMomentIds);
 
   // Custom collision detection strategy
@@ -161,19 +111,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id as string;
-    const data = event.active.data.current as DraggableData | undefined;
-
-    // Deck-card drags don't correspond to a Moment yet. Track the habit so
-    // the overlay can render a moment-shaped preview of the intended drop.
-    if (data?.type === "deck-card") {
-      setActiveDeckHabitId(data.habitId);
-      setActiveId(null);
-      const altKeyPressed =
-        // @ts-expect-error - activatorEvent carries the original pointer event
-        event.activatorEvent?.altKey || false;
-      isDuplicateMode$.set(altKeyPressed);
-      return;
-    }
 
     // MomentStack draggables use "stack-{momentId}" as their dnd-kit ID but
     // store the real moment ID in data.current.momentId. Use that for the
@@ -182,7 +119,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       (event.active.data.current as { momentId?: string } | undefined)
         ?.momentId ?? id;
     setActiveId(momentId);
-    setActiveDeckHabitId(null);
     // Capture duplicate decision at drag start (locked for entire drag operation)
     // If Option/Alt is held when drag begins, we'll duplicate on drop
     // @ts-expect-error - activatorEvent contains the original mouse/pointer event
@@ -194,7 +130,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
     const { active, over } = event;
     const wasDuplicateMode = isDuplicateMode;
     setActiveId(null);
-    setActiveDeckHabitId(null);
     isDuplicateMode$.set(false);
 
     if (!over) {
@@ -222,46 +157,10 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
-    if (isDraggingSelection && dropData?.targetType === "cycle-deck") {
-      // Handle batch drop on cycle deck (unallocate all)
-      if (!wasDuplicateMode) {
-        const validMomentIds = currentSelectedIds.filter((momentId) => {
-          const moment = allMoments[momentId];
-          return !!moment;
-        });
-
-        if (validMomentIds.length === 0) {
-          console.warn("No valid moments to unallocate to cycle deck");
-          return;
-        }
-
-        handleBatchUnallocate(validMomentIds);
-      }
-      return;
-    }
-
     // Handle sortable reordering (when dragging over another moment, not a cell)
     if (active.id !== over.id && !dropData?.targetType) {
       const activeMoment = allMoments[active.id as string];
       const overMoment = allMoments[over.id as string];
-
-      // Bug C1: deck-card dropped on an allocated moment resolves over.id to
-      // that sortable moment's id (not its droppable cell), so dropData has no
-      // targetType. Re-route to handleAllocateFromPlan using the overMoment's
-      // cell coordinates so the drop isn't silently swallowed.
-      if (
-        !activeMoment &&
-        dragData?.type === "deck-card" &&
-        overMoment?.day &&
-        overMoment?.phase
-      ) {
-        handleAllocateFromPlan(dragData, {
-          targetType: "timeline-cell",
-          targetDay: overMoment.day,
-          targetPhase: overMoment.phase,
-        });
-        return;
-      }
 
       if (!activeMoment || !overMoment) {
         return;
@@ -321,15 +220,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       return;
     }
 
-    // Virtual deck card drag (derive paradigm) — materialize on allocation.
-    if (dragData.type === "deck-card") {
-      if (dropData.targetType === "timeline-cell") {
-        handleAllocateFromPlan(dragData, dropData);
-      }
-      // Deck card dropped on deck or elsewhere: no-op.
-      return;
-    }
-
     const momentId = dragData.momentId;
     if (!momentId) {
       console.warn("Missing momentId in drag data", dragData);
@@ -348,46 +238,8 @@ export function DnDProvider({ children }: DnDProviderProps) {
         handleDropOnTimelineCell(dragData, dropData, wasDuplicateMode);
         break;
 
-      case "cycle-deck":
-        // Unallocate moment back to cycle deck (only if coming from timeline)
-        if (!wasDuplicateMode && dragData.sourceType === "timeline") {
-          handleUnallocateMoment(dragData);
-        }
-        break;
-
       default:
         console.warn("Unknown drop target type:", dropData.targetType);
-    }
-  }
-
-  /**
-   * Allocate a virtual deck card into a timeline slot.
-   * Calls `CycleService.allocateFromPlan` which materializes a new Moment
-   * linked to the plan. Errors (over-budget, slot full, etc.) are surfaced
-   * via alert().
-   */
-  function handleAllocateFromPlan(
-    dragData: Extract<DraggableData, { type: "deck-card" }>,
-    dropData: DroppableData,
-  ) {
-    const { cycleId, habitId } = dragData;
-    const { targetDay, targetPhase } = dropData;
-
-    if (!targetDay || !targetPhase) {
-      console.warn("timeline-cell drop missing day/phase", dropData);
-      return;
-    }
-
-    const service = new CycleService();
-    const result = service.allocateFromPlan({
-      cycleId,
-      habitId,
-      day: targetDay,
-      phase: targetPhase,
-    });
-
-    if ("error" in result) {
-      alert(result.error);
     }
   }
 
@@ -425,72 +277,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
     reorderMomentsWithHistory(day, phase, reorders);
   }
 
-  function handleUnallocateMoment(
-    dragData: Extract<DraggableData, { type?: undefined }>,
-  ) {
-    const { momentId, sourceDay, sourcePhase } = dragData;
-
-    // Only process if moment was allocated (coming from timeline)
-    if (!momentId || !sourceDay || !sourcePhase) {
-      return; // Already unallocated or missing id
-    }
-
-    const moment = allMoments[momentId];
-    if (!moment) return;
-
-    // Derive paradigm: plan-linked moments are deleted on unallocate
-    // (the virtual ghost in the deck auto-reappears as allocatedCount drops).
-    // Spontaneous moments (cyclePlanId === null) have no deck home, so
-    // unallocating them would send them into an invisible null-day/null-phase
-    // state. Reject instead; the user must delete them explicitly.
-    if (moment.cyclePlanId === null) {
-      alert("Cannot unallocate spontaneous moment; delete it instead");
-      return;
-    }
-
-    const service = new CycleService();
-    const result = service.unallocateMoment(momentId);
-    if ("error" in result) {
-      alert(result.error);
-    }
-  }
-
-  function handleBatchUnallocate(momentIds: string[]) {
-    const service = new CycleService();
-
-    // Reject the whole batch if any moment is spontaneous — no silent
-    // fallback to an invisible null-day/null-phase state.
-    const spontaneous = momentIds.filter((id) => {
-      const m = allMoments[id];
-      return m?.day && m.phase && m.cyclePlanId === null;
-    });
-    if (spontaneous.length > 0) {
-      alert("Cannot unallocate spontaneous moment; delete it instead");
-      return;
-    }
-
-    startBatch();
-
-    for (const momentId of momentIds) {
-      const moment = allMoments[momentId];
-      if (!moment) continue;
-
-      const sourceDay = moment.day;
-      const sourcePhase = moment.phase;
-
-      if (!sourceDay || !sourcePhase) {
-        continue; // Already unallocated
-      }
-
-      const result = service.unallocateMoment(momentId);
-      if ("error" in result) {
-        console.warn("[DnD] Unallocate failed:", result.error);
-      }
-    }
-
-    endBatch(`Unallocated ${momentIds.length} moments`);
-  }
-
   function handleDropOnTimelineCell(
     dragData: Extract<DraggableData, { type?: undefined }>,
     dropData: DroppableData,
@@ -523,7 +309,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
     if (!validation.isValid) {
       console.warn("Cannot drop:", validation.reason);
-      // TODO: Show visual feedback (red border flash)
       return;
     }
 
@@ -609,7 +394,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
       console.warn(
         `Cannot drop ${momentIds.length} moments: only ${availableSpace} spaces available`,
       );
-      // TODO: Show visual feedback
       return;
     }
 
@@ -685,21 +469,12 @@ export function DnDProvider({ children }: DnDProviderProps) {
 
   function handleDragCancel() {
     setActiveId(null);
-    setActiveDeckHabitId(null);
     isDuplicateMode$.set(false);
   }
 
   // Get active moment for drag overlay
   const activeMoment = activeId ? allMoments[activeId] : null;
   const activeArea = activeMoment ? allAreas[activeMoment.areaId] : null;
-
-  // Get active deck-card habit for drag overlay (moment-shaped preview)
-  const activeDeckHabit = activeDeckHabitId
-    ? allHabits[activeDeckHabitId]
-    : null;
-  const activeDeckArea = activeDeckHabit
-    ? allAreas[activeDeckHabit.areaId]
-    : null;
 
   return (
     <DndContext
@@ -712,10 +487,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
     >
       {children}
 
-      {/* Drag overlay shows preview of dragged item(s). Null dropAnimation
-          avoids the snap-back when deck-card drops materialize a new moment —
-          the source draggable disappears, so the default return animation
-          looks like the card bounced away from the slot it just filled. */}
       <DragOverlay dropAnimation={null}>
         {activeMoment && activeArea ? (
           <div
@@ -766,10 +537,6 @@ export function DnDProvider({ children }: DnDProviderProps) {
               // Single moment - show normally
               <MomentCard moment={activeMoment} area={activeArea} />
             )}
-          </div>
-        ) : activeDeckHabit && activeDeckArea ? (
-          <div className="cursor-grabbing" style={{ width: columnWidth.md }}>
-            <DeckCardPreview habit={activeDeckHabit} area={activeDeckArea} />
           </div>
         ) : null}
       </DragOverlay>

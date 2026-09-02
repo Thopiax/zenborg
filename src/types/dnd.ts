@@ -9,49 +9,32 @@ import type { Phase } from "@/domain/value-objects/Phase";
 /**
  * Source location types for draggable moments
  */
-export type DragSourceType = "timeline" | "cycle-deck";
+export type DragSourceType = "timeline";
 
 /**
  * Target location types for droppable zones
  */
-export type DropTargetType = "timeline-cell" | "cycle-deck";
+export type DropTargetType = "timeline-cell";
 
 /**
- * Data attached to draggable items.
- *
- * Discriminated union with two variants:
- *  - `type: "deck-card"` — a virtual deck card representing a plan ghost slot
- *    (derive paradigm). Requires `cycleId` + `habitId`. Dropping on a timeline
- *    slot calls `CycleService.allocateFromPlan(...)`.
- *  - `type: undefined` (moment variant) — a concrete Moment being dragged
- *    (from timeline or from the cycle deck for legacy/allocated cases).
- *    Requires `momentId`.
- *
- * The `type` discriminant lets consumers narrow without optional chaining.
+ * Data attached to draggable items (concrete Moment being dragged).
  */
-export type DraggableData =
-  | {
-      type: "deck-card";
-      cycleId: string;
-      habitId: string;
-    }
-  | {
-      type?: undefined;
-      momentId: string;
-      sourceType: DragSourceType;
-      sourceDay?: string; // ISO date, undefined if from cycle deck
-      sourcePhase?: Phase; // undefined if from cycle deck
-      sourceOrder?: number; // 0-2, undefined if from cycle deck
-    };
+export type DraggableData = {
+  type?: undefined;
+  momentId: string;
+  sourceType: DragSourceType;
+  sourceDay?: string;
+  sourcePhase?: Phase;
+  sourceOrder?: number;
+};
 
 /**
  * Data attached to droppable zones
  */
 export interface DroppableData {
   targetType: DropTargetType;
-  targetDay?: string; // ISO date for timeline cells
-  targetPhase?: Phase; // Phase for timeline cells
-  cycleId?: string; // Cycle ID for cycle deck
+  targetDay?: string;
+  targetPhase?: Phase;
 }
 
 /**
@@ -59,7 +42,7 @@ export interface DroppableData {
  */
 export interface DragValidationResult {
   isValid: boolean;
-  reason?: string; // Error message if invalid
+  reason?: string;
 }
 
 /**
