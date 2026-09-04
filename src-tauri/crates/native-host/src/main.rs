@@ -31,7 +31,7 @@ fn vault_root() -> PathBuf {
         }
     }
     dirs::home_dir()
-        .map(|h| h.join(".kairos"))
+        .map(|h| h.join(".zenborg"))
         .expect("could not resolve $HOME")
 }
 
