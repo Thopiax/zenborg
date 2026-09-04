@@ -8,10 +8,10 @@ func vaultRoot() -> URL {
     }
     #if DEBUG
     return FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".kairos-dev")
+        .appendingPathComponent(".zenborg-dev")
     #else
     return FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".kairos")
+        .appendingPathComponent(".zenborg")
     #endif
 }
 
