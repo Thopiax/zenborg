@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  armableHosts,
+  fenceableHosts,
   exitLine,
   fencesFor,
   gatesFrom,
@@ -175,7 +175,7 @@ describe("reading the cache", () => {
     expect(standingBlockHosts(resolver)).toEqual([]);
   });
 
-  it("armableHosts carries the timed blocks a gesture may arm, not the standing ones", () => {
+  it("fenceableHosts carries the timed blocks a gesture may arm, not the standing ones", () => {
     // The big red button's candidate set: a standing block is already held and
     // is deliberately not offered to the gesture.
     const timed =
@@ -187,8 +187,8 @@ describe("reading the cache", () => {
           enforcement: { kind: "cooldown", enforcement: "browser", standing: false },
         }),
       })?.fences ?? {};
-    expect(armableHosts(timed)).toEqual(["news.example.com"]);
-    expect(armableHosts(fences)).toEqual([]);
+    expect(fenceableHosts(timed)).toEqual(["news.example.com"]);
+    expect(fenceableHosts(fences)).toEqual([]);
   });
 
   it("gatesFrom extracts only the gate entries, in DwellGate shape", () => {

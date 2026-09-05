@@ -18,7 +18,7 @@ describe("arm — write-forward-only", () => {
     expect(state["r1"].until).toBe(T0 + 2 * HOUR);
   });
 
-  it("extends when re-armed for longer", () => {
+  it("extends when re-set for longer", () => {
     let state = arm(EMPTY, { ruleId: "r1", durationMs: HOUR, domains: ["youtube.com"], now: T0 });
     state = arm(state, { ruleId: "r1", durationMs: 3 * HOUR, domains: ["youtube.com"], now: T0 });
     expect(state["r1"].until).toBe(T0 + 3 * HOUR);

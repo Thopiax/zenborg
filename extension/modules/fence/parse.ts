@@ -3,7 +3,7 @@
  *
  * ── Why a cache and not a query ─────────────────────────────────────────
  *
- * The app decides what is armed; the extension decides when it fires. A
+ * The app decides what is fenced; the extension decides when it fires. A
  * navigation cannot wait on a native-messaging round trip, and a shield that
  * depends on a live host is a shield that lifts whenever the host is asleep,
  * mid-update, or crashed. So the record is **pushed** and held locally, and
@@ -173,7 +173,7 @@ function readProbability(raw: unknown): number {
  * Returns `null` when the push is not a record collection at all. That is the
  * difference that keeps the shields up: **malformed means keep what you have,
  * empty means lift.** An older host, a truncated frame or a garbled reply must
- * never read as "nothing is armed" — but an explicitly empty record is the
+ * never read as "nothing is fenced" — but an explicitly empty record is the
  * person taking a fence down, and it has to land.
  */
 export function parseFences(raw: unknown): ParsedFences | null {
@@ -234,7 +234,7 @@ function covers(domain: string, host: string): boolean {
   return host === domain || host.endsWith(`.${domain}`);
 }
 
-/** Everything armed on `host`. The hot-path read: pure, local, no round trip. */
+/** Every standing fence on `host`. The hot-path read: pure, local, no round trip. */
 export function fencesFor(fences: Fences, host: string): readonly Fence[] {
   const needle = normalizeDomain(host);
   if (needle === null) {
@@ -271,13 +271,13 @@ export function standingBlockHosts(fences: Fences): readonly string[] {
 }
 
 /**
- * Hosts a *timed* browser block may cover once armed.
+ * Hosts a *timed* browser block may cover once set.
  *
- * The candidate set, not the held set: a timed block is armed by a gesture —
- * the popup, the keyboard, the tray — and the arming state decides what actually
- * holds. This says which hosts a rule has made available to that gesture.
+ * The candidate set, not the held set: a timed block is set by a gesture —
+ * the popup, the keyboard, the tray — and the cooldown state decides what
+ * actually holds. This says which hosts a rule has made available to that gesture.
  */
-export function armableHosts(fences: Fences): readonly string[] {
+export function fenceableHosts(fences: Fences): readonly string[] {
   const out = new Set<string>();
   for (const entry of Object.values(fences)) {
     const e = entry.enforcement;
@@ -311,7 +311,7 @@ function gateAction(proceed: ProceedAffordance): DwellGate["proceed"]["action"] 
 }
 
 /**
- * The armed gates, in the shape the dwell interpreter already speaks.
+ * The standing gates, in the shape the dwell interpreter already speaks.
  *
  * Reusing `DwellGate` rather than inventing a parallel gate type is what keeps
  * one interstitial in the codebase: a fenced gate and a policy gate are the

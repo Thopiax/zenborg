@@ -1,7 +1,7 @@
 /**
  * The unified Fence type — what is in force right now, as the extension sees it.
  *
- * Replaces `ArmedIntervention` from `modules/interventions/armed.ts`. The key
+ * Replaces the retired `ArmedIntervention` from the old interventions module. The key
  * change from that type: `primitive` splits into `enforcement`, which
  * distinguishes `block` (what `cooldown` primitives become) from `gate`. Same
  * two primitives a browser can actuate, same invariant 6 — the type just
@@ -10,8 +10,8 @@
  * ── Invariant 6 is enforced at the parse boundary ───────────────────────
  *
  * `parseFences` (in `parse.ts`) refuses any entry that carries no reachable
- * exit. Sovereignty rests on the exit, not on who was allowed to arm the
- * thing, so a block with no visible way out is a bug rather than a stricter
+ * exit. Sovereignty rests on the exit, not on who set the
+ * fence, so a block with no visible way out is a bug rather than a stricter
  * shield.
  *
  * This file is pure: no chrome APIs, no clock, no storage.

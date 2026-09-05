@@ -7,7 +7,7 @@
  *   **A malformed push leaves the cache alone; an empty one lifts.**
  *
  * That asymmetry is the whole reliability claim. A dead or downgraded host must
- * not read as "nothing is armed" — the fences would drop exactly when the
+ * not read as "nothing is fenced" — the fences would drop exactly when the
  * machine is least healthy — but taking a fence down has to land, or the person
  * is trapped by a mirror nobody can edit. `parseFences` returns `null` for the
  * first case and `{}` for the second, and `replaceFences` honours both.
@@ -31,7 +31,7 @@ export const fencePushedAt = storage.defineItem<number>("local:fence:pushedAt", 
 /**
  * Entries the last push was refused for, kept so the failure is visible.
  *
- * An invariant-6 refusal is a bug in the rule that armed it, and a bug nobody
+ * An invariant-6 refusal is a bug in the rule that set it, and a bug nobody
  * can see is one that ships. This is the surface that lets the manage page —
  * or a person reading storage — find out why a fence they declared is not
  * holding, instead of concluding the extension is broken.

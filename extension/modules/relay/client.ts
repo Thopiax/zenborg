@@ -283,7 +283,7 @@ export async function flushToHost(): Promise<void> {
         standing?: string[];
         armable?: string[];
         momentFriction?: { allow: string[]; deny: string[] } | null;
-        armed?: unknown;
+        fences?: unknown;
       };
       // Delete on ack: the outbox has done its job once the store has the
       // event. Keeping a second copy here is what produced a page that
@@ -291,11 +291,11 @@ export async function flushToHost(): Promise<void> {
       if (msg.type === "ack" && msg.ids) void deleteEventsByIds(msg.ids);
       else if (msg.type === "observe" && msg.domains) void replaceObserveDomains(msg.domains);
       else if (msg.type === "policy") void replacePolicy(msg);
-      // The armed record. `msg.armed` is passed through untouched — validation
+      // The fence record. `msg.fences` is passed through untouched — validation
       // (including invariant 6) belongs at the cache door, not on the wire, so
-      // there is exactly one place that decides what may be armed.
-      else if (msg.type === "armed") {
-        void replaceFences(msg.armed).then((result) => {
+      // there is exactly one place that decides what stands.
+      else if (msg.type === "fences") {
+        void replaceFences(msg.fences).then((result) => {
           if (!result.applied) {
             console.warn("[zenborg fence] malformed push — keeping the previous cache");
             return;
@@ -321,7 +321,7 @@ export async function flushToHost(): Promise<void> {
     // Rides the same connection as the policy pull rather than opening its own.
     // The push is what keeps the hot path local: actuation never asks, it reads
     // the cache this reply refreshes.
-    port.postMessage({ type: "request_armed" });
+    port.postMessage({ type: "request_fences" });
   } catch {
     // host crashed mid-flush — buffered events stay in IndexedDB for the next flush
   } finally {
