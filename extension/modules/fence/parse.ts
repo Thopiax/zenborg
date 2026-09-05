@@ -33,6 +33,7 @@ import type {
   Fences,
   ParsedFences,
   ProceedAffordance,
+  ScheduleWindow,
   Refusal,
 } from "./types";
 
@@ -159,6 +160,92 @@ function readDomains(raw: unknown): readonly string[] {
   return [...out];
 }
 
+function domainsFromScope(scope: unknown): readonly string[] {
+  if (!isRecord(scope)) return [];
+  if (scope.surface !== "browser") return [];
+  const d = scope.domain;
+  if (typeof d === "string") return readDomains([d]);
+  if (Array.isArray(d)) return readDomains(d);
+  return [];
+}
+
+function enforcementFromPrimitive(p: Record<string, unknown>): FenceEnforcement | null {
+  if (p.kind === "cooldown") {
+    const at = isRecord(p.enforcement) ? p.enforcement.at : undefined;
+    const enforcement: "browser" | "resolver" | "device" =
+      at === "resolver" || at === "device" ? at : "browser";
+    const standing = p.duration != null && isRecord(p.duration) && p.duration.type === "standing"
+      || p.duration != null && isRecord(p.duration) && (p.duration as Record<string, unknown>).standing === true;
+    return { kind: "block", enforcement, standing };
+  }
+  if (p.kind === "gate") {
+    const trigger = isRecord(p.trigger) ? p.trigger : null;
+    const everyMinutes = trigger?.type === "dwell"
+      ? Number(trigger.everyMinutes)
+      : 0;
+    const frictionType = isRecord(p.frictionType) ? p.frictionType : null;
+    const friction = frictionType ? readFriction(frictionType) : null;
+    if (friction === null) return null;
+    return {
+      kind: "gate",
+      everyMinutes: Number.isFinite(everyMinutes) && everyMinutes > 0 ? Math.round(everyMinutes) : 1,
+      friction,
+    };
+  }
+  return null;
+}
+
+function proceedFromPrimitive(p: Record<string, unknown>): ProceedAffordance | null {
+  if (p.kind === "cooldown") {
+    const unlock = isRecord(p.unlockPath) ? p.unlockPath : null;
+    if (!unlock) return null;
+    switch (unlock.type) {
+      case "wait":
+        return { label: "Wait it out", action: { type: "wait" } };
+      case "out_of_band": {
+        const note = text(unlock.note);
+        return note ? { label: note, action: { type: "out_of_band", note } } : null;
+      }
+      case "unlock_with_intention": {
+        const prompt = text(unlock.prompt);
+        return prompt ? { label: "Unlock", action: { type: "intention", prompt } } : null;
+      }
+      case "unlock_with_delay": {
+        const seconds = Number(unlock.seconds);
+        return Number.isFinite(seconds) ? { label: "Wait", action: { type: "delay", seconds: Math.round(seconds) } } : null;
+      }
+      default: return null;
+    }
+  }
+  if (p.kind === "gate") {
+    const aff = isRecord(p.proceedAffordance) ? p.proceedAffordance : null;
+    if (!aff) return null;
+    return readProceed(aff);
+  }
+  return null;
+}
+
+function readSchedule(p: Record<string, unknown>): { inner: Record<string, unknown>; schedule: ScheduleWindow } | null {
+  if (p.kind !== "schedule") return null;
+  const window = isRecord(p.window) ? p.window : null;
+  const wraps = isRecord(p.wraps) ? p.wraps : null;
+  if (!window || !wraps) return null;
+  const fromHour = Number(window.fromHour);
+  const toHour = Number(window.toHour);
+  if (!Number.isFinite(fromHour) || !Number.isFinite(toHour)) return null;
+  const weekdays = Array.isArray(window.weekdays)
+    ? (window.weekdays as unknown[]).filter((w): w is string => typeof w === "string")
+    : undefined;
+  return {
+    inner: wraps,
+    schedule: {
+      fromHour, toHour,
+      ...(weekdays && weekdays.length > 0 ? { weekdays } : {}),
+      outsideWindow: p.outsideWindow === "passthrough" ? "passthrough" : "inactive",
+    },
+  };
+}
+
 function readProbability(raw: unknown): number {
   const p = Number(raw);
   if (raw === undefined || raw === null || !Number.isFinite(p)) {
@@ -193,34 +280,54 @@ export function parseFences(raw: unknown): ParsedFences | null {
       continue;
     }
 
-    const enforcement = readEnforcement(value.enforcement);
+    // Try the flat format first (test fixtures, legacy), then the vault format.
+    let enforcement = readEnforcement(value.enforcement);
+    let proceed = readProceed(value.proceed);
+    let domains = readDomains(value.domains);
+    let schedule: ScheduleWindow | undefined;
+    let abortLabel = isRecord(value.abort) ? text(value.abort.label) : "";
+
+    if (enforcement === null && Array.isArray(value.primitives)) {
+      // Vault format: read from primitives[] + scope.
+      domains = domains.length > 0 ? domains : [...domainsFromScope(value.scope)];
+      const primitives = value.primitives as unknown[];
+      const first = primitives[0];
+      if (isRecord(first)) {
+        let inner = first;
+        const sched = readSchedule(first);
+        if (sched) {
+          inner = sched.inner;
+          schedule = sched.schedule;
+        }
+        enforcement = enforcementFromPrimitive(inner);
+        proceed = proceed ?? proceedFromPrimitive(inner);
+        if (inner.kind === "gate" && isRecord(inner.abortAffordance)) {
+          abortLabel = abortLabel || text(inner.abortAffordance.label);
+        }
+      }
+    }
+
     if (enforcement === null) {
       refused.push({ id, reason: "unactuatable" });
       continue;
     }
-
-    // Invariant 6 first among the content checks: a thing with no way out is
-    // refused whatever else is right about it.
-    const proceed = readProceed(value.proceed);
     if (proceed === null) {
       refused.push({ id, reason: "no_exit" });
       continue;
     }
-
-    const domains = readDomains(value.domains);
     if (domains.length === 0) {
       refused.push({ id, reason: "no_domains" });
       continue;
     }
 
-    const abortLabel = isRecord(value.abort) ? text(value.abort.label) : "";
     fences[id] = {
       id,
-      label: text(value.label) || id,
+      label: text(value.label) || text(value.name) || id,
       domains,
       enforcement,
       proceed,
       ...(abortLabel === "" ? {} : { abort: { label: abortLabel } }),
+      ...(schedule ? { schedule } : {}),
       deliveryProbability: readProbability(value.deliveryProbability),
     };
   }
@@ -234,7 +341,28 @@ function covers(domain: string, host: string): boolean {
   return host === domain || host.endsWith(`.${domain}`);
 }
 
-/** Every standing fence on `host`. The hot-path read: pure, local, no round trip. */
+/** Whether a scheduled fence is currently active (outside the watering window). */
+export function isScheduleActive(schedule: ScheduleWindow, now: Date = new Date()): boolean {
+  if (schedule.weekdays && schedule.weekdays.length > 0) {
+    const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const today = dayNames[now.getDay()];
+    if (!schedule.weekdays.includes(today)) return false;
+  }
+  const hour = now.getHours();
+  const { fromHour, toHour } = schedule;
+  const inWindow = fromHour <= toHour
+    ? hour >= fromHour && hour < toHour
+    : hour >= fromHour || hour < toHour;
+  return schedule.outsideWindow === "inactive" ? !inWindow : true;
+}
+
+/** Whether a fence is currently active, considering its schedule. */
+function isFenceActive(fence: Fence): boolean {
+  if (!fence.schedule) return true;
+  return isScheduleActive(fence.schedule);
+}
+
+/** Every active fence on `host`. The hot-path read: pure, local, no round trip. */
 export function fencesFor(fences: Fences, host: string): readonly Fence[] {
   const needle = normalizeDomain(host);
   if (needle === null) {
@@ -242,7 +370,7 @@ export function fencesFor(fences: Fences, host: string): readonly Fence[] {
   }
   const out: Fence[] = [];
   for (const entry of Object.values(fences)) {
-    if (entry.domains.some((d) => covers(d, needle))) {
+    if (entry.domains.some((d) => covers(d, needle)) && isFenceActive(entry)) {
       out.push(entry);
     }
   }
@@ -263,6 +391,7 @@ export function standingBlockHosts(fences: Fences): readonly string[] {
     if (e.kind !== "block" || !e.standing || e.enforcement !== "browser") {
       continue;
     }
+    if (!isFenceActive(entry)) continue;
     for (const domain of entry.domains) {
       out.add(domain);
     }
@@ -284,6 +413,7 @@ export function fenceableHosts(fences: Fences): readonly string[] {
     if (e.kind !== "block" || e.standing || e.enforcement !== "browser") {
       continue;
     }
+    if (!isFenceActive(entry)) continue;
     for (const domain of entry.domains) {
       out.add(domain);
     }

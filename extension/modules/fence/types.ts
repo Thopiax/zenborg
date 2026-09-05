@@ -61,6 +61,13 @@ export interface ProceedAffordance {
     | { readonly type: "out_of_band"; readonly note: string };
 }
 
+export interface ScheduleWindow {
+  readonly fromHour: number;
+  readonly toHour: number;
+  readonly weekdays?: readonly string[];
+  readonly outsideWindow: "inactive" | "passthrough";
+}
+
 export interface Fence {
   readonly id: string;
   /** What the person called it. Shown wherever the exit is shown. */
@@ -68,9 +75,10 @@ export interface Fence {
   /** Registrable hosts. Domains only — never URLs, never paths. */
   readonly domains: readonly string[];
   readonly enforcement: FenceEnforcement;
-  /** Invariant 6. Required: no exit, no arming. */
   readonly proceed: ProceedAffordance;
   readonly abort?: { readonly label: string };
+  /** When set, the fence is active only outside this window. */
+  readonly schedule?: ScheduleWindow;
   /**
    * From `RuleSpec.deliveryProbability`. `1` means the rule never withholds;
    * anything below it buys the comparison condition a proximal outcome needs.
