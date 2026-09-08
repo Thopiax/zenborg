@@ -9,6 +9,15 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node --experimental-transform-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON ${CLAUDE_PLUGIN_ROOT}/hooks/moment-awareness.mts",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
