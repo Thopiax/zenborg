@@ -2556,24 +2556,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "zenborg-daemon"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "dirs 5.0.1",
- "env_logger",
- "libc",
- "log",
- "notify",
- "observer-core",
- "serde_json",
- "user-idle",
- "uuid",
- "x-win",
-]
-
-[[package]]
 name = "keyboard-types"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7281,6 +7263,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1afec51604565183aeb5c54c20aeab286120d4e4460f7f76e3e8bb8c0d99473"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "zenborg-daemon"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dirs 5.0.1",
+ "env_logger",
+ "libc",
+ "log",
+ "notify",
+ "observer-core",
+ "serde_json",
+ "user-idle",
+ "uuid",
+ "x-win",
 ]
 
 [[package]]
