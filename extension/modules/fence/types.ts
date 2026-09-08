@@ -39,8 +39,9 @@ export type FenceEnforcement =
       readonly everyMinutes: number;
       readonly friction: GateFriction;
       readonly substitute?: {
+        readonly habitId: string;
         readonly domains: readonly string[];
-        readonly minutes: number;
+        readonly minutes?: number;
       };
     };
 

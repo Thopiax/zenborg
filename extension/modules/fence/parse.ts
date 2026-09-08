@@ -139,16 +139,18 @@ function readEnforcement(raw: unknown): FenceEnforcement | null {
     }
     const sub = isRecord(raw.substitute) ? raw.substitute : null;
     const substitute =
-      sub !== null &&
-      Array.isArray(sub.domains) &&
-      Number.isFinite(Number(sub.minutes)) &&
-      Number(sub.minutes) > 0
+      sub !== null && typeof sub.habitId === "string" && sub.habitId !== ""
         ? {
-            domains: (sub.domains as unknown[])
-              .filter((d): d is string => typeof d === "string")
-              .map((d) => normalizeDomain(d))
-              .filter((d): d is string => d !== null),
-            minutes: Number(sub.minutes),
+            habitId: sub.habitId as string,
+            domains: Array.isArray(sub.domains)
+              ? (sub.domains as unknown[])
+                  .filter((d): d is string => typeof d === "string")
+                  .map((d) => normalizeDomain(d))
+                  .filter((d): d is string => d !== null)
+              : ([] as string[]),
+            ...(Number.isFinite(Number(sub.minutes)) && Number(sub.minutes) > 0
+              ? { minutes: Number(sub.minutes) }
+              : {}),
           }
         : undefined;
     return {

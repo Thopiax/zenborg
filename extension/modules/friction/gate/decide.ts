@@ -44,8 +44,9 @@ export interface DwellGate {
   };
   readonly abort: { readonly label: string };
   readonly substitute?: {
+    readonly habitId: string;
     readonly domains: readonly string[];
-    readonly minutes: number;
+    readonly minutes?: number;
   };
   /** @deprecated Pre-2026-08-08 mirror shape. Read only by `normalizeGate`. */
   readonly prompt?: string;
@@ -148,9 +149,10 @@ export async function evaluateGate(
     await gateFiredAt.setValue({});
   }
 
-  if (g.substitute) {
+  if (g.substitute && g.substitute.domains.length > 0) {
     const subDwell = await dwellTodayFor(g.substitute.domains, now);
-    if (subDwell >= g.substitute.minutes * 60_000) {
+    const thresholdMs = g.substitute.minutes != null ? g.substitute.minutes * 60_000 : 1;
+    if (subDwell >= thresholdMs) {
       return { fire: false, dwellMs: 0 };
     }
   }
