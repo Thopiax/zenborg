@@ -75,6 +75,51 @@ convention below carries no structured state.
 Root resolution: `vault_root()` in `fs.rs`, mirrored in `resolveVault()` in `vault.ts`.
 They must stay in lockstep; they have drifted before.
 
+### Oracle integrations
+
+`oracles.json` in the vault root declares the external systems the garden talks to.
+It lives at `~/.zenborg/oracles.json` regardless of debug/release — oracles are about
+the gardener's tools, not the garden's data.
+
+```json
+{
+  "oracles": {
+    "garmin": {},
+    "hey": {
+      "journal": {
+        "check": "which hey",
+        "read": "hey journal read --markdown --quiet",
+        "write": "hey journal write -c \"$CONTENT\""
+      }
+    },
+    "linear": {},
+    "penceive": {
+      "journal": {
+        "check": "which ~/Developer/equanimitech/penceive/bin/journal-append",
+        "write": "printf '$CONTENT' | ~/Developer/equanimitech/penceive/bin/journal-append"
+      }
+    }
+  },
+  "routes": {
+    "journal": ["hey", "penceive"]
+  }
+}
+```
+
+- **`oracles`** — which external systems are available. An oracle being listed means the
+  gardener uses it. MCP oracles stay `{}` (their tools self-describe). CLI oracles carry
+  per-capability protocol objects with `check`, `read` (optional), and `write` commands.
+  `$CONTENT` in commands is a placeholder for the actual payload.
+- **`routes`** — preference chains for capabilities with >1 provider. Skills try each oracle
+  in order, skipping any that's unreachable at runtime. Missing route = skill's own default.
+
+Known oracles: `garmin` (body, workouts), `hey` (journal, email), `linear` (tasks),
+`penceive` (journal), `slack` (messaging), `things` (tasks).
+
+Skills read this file but never write it. The gardener edits it directly — or via the
+`/oracle-wizard` skill, which walks through creating a new integration. A missing file
+means "try everything, probe at runtime" — the pre-oracle behaviour.
+
 ## Area sidecar folders
 
 Unstructured, area-scoped content lives beside the JSON, never inside it:

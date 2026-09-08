@@ -84,7 +84,17 @@ If the user wants to look ahead:
 
 If the user names tomorrow's plans, use tend with `day = tomorrow`.
 
-### 7. Close
+### 7. Write the day to journal oracle
+
+Read `~/.zenborg/oracles.json` → `routes.journal`. Walk the oracle chain
+(same protocol as close-up §3b): `check` → `read` (if present) → `write`.
+
+Append a `## Sunset` section with §2's summary and areas touched.
+Keep it brief — close-up entries already hold the session detail.
+
+If no oracle is reachable, skip silently — the day lives in the garden only.
+
+### 8. Close
 
 End with a natural close. No summary statistics, no scores, no "well done." The day is complete because the gardener says it is.
 
