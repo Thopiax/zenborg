@@ -35,7 +35,7 @@ Before reading the board, call `mcp__zenborg__materialize_routine { boundary: "N
 Fetch today's state in parallel:
 - `mcp__zenborg__list_moments` with `{ "day": "YYYY-MM-DD", "allocation": "allocated" }` for today
 - `mcp__zenborg__get_running_cycle` for the active cycle, intention, and per-habit health
-- `mcp__zenborg__list_wilting_habits` for habits that need attention
+- `mcp__zenborg__list_habits` with `health: "wilting"` for habits that need attention
 - `mcp__zenborg__get_active_moment` to see if an intention is already set
 - `mcp__zenborg__list_phase_configs` to know the phase bands
 - `mcp__garmin__get_sleep_summary` with today's date for last night's sleep

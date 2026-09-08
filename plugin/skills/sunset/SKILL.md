@@ -67,7 +67,7 @@ If the user names activities, hand off to the tend workflow to decompose, resolv
 If `get_active_moment` shows a stale intention, offer to clear it:
 - "Your intention is still set to [moment]. Clear it for the night?"
 
-On confirmation, call `mcp__zenborg__clear_active_moment`.
+On confirmation, call `mcp__zenborg__set_active_moment` with `momentIdOrName: null`.
 
 ### 5. Sleep bookend
 

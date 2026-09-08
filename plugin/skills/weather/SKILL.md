@@ -42,7 +42,7 @@ Call `mcp__zenborg__list_moments` with `{ "allocation": "allocated", "day": "YYY
 In parallel, also fetch:
 - `mcp__zenborg__list_areas` to map areaId to name/emoji
 - `mcp__zenborg__list_habits` to map habitId to name/attitude/rhythm
-- `mcp__zenborg__list_wilting_habits` for the current wilting set
+- `mcp__zenborg__list_habits` with `health: "wilting"` for the current wilting set
 
 #### 3. Render the per-day breakdown
 
@@ -79,7 +79,7 @@ One line per observation. No value judgments.
 
 #### 6. Surface wilting habits
 
-From `list_wilting_habits`, show the top 5-8 sorted by overdue ratio (not raw days). For each: emoji + name + days silent + rhythm + attitude.
+From `list_habits { health: "wilting" }`, show the top 5-8 sorted by overdue ratio (not raw days). For each: emoji + name + days silent + rhythm + attitude.
 
 ### Plan half (look ahead)
 
