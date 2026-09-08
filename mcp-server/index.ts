@@ -149,10 +149,11 @@ import {
   validateRoutine,
 } from "./routines.js";
 import {
-  getAreaMap,
+  getSurfaces,
   getAttention,
   getDayTrace,
   mapArea,
+  migrateSurfaces,
   resolveWindow,
 } from "./attention.js";
 import { logDir, readActivityLog } from "./activity-log.js";
@@ -365,6 +366,11 @@ defineTool(server, {
     order: z.number().int().nonnegative().optional(),
     attitude: AttitudeSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
+    surfaces: z.object({
+      paths: z.array(z.string()).optional(),
+      hosts: z.array(z.string()).optional(),
+      apps: z.array(z.string()).optional(),
+    }).optional().describe("Where this area lives: filesystem paths, browser hosts, app names."),
   },
   concise: (p) => conciseArea((p as any).updated),
   handler: async (params) => {
@@ -382,6 +388,7 @@ defineTool(server, {
       ...(updates.tags !== undefined
         ? { tags: normalizeTags(updates.tags) }
         : {}),
+      ...(updates.surfaces !== undefined ? { surfaces: updates.surfaces } : {}),
       updatedAt: nowIso(),
     };
     areas[area.id] = next;
@@ -4051,7 +4058,7 @@ defineTool(server, {
   annotations: { readOnlyHint: true },
   handler: async () => {
     const areas = readCollection(VAULT_ROOT, "areas");
-    return ok(getAreaMap(VAULT_ROOT, areas));
+    return ok(getSurfaces(VAULT_ROOT, areas));
   },
 });
 
@@ -4074,6 +4081,7 @@ defineTool(server, {
     const areas = readCollection(VAULT_ROOT, "areas");
     const result = mapArea(VAULT_ROOT, areas, params);
     if (!result.ok) return err(result.message);
+    if (result.mutated) writeCollection(VAULT_ROOT, "areas", areas);
     return ok(result);
   },
 });
@@ -4209,6 +4217,16 @@ defineTool(server, {
 // ────────────────────────────────────────────────────────────────────────
 // Connect
 // ────────────────────────────────────────────────────────────────────────
+
+// Migrate area-map.json → area surfaces (one-time, idempotent)
+{
+  const areas = readCollection(VAULT_ROOT, "areas");
+  const m = migrateSurfaces(VAULT_ROOT, areas);
+  if (m.migrated > 0) {
+    writeCollection(VAULT_ROOT, "areas", areas);
+    process.stderr.write(`[zenborg-mcp] migrated ${m.migrated} area-map rules to area surfaces\n`);
+  }
+}
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

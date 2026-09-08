@@ -8,14 +8,21 @@ import type { Moment } from "./Moment";
  * Areas represent different aspects of life (Wellness, Craft, Social, etc.)
  * Each area has a color and emoji for visual identification.
  */
+export interface AreaSurfaces {
+  readonly paths?: readonly string[];
+  readonly hosts?: readonly string[];
+  readonly apps?: readonly string[];
+}
+
 export interface Area {
   readonly id: string;
   name: string;
-  attitude: Attitude | null; // Default relationship mode
-  tags: string[]; // Meta-grouping tags
-  color: string; // hex color
+  attitude: Attitude | null;
+  tags: string[];
+  color: string;
   emoji: string;
-  isDefault: boolean; // true for the 5 seeded defaults
+  isDefault: boolean;
+  surfaces?: AreaSurfaces;
   order: number;
   createdAt: string;
   updatedAt: string;
