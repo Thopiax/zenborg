@@ -1,12 +1,12 @@
 import type { ActivityEvent } from "./ActivityEvent";
+import type { Area } from "../entities/Area";
 import type { AreaId } from "./ids";
 
 /**
  * Resolves an observation to the plot of the garden it happened in.
  *
- * This is `area-map.json` widened from domains to paths, which is the one input
- * the area-drift rule needs that does not exist yet. Pure: the map is data the
- * caller loads, and this module only reads it.
+ * Each area declares its own surfaces (paths, hosts, apps). The SurfaceIndex
+ * is the compiled lookup across all areas — the garden's topography.
  *
  * Deliberately conservative. An unresolvable event returns `undefined` rather
  * than a default area, because a wrong area is a false discrepancy and shadow
@@ -31,7 +31,7 @@ export interface AppRule {
   readonly areaId: AreaId;
 }
 
-export interface AreaMap {
+export interface SurfaceIndex {
   readonly paths: readonly PathRule[];
   readonly hosts: readonly HostRule[];
   readonly apps: readonly AppRule[];
@@ -122,7 +122,7 @@ function underHost(host: string, rule: string): boolean {
  * resolves to its own plot rather than its parent's.
  */
 export function resolveArea(
-  map: AreaMap,
+  map: SurfaceIndex,
   event: ActivityEvent,
 ): AreaId | undefined {
   const path = pathOf(event.payload);
@@ -157,4 +157,19 @@ export function resolveArea(
   }
 
   return undefined;
+}
+
+/** Compile a SurfaceIndex from areas that declare their own surfaces. */
+export function indexSurfaces(areas: Record<string, Area>): SurfaceIndex {
+  const paths: PathRule[] = [];
+  const hosts: HostRule[] = [];
+  const apps: AppRule[] = [];
+  for (const area of Object.values(areas)) {
+    const s = area.surfaces;
+    if (!s) continue;
+    if (s.paths) for (const prefix of s.paths) paths.push({ prefix, areaId: area.id });
+    if (s.hosts) for (const host of s.hosts) hosts.push({ host, areaId: area.id });
+    if (s.apps) for (const app of s.apps) apps.push({ app, areaId: area.id });
+  }
+  return { paths, hosts, apps };
 }
