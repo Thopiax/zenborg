@@ -1,4 +1,4 @@
-import { resolveArea } from "../../domain/attention/AreaMap.ts";
+import { resolveArea } from "../../domain/attention/SurfaceIndex.ts";
 import type { Discrepancy } from "../../domain/attention/Discrepancy";
 import { deriveSpans } from "../../domain/attention/SpanDerivation.ts";
 import {
@@ -22,13 +22,13 @@ export async function deriveDiscrepancies(
   deps: ShadowDeps,
   window: Window,
 ): Promise<DiscrepancyRecord> {
-  const [events, areaMap, boundaries] = await Promise.all([
+  const [events, surfaces, boundaries] = await Promise.all([
     deps.log.read(window.from, window.to),
-    deps.garden.areaMap(),
+    deps.garden.surfaces(),
     deps.garden.boundaries(window.from, window.to),
   ]);
 
-  const spans = deriveSpans(events, (event) => resolveArea(areaMap, event), {
+  const spans = deriveSpans(events, (event) => resolveArea(surfaces, event), {
     ...deps.span,
     boundaries,
   });

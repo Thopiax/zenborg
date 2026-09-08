@@ -12,14 +12,14 @@ import {
   runShadowMode,
 } from "@/application/use-cases/deriveDiscrepancies";
 import type { ActivityEvent } from "@/domain/attention/ActivityEvent";
-import type { AreaMap } from "@/domain/attention/AreaMap";
+import type { SurfaceIndex } from "@/domain/attention/SurfaceIndex";
 import type { Instant } from "@/domain/attention/ids";
 
 const T = 1_700_000_000_000;
 const MINUTE = 60_000;
 const WINDOW = { from: T, to: T + 60 * MINUTE };
 
-const areaMap: AreaMap = {
+const surfaceIndex: SurfaceIndex = {
   paths: [
     { prefix: "/w/craft", areaId: "area-craft" },
     { prefix: "/w/themia", areaId: "area-themia" },
@@ -52,7 +52,7 @@ function deps(
 ): ShadowDeps {
   const log: ActivityLogPort = { read: vi.fn(async () => events) };
   const garden: GardenPort = {
-    areaMap: vi.fn(async () => areaMap),
+    surfaces: vi.fn(async () => surfaceIndex),
     plantingsAt: vi.fn(async (_: Instant) => planting),
     boundaries: vi.fn(async () => boundaries),
   };
@@ -193,7 +193,7 @@ describe("runShadowMode", () => {
     const d = deps([ev("a", T, "/w/themia/x.ts")], plantedCraft);
     await runShadowMode(d, WINDOW);
     expect(Object.keys(d.garden)).toEqual([
-      "areaMap",
+      "surfaces",
       "plantingsAt",
       "boundaries",
     ]);
