@@ -23,7 +23,7 @@ import { cooldownDomains } from "../friction/cooldown/store";
 import { standingBlockHosts } from "./parse";
 import { fenceCache } from "./store";
 
-// Standing blocks, from the fence cache. Slice E had to give the armed record a
+// Standing blocks, from the fence cache. Slice E had to give the fence record a
 // THIRD rule id, because the policy mirror carried a second list of blocked
 // hosts projected from `~/.zenborg/keel/rules/*.json` and the two refreshed on
 // different schedules. Migration step 5 retired that store, so there is one
@@ -31,7 +31,7 @@ import { fenceCache } from "./store";
 const BLOCK_RULE_ID = 1;
 // Cooldowns get their own rule id so arming and lapsing never disturb the
 // permanent blocklist — an expiring cooldown removes only its own rule. This one
-// stays: a cooldown is armed by a local gesture, not by a push, so it genuinely
+// stays: a cooldown is set by a local gesture, not by a push, so it genuinely
 // does refresh on a different schedule from everything above.
 const COOLDOWN_RULE_ID = 2;
 
@@ -150,7 +150,7 @@ export async function syncFenceRules(): Promise<void> {
       addRules,
     });
     console.info(
-      `[zenborg fence] synced ${domains.length} armed domain(s)` +
+      `[zenborg fence] synced ${domains.length} fenced domain(s)` +
         (cooling.length > 0 ? ` + ${cooling.length} under cooldown` : ""),
       domains,
       cooling

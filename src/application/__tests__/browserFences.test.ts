@@ -17,7 +17,7 @@ import { validateRuleSpec } from "@/domain/intervention/RuleSpec";
  * The browser-scoped fence writer.
  *
  * Migration step 5 could not be finished without one. Slice E reported it in as
- * many words: the extension's armed cache had to keep reading
+ * many words: the extension's fence cache had to keep reading
  * `~/.zenborg/keel/rules/*.json` alongside `fences`, because zenborg's only fence
  * writer produced `scope.surface: "session"` rules and a fences-only read would
  * have shipped an inert feature. These tests are that gap closing.
@@ -63,7 +63,7 @@ function deps(opts?: {
 }
 
 describe("declareHostBlock", () => {
-  it("writes a browser-scoped rule — the scope that survives into the armed record", async () => {
+  it("writes a browser-scoped rule — the scope that survives into the fence record", async () => {
     const { d, stored } = deps();
     const result = await declareHostBlock(d, {
       host: "chess.com",
@@ -93,7 +93,7 @@ describe("declareHostBlock", () => {
       expect(carriesExit(p)).toBe(true);
   });
 
-  it("refuses a host with a scheme or a path — the armed record carries domains, never URLs", async () => {
+  it("refuses a host with a scheme or a path — the fence record carries domains, never URLs", async () => {
     const { d, writes } = deps();
     const result = await declareHostBlock(d, {
       host: "https://chess.com/play",
@@ -257,7 +257,7 @@ describe("declareBrowserTransform", () => {
     expect(writes()).toBe(0);
   });
 
-  it("refuses a host with a scheme or a path — the armed record carries domains, never URLs", async () => {
+  it("refuses a host with a scheme or a path — the fence record carries domains, never URLs", async () => {
     const { d, writes } = deps();
     const result = await declareBrowserTransform(d, {
       host: "https://youtube.com/shorts",

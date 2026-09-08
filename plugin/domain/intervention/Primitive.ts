@@ -10,9 +10,9 @@
  * Contract: `keel/docs/primitive-contracts.md`.
  *
  * There is deliberately no `AmbientPrimitive`. keel restricted which primitives a
- * rule could arm by excluding CooldownSpec from a union; that restricted category
- * is gone. A rule may arm any primitive, teeth included. What protects the person
- * is not who armed the thing, it is that every armed thing can be got out of.
+ * rule could set by excluding CooldownSpec from a union; that restricted category
+ * is gone. A rule may set any primitive, teeth included. What protects the person
+ * is not who set the fence, it is that every standing fence can be got out of.
  */
 
 import type { Weekday } from "../../../src/domain/value-objects/Schedule.ts";
@@ -111,9 +111,9 @@ export interface GateSpec {
  * Temporal lockout after a triggering event.
  *
  * `unlockPath` is required for the same reason `proceedAffordance` is. This is
- * what makes a rule-armed cooldown a boundary rather than a punishment, and it is
- * the structural answer to the Screen Time counter-evidence: the teeth cannot be
- * armed without a way out, whoever armed them.
+ * what makes a rule-set cooldown a boundary rather than a punishment, and it is
+ * the structural answer to the Screen Time counter-evidence: teeth cannot stand
+ * without a way out, whoever set them.
  */
 /**
  * Where the lockout is applied.

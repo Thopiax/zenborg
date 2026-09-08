@@ -9,14 +9,14 @@ import type { RuleSpec } from "../RuleSpec";
  *
  * ── Why this exists, and why it is step 5 rather than slice E ───────────
  *
- * Slice E gave the extension an armed cache and made it actuate from that cache
+ * Slice E gave the extension a fence cache and made it actuate from that cache
  * and nothing else. It could not finish, and said so: zenborg's only fence
  * writer was `sessionFenceRule`, which produces `scope.surface: "session"` rules
  * that reach no browser. So the host kept reading a second store —
  * `~/.zenborg/keel/rules/*.json` — or the feature would have shipped inert.
  *
  * This factory is the missing half. A rule built here is browser-scoped, so it
- * survives the projection into the armed record, so the readers can collapse
+ * survives the projection into the fence record, so the readers can collapse
  * onto `fences` as the single store.
  *
  * ── Why a gate and not a block ──────────────────────────────────────────

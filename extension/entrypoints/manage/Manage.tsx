@@ -1,7 +1,7 @@
 /**
  * The manage page — a fence dashboard.
  *
- * Four sections: the fences table (what is armed, its type, its exit),
+ * Four sections: the fences table (what is standing, its type, its exit),
  * cooldown status, area-map assignment, and activity-log export. Everything
  * here is read-mostly: the only writes this page performs are `setArea`
  * (native-messaging, may fail silently — see `handleAssign`) and the local

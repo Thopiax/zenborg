@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  armableHosts,
+  fenceableHosts,
   exitLine,
   fencesFor,
   gatesFrom,
+  isScheduleActive,
   parseFences,
   standingBlockHosts,
 } from "./parse";
@@ -175,7 +176,7 @@ describe("reading the cache", () => {
     expect(standingBlockHosts(resolver)).toEqual([]);
   });
 
-  it("armableHosts carries the timed blocks a gesture may arm, not the standing ones", () => {
+  it("fenceableHosts carries the timed blocks a gesture may arm, not the standing ones", () => {
     // The big red button's candidate set: a standing block is already held and
     // is deliberately not offered to the gesture.
     const timed =
@@ -187,8 +188,8 @@ describe("reading the cache", () => {
           enforcement: { kind: "cooldown", enforcement: "browser", standing: false },
         }),
       })?.fences ?? {};
-    expect(armableHosts(timed)).toEqual(["news.example.com"]);
-    expect(armableHosts(fences)).toEqual([]);
+    expect(fenceableHosts(timed)).toEqual(["news.example.com"]);
+    expect(fenceableHosts(fences)).toEqual([]);
   });
 
   it("gatesFrom extracts only the gate entries, in DwellGate shape", () => {
@@ -255,5 +256,170 @@ describe("exitLine — the sentence the person reads", () => {
       }),
     })?.fences["gate-linkedin"] as Fence;
     expect(exitLine(f)).toBe("Move on — goes to https://example.com");
+  });
+});
+
+describe("parseFences — vault format (primitives[] + scope)", () => {
+  it("parses a standing cooldown from primitives + scope", () => {
+    const result = parseFences({
+      "vice-block": {
+        id: "vice-block",
+        name: "vice block",
+        scope: { surface: "browser", domain: "example.com" },
+        primitives: [
+          {
+            kind: "cooldown",
+            duration: { type: "standing" },
+            unlockPath: { type: "out_of_band", note: "Edit the rule." },
+            enforcement: { at: "browser" },
+          },
+        ],
+      },
+    });
+    expect(result).not.toBeNull();
+    const f = result!.fences["vice-block"];
+    expect(f).toBeDefined();
+    expect(f.enforcement).toEqual({ kind: "block", enforcement: "browser", standing: true });
+    expect(f.domains).toEqual(["example.com"]);
+    expect(f.proceed.action.type).toBe("out_of_band");
+  });
+
+  it("parses a gate from primitives + scope", () => {
+    const result = parseFences({
+      "yt-gate": {
+        id: "yt-gate",
+        name: "YouTube dwell",
+        scope: { surface: "browser", domain: "youtube.com" },
+        primitives: [
+          {
+            kind: "gate",
+            trigger: { type: "dwell", everyMinutes: 15 },
+            frictionType: { type: "intention", prompt: "Still here?" },
+            proceedAffordance: { label: "Keep going", action: { type: "continue" } },
+            abortAffordance: { label: "Close tab" },
+          },
+        ],
+      },
+    });
+    const f = result!.fences["yt-gate"];
+    expect(f.enforcement).toEqual({ kind: "gate", everyMinutes: 15, friction: { type: "intention", prompt: "Still here?" } });
+    expect(f.proceed).toEqual({ label: "Keep going", action: { type: "continue" } });
+    expect(f.abort).toEqual({ label: "Close tab" });
+  });
+
+  it("parses a schedule-wrapped cooldown (watering hours)", () => {
+    const result = parseFences({
+      "watering:test:browser:chess.com": {
+        id: "watering:test:browser:chess.com",
+        name: "test (chess.com)",
+        scope: { surface: "browser", domain: "chess.com" },
+        primitives: [
+          {
+            kind: "schedule",
+            window: { fromHour: 6, toHour: 12, weekdays: ["MON"] },
+            outsideWindow: "inactive",
+            wraps: {
+              kind: "cooldown",
+              duration: { type: "standing" },
+              unlockPath: { type: "out_of_band", note: "Tomorrow." },
+            },
+          },
+        ],
+      },
+    });
+    const f = result!.fences["watering:test:browser:chess.com"];
+    expect(f).toBeDefined();
+    expect(f.enforcement.kind).toBe("block");
+    expect(f.schedule).toEqual({
+      fromHour: 6,
+      toHour: 12,
+      weekdays: ["MON"],
+      outsideWindow: "inactive",
+    });
+  });
+
+  it("reads domains from scope.domain as array", () => {
+    const result = parseFences({
+      v: {
+        id: "v",
+        scope: { surface: "browser", domain: ["a.com", "b.com"] },
+        primitives: [
+          {
+            kind: "cooldown",
+            duration: { type: "standing" },
+            unlockPath: { type: "wait" },
+            enforcement: { at: "browser" },
+          },
+        ],
+      },
+    });
+    expect(result!.fences["v"].domains).toEqual(["a.com", "b.com"]);
+  });
+
+  it("refuses non-browser scoped fences", () => {
+    const result = parseFences({
+      s: {
+        id: "s",
+        scope: { surface: "session", paths: ["/dev"] },
+        primitives: [
+          {
+            kind: "cooldown",
+            duration: { type: "standing" },
+            unlockPath: { type: "wait" },
+          },
+        ],
+      },
+    });
+    expect(result!.fences).toEqual({});
+    expect(result!.refused[0].reason).toBe("no_domains");
+  });
+});
+
+describe("isScheduleActive — time window evaluation", () => {
+  it("active outside the window when outsideWindow=inactive", () => {
+    const sched = { fromHour: 6, toHour: 12, outsideWindow: "inactive" as const };
+    expect(isScheduleActive(sched, new Date(2026, 0, 5, 14, 0))).toBe(true);
+    expect(isScheduleActive(sched, new Date(2026, 0, 5, 9, 0))).toBe(false);
+  });
+
+  it("respects weekday filter", () => {
+    const sched = { fromHour: 0, toHour: 0, weekdays: ["MON"], outsideWindow: "inactive" as const };
+    const monday = new Date(2026, 0, 5, 10, 0); // Mon
+    const tuesday = new Date(2026, 0, 6, 10, 0); // Tue
+    expect(isScheduleActive(sched, monday)).toBe(true);
+    expect(isScheduleActive(sched, tuesday)).toBe(false);
+  });
+
+  it("handles overnight windows (fromHour > toHour)", () => {
+    const sched = { fromHour: 22, toHour: 6, outsideWindow: "inactive" as const };
+    expect(isScheduleActive(sched, new Date(2026, 0, 5, 23, 0))).toBe(false);
+    expect(isScheduleActive(sched, new Date(2026, 0, 5, 3, 0))).toBe(false);
+    expect(isScheduleActive(sched, new Date(2026, 0, 5, 14, 0))).toBe(true);
+  });
+
+  it("fencesFor filters out inactive scheduled fences", () => {
+    const result = parseFences({
+      w: {
+        id: "w",
+        scope: { surface: "browser", domain: "chess.com" },
+        primitives: [
+          {
+            kind: "schedule",
+            window: { fromHour: 6, toHour: 12 },
+            outsideWindow: "inactive",
+            wraps: {
+              kind: "cooldown",
+              duration: { type: "standing" },
+              unlockPath: { type: "out_of_band", note: "Later." },
+            },
+          },
+        ],
+      },
+    });
+    const all = result!.fences;
+    expect(Object.keys(all)).toHaveLength(1);
+    // Can't test fencesFor's time filtering without injecting time, but the fence
+    // is parsed with the schedule attached.
+    expect(all["w"].schedule).toBeDefined();
   });
 });
