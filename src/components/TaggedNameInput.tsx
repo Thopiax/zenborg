@@ -31,6 +31,8 @@ interface TaggedNameInputProps {
   includeAreas?: boolean;
   /** Custom tag badge className */
   tagBadgesClassName?: string;
+  /** Fires on user-initiated input (onChange), NOT on programmatic value changes */
+  onUserInput?: (value: string) => void;
 }
 
 /**
@@ -59,6 +61,7 @@ export function TaggedNameInput({
   onMentionSelect,
   includeAreas = false,
   tagBadgesClassName,
+  onUserInput,
 }: TaggedNameInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const allPlaces = use$(places$);
@@ -77,9 +80,10 @@ export function TaggedNameInput({
       ref={inputRef}
       type="text"
       value={field.displayValue}
-      onChange={(e) =>
-        field.setDisplayValue(e.target.value, e.target.selectionStart || 0)
-      }
+      onChange={(e) => {
+        field.setDisplayValue(e.target.value, e.target.selectionStart || 0);
+        onUserInput?.(e.target.value);
+      }}
       onBlur={() => field.extractRemainingTags()}
       autoCapitalize="none"
       placeholder={placeholder}
