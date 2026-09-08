@@ -1,14 +1,21 @@
 import { describe, expect, it } from "vitest";
+import type { Area } from "@/domain/entities/Area";
+import type { Habit } from "@/domain/entities/Habit";
 import type { Moment } from "@/domain/entities/Moment";
 import { Phase, type PhaseConfig } from "@/domain/value-objects/Phase";
 import {
   canPropose,
+  detectMicroGap,
+  detectPeriodicGaps,
   detectTransitionGap,
   freshState,
   recordProposal,
+  suggestMomentFromContext,
 } from "../GapDetector";
 
 const ISO = (d: Date) => d.toISOString();
+
+// ── Transition (#3+#4) ────────────────────────────────────────────
 
 const configs: PhaseConfig[] = [
   { id: "1", phase: Phase.MORNING, label: "Morning", emoji: "☕", startHour: 6, endHour: 12, isVisible: true, order: 0, createdAt: "", updatedAt: "" },
@@ -25,7 +32,7 @@ const moment = (phase: Phase, day: string): Moment => ({
 
 describe("detectTransitionGap", () => {
   it("detects gap when next phase is empty", () => {
-    const now = new Date("2026-09-08T11:30:00"); // late morning
+    const now = new Date("2026-09-08T11:30:00");
     const moments = [moment(Phase.MORNING, "2026-09-08")];
     const gap = detectTransitionGap(moments, configs, "regular", now);
 
@@ -55,12 +62,12 @@ describe("detectTransitionGap", () => {
   });
 
   it("returns null for the last visible phase (no next phase)", () => {
-    const now = new Date("2026-09-08T20:00:00"); // evening, last visible
+    const now = new Date("2026-09-08T20:00:00");
     expect(detectTransitionGap([], configs, "regular", now)).toBeNull();
   });
 
   it("returns null when in a hidden phase", () => {
-    const now = new Date("2026-09-08T23:00:00"); // night, hidden
+    const now = new Date("2026-09-08T23:00:00");
     expect(detectTransitionGap([], configs, "regular", now)).toBeNull();
   });
 });
@@ -74,13 +81,13 @@ describe("canPropose", () => {
 
   it("blocks during cooldown", () => {
     const state = recordProposal(freshState(), now);
-    const soon = new Date(now.getTime() + 10 * 60 * 1000); // 10 min later
+    const soon = new Date(now.getTime() + 10 * 60 * 1000);
     expect(canPropose(state, "regular", soon)).toBe(false);
   });
 
   it("allows after cooldown", () => {
     const state = recordProposal(freshState(), now);
-    const later = new Date(now.getTime() + 31 * 60 * 1000); // 31 min later
+    const later = new Date(now.getTime() + 31 * 60 * 1000);
     expect(canPropose(state, "regular", later)).toBe(true);
   });
 
@@ -104,5 +111,204 @@ describe("canPropose", () => {
 
   it("blocks in dry mode regardless", () => {
     expect(canPropose(freshState(), "dry", now)).toBe(false);
+  });
+});
+
+// ── Periodic (#12) ─────────────────────────────────────────────────
+
+const stubHabit = (overrides: Partial<Habit> = {}): Habit => ({
+  id: "h-1",
+  name: "test",
+  areaId: "a-1",
+  attitude: null,
+  phase: null,
+  tags: [],
+  emoji: null,
+  isArchived: false,
+  order: 0,
+  createdAt: ISO(new Date("2026-01-01")),
+  updatedAt: ISO(new Date("2026-01-01")),
+  ...overrides,
+});
+
+const stubArea = (overrides: Partial<Area> = {}): Area => ({
+  id: "a-1",
+  name: "admin",
+  attitude: null,
+  tags: [],
+  color: "#888",
+  emoji: "📬",
+  isDefault: false,
+  order: 0,
+  createdAt: ISO(new Date("2026-01-01")),
+  updatedAt: ISO(new Date("2026-01-01")),
+  ...overrides,
+});
+
+describe("detectPeriodicGaps", () => {
+  const now = new Date("2026-09-08T12:00:00Z");
+
+  it("fires when interval has elapsed since last break", () => {
+    const habit = stubHabit({
+      tags: ["gap", "gap-periodic"],
+      rhythm: { period: "weekly", count: 504 },
+      durationMin: 1,
+    });
+    const lastBreak = new Date("2026-09-08T11:30:00Z");
+    const result = detectPeriodicGaps([habit], lastBreak, now);
+    expect(result).not.toBeNull();
+    expect(result!.gapType).toBe("periodic");
+    expect(result!.habit.id).toBe("h-1");
+  });
+
+  it("returns null when interval has not elapsed", () => {
+    const habit = stubHabit({
+      tags: ["gap", "gap-periodic"],
+      rhythm: { period: "weekly", count: 504 },
+    });
+    const lastBreak = new Date("2026-09-08T11:55:00Z");
+    expect(detectPeriodicGaps([habit], lastBreak, now)).toBeNull();
+  });
+
+  it("skips archived habits", () => {
+    const habit = stubHabit({
+      tags: ["gap", "gap-periodic"],
+      rhythm: { period: "weekly", count: 504 },
+      isArchived: true,
+    });
+    expect(detectPeriodicGaps([habit], null, now)).toBeNull();
+  });
+
+  it("skips habits without gap-periodic tag", () => {
+    const habit = stubHabit({
+      tags: ["gap", "gap-2m"],
+      rhythm: { period: "weekly", count: 504 },
+    });
+    expect(detectPeriodicGaps([habit], null, now)).toBeNull();
+  });
+
+  it("fires when lastBreakAt is null (never had a break)", () => {
+    const habit = stubHabit({
+      tags: ["gap", "gap-periodic"],
+      rhythm: { period: "weekly", count: 504 },
+    });
+    const result = detectPeriodicGaps([habit], null, now);
+    expect(result).not.toBeNull();
+  });
+});
+
+// ── Micro (#14) ────────────────────────────────────────────────────
+
+describe("detectMicroGap", () => {
+  const now = new Date("2026-09-08T12:01:00Z");
+
+  it("detects idle gap after moment ended", () => {
+    const ended = new Date("2026-09-08T12:00:00Z");
+    const result = detectMicroGap({ endedAt: ended }, null, now, 30_000);
+    expect(result).not.toBeNull();
+    expect(result!.gapType).toBe("micro");
+    expect(result!.durationMs).toBe(60_000);
+  });
+
+  it("returns null when idle below threshold", () => {
+    const ended = new Date("2026-09-08T12:00:50Z");
+    expect(detectMicroGap({ endedAt: ended }, null, now, 30_000)).toBeNull();
+  });
+
+  it("returns null when no moment has ended", () => {
+    expect(detectMicroGap(null, null, now, 30_000)).toBeNull();
+  });
+
+  it("auto-dismisses after 2 minutes", () => {
+    const ended = new Date("2026-09-08T11:58:00Z");
+    expect(detectMicroGap({ endedAt: ended }, null, now, 30_000)).toBeNull();
+  });
+
+  it("returns null when next moment has already started", () => {
+    const ended = new Date("2026-09-08T12:00:00Z");
+    const next = { startsAt: new Date("2026-09-08T12:00:30Z") };
+    expect(detectMicroGap({ endedAt: ended }, next, now, 30_000)).toBeNull();
+  });
+});
+
+// ── Context-aware (#11) ────────────────────────────────────────────
+
+describe("suggestMomentFromContext", () => {
+  const areas = [
+    stubArea({ id: "a-admin", name: "admin" }),
+    stubArea({ id: "a-work", name: "work" }),
+    stubArea({ id: "a-well", name: "wellness" }),
+  ];
+
+  it("suggests area when app matches and threshold exceeded", () => {
+    const result = suggestMomentFromContext(
+      { frontmostApp: "Mail", activeMoment: null, durationInContextMs: 15 * 60_000 },
+      areas,
+    );
+    expect(result).not.toBeNull();
+    expect(result!.areaId).toBe("a-admin");
+    expect(result!.suggestedName).toBe("admin");
+  });
+
+  it("returns null when a moment is active", () => {
+    const result = suggestMomentFromContext(
+      { frontmostApp: "Mail", activeMoment: "moment-1", durationInContextMs: 15 * 60_000 },
+      areas,
+    );
+    expect(result).toBeNull();
+  });
+
+  it("returns null below threshold", () => {
+    const result = suggestMomentFromContext(
+      { frontmostApp: "Mail", activeMoment: null, durationInContextMs: 5 * 60_000 },
+      areas,
+    );
+    expect(result).toBeNull();
+  });
+
+  it("returns null for unknown apps", () => {
+    const result = suggestMomentFromContext(
+      { frontmostApp: "Minecraft", activeMoment: null, durationInContextMs: 30 * 60_000 },
+      areas,
+    );
+    expect(result).toBeNull();
+  });
+
+  it("returns null when area not in registry", () => {
+    const result = suggestMomentFromContext(
+      { frontmostApp: "Garmin Connect", activeMoment: null, durationInContextMs: 15 * 60_000 },
+      [stubArea({ id: "a-other", name: "other" })],
+    );
+    expect(result).toBeNull();
+  });
+
+  it("confidence scales with duration, caps at 1.0", () => {
+    const r10 = suggestMomentFromContext(
+      { frontmostApp: "Mail", activeMoment: null, durationInContextMs: 10 * 60_000 },
+      areas,
+    );
+    const r30 = suggestMomentFromContext(
+      { frontmostApp: "Mail", activeMoment: null, durationInContextMs: 30 * 60_000 },
+      areas,
+    );
+    const r60 = suggestMomentFromContext(
+      { frontmostApp: "Mail", activeMoment: null, durationInContextMs: 60 * 60_000 },
+      areas,
+    );
+    expect(r10!.confidence).toBeLessThan(r30!.confidence);
+    expect(r30!.confidence).toBe(1.0);
+    expect(r60!.confidence).toBe(1.0);
+  });
+
+  it("accepts custom app-area map", () => {
+    const custom = { Figma: "design" };
+    const areasWithDesign = [...areas, stubArea({ id: "a-d", name: "design" })];
+    const result = suggestMomentFromContext(
+      { frontmostApp: "Figma", activeMoment: null, durationInContextMs: 15 * 60_000 },
+      areasWithDesign,
+      custom,
+    );
+    expect(result).not.toBeNull();
+    expect(result!.suggestedName).toBe("design");
   });
 });
