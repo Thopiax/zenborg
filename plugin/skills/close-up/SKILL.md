@@ -100,7 +100,7 @@ mcp__zenborg__get_active_moment
   `mcp__zenborg__update_moment` with `refs`. The moment is the only place this
   session stays findable from `recap` months later; the pointer is about to be
   released and takes the association with it.
-- Then `mcp__zenborg__clear_active_moment`.
+- Then `mcp__zenborg__set_active_moment { momentIdOrName: null }`.
 
 Moments have no done-flag — they're planted, not checked off. Releasing the
 pointer *is* the close.
@@ -174,7 +174,7 @@ couldn't run. Then stop.
 - Delegates the journal write to the journal oracle chain (`oracles.json`),
   the message to `smart-brevity`, the mid-thread stop to `handoff`.
 - **zenborg is the only thing this skill writes.** The moment
-  (`get_active_moment` · `update_moment` · `clear_active_moment`) and nothing
+  (`get_active_moment` · `update_moment` · `set_active_moment { null }`) and nothing
   else. Moments are planted, not completed — there is no done-flag to set, so
   releasing the pointer is the entire close.
 - Linear via `mcp__plugin_linear_linear__*`, matching `week-review`.

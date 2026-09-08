@@ -210,9 +210,9 @@ it's early in the day):
 
 Let the user describe freely. Then resolve against the habits created in phase 2:
 
-- Use `mcp__zenborg__search_habits` to match activity names to habits
-- If matched: use `mcp__zenborg__spawn_spontaneous_from_habit` (inherits area, emoji, tags)
-- If not matched: use `mcp__zenborg__create_standalone_moment` with the appropriate area
+- Use `mcp__zenborg__search { type: "habit" }` to match activity names to habits
+- If matched: use `mcp__zenborg__add_moment { habitId, day, phase }` (inherits area, emoji, tags)
+- If not matched: use `mcp__zenborg__add_moment { name, areaId, day, phase }` for standalone
 
 Present a resolution table per day (same format as tend):
 
