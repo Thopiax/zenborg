@@ -1,7 +1,11 @@
 import type { Habit } from "@/domain/entities/Habit";
 import type { Moment } from "@/domain/entities/Moment";
 import type { ThirstScore } from "./ThirstService";
-import { routeOracle, type OracleAction } from "./OracleRouter";
+import {
+  routeGapPractice,
+  DEFAULT_ORACLE_CONFIG,
+  type OracleRoute,
+} from "./OracleRouter";
 
 /**
  * A time block on the day's timeline — either a calendar event or a planted moment.
@@ -30,7 +34,7 @@ export interface GapFill {
   readonly startTime: string; // "HH:MM"
   readonly durationMin: number;
   readonly gapType: "forecast";
-  readonly action: OracleAction;
+  readonly action: OracleRoute;
   readonly thirst: number;
 }
 
@@ -120,7 +124,7 @@ export function forecastGaps(
       startTime: minToHHMM(gap.startMin),
       durationMin: match.habit.durationMin ?? Math.min(gap.durationMin, 15),
       gapType: "forecast",
-      action: routeOracle(match.habit),
+      action: routeGapPractice(match.habit, DEFAULT_ORACLE_CONFIG),
       thirst: match.thirst.score,
     });
   }

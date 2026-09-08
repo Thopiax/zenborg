@@ -150,30 +150,28 @@ describe("detectPeriodicGaps", () => {
 
   it("fires when interval has elapsed since last break", () => {
     const habit = stubHabit({
-      tags: ["gap", "gap-periodic"],
-      rhythm: { period: "weekly", count: 504 },
+      tags: ["gap", "gap-periodic-20m", "gap-30s"],
       durationMin: 1,
     });
-    const lastBreak = new Date("2026-09-08T11:30:00Z");
+    const lastBreak = new Date("2026-09-08T11:30:00Z"); // 30 min ago > 20m
     const result = detectPeriodicGaps([habit], lastBreak, now);
     expect(result).not.toBeNull();
     expect(result!.gapType).toBe("periodic");
     expect(result!.habit.id).toBe("h-1");
+    expect(result!.intervalMs).toBe(20 * 60_000);
   });
 
   it("returns null when interval has not elapsed", () => {
     const habit = stubHabit({
-      tags: ["gap", "gap-periodic"],
-      rhythm: { period: "weekly", count: 504 },
+      tags: ["gap", "gap-periodic-20m"],
     });
-    const lastBreak = new Date("2026-09-08T11:55:00Z");
+    const lastBreak = new Date("2026-09-08T11:55:00Z"); // 5 min ago < 20m
     expect(detectPeriodicGaps([habit], lastBreak, now)).toBeNull();
   });
 
   it("skips archived habits", () => {
     const habit = stubHabit({
-      tags: ["gap", "gap-periodic"],
-      rhythm: { period: "weekly", count: 504 },
+      tags: ["gap", "gap-periodic-20m"],
       isArchived: true,
     });
     expect(detectPeriodicGaps([habit], null, now)).toBeNull();
@@ -182,18 +180,26 @@ describe("detectPeriodicGaps", () => {
   it("skips habits without gap-periodic tag", () => {
     const habit = stubHabit({
       tags: ["gap", "gap-2m"],
-      rhythm: { period: "weekly", count: 504 },
     });
     expect(detectPeriodicGaps([habit], null, now)).toBeNull();
   });
 
   it("fires when lastBreakAt is null (never had a break)", () => {
     const habit = stubHabit({
-      tags: ["gap", "gap-periodic"],
-      rhythm: { period: "weekly", count: 504 },
+      tags: ["gap", "gap-periodic-20m"],
     });
     const result = detectPeriodicGaps([habit], null, now);
     expect(result).not.toBeNull();
+  });
+
+  it("parses seconds interval too", () => {
+    const habit = stubHabit({
+      tags: ["gap", "gap-periodic-30s"],
+    });
+    const lastBreak = new Date("2026-09-08T11:59:00Z"); // 60s ago > 30s
+    const result = detectPeriodicGaps([habit], lastBreak, now);
+    expect(result).not.toBeNull();
+    expect(result!.intervalMs).toBe(30_000);
   });
 });
 

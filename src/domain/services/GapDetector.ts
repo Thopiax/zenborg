@@ -7,7 +7,6 @@ import {
   getCurrentPhase,
   getVisiblePhases,
 } from "@/domain/value-objects/Phase";
-import { PERIOD_DAYS } from "@/domain/value-objects/Rhythm";
 import type { WateringHoursMode } from "@/domain/intervention/rules/wateringHours";
 
 // ── Transition (#3) ───────────────────────────────────────────────
@@ -114,7 +113,7 @@ export function detectTransitionGap(
 
 // ── Periodic (#12) ─────────────────────────────────────────────────
 
-const PERIODIC_TAG = "gap-periodic";
+const PERIODIC_RE = /^gap-periodic-(\d+)(s|m)$/;
 const TWO_MINUTES_MS = 2 * 60_000;
 
 export interface PeriodicGap {
@@ -123,9 +122,21 @@ export interface PeriodicGap {
   readonly intervalMs: number;
 }
 
+/** Parse interval from a `gap-periodic-20m` / `gap-periodic-30s` tag. */
+function parsePeriodicInterval(tags: readonly string[]): number | undefined {
+  for (const t of tags) {
+    const m = PERIODIC_RE.exec(t.trim().toLowerCase());
+    if (!m) continue;
+    const n = Number(m[1]);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    return m[2] === "s" ? n * 1000 : n * 60_000;
+  }
+  return undefined;
+}
+
 /**
- * Clock-driven gaps (e.g. 20-20-20 rule). A habit opts in with the
- * `gap-periodic` tag; rhythm gives the interval, durationMin gives
+ * Clock-driven gaps (e.g. 20-20-20 rule). A habit opts in with a
+ * `gap-periodic-20m` tag naming the interval. `durationMin` gives
  * the practice length. Bypasses thirst — fires on its clock.
  */
 export function detectPeriodicGaps(
@@ -139,11 +150,8 @@ export function detectPeriodicGaps(
 
   for (const h of habits) {
     if (h.isArchived) continue;
-    if (!h.tags?.some((t) => t.toLowerCase() === PERIODIC_TAG)) continue;
-    if (!h.rhythm) continue;
-
-    const intervalMs =
-      (PERIOD_DAYS[h.rhythm.period] / h.rhythm.count) * 86_400_000;
+    const intervalMs = parsePeriodicInterval(h.tags ?? []);
+    if (intervalMs === undefined) continue;
     if (elapsed >= intervalMs) {
       return { gapType: "periodic", habit: h, intervalMs };
     }
