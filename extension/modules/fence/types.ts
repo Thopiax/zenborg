@@ -1,7 +1,7 @@
 /**
  * The unified Fence type — what is in force right now, as the extension sees it.
  *
- * Replaces `ArmedIntervention` from `modules/interventions/armed.ts`. The key
+ * Replaces the retired `ArmedIntervention` from the old interventions module. The key
  * change from that type: `primitive` splits into `enforcement`, which
  * distinguishes `block` (what `cooldown` primitives become) from `gate`. Same
  * two primitives a browser can actuate, same invariant 6 — the type just
@@ -10,8 +10,8 @@
  * ── Invariant 6 is enforced at the parse boundary ───────────────────────
  *
  * `parseFences` (in `parse.ts`) refuses any entry that carries no reachable
- * exit. Sovereignty rests on the exit, not on who was allowed to arm the
- * thing, so a block with no visible way out is a bug rather than a stricter
+ * exit. Sovereignty rests on the exit, not on who set the
+ * fence, so a block with no visible way out is a bug rather than a stricter
  * shield.
  *
  * This file is pure: no chrome APIs, no clock, no storage.
@@ -61,6 +61,13 @@ export interface ProceedAffordance {
     | { readonly type: "out_of_band"; readonly note: string };
 }
 
+export interface ScheduleWindow {
+  readonly fromHour: number;
+  readonly toHour: number;
+  readonly weekdays?: readonly string[];
+  readonly outsideWindow: "inactive" | "passthrough";
+}
+
 export interface Fence {
   readonly id: string;
   /** What the person called it. Shown wherever the exit is shown. */
@@ -68,9 +75,10 @@ export interface Fence {
   /** Registrable hosts. Domains only — never URLs, never paths. */
   readonly domains: readonly string[];
   readonly enforcement: FenceEnforcement;
-  /** Invariant 6. Required: no exit, no arming. */
   readonly proceed: ProceedAffordance;
   readonly abort?: { readonly label: string };
+  /** When set, the fence is active only outside this window. */
+  readonly schedule?: ScheduleWindow;
   /**
    * From `RuleSpec.deliveryProbability`. `1` means the rule never withholds;
    * anything below it buys the comparison condition a proximal outcome needs.

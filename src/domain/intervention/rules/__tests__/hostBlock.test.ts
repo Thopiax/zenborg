@@ -44,7 +44,7 @@ describe("hostBlockRule", () => {
     });
   });
 
-  it("satisfies invariant 6 with no exception, as a rule-armed delivery", () => {
+  it("satisfies invariant 6 with no exception, as a rule-set delivery", () => {
     const delivery: Delivery = {
       origin: "rule",
       ruleId: rule.id,
@@ -234,7 +234,7 @@ describe("hostBlockSeedRules", () => {
     }
   });
 
-  it("carries an exit on every armed primitive, as a rule-armed delivery", () => {
+  it("carries an exit on every standing primitive, as a rule-set delivery", () => {
     for (const rule of hostBlockSeedRules(seed)) {
       const delivery: Delivery = {
         origin: "rule",

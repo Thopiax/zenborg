@@ -347,7 +347,7 @@ export async function declareWateringHours(
 // reaches no browser. A fences-only read would have shipped an inert feature.
 //
 // So the writer comes first and the reader collapses after it. Everything below
-// builds `scope.surface: "browser"` rules, which is the scope the host's armed
+// builds `scope.surface: "browser"` rules, which is the scope the host's fence
 // projection keeps and every other scope it drops.
 //
 // The 2026-08-20 guard still holds and is still structural: every rule here is
@@ -356,7 +356,7 @@ export async function declareWateringHours(
 // derivations.
 
 /** A registrable host: no scheme, no path, no port, no wildcard. What the
- * armed record carries is domains, and the privacy posture stops URLs at this
+ * fence record carries is domains, and the privacy posture stops URLs at this
  * boundary — so a caller who pasted a URL is told, not silently trimmed. */
 const HOST_PATTERN =
   /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
@@ -399,7 +399,7 @@ function requiresExit(primitive: Primitive): boolean {
  * primitives a fence is built from cannot be constructed without an exit. What
  * this adds is the case the types cannot see — a rule assembled from some other
  * primitive, or one whose exit is present but empty. A fence with no way out is
- * refused here rather than armed and refused later by the extension, because the
+ * refused here rather than set and refused later by the extension, because the
  * cheapest place to hold the line is the one place the record is written.
  *
  * Scoped by `requiresExit`, not applied to every primitive: a primitive that
@@ -411,7 +411,7 @@ function exitProblems(rule: RuleSpec): string[] {
     if (!requiresExit(primitive)) continue;
     if (!carriesExit(primitive)) {
       problems.push(
-        `primitive "${primitive.kind}" carries no proceed affordance — a fence with no exit is refused, not armed (invariant 6)`,
+        `primitive "${primitive.kind}" carries no proceed affordance — a fence with no exit is refused, not set (invariant 6)`,
       );
       continue;
     }

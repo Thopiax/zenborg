@@ -40,7 +40,7 @@ export default defineBackground(() => {
   // Registered synchronously so MV3 event wakeups re-attach listeners.
   startActivityWriter();
 
-  // The armed cache is the source of truth for what is blocked — the `fences`
+  // The fence cache is the source of truth for what is blocked — the `fences`
   // collection, pushed by the native host. Project it onto DNR dynamic rules on
   // startup and re-project the moment it changes rather than waiting for the
   // next flush: a fence declared in conversation should hold on the next

@@ -209,9 +209,9 @@ fn handle_events(msg: &Value, vault: &Path) {
     write_message(&json!({"type": "ack", "ids": ids}));
 }
 
-fn handle_request_armed(vault: &Path) {
-    let armed = read_json(&vault.join("fences.json"));
-    write_message(&json!({"type": "armed", "armed": armed}));
+fn handle_request_fences(vault: &Path) {
+    let fences = read_json(&vault.join("fences.json"));
+    write_message(&json!({"type": "fences", "fences": fences}));
 }
 
 fn handle_request_observe(vault: &Path) {
@@ -450,7 +450,7 @@ fn main() {
 
         match msg_type {
             "events" => handle_events(&msg, &vault),
-            "request_armed" => handle_request_armed(&vault),
+            "request_fences" => handle_request_fences(&vault),
             "request_observe" => handle_request_observe(&vault),
             "request_policy" => handle_request_policy(&vault),
             "request_active_moment" => handle_request_active_moment(&vault),

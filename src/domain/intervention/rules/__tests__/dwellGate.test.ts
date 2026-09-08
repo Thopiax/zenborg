@@ -65,7 +65,7 @@ describe("linkedinDwellGate", () => {
     expect(gate.proceedAffordance.label.length).toBeGreaterThan(0);
   });
 
-  it("satisfies invariant 6 as a rule-armed delivery", () => {
+  it("satisfies invariant 6 as a rule-set delivery", () => {
     const delivery: Delivery = {
       origin: "rule",
       ruleId: rule.id,
