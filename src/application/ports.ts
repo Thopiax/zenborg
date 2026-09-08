@@ -1,5 +1,5 @@
 import type { ActivityEvent } from "../domain/attention/ActivityEvent";
-import type { AreaMap } from "../domain/attention/AreaMap";
+import type { SurfaceIndex } from "../domain/attention/SurfaceIndex";
 import type { Discrepancy } from "../domain/attention/Discrepancy";
 import type {
   AreaId,
@@ -53,7 +53,7 @@ export interface Planting {
  * planted at a moment in time and never learns that days or phases exist.
  */
 export interface GardenPort {
-  areaMap(): Promise<AreaMap>;
+  surfaces(): Promise<SurfaceIndex>;
   plantingsAt(instant: Instant): Promise<Planting>;
 
   /**

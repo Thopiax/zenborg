@@ -1,21 +1,20 @@
 /**
  * GarminHabitMap — Garmin activity type → zenborg habit.
  *
- * The sibling of keel's `~/.keel/area-map.json` (domain → area UUID). Same
- * spirit, different owner: keel's comment on that file reads *"keel's own
- * domain→area map stays keel's business, and stays local"* — the map lives
- * with its consumer. The consumer of THIS map is whatever plants moments in
- * the garden, and zenborg is the writer for `moments`. So it is zenborg's
- * business, and stays local to the vault.
+ * The sibling of area surfaces (paths/hosts/apps → area). Same spirit,
+ * different owner: the surface index is the garden's business. The consumer
+ * of THIS map is whatever plants moments from Garmin, and zenborg is the
+ * writer for `moments`. So it is zenborg's business, and stays local to
+ * the vault.
  *
  * Why this exists: zenborg's wilting signal measures *logging*, not *living*.
  * Habits flagged 50–96 days dark are happening several times a week; the
  * garden simply never hears about it. Garmin already holds the ground truth.
  *
- * ## Shape, and why it differs from area-map.json
+ * ## Shape, and why it differs from area surfaces
  *
- * `area-map.json` is a bare `Record<domain, areaId>` — it can afford opaque
- * UUIDs because keel resolves names live from `areas.json` at render time.
+ * Area surfaces are `string[]` on each area — they can afford opaque
+ * UUIDs because the surface index resolves names live from `areas.json`.
  * This map cannot. Its single most important entry is counter-intuitive
  * (`yoga → Vipassana`, NOT either habit literally named "yoga"), and a bare
  * UUID invites a future reader — human or agent — to "correct" it. The name

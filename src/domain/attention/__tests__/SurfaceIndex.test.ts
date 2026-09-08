@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ActivityEvent } from "../ActivityEvent";
-import { type AreaMap, resolveArea } from "../AreaMap";
+import { type SurfaceIndex, indexSurfaces, resolveArea } from "../SurfaceIndex";
+import type { Area } from "../../entities/Area";
 
-const map: AreaMap = {
+const map: SurfaceIndex = {
   paths: [
     { prefix: "/Users/rafa/Developer/equanimitech", areaId: "area-craft" },
     { prefix: "/Users/rafa/Developer/equanimitech/keel", areaId: "area-keel" },
@@ -196,5 +197,42 @@ describe("resolveArea", () => {
     expect(
       resolveArea(map, event({ app_name: "Calculator" }, "desktop")),
     ).toBeUndefined();
+  });
+});
+
+describe("indexSurfaces", () => {
+  const stub = (id: string, surfaces: Area["surfaces"]): Area => ({
+    id,
+    name: id,
+    attitude: null,
+    tags: [],
+    color: "#000000",
+    emoji: "x",
+    isDefault: false,
+    surfaces,
+    order: 0,
+    createdAt: "",
+    updatedAt: "",
+  });
+
+  it("derives path, host, and app rules from area surfaces", () => {
+    const areas: Record<string, Area> = {
+      a1: stub("a1", { paths: ["/dev/themia"], hosts: ["themia.pro"] }),
+      a2: stub("a2", { apps: ["Slack"] }),
+    };
+    const m = indexSurfaces(areas);
+    expect(m.paths).toEqual([{ prefix: "/dev/themia", areaId: "a1" }]);
+    expect(m.hosts).toEqual([{ host: "themia.pro", areaId: "a1" }]);
+    expect(m.apps).toEqual([{ app: "Slack", areaId: "a2" }]);
+  });
+
+  it("skips areas without surfaces", () => {
+    const areas: Record<string, Area> = {
+      a1: stub("a1", undefined),
+    };
+    const m = indexSurfaces(areas);
+    expect(m.paths).toHaveLength(0);
+    expect(m.hosts).toHaveLength(0);
+    expect(m.apps).toHaveLength(0);
   });
 });
