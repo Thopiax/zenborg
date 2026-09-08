@@ -4207,6 +4207,42 @@ defineTool(server, {
 });
 
 // ────────────────────────────────────────────────────────────────────────
+// Gap proposals
+// ────────────────────────────────────────────────────────────────────────
+
+import { proposeGap } from "./thirst.js";
+
+defineTool(server, {
+  name: "propose_gap",
+  description:
+    "Propose the thirstiest gap habits for an available window. " +
+    'Use when the gardener says "I have time" or a gap is detected. ' +
+    "Returns 2–3 habits sorted by thirst (highest first), filtered by duration and place.",
+  schema: {
+    durationMinutes: z.number().positive().optional()
+      .describe("Max available time in minutes. Omit for open-ended."),
+    place: z.string().optional()
+      .describe("Where the gardener is (city/place key). Omit if unknown."),
+    maxResults: z.number().int().min(1).max(5).optional()
+      .describe("How many proposals to return. Default 3."),
+  },
+  annotations: { readOnlyHint: true },
+  handler: async ({ durationMinutes, place, maxResults }) => {
+    const habits = readCollection(VAULT_ROOT, "habits");
+    const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
+    const cycles = readCollection(VAULT_ROOT, "cycles");
+    const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
+    const now = new Date();
+    const withinMs = durationMinutes ? durationMinutes * 60_000 : undefined;
+    const proposals = proposeGap(
+      habits, moments, cycles, cyclePlans, now, withinMs, place, maxResults ?? 3,
+    );
+    if (proposals.length === 0) return ok({ proposals: [], message: "No gap habits fit the window." });
+    return ok({ proposals });
+  },
+});
+
+// ────────────────────────────────────────────────────────────────────────
 // Connect
 // ────────────────────────────────────────────────────────────────────────
 
