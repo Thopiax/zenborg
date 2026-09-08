@@ -630,6 +630,49 @@ export function closePlaceForm() {
   });
 }
 
+// ============================================================================
+// Gap Timer State
+// ============================================================================
+
+export interface GapTimerState {
+  active: boolean;
+  habitName: string;
+  /** Total duration in ms */
+  durationMs: number;
+  /** Timestamp when started */
+  startedAt: number;
+}
+
+export const gapTimer$ = observable<GapTimerState>({
+  active: false,
+  habitName: "",
+  durationMs: 0,
+  startedAt: 0,
+});
+
+let gapTimerTimeout: ReturnType<typeof setTimeout> | null = null;
+
+export function startGapTimer(habitName: string, durationMs: number): void {
+  if (gapTimerTimeout) clearTimeout(gapTimerTimeout);
+  gapTimer$.set({
+    active: true,
+    habitName,
+    durationMs,
+    startedAt: Date.now(),
+  });
+  gapTimerTimeout = setTimeout(() => {
+    clearGapTimer();
+  }, durationMs);
+}
+
+export function clearGapTimer(): void {
+  if (gapTimerTimeout) {
+    clearTimeout(gapTimerTimeout);
+    gapTimerTimeout = null;
+  }
+  gapTimer$.set({ active: false, habitName: "", durationMs: 0, startedAt: 0 });
+}
+
 /**
  * Settings modal visibility
  * Ephemeral - not persisted
