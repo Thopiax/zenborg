@@ -194,24 +194,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
     }
   }, [name, mode, manualEmojiOverride, taggedField]);
 
-  // After selecting a habit, suppress reopening autocomplete until the user
-  // actually types a different value. A one-shot ref was consumed too early
-  // when Legend state triggered extra render cycles.
-  const selectedHabitNameRef = useRef<string | null>(null);
-
-  // Show habit autocomplete when typing in create mode
-  useEffect(() => {
-    if (selectedHabitNameRef.current === taggedField.displayValue) {
-      return;
-    }
-    selectedHabitNameRef.current = null;
-    if (mode === "create" && taggedField.displayValue.trim().length > 0) {
-      setShowHabitAutocomplete(true);
-    } else {
-      setShowHabitAutocomplete(false);
-    }
-  }, [mode, taggedField.displayValue]);
-
   // Reset habit autocomplete when dialog opens/closes
   useEffect(() => {
     if (!open) setShowHabitAutocomplete(false);
@@ -219,7 +201,6 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
 
   // Handle habit selection from autocomplete
   const handleSelectHabit = (habit: Habit) => {
-    selectedHabitNameRef.current = habit.name;
     momentFormState$.name.set(habit.name);
     momentFormState$.areaId.set(habit.areaId);
     momentFormState$.emoji.set(habit.emoji);
@@ -528,6 +509,13 @@ export function MomentFormDialog({ onSave, onDelete }: MomentFormDialogProps) {
                     collisionBoundary={dialogRef.current}
                     maxSuggestions={5}
                     showTags={true}
+                    onUserInput={(value) => {
+                      if (mode === "create" && value.trim().length > 0) {
+                        setShowHabitAutocomplete(true);
+                      } else {
+                        setShowHabitAutocomplete(false);
+                      }
+                    }}
                   />
                 </div>
               }
