@@ -70,10 +70,19 @@ rule `week-review` runs on. Post with `mcp__plugin_linear_linear__save_comment`
 / `save_issue` (fall back to `mcp__claude_ai_Linear__*` if that server is
 unauthenticated).
 
-## 3b. Land it — everything else → journal
+## 3b. Land it — everything else → journal oracle
 
-Defer to the **`log` skill** — it owns `~/journals/<YYYY-MM-DD>.md` and the
-never-in-a-repo rule. Pass §1's synthesis; add `source: close-up`.
+Read `~/.zenborg/oracles.json`. Look up `routes.journal` for the preference
+chain. For each oracle name in the chain:
+
+1. Find the oracle in `oracles.<name>` and read its `journal` protocol object.
+2. Run its `check` command — if it fails, skip to the next oracle.
+3. If `read` exists, fetch today's entry; append `## HH:MM — <what moved>` +
+   synthesis bullets.
+4. Write via its `write` command (`$CONTENT` = the full markdown entry).
+
+If no oracle is reachable, name the failure in the close line — silent skipping
+is how a dead beat survives for months.
 
 One entry per session. Don't stack a second one on the same session because he
 added a thought.
@@ -149,7 +158,8 @@ couldn't run. Then stop.
 - **Session-scoped, not day-scoped.** The day-close is `sunset`'s. Never ask
   "is this the last block of the day?" — it is not this skill's question.
 - **Draft before write.** Linear and Slack both. Nothing posts unattended.
-- **The journal is never a repo.** `~/journals/` only — the `/log` hard rule.
+- **The journal is never a repo.** The journal oracle (`routes.journal` in
+  `~/.zenborg/oracles.json`) picks the sink; skills never hardcode one.
 - **Release the moment, don't fake a completion.** No done-flag exists.
 - **Don't rebuild `recap`.** The conversation plus a `git log` is the whole read.
 - **No new work.** Findings become `/idea` · `/pain` · `/question`, or they wait.
@@ -161,8 +171,8 @@ couldn't run. Then stop.
   The day belongs to `sunrise` · `sunset`; the week to `week-planning` ·
   `week-review`. Hand off rather than absorb.
 - Sibling of `recap` (read-only, any window); this is the write.
-- Delegates the journal write to `log`, the message to `smart-brevity`, the
-  mid-thread stop to `handoff`.
+- Delegates the journal write to the journal oracle chain (`oracles.json`),
+  the message to `smart-brevity`, the mid-thread stop to `handoff`.
 - **zenborg is the only thing this skill writes.** The moment
   (`get_active_moment` · `update_moment` · `clear_active_moment`) and nothing
   else. Moments are planted, not completed — there is no done-flag to set, so
