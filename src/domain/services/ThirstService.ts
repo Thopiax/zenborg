@@ -135,3 +135,57 @@ function computePlanDeficit(
 export function rankByThirst(scores: readonly ThirstScore[]): readonly ThirstScore[] {
   return [...scores].sort((a, b) => b.score - a.score);
 }
+
+// ── Body battery energy gate ──────────────────────────────────────────
+
+const THIRTY_SECONDS = 30_000;
+const TWO_MINUTES = 2 * 60_000;
+
+export interface EnergyCandidate {
+  readonly habitId: string;
+  readonly fitsMs?: number;
+  readonly attitude?: Attitude | null;
+}
+
+/**
+ * Filter and reorder gap candidates by Garmin body battery (0–100).
+ *
+ * | Battery | Max duration | Bias                        |
+ * |---------|--------------|-----------------------------|
+ * | < 25    | 30s          | restorative only            |
+ * | 25–50   | 2m           | favor gentle                |
+ * | 50–75   | —            | full selection              |
+ * | 75+     | —            | slight boost to PUSHING/BUILDING |
+ *
+ * Undefined battery = moderate band (full selection, no bias).
+ */
+export function filterByEnergy<T extends EnergyCandidate>(
+  candidates: readonly T[],
+  bodyBattery?: number,
+): readonly T[] {
+  if (bodyBattery === undefined || bodyBattery === null) return candidates;
+
+  if (bodyBattery < 25) {
+    return candidates.filter(
+      (c) => c.fitsMs !== undefined && c.fitsMs <= THIRTY_SECONDS,
+    );
+  }
+
+  if (bodyBattery < 50) {
+    return candidates.filter(
+      (c) => c.fitsMs !== undefined && c.fitsMs <= TWO_MINUTES,
+    );
+  }
+
+  if (bodyBattery >= 75) {
+    // ponytail: simple sort bump, not a weighted score — upgrade if calibration data says otherwise
+    const boost = new Set([Attitude.PUSHING, Attitude.BUILDING]);
+    return [...candidates].sort((a, b) => {
+      const aBoost = boost.has(a.attitude as Attitude) ? -1 : 0;
+      const bBoost = boost.has(b.attitude as Attitude) ? -1 : 0;
+      return aBoost - bBoost;
+    });
+  }
+
+  return candidates;
+}

@@ -4,7 +4,7 @@ import type { Habit } from "@/domain/entities/Habit";
 import type { Moment } from "@/domain/entities/Moment";
 import { Attitude } from "@/domain/value-objects/Attitude";
 import { Phase } from "@/domain/value-objects/Phase";
-import { computeThirst, rankByThirst } from "../ThirstService";
+import { computeThirst, filterByEnergy, rankByThirst, type EnergyCandidate } from "../ThirstService";
 
 const ISO = (d: Date) => d.toISOString();
 const DAY = (d: Date) => d.toISOString().slice(0, 10);
@@ -185,5 +185,64 @@ describe("rankByThirst", () => {
     ];
     const ranked = rankByThirst(scores);
     expect(ranked.map((r) => r.habitId)).toEqual(["high", "mid", "low"]);
+  });
+});
+
+describe("filterByEnergy", () => {
+  const candidates: EnergyCandidate[] = [
+    { habitId: "breath-30s", fitsMs: 30_000, attitude: Attitude.KEEPING },
+    { habitId: "breathwork-2m", fitsMs: 120_000, attitude: Attitude.BUILDING },
+    { habitId: "walk-5m", fitsMs: 300_000, attitude: Attitude.PUSHING },
+    { habitId: "no-size", attitude: Attitude.BEGINNING },
+  ];
+
+  it("returns all candidates when bodyBattery is undefined", () => {
+    expect(filterByEnergy(candidates)).toHaveLength(4);
+    expect(filterByEnergy(candidates, undefined)).toHaveLength(4);
+  });
+
+  it("depleted (<25): only gap-30s sized habits", () => {
+    const result = filterByEnergy(candidates, 10);
+    expect(result.map((c) => c.habitId)).toEqual(["breath-30s"]);
+  });
+
+  it("low (25–49): up to 2m, drops longer and unsized", () => {
+    const result = filterByEnergy(candidates, 35);
+    expect(result.map((c) => c.habitId)).toEqual(["breath-30s", "breathwork-2m"]);
+  });
+
+  it("moderate (50–74): full selection unchanged", () => {
+    const result = filterByEnergy(candidates, 60);
+    expect(result).toHaveLength(4);
+    expect(result.map((c) => c.habitId)).toEqual(candidates.map((c) => c.habitId));
+  });
+
+  it("charged (75+): boosts PUSHING/BUILDING to the front", () => {
+    const result = filterByEnergy(candidates, 85);
+    expect(result).toHaveLength(4);
+    const boosted = result.slice(0, 2).map((c) => c.habitId);
+    expect(boosted).toContain("breathwork-2m"); // BUILDING
+    expect(boosted).toContain("walk-5m"); // PUSHING
+  });
+
+  it("depleted returns empty when no 30s habits exist", () => {
+    const big = [{ habitId: "long", fitsMs: 300_000 }];
+    expect(filterByEnergy(big, 15)).toEqual([]);
+  });
+
+  it("boundary: 25 is low band, not depleted", () => {
+    const result = filterByEnergy(candidates, 25);
+    expect(result.map((c) => c.habitId)).toEqual(["breath-30s", "breathwork-2m"]);
+  });
+
+  it("boundary: 50 is moderate, not low", () => {
+    const result = filterByEnergy(candidates, 50);
+    expect(result).toHaveLength(4);
+  });
+
+  it("boundary: 75 is charged", () => {
+    const result = filterByEnergy(candidates, 75);
+    const first = result[0].habitId;
+    expect(["breathwork-2m", "walk-5m"]).toContain(first);
   });
 });
