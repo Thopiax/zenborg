@@ -1,12 +1,13 @@
 ---
 name: oracle-probe
 description: >-
-  Probe an oracle to see what it returns, capture a sample trace, and store it
-  so future sessions can learn the output shape without re-probing. Use when
-  the user says "/oracle-probe", "probe garmin", "what does hey return",
-  "show me the garmin output", "trace the oracle", "sample the oracle",
-  or when a skill needs to understand an unfamiliar oracle's output shape.
-  Also use before building or debugging any skill that calls an oracle.
+  Probe an oracle or surface to see what it returns, capture a sample trace,
+  and store it so future sessions can learn the output shape without re-probing.
+  Use when the user says "/oracle-probe", "probe garmin", "probe body",
+  "what does hey return", "show me the garmin output", "trace the oracle",
+  or when a skill needs to understand an unfamiliar oracle's or surface's
+  output shape. Also use before building or debugging any skill that reads
+  external data.
 user-invocable: true
 allowed-tools: [Bash, Read, Write, AskUserQuestion]
 ---
@@ -14,68 +15,100 @@ allowed-tools: [Bash, Read, Write, AskUserQuestion]
 # Oracle probe
 
 Run an oracle's commands or MCP tools, capture the output, and write a sample
-trace to `~/.zenborg/oracles/traces/<oracle>/<capability>.sample.md` so any
+trace to `~/.zenborg/oracles/traces/<surface>/<source>.sample.md` so any
 future session can read the shape without re-probing.
+
+## Surfaces vs oracles
+
+**Surfaces** are what the gardener sees — body, browser, agent, journal, comms,
+tasks. **Oracles** are infrastructure that feed surfaces — garmin feeds body,
+hey feeds journal + comms, etc.
+
+Surface profiles live in `plugin/surfaces/<surface>.md`. Each profile declares:
+- Which sources feed it (oracles, local files, app-internal tools)
+- Which tools/commands to probe
+- Which fields matter and which are noise
+- Gotchas
+
+**Always read the surface profile before probing.** It tells you what to
+extract and what to skip.
 
 ## When to invoke
 
-- "/oracle-probe", "/oracle-probe garmin", "/oracle-probe hey journal"
-- "probe garmin", "what does hey return", "show me the garmin sleep output"
-- "trace the oracle", "sample the oracle"
+- "/oracle-probe", "/oracle-probe garmin", "/oracle-probe body"
+- "probe garmin", "probe body", "what does hey return"
+- "show me the garmin sleep output", "trace the oracle"
 - Before building a skill that calls an oracle you haven't probed yet
+
+## Surface → source mapping
+
+| Surface | Sources | Profile |
+|---------|---------|---------|
+| body | garmin | `plugin/surfaces/body.md` |
+| browser | zenborg browser gate | `plugin/surfaces/browser.md` |
+| agent | git, keel, claude sessions | `plugin/surfaces/agent.md` |
+| journal | hey, penceive, supernote | `plugin/surfaces/journal.md` |
+| comms | hey, gmail, slack | `plugin/surfaces/comms.md` |
+| tasks | linear, things | `plugin/surfaces/tasks.md` |
+
+The user may say either "probe garmin" (oracle) or "probe body" (surface).
+Resolve to the right profile either way.
 
 ## Workflow
 
 ### 1. Parse the argument
 
 The user may pass:
-- Nothing → list oracles from `~/.zenborg/oracles.json` and ask which to probe
-- Oracle name → list that oracle's capabilities and ask which to probe
+- Nothing → list surfaces and ask which to probe
+- Surface name → read its profile, probe all sources
+- Oracle name → find which surfaces it feeds, probe those capabilities
 - Oracle + capability → probe that specific capability
 
-### 2. Read the oracle config
+### 2. Read the surface profile
+
+```
+plugin/surfaces/<surface>.md
+```
+
+The profile's **Probe tools** column tells you exactly what to call. The **Key
+fields** section tells you what to extract. The **Noise** section tells you
+what to skip.
+
+### 3. Read the oracle config
 
 ```bash
 cat ~/.zenborg/oracles.json
 ```
 
-Identify the oracle's interface type:
+Cross-reference with the surface profile to identify the interface type:
 - **CLI oracle** — has protocol objects with `check`, `read`, `write` commands
 - **MCP oracle** — entry is `{}`, tools are `mcp__<oracle>__*`
+- **Local source** — not in oracles.json (git, keel, browser gate); probe with
+  the commands listed in the surface profile
 
-### 3. Resolve what to probe
+### 4. Probe
 
 #### CLI oracles
 
-For each command in the capability protocol (`read`, `inbox`, `search`, etc.),
-run the `check` command first to verify availability. Then run the `read` or
-primary query command with sensible defaults:
-- Replace `$LIMIT` with `3` (just enough to see the shape)
+Run the `check` command first. Then run each read-family command from the
+surface profile with sensible defaults:
+- Replace `$LIMIT` with `3`
 - Replace `$QUERY` with a broad recent query
 - Replace `$DATE_RANGE` with the last 7 days
-- Replace `$BOX` with `imbox` (HEY's inbox)
+- Replace `$BOX` with `imbox` (HEY's term)
 - Do NOT run `write` commands — probe is read-only
 
 #### MCP oracles
 
-For MCP-based oracles, the tools self-describe. The probe needs to:
-1. Identify the oracle's tool prefix: `mcp__<name>__`
-2. Pick 2-3 representative read-only tools (list, get, summary-type calls)
-3. Call them with today's date or minimal parameters
-4. Capture the output shape
+Call the tools listed in the surface profile's **Probe tools** column.
+Use today's date for date-scoped tools. Minimal limits for list tools.
 
-Known MCP oracle probes (extend as oracles are added):
+#### Local sources (agent, browser)
 
-| Oracle | Representative tools |
-|--------|---------------------|
-| garmin | `get_sleep_summary`, `get_body_battery`, `get_stats`, `get_heart_rates`, `get_training_readiness` |
-| linear | `list_issues`, `list_projects`, `get_workspace` |
-| slack | `slack_list_user_channels`, `slack_read_channel` |
-| things | `get_today`, `get_inbox`, `get_areas` |
+Run the commands from the surface profile directly. These aren't oracles —
+they're filesystem reads or zenborg MCP calls.
 
-Use today's date for date-scoped tools. For list tools, use minimal limits.
-
-### 4. Capture the trace
+### 5. Capture the trace
 
 For each probed command/tool, record:
 
@@ -97,49 +130,61 @@ For each probed command/tool, record:
 - ...
 ```
 
-### 5. Write the sample file
+Compare what you got against the surface profile's **Key fields**. Flag any
+field the profile expects but the oracle didn't return (schema drift).
+
+### 6. Write the trace file
 
 ```
-~/.zenborg/oracles/traces/<oracle>/<capability>.sample.md
+~/.zenborg/oracles/traces/<surface>/<source>.sample.md
 ```
+
+Examples:
+- `~/.zenborg/oracles/traces/body/garmin.sample.md`
+- `~/.zenborg/oracles/traces/comms/hey.sample.md`
+- `~/.zenborg/oracles/traces/agent/git.sample.md`
 
 Structure:
 
 ```markdown
-# <Oracle> — <capability> trace
+# <Surface> — <source> trace
 
 Probed: <ISO date>
-Oracle type: CLI | MCP
+Source type: CLI | MCP | local
+Surface profile: plugin/surfaces/<surface>.md
 
-<per-command sections from step 4>
+<per-command sections from step 5>
 
 ## Summary
 
-Key fields a skill would need:
+Key fields confirmed:
 - ...
 
-Gotchas:
+Missing vs profile:
+- ...
+
+Gotchas discovered:
 - ...
 ```
 
-Create the directory tree if it doesn't exist. Overwrite if a prior sample
-exists (the point is freshness).
+Overwrite prior samples (freshness matters). Create dirs as needed.
 
-### 6. Report
+### 7. Report
 
 Show the user:
-- What was probed
-- The output shape (the "Shape" section, not the raw dump)
+- What was probed (surface + source)
+- The output shape (confirmed key fields, not raw dump)
+- Any schema drift from the surface profile
 - Where the trace was saved
-- Any surprises (empty fields, unexpected formats, errors)
 
 ## Rules
 
 - **Read-only.** Never call write/compose/reply/delete commands.
-- **Minimal parameters.** Use the smallest query that reveals the shape.
-- **Truncate large output.** Cap raw output at ~200 lines per command. The
-  shape matters, not the volume.
-- **Don't probe what's down.** If `check` fails, note it and move on.
-- **One oracle at a time.** Probing all oracles is `/oracle-probe all` — run
-  them sequentially, one trace file per capability.
+- **Surface profile first.** Always read it before probing. It's the contract.
+- **Minimal parameters.** Smallest query that reveals the shape.
+- **Truncate large output.** Cap at ~200 lines per command.
+- **Don't probe what's down.** If `check` fails or MCP tool errors, note and move on.
+- **Trace path is by surface, not oracle.** `traces/body/garmin.sample.md`, not
+  `traces/garmin/body.sample.md`. The reader asks "what does the body surface
+  look like?", not "what does garmin return?"
 - Traces live outside the git repo (`~/.zenborg/`), not in the codebase.
