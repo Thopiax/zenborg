@@ -8,7 +8,7 @@ This document describes how to create a new release of Zenborg.
 
 You need to add your Tauri signing private key as a GitHub secret:
 
-1. Go to your repo: https://github.com/Thopiax/zenborg/settings/secrets/actions
+1. Go to your repo: https://github.com/equanimitech/zenborg/settings/secrets/actions
 2. Click "New repository secret"
 3. Name: `TAURI_SIGNING_PRIVATE_KEY`
 4. Value: The contents of `~/.tauri/zenborg.key`
@@ -56,12 +56,12 @@ cat ~/.tauri/zenborg.key
    - Publish the release
 
 5. **Monitor the workflow:**
-   - Go to: https://github.com/Thopiax/zenborg/actions
+   - Go to: https://github.com/equanimitech/zenborg/actions
    - Watch the "Release" workflow
    - Build takes ~5-10 minutes
 
 6. **Edit the release notes** (optional):
-   - Go to: https://github.com/Thopiax/zenborg/releases
+   - Go to: https://github.com/equanimitech/zenborg/releases
    - Edit the release description
    - Add changelog details
 
@@ -69,7 +69,7 @@ cat ~/.tauri/zenborg.key
 
 You can also trigger a release manually from the GitHub Actions UI:
 
-1. Go to: https://github.com/Thopiax/zenborg/actions/workflows/release.yml
+1. Go to: https://github.com/equanimitech/zenborg/actions/workflows/release.yml
 2. Click "Run workflow"
 3. Select branch (usually `main`)
 4. Click "Run workflow"
@@ -95,7 +95,7 @@ The Tauri updater automatically generates `latest.json` with this structure:
   "platforms": {
     "darwin-aarch64": {
       "signature": "...",
-      "url": "https://github.com/Thopiax/zenborg/releases/download/v0.3.1/zenborg_0.3.1_aarch64.app.tar.gz"
+      "url": "https://github.com/equanimitech/zenborg/releases/download/v0.3.1/zenborg_0.3.1_aarch64.app.tar.gz"
     }
   }
 }
@@ -103,7 +103,7 @@ The Tauri updater automatically generates `latest.json` with this structure:
 
 This file is automatically uploaded to the release and served at:
 ```
-https://github.com/Thopiax/zenborg/releases/latest/download/latest.json
+https://github.com/equanimitech/zenborg/releases/latest/download/latest.json
 ```
 
 ## Testing Updates

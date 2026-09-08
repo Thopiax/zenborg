@@ -13,7 +13,7 @@ Thank you for your interest in contributing to Zenborg! This document provides g
 
 ```bash
 # Clone the repository
-git clone https://github.com/Thopiax/zenborg.git
+git clone https://github.com/equanimitech/zenborg.git
 cd zenborg
 
 # Install dependencies

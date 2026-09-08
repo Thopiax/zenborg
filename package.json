@@ -4,15 +4,15 @@
   "description": "An intention cultivation garden to help you plant the seeds of habits, nurture them with moments, and flourish.",
   "license": "MIT",
   "private": false,
-  "author": "Thopiax",
+  "author": "EquanimiTech",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Thopiax/zenborg.git"
+    "url": "https://github.com/equanimitech/zenborg.git"
   },
   "bugs": {
-    "url": "https://github.com/Thopiax/zenborg/issues"
+    "url": "https://github.com/equanimitech/zenborg/issues"
   },
-  "homepage": "https://github.com/Thopiax/zenborg#readme",
+  "homepage": "https://github.com/equanimitech/zenborg#readme",
   "keywords": [
     "attention",
     "productivity",

@@ -12,7 +12,7 @@ Rhythm answers *how often*, not *when*. When a user says "samba first Tuesday mo
 
 Extend `Rhythm` with two optional fields. `count` remains the single source of truth for budgeting, proposals, and health. Weekday/ordinal are **placement hints** only.
 
-**Most habits won't have anchors.** Vipassana, build, Kim, Mama, fiction — all float by count. Anchors are opt-in for habits tied to external commitments: classes, appointments, recurring events.
+**Most habits won't have anchors.** Vipassana, build, Kim, Mo, fiction — all float by count. Anchors are opt-in for habits tied to external commitments: classes, appointments, recurring events.
 
 ```ts
 export type Weekday = "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";

@@ -18,9 +18,9 @@ with his grandparents. Two gatherings. Zenborg recorded five moments:
 
 | moment | phase | habitId | tags |
 |---|---|---|---|
-| `Pai` | MORNING | `83b27bed` | `parent`, `london`, `place-london` |
-| `Mama` | MORNING | `dc5821fe` | `parent`, `london`, `place-london` |
-| `Sasa` | AFTERNOON | `955c7f19` | `nyc`, `place-new-york` |
+| `Pat` | MORNING | `83b27bed` | `parent`, `london`, `place-london` |
+| `Mo` | MORNING | `dc5821fe` | `parent`, `london`, `place-london` |
+| `Sam` | AFTERNOON | `955c7f19` | `nyc`, `place-new-york` |
 | `Cal` | AFTERNOON | `12fea18d` | `sp`, `place-sao-paulo` |
 | `Ada` | AFTERNOON | `8e55e8d4` | `sp`, `place-sao-paulo` |
 
@@ -28,7 +28,7 @@ Three failures are visible in that table.
 
 **A person is not a perennial.** Each row points at its own habit. Forty-three habits
 across Family, Friends and Sensitive are people. A habit is a recurring moment
-template, and "Mama" is not one. The 2026-08-07 decision accepted this cost and
+template, and "Mo" is not one. The 2026-08-07 decision accepted this cost and
 predicted it would stay small. It did not: the corrigendum records that person health
 needed a separate attitude-free `PersonService`, that health is implemented twice
 (`src/domain/services/HabitHealthService.ts` and `mcp-server/health.ts`), and that five
@@ -288,7 +288,7 @@ records: the vault is live and was edited three times during the last migration.
    Keys derive by D6's slug rule from the habit name.
 3. **Rewrite person-moments.** A moment whose `habitId` points at a person-habit becomes
    `habitId: null` with the person's key in `personIds`. This drops a false claim (that
-   2025-11-09 was an instance of a perennial named Mama) and keeps the true one (he saw
+   2025-11-09 was an instance of a perennial named Mo) and keeps the true one (he saw
    her). `momentInvolvesHabit` already handles `habitId: null` with `personIds` set, and
    `src/hooks/__tests__/useHabitHealth.test.ts:83` already pins the behaviour.
 4. **Fold the Notion CRM into the registry export.** The 46 rows carry `category`,

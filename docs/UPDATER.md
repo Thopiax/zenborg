@@ -19,7 +19,7 @@ For GitHub Actions, add this as a repository secret named `TAURI_SIGNING_PRIVATE
 
 The app checks for updates at:
 ```
-https://github.com/Thopiax/zenborg/releases/latest/download/latest.json
+https://github.com/equanimitech/zenborg/releases/latest/download/latest.json
 ```
 
 ## Building with Update Artifacts
@@ -61,7 +61,7 @@ Create `latest.json` in your release with this structure:
   "platforms": {
     "darwin-aarch64": {
       "signature": "SIGNATURE_FROM_.sig_FILE",
-      "url": "https://github.com/Thopiax/zenborg/releases/download/v0.3.1/zenborg_0.3.1_aarch64.app.tar.gz"
+      "url": "https://github.com/equanimitech/zenborg/releases/download/v0.3.1/zenborg_0.3.1_aarch64.app.tar.gz"
     }
   }
 }
@@ -76,7 +76,7 @@ cat src-tauri/target/release/bundle/macos/*.tar.gz.sig
 
 ### 4. Create GitHub Release
 
-1. Go to https://github.com/Thopiax/zenborg/releases/new
+1. Go to https://github.com/equanimitech/zenborg/releases/new
 2. Create a new tag (e.g., `v0.3.1`)
 3. Upload all build artifacts:
    - Installers (`.dmg`, `.exe`, `.AppImage`, etc.)

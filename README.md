@@ -4,7 +4,7 @@
 
 > A habit cultivation tool to plan and tend your daily moments of intention.
 
-**[Try it out](https://zenborg.vercel.app/)** | [Download the desktop app](https://github.com/Thopiax/zenborg/releases/latest)
+**[Try it out](https://zenborg.vercel.app/)** | [Download the desktop app](https://github.com/equanimitech/zenborg/releases/latest)
 
 ---
 

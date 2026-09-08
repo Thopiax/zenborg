@@ -24,7 +24,7 @@ The core decision stands: a person is a `Habit` carrying `kind: "person"`, there
 
 ## 1. There are 43 people, not 48
 
-The original count filtered on `archived`. The field is **`isArchived`**, so the query matched nothing and silently included archived records. Measured live: the Family, Friends and Sensitive areas hold 50 records, of which 7 are archived (`Ira`, `Kim`, `Lia`, `Mio`, `colloc auber`, `dad`, `family breakfast`), leaving 43 live. Two are rituals, so 41 get marked and the two fused pairs split into four — **43 people**.
+The original count filtered on `archived`. The field is **`isArchived`**, so the query matched nothing and silently included archived records. Measured live: the Family, Friends and Sensitive areas hold 50 records, of which 7 are archived (`Ira`, `Kim`, `Lia`, `Mio`, `colloc auber`, `a-relative`, `family breakfast`), leaving 43 live. Two are rituals, so 41 get marked and the two fused pairs split into four — **43 people**.
 
 Only 12 carry a rhythm. Since no rhythm yields `unstated` rather than `wilting`, the outreach queue starts short by construction. That is honest: a roster is not a commitment.
 

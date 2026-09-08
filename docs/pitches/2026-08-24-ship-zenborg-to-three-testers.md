@@ -36,7 +36,7 @@ type: pitch
 
 - **Make the repo accessible.** Change `equanimitech/zenborg` visibility to public, or add three collaborators if public feels premature. The repo must be visible for the release download URL to resolve. `github.com/equanimitech/zenborg` settings.
 
-- **Fix the updater endpoint.** `src-tauri/tauri.conf.json:28` points at `github.com/Thopiax/zenborg` (Rafa's personal account). Change to `github.com/equanimitech/zenborg`. Without this, the updater silently fails for everyone.
+- **Fix the updater endpoint.** `src-tauri/tauri.conf.json:28` points at `github.com/equanimitech/zenborg` (Rafa's personal account). Change to `github.com/equanimitech/zenborg`. Without this, the updater silently fails for everyone.
 
 - **Re-accept the Apple Developer Agreement and restore notarization.** `.github/workflows/release.yml:86-105` -- the three `APPLE_*` env vars are commented out. Without notarization, a fresh download on someone else's Mac hits the Gatekeeper "unidentified developer" wall. Testers can bypass with right-click > Open, but that's a poor first impression. The agreement needs an SMS 2FA code; target after Sep 8 per the note.
 

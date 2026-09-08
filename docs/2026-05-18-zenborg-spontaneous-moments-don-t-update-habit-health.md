@@ -38,7 +38,7 @@ Roundtable decides: is "spontaneous, unlinked" a meaningful state to preserve, o
 
 ## Open questions
 
-* Should aliases match too? (e.g. "Yoyo" → Fox habit)
+* Should aliases match too? (e.g. "a-nickname" → Fox habit)
 
 * Same-name across areas: ambiguous, probably skip auto-link.
 

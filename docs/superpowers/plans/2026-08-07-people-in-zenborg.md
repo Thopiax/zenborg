@@ -1278,7 +1278,7 @@ KAIROS_HOME=/tmp/kairos-migration-test node --disable-warning=MODULE_TYPELESS_PA
 
 Expected, **re-derived from the live vault on 2026-08-07**: `marked kind="person": 42` and `created from splits: 2`, for **44 people total**.
 
-The decision doc's figure of 48 is wrong and this supersedes it. That count was taken with `v.get("archived")`, but the real field is **`isArchived`** — so it silently included four archived records. The social areas hold 48 records, of which 4 are archived (`Mio`, `colloc auber`, `dad`, `family breakfast`), leaving 44 live. Two of those are rituals (`poetry`, `tantric`), so 42 get marked, and the two pair records split into four, giving 44 people. Only **12** of them carry a rhythm, so the outreach queue will be short until more are set.
+The decision doc's figure of 48 is wrong and this supersedes it. That count was taken with `v.get("archived")`, but the real field is **`isArchived`** — so it silently included four archived records. The social areas hold 48 records, of which 4 are archived (`Mio`, `colloc auber`, `a-relative`, `family breakfast`), leaving 44 live. Two of those are rituals (`poetry`, `tantric`), so 42 get marked, and the two pair records split into four, giving 44 people. Only **12** of them carry a rhythm, so the outreach queue will be short until more are set.
 
 `NOT_PEOPLE` deliberately keeps all four ritual names even though `colloc auber` and `family breakfast` are currently archived — harmless now, and correct if either is ever unarchived.
 
