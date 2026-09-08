@@ -46,7 +46,7 @@ Do NOT call `list_moments` without a day filter — the global list typically ex
 In parallel, also fetch:
 - `mcp__zenborg__list_areas` — to map `areaId` → `{name, color, emoji}`.
 - `mcp__zenborg__list_habits` — to map `habitId` → `{name, attitude, rhythm}` and compute health context.
-- `mcp__zenborg__list_wilting_habits` — to get the current wilting set with `daysSinceLast`.
+- `mcp__zenborg__list_habits` with `health: "wilting"` — to get the current wilting set with `daysSinceLast`.
 
 ### 3. Render the per-day breakdown
 
@@ -103,7 +103,7 @@ Also note:
 
 ### 7. Surface wilting habits
 
-From `list_wilting_habits`, show the top 5–8 by ratio `daysSinceLast / silenceThreshold` rather than raw days. Monthly habits have a 30-ish-day threshold; weekly habits have ~7–14. Sorting by raw days makes the monthly ones dominate; ratio normalizes.
+From `list_habits { health: "wilting" }`, show the top 5–8 by ratio `daysSinceLast / silenceThreshold` rather than raw days. Monthly habits have a 30-ish-day threshold; weekly habits have ~7–14. Sorting by raw days makes the monthly ones dominate; ratio normalizes.
 
 For each wilting habit show: emoji + name + days silent + rhythm + attitude. Keep to one line per habit.
 
@@ -141,7 +141,7 @@ Close with one open question: "Want to dig deeper on X, plan next week, or shape
 User: "let's do a weekly review"
 
 1. Determine window: today is 2026-05-18 → window is 2026-05-12 → 2026-05-18 (last 7 days ending today). Or, if user clearly means "the week that just ended" on a Monday, walk back Mon→Sun.
-2. Fire 7 `list_moments` calls + `list_areas` + `list_habits` + `list_wilting_habits` in parallel.
+2. Fire 7 `list_moments` calls + `list_areas` + `list_habits { health: "wilting" }` in parallel.
 3. Render: per-day → tally → patterns → week-over-week (fire 7 more `list_moments` for prior week in parallel) → wilting → next move.
 4. Wait for user to redirect or dig in.
 

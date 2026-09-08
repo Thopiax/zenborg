@@ -1,7 +1,7 @@
 # Zenborg MCP — Tool Inventory
 
-**Version:** 0.4.0 (implemented)
-**Tools:** 52 active + 19 deprecated wrappers (removed in 0.5.0)
+**Version:** 0.5.0 (implemented)
+**Tools:** 56 active
 
 ---
 
@@ -43,11 +43,11 @@ When `truncated` is true, pass `nextCursor` back with the same filters.
 
 ### Read-side (safe to call freely)
 
-`list_areas` · `get_area` · `list_habits` · `get_habit` · `list_moments` · `get_moment` · `list_cycles` · `get_cycle` · `get_running_cycle` · `get_cycle_planning_proposals` · `get_cycle_review` · `list_people` · `get_person` · `list_places` · `get_place` · `list_relationships` · `list_people_to_reach` · `list_phase_configs` · `list_tags` · `get_tag_profile` · `get_active_moment` · `search` · `get_fence`
+`list_areas` · `get_area` · `list_habits` · `get_habit` · `list_moments` · `get_moment` · `list_cycles` · `get_cycle` · `get_running_cycle` · `get_cycle_planning_proposals` · `get_cycle_review` · `list_people` · `get_person` · `list_places` · `get_place` · `list_relationships` · `list_people_to_reach` · `list_phase_configs` · `list_tags` · `get_tag_profile` · `get_active_moment` · `search` · `get_fence` · `get_boundaries` · `propose_gap` · `list_routines` · `get_routine`
 
 ### Write-side (require user authorization)
 
-`create_area` · `update_area` · `delete_area` · `create_habit` · `update_habit` · `add_moment` · `update_moment` · `delete_moment` · `unallocate_moment` · `mention` · `plan_cycle` · `update_cycle` · `delete_cycle` · `create_person` · `update_person` · `delete_person` · `create_place` · `update_place` · `delete_place` · `create_relationship` · `delete_relationship` · `set_active_moment` · `update_phase_config` · `set_fence` · `set_host_block` · `set_browser_gate` · `set_browser_transform` · `seed_host_blocks` · `clear_fence`
+`create_area` · `update_area` · `delete_area` · `create_habit` · `update_habit` · `add_moment` · `update_moment` · `delete_moment` · `unallocate_moment` · `mention` · `plan_cycle` · `update_cycle` · `delete_cycle` · `create_person` · `update_person` · `delete_person` · `create_place` · `update_place` · `delete_place` · `create_relationship` · `delete_relationship` · `set_active_moment` · `update_phase_config` · `set_fence` · `clear_fence` · `create_routine` · `update_routine` · `delete_routine` · `materialize_routine`
 
 ---
 
@@ -153,38 +153,19 @@ When `truncated` is true, pass `nextCursor` back with the same filters.
 | `list_phase_configs` | — | 4 rows, sorted by order. |
 | `update_phase_config` | `id, ...fields` | Configs are seeded; update only. |
 
-### Fences (7 tools, unchanged from 0.3.0)
+### Fences (3 tools)
 
 | Tool | Key params | Notes |
 |---|---|---|
 | `set_fence` | `label, paths, areas` | Session fence: "only this stream". |
-| `set_host_block` | `host, returnsTo, unlockNote` | Standing block on a host. |
-| `set_browser_gate` | `host, returnsTo, everyMinutes, prompt` | Recurring dwell-time cue. |
-| `set_browser_transform` | `host, selectors, returnsTo` | DOM transform (hide/restyle). |
-| `seed_host_blocks` | `returnsTo, unlockNote, hosts` | Batch blocklist. Idempotent. |
-| `clear_fence` | `id` or `all` | Take fences down. `destructiveHint`. |
+| `clear_fence` | `id` or `all` or `policy` | Take fences down. `destructiveHint`. |
 | `get_fence` | — | Standing fences with crossing tallies. |
 
----
+### Gap proposals
 
-## Migration from 0.3.0
-
-19 tools are deprecated. They still work (thin wrappers over new code paths) and will be removed in 0.5.0 after the transcript-verified gate.
-
-| Deprecated | Use instead |
-|---|---|
-| `create_moment`, `create_standalone_moment`, `spawn_spontaneous_from_habit`, `allocate_from_plan` | `add_moment` |
-| `allocate_moment` | `update_moment { day }` |
-| `quick_create_cycle` | `plan_cycle { template }` |
-| `archive_area` / `unarchive_area` | `update_area { archived }` |
-| `archive_habit` / `unarchive_habit` | `update_habit { archived }` |
-| `get_habit_health` | `get_habit` (health in response) |
-| `list_wilting_habits` | `list_habits { health: "wilting" }` |
-| `clear_active_moment` | `set_active_moment { momentIdOrName: null }` |
-| `end_cycle` | `update_cycle { endDate }` |
-| `search_habits` / `search_people` / `search_places` | `search { type }` |
-| `get_related` | `list_relationships { entityType, entityId }` |
-| `get_related_habits` | `get_tag_profile` (related habits in response) |
+| Tool | Key params | Notes |
+|---|---|---|
+| `propose_gap` | `durationMinutes?, place?, maxResults?` | Thirstiest habits for an available window. |
 
 ---
 

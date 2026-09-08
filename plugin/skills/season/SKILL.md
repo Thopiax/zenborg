@@ -37,7 +37,7 @@ Call `mcp__zenborg__get_running_cycle` for the active cycle. If none is running,
 Also fetch in parallel:
 - `mcp__zenborg__list_areas` for area names and emoji
 - `mcp__zenborg__list_habits` for the full habit registry
-- `mcp__zenborg__list_wilting_habits` for the current health picture
+- `mcp__zenborg__list_habits` with `health: "wilting"` for the current health picture
 - `mcp__zenborg__get_cycle_review` if the cycle has ended
 
 #### 2. Render the season overview
@@ -115,7 +115,7 @@ On user confirmation, call `mcp__zenborg__plan_cycle` with the agreed parameters
 
 #### 10. Seed the first week
 
-Optionally, offer to plant the first week's moments using the tend workflow or `mcp__zenborg__allocate_from_plan`.
+Optionally, offer to plant the first week's moments using the tend workflow or `mcp__zenborg__add_moment` with `fromPlan: true`.
 
 ## Rules
 
@@ -130,5 +130,5 @@ Optionally, offer to plant the first week's moments using the tend workflow or `
 
 - **No active cycle:** offer to create one. Show the last completed cycle for context.
 - **Overlapping cycles:** list all active cycles (date-derived), let the user pick which to review.
-- **Ending a cycle early:** call `mcp__zenborg__end_cycle` with the user's chosen end date.
+- **Ending a cycle early:** call `mcp__zenborg__update_cycle` with the chosen `endDate` with the user's chosen end date.
 - **Reflection capture:** if the user shares a reflection, write it to the cycle via `mcp__zenborg__update_cycle` with `reflection`. The source stamps automatically as `"machine"`.

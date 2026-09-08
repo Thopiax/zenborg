@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 import * as crypto from "node:crypto";
-import * as fs from "node:fs";
-import * as path from "node:path";
 /**
  * Zenborg MCP server — the gardener's voice.
  *
@@ -17,13 +15,8 @@ import { z } from "zod";
 import type { FenceDeps } from "../src/application/ports.ts";
 import {
   clearFences,
-  declareBrowserGate,
-  declareBrowserTransform,
   declareFence,
-  declareHostBlock,
-  declareWateringHours,
   fenceReport,
-  seedHostBlocks,
 } from "../src/application/use-cases/fences.ts";
 import {
   crossingTally,
@@ -31,7 +24,6 @@ import {
   fenceStore,
   readFencesFile,
 } from "./fences.js";
-import { buildRelatedHabits } from "./graph.js";
 import {
   computeHealth,
   countsAsAllocation,
@@ -148,18 +140,6 @@ import {
   VALID_BOUNDARIES,
   validateRoutine,
 } from "./routines.js";
-import {
-  getSurfaces,
-  getAttention,
-  getDayTrace,
-  mapArea,
-  migrateSurfaces,
-  resolveWindow,
-} from "./attention.js";
-import { logDir, readActivityLog } from "./activity-log.js";
-import { nightsOf, workoutsOf } from "../src/domain/garmin/BodyLog.ts";
-import { parseHabitMap } from "../src/domain/garmin/GarminHabitMap.ts";
-import { metricSeries } from "../src/domain/services/MetricTrendService.ts";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -818,151 +798,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "archive_habit",
-  description:
-    "DEPRECATED — use update_habit { archived: true } instead. Archive a habit. Cascades: deletes all cycle plans for this habit.",
-  schema: { id: z.string() },
-  annotations: { destructiveHint: true },
-  handler: async ({ id }) => {
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const habit = habits[id];
-    if (!habit) return err(`Habit not found: ${id}`);
-
-    const plans = readCollection(VAULT_ROOT, "cyclePlans");
-    const planIdsToDelete: string[] = [];
-    for (const p of Object.values(plans)) {
-      if (p.habitId === id) planIdsToDelete.push(p.id);
-    }
-    for (const pId of planIdsToDelete) delete plans[pId];
-    habits[id] = { ...habit, isArchived: true, updatedAt: nowIso() };
-
-    writeCollection(VAULT_ROOT, "habits", habits);
-    writeCollection(VAULT_ROOT, "cyclePlans", plans);
-
-    return ok({
-      archived: id,
-      deletedPlans: planIdsToDelete.length,
-      deprecated: "use update_habit { archived: true }",
-    });
-  },
-});
-
-defineTool(server, {
-  name: "unarchive_habit",
-  description:
-    "DEPRECATED — use update_habit { archived: false } instead. Restore an archived habit.",
-  schema: { id: z.string() },
-  handler: async ({ id }) => {
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const habit = habits[id];
-    if (!habit) return err(`Habit not found: ${id}`);
-    habits[id] = { ...habit, isArchived: false, updatedAt: nowIso() };
-    writeCollection(VAULT_ROOT, "habits", habits);
-    return ok({
-      unarchived: id,
-      deprecated: "use update_habit { archived: false }",
-    });
-  },
-});
-
-defineTool(server, {
-  name: "get_habit_health",
-  description:
-    "DEPRECATED — use get_habit instead (includes health in response). Compute health, effective rhythm, and days-since-last-allocation for a habit.",
-  schema: { habitId: z.string() },
-  annotations: { readOnlyHint: true },
-  handler: async ({ habitId }) => {
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const habit = habits[habitId];
-    if (!habit) return err(`Habit not found: ${habitId}`);
-
-    const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
-    const cycles = readCollection(VAULT_ROOT, "cycles");
-    const moments = readCollection(VAULT_ROOT, "moments");
-
-    const now = new Date();
-    const isoToday = now.toISOString().slice(0, 10);
-
-    const activePlan =
-      Object.values(cyclePlans).find((p) => {
-        if (p.habitId !== habitId) return false;
-        const c = cycles[p.cycleId];
-        if (!c) return false;
-        return c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday);
-      }) ?? null;
-
-    const momentsArr = Object.values(moments);
-    const health = computeHealth(habit, activePlan, momentsArr, now);
-
-    return ok({
-      habitId,
-      health,
-      rhythm: resolveRhythm(habit, activePlan),
-      daysSinceLast: daysSinceLast(habitId, momentsArr, now),
-      deprecated: "use get_habit",
-    });
-  },
-});
-
-defineTool(server, {
-  name: "list_wilting_habits",
-  description:
-    'DEPRECATED — use list_habits { health: "wilting" } instead. List habits whose current health is "wilting".',
-  schema: {
-    areaId: z.string().optional(),
-    attitude: AttitudeSchema.optional(),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async ({ areaId, attitude }) => {
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const cyclePlans = readCollection(VAULT_ROOT, "cyclePlans");
-    const cycles = readCollection(VAULT_ROOT, "cycles");
-    const moments = readCollection(VAULT_ROOT, "moments");
-    const momentsArr = Object.values(moments);
-    const now = new Date();
-    const isoToday = now.toISOString().slice(0, 10);
-
-    const results: Array<{
-      habitId: string;
-      habitName: string;
-      areaId: string;
-      attitude: Habit["attitude"];
-      rhythm: ReturnType<typeof resolveRhythm>;
-      daysSinceLast: number | null;
-    }> = [];
-
-    for (const habit of Object.values(habits)) {
-      if (habit.isArchived) continue;
-      if (areaId && habit.areaId !== areaId) continue;
-      if (attitude && habit.attitude !== attitude) continue;
-
-      const activePlan =
-        Object.values(cyclePlans).find((p) => {
-          if (p.habitId !== habit.id) return false;
-          const c = cycles[p.cycleId];
-          if (!c) return false;
-          return (
-            c.startDate <= isoToday && (!c.endDate || c.endDate >= isoToday)
-          );
-        }) ?? null;
-
-      const health = computeHealth(habit, activePlan, momentsArr, now);
-      if (health !== "wilting") continue;
-
-      results.push({
-        habitId: habit.id,
-        habitName: habit.name,
-        areaId: habit.areaId,
-        attitude: habit.attitude,
-        rhythm: resolveRhythm(habit, activePlan),
-        daysSinceLast: daysSinceLast(habit.id, momentsArr, now),
-      });
-    }
-
-    return ok(results);
-  },
-});
 
 defineTool(server, {
   name: "list_people_to_reach",
@@ -1761,62 +1596,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "get_related",
-  description:
-    "DEPRECATED — use list_relationships { entityType, entityId } instead. Get all entities related to a given entity.",
-  schema: {
-    entityType: EntityTypeSchema,
-    entityId: z.string(),
-    label: z.string().optional(),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async ({ entityType, entityId, label }) => {
-    const rels = Object.values(readCollection(VAULT_ROOT, "relationships"));
-    const people = readPeople();
-    const places = readPlaces();
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const areas = readCollection(VAULT_ROOT, "areas");
-
-    function resolveName(type: string, id: string): string | null {
-      switch (type) {
-        case "person":
-          return people[id]?.name ?? null;
-        case "place":
-          return places[id]?.name ?? null;
-        case "habit":
-          return habits[id]?.name ?? null;
-        case "area":
-          return areas[id]?.name ?? null;
-        default:
-          return null;
-      }
-    }
-
-    const edges = rels
-      .filter((r) => {
-        if (label && r.label !== label) return false;
-        const matchesFrom = r.fromType === entityType && r.fromId === entityId;
-        const matchesTo = r.toType === entityType && r.toId === entityId;
-        return matchesFrom || matchesTo;
-      })
-      .map((r) => {
-        const isFrom = r.fromType === entityType && r.fromId === entityId;
-        const otherType = isFrom ? r.toType : r.fromType;
-        const otherId = isFrom ? r.toId : r.fromId;
-        return {
-          relationshipId: r.id,
-          label: r.label,
-          direction: r.direction,
-          otherType,
-          otherId,
-          otherName: resolveName(otherType, otherId),
-        };
-      });
-
-    return ok({ entityType, entityId, related: edges });
-  },
-});
 
 // ────────────────────────────────────────────────────────────────────────
 // MENTIONS — @-mention people and places on a moment
@@ -2235,43 +2014,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "quick_create_cycle",
-  description:
-    "DEPRECATED — use plan_cycle { template } instead. Shortcut for common cycle templates.",
-  schema: {
-    name: z.string().min(1),
-    template: z.enum(["week", "month", "quarter"]),
-    startDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
-    intention: z.string().optional(),
-  },
-  concise: (p) => conciseCycle((p as any).created),
-  handler: async ({ name, template, startDate, intention }) => {
-    const cycles = readCollection(VAULT_ROOT, "cycles");
-    const now = nowIso();
-    const resolvedStart = startDate ?? new Date().toISOString().slice(0, 10);
-    const days = template === "week" ? 7 : template === "month" ? 28 : 90;
-    const resolvedEnd = addDays(resolvedStart, days - 1);
-    const cycle: Cycle = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      startDate: resolvedStart,
-      endDate: resolvedEnd,
-      ...(intention?.trim() ? { intention: intention.trim() } : {}),
-      createdAt: now,
-      updatedAt: now,
-    };
-    cycles[cycle.id] = cycle;
-    writeCollection(VAULT_ROOT, "cycles", cycles);
-    return ok({
-      created: cycle,
-      deprecated: "use plan_cycle { template }",
-    });
-  },
-});
 
 defineTool(server, {
   name: "update_cycle",
@@ -2337,35 +2079,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "end_cycle",
-  description:
-    "DEPRECATED — use update_cycle { endDate } instead. Set a cycle's endDate (defaults to today).",
-  schema: {
-    id: z.string(),
-    endDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
-  },
-  handler: async ({ id, endDate }) => {
-    const cycles = readCollection(VAULT_ROOT, "cycles");
-    const cycle = cycles[id];
-    if (!cycle) return err(`Cycle not found: ${id}`);
-    const next: Cycle = {
-      ...cycle,
-      endDate: endDate ?? new Date().toISOString().slice(0, 10),
-      updatedAt: nowIso(),
-    };
-    cycles[id] = next;
-    writeCollection(VAULT_ROOT, "cycles", cycles);
-    return ok({
-      ended: id,
-      endDate: next.endDate,
-      deprecated: "use update_cycle { endDate }",
-    });
-  },
-});
 
 defineTool(server, {
   name: "delete_cycle",
@@ -2790,39 +2503,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "create_moment",
-  description:
-    "DEPRECATED — use add_moment instead. Create an unallocated moment (drawing board).",
-  schema: {
-    name: z.string(),
-    areaId: z.string(),
-    phase: PhaseSchema.nullable().optional(),
-    emoji: z.string().nullable().optional(),
-    tags: z.array(z.string()).optional(),
-    personIds: z.array(z.string()).optional(),
-    placeIds: z.array(z.string()).optional(),
-    placeUrl: z.string().optional(),
-    customMetric: CustomMetricSchema.optional(),
-    startTime: StartTimeSchema.optional(),
-    durationMin: z.number().int().positive().optional(),
-    refs: z.array(z.string()).optional(),
-    status: z.enum(["tentative", "accepted"]).optional(),
-  },
-  concise: (p) => conciseMoment((p as any).created),
-  handler: async (params) => {
-    // This deprecated schema still accepts `phase: null` (the pre-add_moment
-    // shape); AddMomentInput has no null there, so drop it rather than widen
-    // the input type for a tool on its way out.
-    const { phase, ...rest } = params;
-    const result = runAddMoment({
-      ...rest,
-      ...(phase ? { phase } : {}),
-    });
-    if ("err" in result) return err(result.err);
-    return ok({ ...result, deprecated: "use add_moment" });
-  },
-});
 
 defineTool(server, {
   name: "update_moment",
@@ -3013,60 +2693,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "allocate_moment",
-  description:
-    "DEPRECATED — use update_moment { day, phase } instead. Allocate a moment to a specific (day, phase).",
-  schema: {
-    id: z.string(),
-    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: PhaseSchema.optional(),
-    order: z.number().int().nonnegative().optional(),
-    startTime: StartTimeSchema.optional(),
-    durationMin: z.number().int().positive().optional(),
-  },
-  concise: (p) => conciseMoment((p as any).allocated),
-  handler: async ({
-    id,
-    day,
-    phase: explicitPhase,
-    order,
-    startTime,
-    durationMin,
-  }) => {
-    const moments = readCollection(VAULT_ROOT, "moments");
-    const moment = moments[id];
-    if (!moment) return err(`Moment not found: ${id}`);
-
-    const timingError = validateMomentTiming(startTime, durationMin);
-    if (timingError) return err(timingError);
-
-    let phase = explicitPhase ?? null;
-    if (startTime) {
-      const derived = derivePhaseFromStartTime(startTime);
-      if (derived) phase = derived;
-    }
-    if (!phase) return err("phase is required when no startTime is provided");
-
-    const allMoments = Object.values(moments);
-    const slotCount = countMomentsInPhase(allMoments, day, phase, id);
-    const next: Moment = {
-      ...moment,
-      day,
-      phase,
-      order: order ?? slotCount,
-      ...(startTime !== undefined ? { startTime } : {}),
-      ...(durationMin !== undefined ? { durationMin } : {}),
-      updatedAt: nowIso(),
-    };
-    moments[id] = next;
-    writeCollection(VAULT_ROOT, "moments", moments);
-    return ok({
-      allocated: next,
-      deprecated: "use update_moment { day, phase }",
-    });
-  },
-});
 
 defineTool(server, {
   name: "unallocate_moment",
@@ -3088,68 +2714,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "allocate_from_plan",
-  description:
-    "DEPRECATED — use add_moment { habitId, day, phase, fromPlan: true } instead. Allocate a deck card into a day/phase slot.",
-  schema: {
-    cycleId: z.string(),
-    habitId: z.string(),
-    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]).optional(),
-  },
-  concise: (p) => conciseMoment((p as any).created),
-  handler: async ({ habitId, day, phase }) => {
-    const result = runAddMoment({ habitId, day, phase, fromPlan: true });
-    if ("err" in result) return err(result.err);
-    return ok({ ...result, deprecated: "use add_moment { fromPlan: true }" });
-  },
-});
-
-defineTool(server, {
-  name: "spawn_spontaneous_from_habit",
-  description:
-    "DEPRECATED — use add_moment { habitId, day, phase } instead. Create an ad-hoc moment from a habit template.",
-  schema: {
-    habitId: z.string(),
-    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: PhaseSchema.optional(),
-    order: z.number().int().nonnegative().optional(),
-  },
-  concise: (p) => conciseMoment((p as any).created),
-  handler: async ({ habitId, day, phase, order }) => {
-    const result = runAddMoment({ habitId, day, phase, order });
-    if ("err" in result) return err(result.err);
-    return ok({ ...result, deprecated: "use add_moment" });
-  },
-});
-
-defineTool(server, {
-  name: "create_standalone_moment",
-  description:
-    "DEPRECATED — use add_moment { name, areaId, day, phase } instead. Create and allocate an ad-hoc moment.",
-  schema: {
-    name: z.string(),
-    areaId: z.string(),
-    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phase: PhaseSchema.optional(),
-    order: z.number().int().nonnegative().optional(),
-    emoji: z.string().nullable().optional(),
-    tags: z.array(z.string()).optional(),
-    personIds: z.array(z.string()).optional(),
-    placeIds: z.array(z.string()).optional(),
-    placeUrl: z.string().optional(),
-    startTime: StartTimeSchema.optional(),
-    durationMin: z.number().int().positive().optional(),
-    refs: z.array(z.string()).optional(),
-  },
-  concise: (p) => conciseMoment((p as any).created),
-  handler: async (params) => {
-    const result = runAddMoment(params);
-    if ("err" in result) return err(result.err);
-    return ok({ ...result, deprecated: "use add_moment" });
-  },
-});
 
 // ────────────────────────────────────────────────────────────────────────
 // ACTIVE MOMENT — the intention pointer
@@ -3277,20 +2841,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "clear_active_moment",
-  description:
-    "DEPRECATED — use set_active_moment { momentIdOrName: null } instead. Release the intention.",
-  schema: {},
-  handler: async () => {
-    const previous = readActiveMoment(VAULT_ROOT);
-    clearActiveMoment(VAULT_ROOT);
-    return ok({
-      cleared: previous ? previous.momentId : null,
-      deprecated: "use set_active_moment { momentIdOrName: null }",
-    });
-  },
-});
 
 // ────────────────────────────────────────────────────────────────────────
 // PHASE CONFIGS (Should-have)
@@ -3394,23 +2944,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "get_related_habits",
-  description:
-    "DEPRECATED — use get_tag_profile (includes relatedHabits). A habit's derived edges in the garden graph.",
-  schema: {
-    habitId: z.string(),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async ({ habitId }) => {
-    const habits = Object.values(readCollection(VAULT_ROOT, "habits"));
-    const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
-    const areas = Object.values(readCollection(VAULT_ROOT, "areas"));
-    const related = buildRelatedHabits(habitId, habits, moments, areas);
-    if (!related) return err(`Habit not found: ${habitId}`);
-    return ok(related);
-  },
-});
 
 // ────────────────────────────────────────────────────────────────────────
 // FUZZY SEARCH — entity resolution for the garden skills plugin
@@ -3479,98 +3012,6 @@ defineTool(server, {
   },
 });
 
-defineTool(server, {
-  name: "search_habits",
-  description:
-    "DEPRECATED — use search { type: 'habit' } instead. Fuzzy-search habits by name or alias.",
-  schema: {
-    query: z
-      .string()
-      .describe("The habit name, alias, or approximate spelling to search for"),
-    areaId: z
-      .string()
-      .optional()
-      .describe("Restrict results to habits in this area"),
-    includeArchived: z
-      .boolean()
-      .optional()
-      .describe("Include archived habits in results (default false)"),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async ({ query, areaId, includeArchived }) => {
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const results = searchHabits(query, habits, { areaId, includeArchived });
-    return ok(
-      results.map((r) => ({
-        habitId: r.habit.id,
-        name: r.habit.name,
-        areaId: r.habit.areaId,
-        emoji: r.habit.emoji,
-        attitude: r.habit.attitude,
-        aliases: r.habit.aliases ?? [],
-        matchedOn: r.matchedOn,
-        matchedValue: r.matchedValue,
-        matchMethod: r.method,
-      })),
-    );
-  },
-});
-
-defineTool(server, {
-  name: "search_people",
-  description:
-    "DEPRECATED — use search { type: 'person' } instead. Fuzzy-search people by name or key.",
-  schema: {
-    query: z
-      .string()
-      .describe(
-        "The person's name, key, or approximate spelling to search for",
-      ),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async ({ query }) => {
-    const people = readPeople();
-    const results = searchPeople(query, people);
-    return ok(
-      results.map((r) => ({
-        personKey: r.person.key,
-        name: r.person.name,
-        emoji: r.person.emoji,
-        tags: r.person.tags,
-        matchedOn: r.matchedOn,
-        matchedValue: r.matchedValue,
-        matchMethod: r.method,
-      })),
-    );
-  },
-});
-
-defineTool(server, {
-  name: "search_places",
-  description:
-    "DEPRECATED — use search { type: 'place' } instead. Fuzzy-search places by name, key, or parent key.",
-  schema: {
-    query: z
-      .string()
-      .describe("The place name, key, or approximate spelling to search for"),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async ({ query }) => {
-    const places = readPlaces();
-    const results = searchPlaces(query, places);
-    return ok(
-      results.map((r) => ({
-        placeKey: r.place.key,
-        name: r.place.name,
-        emoji: r.place.emoji,
-        parentKey: r.place.parentKey,
-        matchedOn: r.matchedOn,
-        matchedValue: r.matchedValue,
-        matchMethod: r.method,
-      })),
-    );
-  },
-});
 
 // ────────────────────────────────────────────────────────────────────────
 // Fences (fences.json) — declared rules only
@@ -3715,258 +3156,6 @@ defineTool(server, {
   },
 });
 
-// ── Browser-scoped fences ─────────────────────────────────────────────
-//
-// `set_fence` above writes a session fence, which the plugin's PreToolUse hook
-// reads. The three below write BROWSER-scoped ones, which the extension reads
-// out of the fence record the native host pushes. Same collection, same writer,
-// same validate-before-write discipline — a different surface.
-//
-// They exist because migration step 5 could not flip the readers without them:
-// with no browser-scoped writer, a fences-only read reached no browser at all.
-
-defineTool(server, {
-  name: "set_host_block",
-  description:
-    "Declare a standing block on a host, as a rule that says what it is for. Browser-enforced by default — the extension actuates it from the pushed fence record; pass `resolverProfile` for a resolver-level block instead, which is the only reach that covers a phone. `unlockNote` is required and is the exit: a block that names no way out is refused, never set.",
-  schema: {
-    host: z
-      .string()
-      .min(1)
-      .describe('A registrable host — "chess.com", not a URL and not a path'),
-    returnsTo: z
-      .array(z.string().min(1))
-      .min(1)
-      .describe(
-        "Areas attention should land in when the wall is met — names or ids. This is the proximal claim: blocking is not the point, not losing the next ten minutes is.",
-      ),
-    unlockNote: z
-      .string()
-      .min(1)
-      .describe(
-        "How the block is lifted, deliberately outside the running system so it cannot be taken in the moment of wanting",
-      ),
-    name: z.string().optional(),
-    description: z.string().optional(),
-    resolverProfile: z
-      .string()
-      .optional()
-      .describe(
-        "Name the resolver profile carrying the block to enforce it there instead of in the browser",
-      ),
-  },
-  handler: async (input) => {
-    const result = await declareHostBlock(fenceDeps, input);
-    if ("problems" in result) return err(result.problems.join("; "));
-    return ok({ declared: result.declared, standing: result.standing });
-  },
-});
-
-defineTool(server, {
-  name: "set_browser_gate",
-  description:
-    "Declare a recurring stopping cue on a host: every N attended minutes of dwell, the page asks a question with an exit. Friction on the duration rather than on the visit — which is the answer to a standing block on a host you have a real reason to use, since that block gets lifted and a block lifted in the moment is not a boundary. Ships below delivery probability 1, because whether a cue like this returns attention is exactly what is unknown.",
-  schema: {
-    host: z
-      .string()
-      .min(1)
-      .describe('A registrable host — "linkedin.com", not a URL'),
-    returnsTo: z
-      .array(z.string().min(1))
-      .min(1)
-      .describe("Areas attention should land in after the gate — names or ids"),
-    everyMinutes: z
-      .number()
-      .describe(
-        "Accumulated ATTENDED dwell between firings — a backgrounded tab or an idle person does not accrue it",
-      ),
-    prompt: z
-      .string()
-      .min(1)
-      .describe("What the gate asks. The question is the friction."),
-    name: z.string().optional(),
-    description: z.string().optional(),
-  },
-  handler: async (input) => {
-    const result = await declareBrowserGate(fenceDeps, input);
-    if ("problems" in result) return err(result.problems.join("; "));
-    return ok({ declared: result.declared, standing: result.standing });
-  },
-});
-
-defineTool(server, {
-  name: "set_browser_transform",
-  description:
-    "Declare a DOM transform on a host: hide, restyle or replace a region rather than gate or block it — the LinkedIn feed, the YouTube Shorts shelf. Completes the fence trilogy: set_host_block asks whether you should reach a host at all, set_browser_gate asks whether you've been there longer than you meant to be, this asks whether a cue needs to be visible at all. No exit to name: a CSS conceal withholds nothing, the concealed content is still one direct navigation away, so invariant 6 does not apply to this primitive the way it does to a block or a gate.",
-  schema: {
-    host: z
-      .string()
-      .min(1)
-      .describe('A registrable host — "linkedin.com", not a URL'),
-    selectors: z
-      .object({
-        primary: z
-          .string()
-          .min(1)
-          .describe("The main CSS selector for the region to transform"),
-        fallbacks: z
-          .array(z.string().min(1))
-          .optional()
-          .describe(
-            "Selectors to emit alongside the primary — all match together, not primary-then-fallback, because selectors rot on the next deploy",
-          ),
-      })
-      .describe("What gets transformed"),
-    replacement: z
-      .discriminatedUnion("type", [
-        z.object({ type: z.literal("hide") }),
-        z.object({
-          type: z.literal("restyle"),
-          style: z
-            .record(z.string(), z.string())
-            .describe('CSS properties, e.g. { "visibility": "hidden" }'),
-        }),
-        z.object({
-          type: z.literal("text"),
-          content: z.string().min(1).describe("Placeholder text"),
-        }),
-      ])
-      .optional()
-      .describe('How the target is replaced. Defaults to { type: "hide" }.'),
-    returnsTo: z
-      .array(z.string().min(1))
-      .min(1)
-      .describe(
-        "Areas attention is free to land in with the cue gone — names or ids",
-      ),
-    name: z.string().optional(),
-    description: z.string().optional(),
-  },
-  handler: async (input) => {
-    const result = await declareBrowserTransform(fenceDeps, input);
-    if ("problems" in result) return err(result.problems.join("; "));
-    return ok({ declared: result.declared, standing: result.standing });
-  },
-});
-
-defineTool(server, {
-  name: "seed_host_blocks",
-  description:
-    "Write the seed blocklist into fences as rules — the oldest working piece of the system, carried out of keel's own rules directory and into the collection the kernel contract registers. Idempotent: each rule's id is derived from its host and enforcement point, so re-running replaces rather than accumulating, and fences it did not write are left alone.",
-  schema: {
-    returnsTo: z
-      .array(z.string().min(1))
-      .min(1)
-      .describe("Areas attention should land in when a wall is met"),
-    unlockNote: z
-      .string()
-      .min(1)
-      .describe("How any of these blocks is lifted, out of band"),
-    hosts: z
-      .array(z.string().min(1))
-      .describe(
-        "The hosts to wall. Required: there is no default list, so a seed names its own hosts.",
-      ),
-    resolverProfile: z
-      .string()
-      .optional()
-      .describe("Enforce at the resolver instead of in the browser"),
-  },
-  handler: async (input) => {
-    const result = await seedHostBlocks(fenceDeps, input);
-    if ("problems" in result) return err(result.problems.join("; "));
-    return ok({
-      declared: result.declared.map((r) => ({
-        id: r.id,
-        host: (r.scope as { domain: string }).domain,
-      })),
-      standing: result.standing,
-    });
-  },
-});
-
-defineTool(server, {
-  name: "set_watering_hours",
-  description:
-    "Declare a standing temporal attention policy — which plots get watered when, with friction for watering the wrong plot at the wrong time. Three modes: 'regular' (gentle gate friction), 'dry' (standing block, no water at all), 'by_hand' (tool-level friction, manual work passes through). One declaration generates per-surface rules with derived ids; re-declaring replaces.",
-  schema: {
-    name: z
-      .string()
-      .min(1)
-      .describe(
-        "Policy handle — shown back at every crossing, used in derived ids",
-      ),
-    mode: z
-      .enum(["regular", "dry", "by_hand"])
-      .describe(
-        "regular = gentle friction, dry = standing block, by_hand = tool-level gate",
-      ),
-    window: z.object({
-      phases: z
-        .array(z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]))
-        .max(1)
-        .optional()
-        .describe(
-          "One phase name — resolved to hours at declaration, frozen with cutFrom provenance",
-        ),
-      weekdays: z
-        .array(z.enum(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]))
-        .optional()
-        .describe("Days of the week this policy is in force"),
-      fromHour: z.number().min(0).max(23).optional(),
-      toHour: z.number().min(0).max(23).optional(),
-    }),
-    waters: z
-      .array(z.string().min(1))
-      .min(1)
-      .describe("Areas this window IS for — names or ids"),
-    restricts: z.object({
-      areas: z
-        .array(z.string().min(1))
-        .optional()
-        .describe("Areas that get friction (garden surface)"),
-      paths: z
-        .array(z.string().min(1))
-        .optional()
-        .describe("Path prefixes that get friction (session surface)"),
-      hosts: z
-        .array(z.string().min(1))
-        .optional()
-        .describe(
-          "Hosts that get friction (browser surface, deferred to slice 2)",
-        ),
-      tools: z
-        .array(z.string().min(1))
-        .optional()
-        .describe("Tool names to gate — Edit, Write (by_hand mode)"),
-    }),
-    prompt: z
-      .string()
-      .optional()
-      .describe("The gate's question (regular/by_hand modes)"),
-    unlockNote: z
-      .string()
-      .optional()
-      .describe("How the block is lifted (REQUIRED for dry mode)"),
-  },
-  handler: async (input) => {
-    const result = await declareWateringHours(fenceDeps, {
-      ...input,
-      restricts: {
-        ...input.restricts,
-        paths: input.restricts.paths?.map(expandHome),
-      },
-    });
-    if ("problems" in result) return err(result.problems.join("; "));
-    return ok({
-      declared: result.declared.map((r) => ({
-        id: r.id,
-        surface: r.scope.surface,
-      })),
-      standing: result.standing,
-    });
-  },
-});
 
 defineTool(server, {
   name: "clear_fence",
@@ -4009,210 +3198,10 @@ defineTool(server, {
   },
 });
 
-// ────────────────────────────────────────────────────────────────────────
-// ATTENTION — the plan ↔ trace bridge
-// ────────────────────────────────────────────────────────────────────────
 
-const DaySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-defineTool(server, {
-  name: "get_attention",
-  description:
-    "Where did attention go? Dwell time by area per surface (desktop/agent/browser), " +
-    "unmapped locators (top 10), and agent sessions. Minutes, never ms. " +
-    "Coverage on every response — an empty surface means unrecorded, not idle.",
-  schema: {
-    day: DaySchema.optional().describe(
-      "One waking day (04:00 roll). Omit for today.",
-    ),
-    from: DaySchema.optional().describe(
-      "Inclusive start day. Use with `to` for a range.",
-    ),
-    to: DaySchema.optional().describe(
-      "Inclusive end day.",
-    ),
-    surfaces: z
-      .array(z.enum(["desktop", "agent", "browser"]))
-      .optional()
-      .describe("Surfaces to query. Default: all three."),
-    pathPrefix: z
-      .string()
-      .optional()
-      .describe(
-        "Agent surface only: restrict to cwds under this path (~ expands).",
-      ),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async (params) => {
-    const areas = readCollection(VAULT_ROOT, "areas");
-    return ok(getAttention(VAULT_ROOT, areas, params));
-  },
-});
 
-defineTool(server, {
-  name: "get_area_map",
-  description:
-    "Show the area map: path, host, and app rules that resolve trace events to areas. " +
-    "Flags rules whose areaId no longer exists.",
-  schema: {},
-  annotations: { readOnlyHint: true },
-  handler: async () => {
-    const areas = readCollection(VAULT_ROOT, "areas");
-    return ok(getSurfaces(VAULT_ROOT, areas));
-  },
-});
 
-defineTool(server, {
-  name: "map_area",
-  description:
-    "Add, update, or remove a rule in the area map. " +
-    '"Slack → Themia" becomes kind=app, key=Slack, area=Themia. ' +
-    "Pass area=null to remove a rule.",
-  schema: {
-    kind: z.enum(["path", "host", "app"]),
-    key: z.string().min(1).describe("The path prefix, host, or app name."),
-    area: z
-      .string()
-      .nullable()
-      .describe("Area name or id. null removes the rule."),
-  },
-  annotations: { readOnlyHint: false },
-  handler: async (params) => {
-    const areas = readCollection(VAULT_ROOT, "areas");
-    const result = mapArea(VAULT_ROOT, areas, params);
-    if (!result.ok) return err(result.message);
-    if (result.mutated) writeCollection(VAULT_ROOT, "areas", areas);
-    return ok(result);
-  },
-});
-
-// ────────────────────────────────────────────────────────────────────────
-// BODY + METRIC TREND
-// ────────────────────────────────────────────────────────────────────────
-
-function loadHabitMap() {
-  const mapPath = path.join(VAULT_ROOT, "integrations", "garmin", "habit-map.json");
-  if (!fs.existsSync(mapPath)) return parseHabitMap(null);
-  try {
-    return parseHabitMap(JSON.parse(fs.readFileSync(mapPath, "utf8")));
-  } catch {
-    return parseHabitMap(null);
-  }
-}
-
-defineTool(server, {
-  name: "get_body",
-  description:
-    "Sleep nights and workouts from Garmin. " +
-    "Nights report the morning woken (calendarDate describes the night before that day's work). " +
-    "Workouts resolve to habits via the garmin habit map when mapped.",
-  schema: {
-    day: DaySchema.optional().describe("One waking day (04:00 roll). Omit for today."),
-    from: DaySchema.optional().describe("Inclusive start day."),
-    to: DaySchema.optional().describe("Inclusive end day."),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async (params) => {
-    const window = resolveWindow(params);
-    const events = readActivityLog(logDir(VAULT_ROOT), window.from, window.to, ["garmin"]);
-    const habitMap = loadHabitMap();
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const habitName = (id: string) => habits[id]?.name ?? id;
-    const nights = nightsOf(events).map((n) => ({
-      calendarDate: n.calendarDate,
-      asleepHours: +(n.asleepMs / 3_600_000).toFixed(1),
-      ...(n.score !== undefined ? { score: n.score } : {}),
-      ...(n.deepS !== undefined ? { deepMin: Math.round(n.deepS / 60) } : {}),
-      ...(n.remS !== undefined ? { remMin: Math.round(n.remS / 60) } : {}),
-      ...(n.avgHrBpm !== undefined ? { avgHrBpm: n.avgHrBpm } : {}),
-    }));
-    const workouts = workoutsOf(events, habitMap).map((w) => {
-      const d = new Date(w.start);
-      const p = (n: number) => String(n).padStart(2, "0");
-      return {
-        day: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
-        start: `${p(d.getHours())}:${p(d.getMinutes())}`,
-        activityType: w.activityType,
-        elapsedMin: Math.round(w.elapsedMs / 60_000),
-        ...(w.movingS !== undefined ? { movingMin: Math.round(w.movingS / 60) } : {}),
-        ...(w.calories !== undefined ? { calories: w.calories } : {}),
-        ...(w.avgHrBpm !== undefined ? { avgHrBpm: w.avgHrBpm } : {}),
-        ...(w.habitId ? { habitId: w.habitId, habitName: habitName(w.habitId) } : {}),
-      };
-    });
-    const garminEvents = events.filter((e) => e.surface === "garmin");
-    const first = garminEvents.length > 0 ? garminEvents[0].ts : undefined;
-    const last = garminEvents.length > 0 ? garminEvents[garminEvents.length - 1].ts : undefined;
-    const localDate = (ts: number) => {
-      const d = new Date(ts);
-      const p = (n: number) => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-    };
-    return ok({
-      window: { from: window.fromDay, to: window.toDay },
-      coverage: {
-        ...(first !== undefined ? { first: localDate(first) } : {}),
-        ...(last !== undefined ? { last: localDate(last) } : {}),
-      },
-      nights,
-      workouts,
-    });
-  },
-});
-
-defineTool(server, {
-  name: "get_metric_trend",
-  description:
-    "Metric values over time for a habit. Points only — no slope, no target distance.",
-  schema: {
-    habitId: z.string().min(1),
-    metricName: z.string().optional().describe("Filter to one metric name."),
-    since: DaySchema.optional().describe("Only points on or after this date."),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async (params) => {
-    const moments = Object.values(readCollection(VAULT_ROOT, "moments"));
-    const logs = Object.values(readCollection(VAULT_ROOT, "metricLogs"));
-    const habits = readCollection(VAULT_ROOT, "habits");
-    const habit = habits[params.habitId];
-    if (!habit) return err(`Habit not found: ${params.habitId}`);
-
-    let series = metricSeries(params.habitId, moments, logs, params.metricName);
-    if (params.since) {
-      series = series.map((s) => ({
-        ...s,
-        points: s.points.filter((p) => p.date >= params.since!),
-      })).filter((s) => s.points.length > 0);
-    }
-    return ok({ habitId: params.habitId, habitName: habit.name, series });
-  },
-});
-
-// ────────────────────────────────────────────────────────────────────────
-// DAY TRACE — plan vs actual
-// ────────────────────────────────────────────────────────────────────────
-
-defineTool(server, {
-  name: "get_day_trace",
-  description:
-    "How aligned was the day with the plan? For each planted moment: " +
-    "attention traced in its cell (same area), attention elsewhere (different area), " +
-    "and whether any trace was found. Also reports unplanted attention — " +
-    "spans in cells that planted nothing for that area. " +
-    "No alignment %, no score.",
-  schema: {
-    day: DaySchema.optional().describe("Waking day (04:00 roll). Omit for today."),
-    idleGapMin: z.number().int().positive().optional()
-      .describe("Idle gap in minutes for span derivation. Default 15."),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async (params) => {
-    const areas = readCollection(VAULT_ROOT, "areas");
-    const moments = readCollection(VAULT_ROOT, "moments");
-    const phaseConfigs = readCollection(VAULT_ROOT, "phaseConfigs");
-    return ok(getDayTrace(VAULT_ROOT, areas, moments, phaseConfigs, params));
-  },
-});
 
 // ────────────────────────────────────────────────────────────────────────
 // Gap proposals
@@ -4253,16 +3242,6 @@ defineTool(server, {
 // ────────────────────────────────────────────────────────────────────────
 // Connect
 // ────────────────────────────────────────────────────────────────────────
-
-// Migrate area-map.json → area surfaces (one-time, idempotent)
-{
-  const areas = readCollection(VAULT_ROOT, "areas");
-  const m = migrateSurfaces(VAULT_ROOT, areas);
-  if (m.migrated > 0) {
-    writeCollection(VAULT_ROOT, "areas", areas);
-    process.stderr.write(`[zenborg-mcp] migrated ${m.migrated} area-map rules to area surfaces\n`);
-  }
-}
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

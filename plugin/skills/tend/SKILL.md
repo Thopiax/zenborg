@@ -41,15 +41,15 @@ Parse the user's natural language into discrete moment candidates. Each candidat
 
 For each candidate, resolve entities using the MCP search tools:
 
-**Habits:** Call `mcp__zenborg__search_habits` with the activity name.
+**Habits:** Call `mcp__zenborg__search` with `type: "habit"` and the activity name.
 - Match found: link the moment to the habit (inherit area, emoji, tags).
 - No match: propose creating a new habit, or plant as a standalone moment.
 
-**People:** Call `mcp__zenborg__search_people` with any person names mentioned.
+**People:** Call `mcp__zenborg__search` with `type: "person"` and any person names mentioned.
 - Match found: add to `personIds`.
 - No match: propose "add X as a person?"
 
-**Places:** Call `mcp__zenborg__search_places` with any place names mentioned.
+**Places:** Call `mcp__zenborg__search` with `type: "place"` and any place names mentioned.
 - Match found: add to `placeIds`.
 - No match: propose "add X as a place?"
 
@@ -76,8 +76,8 @@ Plant all? [Y/n]
 
 On user confirmation, plant moments using the appropriate MCP tools:
 
-- **Habit-linked moments:** `mcp__zenborg__spawn_spontaneous_from_habit` (inherits area, emoji, tags, schedule timing)
-- **Standalone moments:** `mcp__zenborg__create_standalone_moment` (requires explicit areaId)
+- **Habit-linked moments:** `mcp__zenborg__add_moment` with `habitId` + `day` + `phase` (inherits area, emoji, tags, schedule timing)
+- **Standalone moments:** `mcp__zenborg__add_moment` with `name` + `areaId` + `day` + `phase`
 - **Unresolved entities:** Create new people/places first if the user approved proposals
 
 Plant all moments in parallel when there are no dependencies between them.
