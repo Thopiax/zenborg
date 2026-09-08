@@ -23,9 +23,20 @@ Each capability a CLI oracle provides is a protocol object with commands:
 | `journal` | `check`, `read` (optional), `write` | markdown |
 | `body` | usually MCP — no CLI protocol needed | — |
 | `tasks` | `check`, `write` | plain text |
+| `email` | `check`, `inbox`, `read`, `search`, `compose`, `reply` | markdown |
 | `messaging` | usually MCP — no CLI protocol needed | — |
+| `sync` | `check`, `run` | — (pull from device/service into vault) |
+| `search` | `check`, `read` | JSON array of `{date, path, preview, score}` |
 
 Custom capabilities are allowed — the user defines the protocol shape.
+
+**`sync`** is for oracles that pull a corpus into the vault (e.g. a Supernote
+over LAN, a Kindle highlights export). `run` performs the pull; there is no
+`read`/`write` — the pull writes to a known collection.
+
+**`search`** is for oracles that provide full-text search over indexed content.
+`read` takes `$QUERY` and returns JSON hits. Skills use it to find mentions,
+occurrences, and context across the oracle's indexed corpus.
 
 `$CONTENT` in commands is a placeholder replaced by the calling skill at
 runtime with the actual markdown/text payload.
