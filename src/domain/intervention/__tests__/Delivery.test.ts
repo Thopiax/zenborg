@@ -25,7 +25,7 @@ const discrepancy: Discrepancy = {
 };
 
 describe("validateDelivery", () => {
-  it("accepts a rule-armed delivery whose primitives all carry an exit", () => {
+  it("accepts a rule-set delivery whose primitives all carry an exit", () => {
     const delivery: Delivery = {
       origin: "rule",
       ruleId: "rule-area-drift",
@@ -35,7 +35,7 @@ describe("validateDelivery", () => {
     expect(validateDelivery(delivery)).toEqual([]);
   });
 
-  it("accepts a rule-armed cooldown, because teeth are permitted now", () => {
+  it("accepts a rule-set cooldown, because teeth are permitted now", () => {
     const delivery: Delivery = {
       origin: "rule",
       ruleId: "rule-area-drift",
@@ -51,7 +51,7 @@ describe("validateDelivery", () => {
     expect(validateDelivery(delivery)).toEqual([]);
   });
 
-  it("rejects a rule-armed delivery carrying a primitive with no exit", () => {
+  it("rejects a rule-set delivery carrying a primitive with no exit", () => {
     const delivery: Delivery = {
       origin: "rule",
       ruleId: "rule-area-drift",
@@ -63,7 +63,7 @@ describe("validateDelivery", () => {
     );
   });
 
-  it("rejects a self-armed delivery with no exit, since sovereignty is the exit", () => {
+  it("rejects a self-set delivery with no exit, since sovereignty is the exit", () => {
     const delivery: Delivery = { origin: "self", primitives: [intercept] };
     expect(validateDelivery(delivery)).toContain(
       "invariant 6: every delivered primitive must carry a proceed affordance",

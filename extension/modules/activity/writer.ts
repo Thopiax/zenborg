@@ -56,11 +56,10 @@ type WriteFn = (
 ) => void;
 
 /**
- * The gates armed on one host, in the shape the dwell interpreter reads.
+ * The standing gates on one host, in the shape the dwell interpreter reads.
  *
- * Replaces `armedGatesFor` from `modules/interventions/armed.ts`: same
- * composition (narrow to the host, then project to `DwellGate`), now over the
- * fence cache.
+ * Replaces the retired `armedGatesFor`: same composition (narrow to the host,
+ * then project to `DwellGate`), now over the fence cache.
  */
 function fenceGatesFor(fences: Fences, host: string) {
   const onHost: Record<string, Fence> = {};
@@ -244,8 +243,8 @@ export function startActivityWriter(): void {
       return derivedObserveDomains()
         .then(async (observe) => ({
           observed: sensorAllowed(domain, observe),
-          // The armed cache is consulted here as well as in the poll, or a
-          // fence would never arm its page in the first place. One store since
+          // The fence cache is consulted here as well as in the poll, or a
+          // fence would never gate its page in the first place. One store since
           // migration step 5: the policy mirror's gate list came from
           // `~/.zenborg/keel/rules/*.json`, which is retired.
           gate:
@@ -291,7 +290,7 @@ export function startActivityWriter(): void {
           // Every gate on the domain, not the first — see `evaluateGates`. A second
           // rule used to be dropped on the floor here.
           //
-          // One list, from one store. Slice E unioned the armed cache with the
+          // One list, from one store. Slice E unioned the fence cache with the
           // policy mirror because the two carried different rules from different
           // files; step 5 retired the second file, so the union has nothing left
           // to add. The read is local, so the hot path makes no round trip.

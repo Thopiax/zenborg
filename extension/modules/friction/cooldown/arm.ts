@@ -17,7 +17,7 @@ import { buildBrowserEvent } from "@/modules/activity/events";
 import { appendEvent } from "@/modules/activity/log";
 import { derivedObserveDomains } from "@/modules/watchlist/store";
 import { breakTarget, type BreakTarget } from "@/modules/friction/policy/store";
-import { armableHosts } from "@/modules/fence/parse";
+import { fenceableHosts } from "@/modules/fence/parse";
 import { fenceCache } from "@/modules/fence/store";
 import { DEFAULT_COOLDOWN_MS, armCooldown } from "./store";
 
@@ -55,7 +55,7 @@ export async function armBreak(
   await appendEvent(
     buildBrowserEvent({
       id: crypto.randomUUID(),
-      kind: "cooldown_armed",
+      kind: "cooldown_set",
       ts: Date.now(),
       sessionId: "",
       payload: {
@@ -85,11 +85,11 @@ export async function armWatchedCooldown(
   // Prefer what the rules declare; fall back to the derive tier so the button
   // still does something before the first push lands.
   //
-  // The declaration comes off the armed cache since migration step 5. It used to
+  // The declaration comes off the fence cache since migration step 5. It used to
   // come off the policy mirror, projected host-side from
   // `~/.zenborg/keel/rules/*.json`; that store is retired, and the candidate set
   // is the same question asked of the one that replaced it.
-  const declared = [...armableHosts(await fenceCache.getValue())];
+  const declared = [...fenceableHosts(await fenceCache.getValue())];
   const domains = declared.length > 0 ? declared : await derivedObserveDomains();
   const until = await armCooldown({
     ruleId: WATCHED_COOLDOWN_RULE,
@@ -99,7 +99,7 @@ export async function armWatchedCooldown(
   await appendEvent(
     buildBrowserEvent({
       id: crypto.randomUUID(),
-      kind: "cooldown_armed",
+      kind: "cooldown_set",
       ts: Date.now(),
       sessionId: "",
       payload: { source, durationMs, domainCount: domains.length },

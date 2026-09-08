@@ -10,9 +10,8 @@
  * `~/.zenborg/keel/rules/*.json`, which was a second declared-rule store beside
  * the `fences` collection, and the extension had to union the two on every
  * actuation. That store is retired: what is in force now arrives once, as the
- * pushed armed record (`modules/interventions/`), and the questions those three
- * answered are asked of it instead — `browserStandingHosts`,
- * `browserArmableHosts`, `armedGatesFor`.
+ * pushed fence record, and the questions those three answered are asked of it
+ * instead — `standingBlockHosts`, `fenceableHosts`, `gatesFrom`.
  *
  * What remains is genuinely other: transforms and the break target still come
  * off rules the host projects, and areas, the area map and the moment's
@@ -107,7 +106,7 @@ export const areaMap = storage.defineItem<Record<string, string>>("local:policy:
  * it made a *deliberate* lift impossible: disabling the only rule behind a
  * mirror makes the host send an empty list, which was then discarded, so the
  * old state held with nothing behind it and no way to see why. The same rule now
- * governs the armed cache, one layer over — malformed keeps, empty lands.
+ * governs the fence cache, one layer over — malformed keeps, empty lands.
  */
 export async function replacePolicy(policy: {
   readonly transforms?: readonly PageTransform[];

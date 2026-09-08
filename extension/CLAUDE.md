@@ -26,7 +26,7 @@ extension/
 │   │   ├── adapters.ts              # Site-specific probes as DATA — the only place a domain may appear
 │   │   └── send.ts                  # Content-script channel
 │   ├── watchlist/                   # DERIVED observe tier (fence domains ∪ area-map domains, not manual)
-│   ├── fence/                       # Fence parsing, projection, cache — the armed state
+│   ├── fence/                       # Fence parsing, projection, cache — the standing state
 │   ├── friction/
 │   │   ├── cooldown/                # state.ts (pure) + store.ts (chrome) + arm.ts (the one gesture)
 │   │   ├── gate/                    # dwell gate: state.ts + decide.ts (pure) + overlay.ts + arm.ts
@@ -49,13 +49,13 @@ shopping, game) self-select by DOM shape on any observed domain. Site adapters i
 `adapters.ts` exist only where generic detection fails, and they are data.
 
 **Friction primitives: fences, gates, cooldowns, transforms.** zenborg (via MCP)
-declares what is armed; the extension decides when it fires. The armed state is
+declares what is fenced; the extension decides when it fires. The fence state is
 pushed over native messaging and cached in `chrome.storage.local`, so actuation
 never waits on a round trip and a dead host never lifts a fence.
 
-`friction/cooldown/state.ts` holds the behavioural rule: **arming is
-write-forward-only.** Re-arming may push the stamp out, never pull it in, and
-there is deliberately no `disarm` — the unlock path is `wait`.
+`friction/cooldown/state.ts` holds the behavioural rule: **setting is
+write-forward-only.** Re-setting may push the stamp out, never pull it in, and
+there is deliberately no way to lift early — the unlock path is `wait`.
 
 ## The hostile-page boundary
 
