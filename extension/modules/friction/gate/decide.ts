@@ -43,6 +43,10 @@ export interface DwellGate {
       | { readonly type: "abort" };
   };
   readonly abort: { readonly label: string };
+  readonly substitute?: {
+    readonly domains: readonly string[];
+    readonly minutes: number;
+  };
   /** @deprecated Pre-2026-08-08 mirror shape. Read only by `normalizeGate`. */
   readonly prompt?: string;
 }
@@ -142,6 +146,13 @@ export async function evaluateGate(
   if ((await gateFiredDay.getValue()) !== today) {
     await gateFiredDay.setValue(today);
     await gateFiredAt.setValue({});
+  }
+
+  if (g.substitute) {
+    const subDwell = await dwellTodayFor(g.substitute.domains, now);
+    if (subDwell >= g.substitute.minutes * 60_000) {
+      return { fire: false, dwellMs: 0 };
+    }
   }
 
   const dwellMs = await dwellTodayFor(g.domains, now);

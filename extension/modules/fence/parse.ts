@@ -137,7 +137,26 @@ function readEnforcement(raw: unknown): FenceEnforcement | null {
     if (friction === null || !Number.isFinite(everyMinutes) || everyMinutes <= 0) {
       return null;
     }
-    return { kind: "gate", everyMinutes: Math.round(everyMinutes), friction };
+    const sub = isRecord(raw.substitute) ? raw.substitute : null;
+    const substitute =
+      sub !== null &&
+      Array.isArray(sub.domains) &&
+      Number.isFinite(Number(sub.minutes)) &&
+      Number(sub.minutes) > 0
+        ? {
+            domains: (sub.domains as unknown[])
+              .filter((d): d is string => typeof d === "string")
+              .map((d) => normalizeDomain(d))
+              .filter((d): d is string => d !== null),
+            minutes: Number(sub.minutes),
+          }
+        : undefined;
+    return {
+      kind: "gate" as const,
+      everyMinutes: Math.round(everyMinutes),
+      friction,
+      ...(substitute && substitute.domains.length > 0 ? { substitute } : {}),
+    };
   }
   return null;
 }
@@ -329,6 +348,7 @@ export function gatesFrom(fences: Fences): readonly DwellGate[] {
       domains: entry.domains,
       everyMinutes: entry.enforcement.everyMinutes,
       friction: entry.enforcement.friction,
+      ...(entry.enforcement.substitute ? { substitute: entry.enforcement.substitute } : {}),
       proceed: { label: entry.proceed.label, action: gateAction(entry.proceed) },
       abort: entry.abort ?? { label: "Close the tab" },
     });

@@ -38,6 +38,10 @@ export type FenceEnforcement =
       readonly kind: "gate";
       readonly everyMinutes: number;
       readonly friction: GateFriction;
+      readonly substitute?: {
+        readonly domains: readonly string[];
+        readonly minutes: number;
+      };
     };
 
 /**

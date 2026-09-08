@@ -63,7 +63,32 @@ Fitness:
   Yoga (BEGINNING, weekly x1) -- wilting (12 days)
 ```
 
-#### 4. Reflect on the intention
+#### 4. Weed review
+
+Review browser attention on habits tagged `weeds` or with attitude `PRUNING`.
+
+**Resolve hosts from fences:** read `~/.zenborg/fences.json` and extract the hosts
+declared on fences whose names reference weed habits. The fences are the source of
+truth for which hosts belong to which weed — never hardcode the mapping.
+
+**Query browser logs:** for each resolved host, parse
+`~/.zenborg/log/YYYY-MM-DD.browser.jsonl` files across the cycle's date range:
+- Count unique tab UUIDs as **sessions**
+- Count `video_started` / `video_ended` events and sum
+  `video_ended.payload.seconds` for **watch time** (video hosts only)
+- Compute **per-week averages** from cycle length
+
+Present alongside the previous cycle's numbers when available:
+```
+| Weed         | This cycle | /week   | Prev   | Trend |
+|--------------|-----------|---------|--------|-------|
+| host-a       | 31.7h     | 10.1h   | 22.0h  | ↓     |
+| host-b       | 46 sess   | 15      | —      | —     |
+```
+
+Surface worst days (>2h on any single host). No judgment — the numbers are the mirror.
+
+#### 5. Reflect on the intention
 
 Read the cycle's intention and surface how the allocation pattern relates to it. Neutral observation only:
 - "The intention was 'settle into Arcadia.' Social and Exploration areas saw the most growth."
@@ -71,7 +96,7 @@ Read the cycle's intention and surface how the allocation pattern relates to it.
 
 ### Plan half (look ahead)
 
-#### 5. Transition to planning
+#### 6. Transition to planning
 
 If the user wants to plan a new cycle:
 - "Ready to plan the next season?"
