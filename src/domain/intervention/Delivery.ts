@@ -3,14 +3,14 @@ import type { RuleId } from "../attention/ids";
 import { carriesExit, type Primitive } from "./Primitive.ts";
 
 /**
- * What was actually armed, and on whose initiative.
+ * What was actually set, and on whose initiative.
  *
- * The union makes well-formedness structural: a rule-armed delivery carries the
- * rule and the discrepancy that produced it; a self-armed one carries neither,
- * because the person armed it directly and there was no discrepancy to answer.
+ * The union makes well-formedness structural: a rule-set delivery carries the
+ * rule and the discrepancy that produced it; a self-set one carries neither,
+ * because the person set it directly and there was no discrepancy to answer.
  *
- * `origin` is kept because efficacy reporting needs it. Comparing rule-armed
- * against self-armed deliveries is what makes the falsifier checkable.
+ * `origin` is kept because efficacy reporting needs it. Comparing rule-set
+ * against self-set deliveries is what makes the falsifier checkable.
  */
 export type Delivery =
   | {
@@ -25,8 +25,8 @@ export type Delivery =
  * Invariant 6: every delivered primitive carries a proceed affordance.
  *
  * Since the restricted category is gone, this carries the whole of the
- * sovereignty guarantee. What protects the person is not who was allowed to arm
- * the thing, it is that every armed thing can be got out of. It binds here, at
+ * sovereignty guarantee. What protects the person is not who set the
+ * fence, it is that every standing fence can be got out of. It binds here, at
  * the foundational layer, because that is the layer the validator works on and
  * anything above it could be desugared around.
  *

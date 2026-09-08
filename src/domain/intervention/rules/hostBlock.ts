@@ -199,7 +199,7 @@ export interface HostBlockSeedInput {
    * A resolver-enforced rule reaches the phone and is enforced by a DNS profile
    * nothing in this system writes; the rule only *describes* it. A
    * browser-enforced one is actuated here and now, by the extension, from the
-   * armed record. That is the surface this app can actually close, so it is the
+   * fence record. That is the surface this app can actually close, so it is the
    * default, and the resolver stays one argument away.
    */
   readonly enforcement?: CooldownEnforcement;

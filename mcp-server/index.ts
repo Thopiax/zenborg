@@ -3712,7 +3712,7 @@ defineTool(server, {
 //
 // `set_fence` above writes a session fence, which the plugin's PreToolUse hook
 // reads. The three below write BROWSER-scoped ones, which the extension reads
-// out of the armed record the native host pushes. Same collection, same writer,
+// out of the fence record the native host pushes. Same collection, same writer,
 // same validate-before-write discipline — a different surface.
 //
 // They exist because migration step 5 could not flip the readers without them:
@@ -3721,7 +3721,7 @@ defineTool(server, {
 defineTool(server, {
   name: "set_host_block",
   description:
-    "Declare a standing block on a host, as a rule that says what it is for. Browser-enforced by default — the extension actuates it from the pushed armed record; pass `resolverProfile` for a resolver-level block instead, which is the only reach that covers a phone. `unlockNote` is required and is the exit: a block that names no way out is refused, never armed.",
+    "Declare a standing block on a host, as a rule that says what it is for. Browser-enforced by default — the extension actuates it from the pushed fence record; pass `resolverProfile` for a resolver-level block instead, which is the only reach that covers a phone. `unlockNote` is required and is the exit: a block that names no way out is refused, never set.",
   schema: {
     host: z
       .string()
