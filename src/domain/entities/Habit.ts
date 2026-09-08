@@ -46,6 +46,7 @@ export interface Habit {
    * back to those tags until the migration moves them here.
    */
   placeIds?: string[];
+  link?: string;
   parentHabitId?: string;
   durationMin?: number;
   createdAt: string;
@@ -101,6 +102,7 @@ export interface CreateHabitProps {
   durationMin?: number;
   rhythm?: Rhythm;
   schedule?: Schedule;
+  link?: string;
   /**
    * Phase bands, needed only when a schedule is declared: they let the factory
    * derive `phase` from `schedule.startTime` (or reject a phase that
@@ -274,6 +276,7 @@ export function createHabit(props: CreateHabitProps): HabitResult {
     ...(trimmedGuidance ? { guidance: trimmedGuidance } : {}),
     ...(effectiveRhythm ? { rhythm: effectiveRhythm } : {}),
     ...(normalizedSchedule ? { schedule: normalizedSchedule } : {}),
+    ...(props.link?.trim() ? { link: props.link.trim() } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -354,6 +357,14 @@ export function updateHabit(
   }
   if ("schedule" in updates && updates.schedule === undefined) {
     delete merged.schedule;
+  }
+  if ("link" in updates) {
+    const trimmed = updates.link?.trim();
+    if (trimmed) {
+      merged.link = trimmed;
+    } else {
+      delete merged.link;
+    }
   }
 
   if (merged.schedule) {
